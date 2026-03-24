@@ -208,16 +208,35 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     init()
   }, [tableId])
 
-  // ── Data: fetch + poll orders ──────────────────────────────────────────────
+  // ── Session order tracking (only show this user's orders) ─────────────────
+  const storageKey = `cafezomad_orders_${tableId}`
+
+  const getMyOrderIds = useCallback((): string[] => {
+    try {
+      return JSON.parse(localStorage.getItem(storageKey) || '[]')
+    } catch { return [] }
+  }, [storageKey])
+
+  const saveOrderId = useCallback((orderId: string) => {
+    const ids = getMyOrderIds()
+    if (!ids.includes(orderId)) {
+      localStorage.setItem(storageKey, JSON.stringify([...ids, orderId]))
+    }
+  }, [getMyOrderIds, storageKey])
+
+  // ── Data: fetch + poll orders (only this session's) ──────────────────────
   const fetchOrders = useCallback(async () => {
+    const myIds = getMyOrderIds()
+    if (myIds.length === 0) { setOrders([]); return }
+
     const { data } = await supabase
       .from('cafe_orders')
       .select('*, order_items:cafe_order_items(*)')
-      .eq('table_id', tableId)
+      .in('id', myIds)
       .order('created_at', { ascending: false })
 
     if (data) setOrders(data as CafeOrderWithItems[])
-  }, [tableId])
+  }, [getMyOrderIds])
 
   useEffect(() => {
     fetchOrders()
@@ -308,7 +327,8 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         throw new Error(itemsError.message)
       }
 
-      // Success
+      // Success — save order ID to this session
+      saveOrderId(order.id)
       setCart([])
       setOrderPlaced(true)
       setActiveTab('orders')
