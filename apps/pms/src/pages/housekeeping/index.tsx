@@ -260,11 +260,12 @@ const HousekeepingStatus: NextPage = () => {
               </Row>
 
               {/* Floor selector */}
-              <div style={{ marginBottom: 24 }}>
+              <div style={{ marginBottom: 24, overflowX: 'auto', WebkitOverflowScrolling: 'touch' as const }}>
                 <Segmented
                   value={activeFloor || ""}
                   options={floors.map(f => ({ label: f.name, value: f.code }))}
                   onChange={(val) => setActiveFloor(val as string)}
+                  style={{ whiteSpace: 'nowrap' }}
                 />
               </div>
 
@@ -272,67 +273,66 @@ const HousekeepingStatus: NextPage = () => {
               {currentSpaces.length === 0 ? (
                 <Empty description="No spaces on this floor" />
               ) : (
-                <Row gutter={[16, 16]}>
+                <Row gutter={[12, 12]}>
                   {currentSpaces.map((space) => {
                     const sc = STATUS_CONFIG[space.status];
                     return (
-                      <Col xs={24} sm={12} lg={8} xl={6} key={space.code}>
+                      <Col xs={12} sm={12} md={8} xl={6} key={space.code}>
                         <Card
                           size="small"
+                          style={{ height: '100%' }}
+                          styles={{
+                            header: { padding: '8px 12px', minHeight: 0 },
+                            body: { padding: '8px 12px' },
+                          }}
                           title={
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                               <span style={{ color: sc.color, fontSize: 10 }}>{sc.dot}</span>
-                              <span style={{ fontSize: 14, fontWeight: 600 }}>{space.name}</span>
+                              <span style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{space.name}</span>
                             </div>
                           }
                           extra={
-                            <Tag color={CATEGORY_COLORS[space.category] || "default"} style={{ margin: 0 }}>
+                            <Tag color={CATEGORY_COLORS[space.category] || "default"} style={{ margin: 0, fontSize: 10 }}>
                               {space.category.replace(/_/g, " ")}
                             </Tag>
                           }
-                          styles={{ body: { padding: "12px 16px" } }}
                         >
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {/* Live status */}
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                              <span style={{ color: "rgba(255,255,255,0.45)" }}>Status</span>
-                              <Tag color={space.status === "clean" ? "success" : space.status === "in_progress" ? "warning" : space.status === "pending" ? "error" : "default"} style={{ margin: 0 }}>
-                                {sc.label}
-                              </Tag>
-                            </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            {/* Status tag */}
+                            <Tag
+                              color={space.status === "clean" ? "success" : space.status === "in_progress" ? "warning" : space.status === "pending" ? "error" : "default"}
+                              style={{ margin: 0, alignSelf: 'flex-start', fontSize: 11 }}
+                            >
+                              {sc.label}
+                            </Tag>
 
                             {/* Assignee if in progress */}
                             {space.status === "in_progress" && space.assignee && (
-                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                                <span style={{ color: "rgba(255,255,255,0.45)" }}>Assigned to</span>
-                                <span style={{ fontWeight: 500, textTransform: "capitalize" }}>{space.assignee}</span>
+                              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", textTransform: "capitalize" }}>
+                                {space.assignee}
                               </div>
                             )}
 
                             {/* Today's progress */}
                             {space.todayTotal > 0 && (
-                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                                <span style={{ color: "rgba(255,255,255,0.45)" }}>Today</span>
-                                <span style={{ fontWeight: 500 }}>
-                                  {space.todayCompleted}/{space.todayTotal} done
-                                </span>
+                              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>
+                                {space.todayCompleted}/{space.todayTotal} done today
                               </div>
                             )}
 
-                            {/* Last cleaned */}
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                              <span style={{ color: "rgba(255,255,255,0.45)" }}>Last cleaned</span>
-                              <span style={{ fontWeight: 500, textTransform: "capitalize" }}>
-                                {space.lastCompletedBy
-                                  ? `${space.lastCompletedBy} · ${space.lastCompletedAt ? timeSince(space.lastCompletedAt) : ""}`
-                                  : "—"}
-                              </span>
-                            </div>
+                            {/* Last cleaned — stacked to avoid wrapping */}
+                            {space.lastCompletedBy && (
+                              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+                                Last: <span style={{ color: "rgba(255,255,255,0.7)", textTransform: "capitalize" }}>{space.lastCompletedBy}</span>
+                                {space.lastCompletedAt && (
+                                  <span> · {timeSince(space.lastCompletedAt)}</span>
+                                )}
+                              </div>
+                            )}
 
                             {/* Schedule count */}
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                              <span style={{ color: "rgba(255,255,255,0.45)" }}>Schedules</span>
-                              <span style={{ fontWeight: 500 }}>{space.activeSchedules}</span>
+                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+                              {space.activeSchedules} schedule{space.activeSchedules !== 1 ? 's' : ''}
                             </div>
                           </div>
                         </Card>
