@@ -331,9 +331,10 @@ const CafeMenuPage: NextPage = () => {
                                 onChange={(checked) =>
                                   handleToggleAvailability(item.id, checked)
                                 }
-                                checkedChildren="Available"
-                                unCheckedChildren="86'd"
                               />
+                              <span style={{ fontSize: 12, color: item.is_available ? '#22c55e' : '#ef4444' }}>
+                                {item.is_available ? 'Available' : 'Unavailable'}
+                              </span>
                             </div>,
                           ]}
                         >
@@ -399,18 +400,13 @@ const CafeMenuPage: NextPage = () => {
                           )}
 
                           {/* Badges */}
-                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                            {item.daily_limit != null && (
+                          {item.daily_limit != null && (
+                            <div style={{ marginTop: 2 }}>
                               <Tag color="orange" style={{ fontSize: 10 }}>
                                 Limit: {item.daily_limit}/day
                               </Tag>
-                            )}
-                            {!item.is_available && (
-                              <Tag color="red" style={{ fontSize: 10 }}>
-                                86&apos;d
-                              </Tag>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </Card>
                       </Col>
                     ))}
