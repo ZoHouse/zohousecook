@@ -22,7 +22,7 @@ const nextConfig = {
     svgr: false,
   },
   basePath: process.env.NEXT_BASE_PATH || "",
-  assetPrefix: process.env.NEXT_ASSET_PREFIX || "",
+  assetPrefix: process.env.NODE_ENV === "development" ? "" : (process.env.NEXT_ASSET_PREFIX || ""),
   images: {
     remotePatterns: [
       {
