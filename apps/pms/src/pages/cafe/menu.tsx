@@ -13,8 +13,11 @@ import {
   Spin,
   Switch,
   Tag,
+  Tooltip,
 } from 'antd'
 import {
+  EyeInvisibleOutlined,
+  EyeOutlined,
   PlusOutlined,
   SearchOutlined,
 } from '@ant-design/icons'
@@ -191,14 +194,15 @@ const CafeMenuPage: NextPage = () => {
                             overflowCount={999}
                           />
                         </Button>
-                        <Button
-                          size="small"
-                          type="text"
-                          onClick={() => handleToggleCategory(cat.id, !cat.is_active)}
-                          style={{ fontSize: 11, color: '#8c8c8c', flexShrink: 0 }}
-                        >
-                          {cat.is_active ? 'hide' : 'show'}
-                        </Button>
+                        <Tooltip title={cat.is_active ? 'Hide category' : 'Show category'}>
+                          <Button
+                            size="small"
+                            type="text"
+                            icon={cat.is_active ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                            onClick={() => handleToggleCategory(cat.id, !cat.is_active)}
+                            style={{ color: cat.is_active ? '#8c8c8c' : '#ef4444', flexShrink: 0 }}
+                          />
+                        </Tooltip>
                       </div>
                     ))}
                   </div>
