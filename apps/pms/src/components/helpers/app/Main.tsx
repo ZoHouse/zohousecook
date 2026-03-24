@@ -3,11 +3,15 @@ import { GeneralObject } from "@zo/definitions/general";
 import { Head } from "@zo/moal";
 import { Spin } from "antd";
 import { NextComponentType, NextPageContext } from "next";
+import { useRouter } from "next/router";
 import React from "react";
 import { useAssociation } from "../../../../src/hooks";
 import { AssociationProvider } from "../../contexts/association";
 import AccessDenied from "./AccessDenied";
 import Navigation from "./Navigation";
+
+// Customer-facing routes bypass admin shell (no sidebar, no role check)
+const CUSTOMER_ROUTES = ["/cafe/order"];
 
 interface MainProps {
   Component: NextComponentType<NextPageContext, any, GeneralObject>;
@@ -15,6 +19,19 @@ interface MainProps {
 }
 
 const Main: React.FC<MainProps> = ({ Component, pageProps }) => {
+  const router = useRouter();
+  const isCustomerRoute = CUSTOMER_ROUTES.some((r) =>
+    router.pathname.startsWith(r)
+  );
+
+  if (isCustomerRoute) {
+    return (
+      <main className="min-h-screen w-full">
+        <Component {...pageProps} />
+      </main>
+    );
+  }
+
   return (
     <main className="scrollbar flex min-h-screen w-full transition-all ease-in-out duration-200">
       <Head />
