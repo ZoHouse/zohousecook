@@ -41,9 +41,10 @@ const BOARD_COLUMNS: {
 
 interface KitchenBoardProps {
   propertyId: string
+  onViewDetail?: (order: CafeOrderWithItems) => void
 }
 
-export function KitchenBoard({ propertyId }: KitchenBoardProps) {
+export function KitchenBoard({ propertyId, onViewDetail }: KitchenBoardProps) {
   const { orders, isLoading, advanceStatus, cancelOrder } =
     useCafeRealtimeOrders(propertyId)
 
@@ -143,6 +144,7 @@ export function KitchenBoard({ propertyId }: KitchenBoardProps) {
                     order={order}
                     onAdvance={advanceStatus}
                     onCancel={cancelOrder}
+                    onViewDetail={onViewDetail}
                   />
                 ))
               )}
@@ -158,9 +160,10 @@ interface OrderCardProps {
   order: CafeOrderWithItems
   onAdvance: (orderId: string, currentStatus: KitchenStatus) => Promise<void>
   onCancel: (orderId: string) => Promise<void>
+  onViewDetail?: (order: CafeOrderWithItems) => void
 }
 
-function OrderCard({ order, onAdvance, onCancel }: OrderCardProps) {
+function OrderCard({ order, onAdvance, onCancel, onViewDetail }: OrderCardProps) {
   const status = order.kitchen_status as KitchenStatus
   const advanceLabel = ADVANCE_ACTION_LABELS[status]
   const tableLabel = order.table?.code || order.mode.replace('_', ' ')
@@ -176,7 +179,9 @@ function OrderCard({ order, onAdvance, onCancel }: OrderCardProps) {
         borderRadius: 8,
         background: 'rgba(255,255,255,0.04)',
         border: '1px solid rgba(255,255,255,0.1)',
+        cursor: onViewDetail ? 'pointer' : 'default',
       }}
+      onClick={onViewDetail ? () => onViewDetail(order) : undefined}
     >
       {/* Header row: order number + time + status */}
       <div
@@ -230,13 +235,13 @@ function OrderCard({ order, onAdvance, onCancel }: OrderCardProps) {
       </div>
 
       {/* Action buttons */}
-      <Space size={6} style={{ width: '100%' }}>
+      <Space size={6} style={{ width: '100%' }} onClick={(e) => e.stopPropagation()}>
         {advanceLabel && (
           <Button
             type="primary"
             size="small"
             style={{ flex: 1 }}
-            onClick={() => onAdvance(order.id, status)}
+            onClick={(e) => { e.stopPropagation(); onAdvance(order.id, status) }}
           >
             {advanceLabel}
           </Button>
@@ -245,7 +250,7 @@ function OrderCard({ order, onAdvance, onCancel }: OrderCardProps) {
           danger
           size="small"
           type="text"
-          onClick={() => onCancel(order.id)}
+          onClick={(e) => { e.stopPropagation(); onCancel(order.id) }}
           style={{ fontSize: 11 }}
         >
           Cancel
