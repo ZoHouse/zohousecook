@@ -30,28 +30,67 @@ export function useCafeMenu({ categoryId }: UseCafeMenuParams = {}): UseCafeMenu
     setError(null)
 
     try {
-      // Menu is standardised — don't filter categories by property_id
-      const catQuery = supabase
+      // Fetch all categories, then deduplicate by name (data has per-property dupes)
+      const catResult = await supabase
         .from('cafe_menu_categories')
         .select('*')
         .order('sort_order')
+
+      if (catResult.error) throw catResult.error
+
+      // Deduplicate categories by name — keep first occurrence
+      const seenNames = new Set<string>()
+      const uniqueCats = (catResult.data || []).filter((cat) => {
+        const lower = cat.name.toLowerCase()
+        if (seenNames.has(lower)) return false
+        seenNames.add(lower)
+        return true
+      })
+      setCategories(uniqueCats)
+
+      // Build a set of all category IDs that share the same name as our unique set
+      // This way items linked to either BLR or WTF category IDs are included
+      const allCatIds = new Set<string>()
+      const nameToIds = new Map<string, string[]>()
+      for (const cat of catResult.data || []) {
+        const lower = cat.name.toLowerCase()
+        if (!nameToIds.has(lower)) nameToIds.set(lower, [])
+        nameToIds.get(lower)!.push(cat.id)
+        allCatIds.add(cat.id)
+      }
+
+      // If filtering by category, include all IDs for that category name
+      let targetCatIds: string[] | null = null
+      if (categoryId) {
+        const selectedCat = (catResult.data || []).find((c) => c.id === categoryId)
+        if (selectedCat) {
+          targetCatIds = nameToIds.get(selectedCat.name.toLowerCase()) || [categoryId]
+        } else {
+          targetCatIds = [categoryId]
+        }
+      }
 
       let itemQuery = supabase
         .from('cafe_menu_items')
         .select('*')
         .order('sort_order')
 
-      if (categoryId) {
-        itemQuery = itemQuery.eq('category_id', categoryId)
+      if (targetCatIds) {
+        itemQuery = itemQuery.in('category_id', targetCatIds)
       }
 
-      const [catResult, itemResult] = await Promise.all([catQuery, itemQuery])
-
-      if (catResult.error) throw catResult.error
+      const itemResult = await itemQuery
       if (itemResult.error) throw itemResult.error
 
-      setCategories(catResult.data || [])
-      setItems(itemResult.data || [])
+      // Deduplicate items by name (same item exists under both BLR + WTF categories)
+      const seenItemNames = new Set<string>()
+      const uniqueItems = (itemResult.data || []).filter((item) => {
+        const lower = item.name.toLowerCase()
+        if (seenItemNames.has(lower)) return false
+        seenItemNames.add(lower)
+        return true
+      })
+      setItems(uniqueItems)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
