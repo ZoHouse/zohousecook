@@ -15,6 +15,7 @@ import React, {
   useState,
 } from "react";
 import { BookingExperienceResponse } from "../../../config";
+import { normalizeEvent } from "../../../lib/events/normalize";
 import cultureMarkers from "./../../../config/token2049";
 import CategoryFilter from "./CategoryFilter";
 import DateFilter from "./DateFilter";
@@ -652,9 +653,9 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
 
         <EventsList
           ref={scrollContainerRef}
-          events={filteredEvents}
+          events={filteredEvents.map(normalizeEvent)}
           isLoading={isLoading}
-          setSelectedEvent={setSelectedEvent}
+          setSelectedEvent={((item: any) => setSelectedEvent(item?.originalEvent ?? null)) as any}
           selectedEventId={selectedEvent?.pid}
         />
         <SearchBar
