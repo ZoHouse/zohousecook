@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
+import { useAuth } from '@zo/auth'
 import { supabase } from '../../config/supabase'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -148,6 +149,8 @@ export default function CustomerOrderPage() {
 // ─── Content ───────────────────────────────────────────────────────────────────
 
 function CustomerOrderContent({ tableId }: { tableId: string }) {
+  const { user, isLoggedIn, showLoginModal } = useAuth()
+
   // ── State ──────────────────────────────────────────────────────────────────
   const [propertyId, setPropertyId] = useState<string | null>(null)
   const [tableInfo, setTableInfo] = useState<{ code: string; label: string | null } | null>(null)
@@ -274,6 +277,13 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   // ── Place Order ────────────────────────────────────────────────────────────
   const handlePlaceOrder = async () => {
     if (cart.length === 0 || !propertyId || isOrdering) return
+
+    // Require login before ordering
+    if (!isLoggedIn || !user) {
+      showLoginModal()
+      return
+    }
+
     setIsOrdering(true)
     try {
       // 1. Get next display number
@@ -288,12 +298,15 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       const displayNumber = (lastOrder?.display_number || 0) + 1
       const totalAmount = cart.reduce((sum, c) => sum + c.price * c.quantity, 0)
 
-      // 2. Insert order
+      // 2. Insert order with user identity
       const { data: order, error: orderError } = await supabase
         .from('cafe_orders')
         .insert({
           property_id: propertyId,
           table_id: tableId,
+          customer_name: user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : null,
+          customer_phone: user.mobile_number || null,
+          zo_user_id: user.id || null,
           mode: 'dine_in',
           kitchen_status: 'new',
           display_number: displayNumber,
@@ -387,14 +400,30 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
               Table {tableInfo?.label || tableInfo?.code || '...'}
             </p>
           </div>
-          {activeOrders.length > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-300 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
-              <span className="text-[11px] font-semibold text-black/80 tracking-wide">
-                {activeOrders.length} active
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {activeOrders.length > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-300 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
+                <span className="text-[11px] font-semibold text-black/80 tracking-wide">
+                  {activeOrders.length} active
+                </span>
+              </div>
+            )}
+            {isLoggedIn && user ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-black/10 rounded-full">
+                <span className="text-[11px] font-semibold text-black/70">
+                  {user.first_name || user.mobile_number || 'Guest'}
+                </span>
+              </div>
+            ) : (
+              <button
+                onClick={() => showLoginModal()}
+                className="px-3 py-1.5 bg-black rounded-full text-[11px] font-semibold text-white"
+              >
+                Sign in
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
