@@ -6,7 +6,6 @@ import {
   InputNumber,
   message,
   Pagination,
-  Segmented,
   Space,
   Spin,
   Table,
@@ -115,13 +114,19 @@ function StockCell({
   )
 }
 
+// Map operator property IDs to display codes
+const PROPERTY_DISPLAY: Record<string, string> = {
+  'f8113423-fb4b-4c43-91d7-e281bdd2f81a': 'BLR',
+  '19736bbd-e9d8-4de5-881c-ecd2adc1e9f9': 'WTF',
+}
+
 const CafeInventoryPage: NextPage = () => {
   const { propertyId } = usePropertyId()
+  const propertyCode = propertyId ? (PROPERTY_DISPLAY[propertyId] || '') : ''
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [debounceTimer, setDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
   const [category, setCategory] = useState('All')
-  const [outlet, setOutlet] = useState<string>('all')
   const [page, setPage] = useState(1)
   const [formOpen, setFormOpen] = useState(false)
   const [editingIngredient, setEditingIngredient] = useState<CafeIngredient | null>(null)
@@ -132,7 +137,7 @@ const CafeInventoryPage: NextPage = () => {
   const { ingredients, totalCount, isLoading, createIngredient, updateIngredient, updateStock } = useIngredients({
     category: category !== 'All' ? category : undefined,
     search: debouncedSearch || undefined,
-    propertyCode: outlet !== 'all' ? outlet : undefined,
+    propertyCode: propertyCode.toLowerCase() || undefined,
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE,
   })
@@ -242,8 +247,6 @@ const CafeInventoryPage: NextPage = () => {
     }
   }
 
-  const showAll = outlet === 'all'
-
   const columns: TableColumnsType<CafeIngredientWithStock> = [
     {
       title: 'Code',
@@ -256,7 +259,7 @@ const CafeInventoryPage: NextPage = () => {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
-      width: 160,
+      width: 180,
       render: (v: string) => <Text strong>{v}</Text>,
     },
     {
@@ -280,45 +283,31 @@ const CafeInventoryPage: NextPage = () => {
       align: 'right',
       render: (v: number | null) => v != null ? formatPaise(v) : '—',
     },
-    // BLR stock column
-    ...(showAll || outlet === 'blr' ? [{
-      title: 'BLR Stock',
-      key: 'blr_stock',
+    {
+      title: `${propertyCode || ''} Stock`,
+      key: 'stock',
       width: 100,
       align: 'center' as const,
       render: (_: unknown, record: CafeIngredientWithStock) => {
-        const s = record.stock.find((x) => x.property_code.toLowerCase() === 'blr')
+        const s = record.stock.find((x) => x.property_code.toLowerCase() === propertyCode.toLowerCase())
         return <StockCell stock={s} ingredientId={record.id} onSave={updateStock} />
       },
-    }] : []),
-    // WTF stock column
-    ...(showAll || outlet === 'wtf' ? [{
-      title: 'WTF Stock',
-      key: 'wtf_stock',
-      width: 100,
-      align: 'center' as const,
-      render: (_: unknown, record: CafeIngredientWithStock) => {
-        const s = record.stock.find((x) => x.property_code.toLowerCase() === 'wtf')
-        return <StockCell stock={s} ingredientId={record.id} onSave={updateStock} />
-      },
-    }] : []),
+    },
     {
       title: 'Min Stock',
       key: 'min_stock',
       width: 90,
       align: 'right',
       render: (_: unknown, record: CafeIngredientWithStock) => {
-        const minStock = record.stock.length > 0
-          ? record.stock[0]?.min_stock ?? null
-          : null
-        return <Text type="secondary">{minStock ?? '—'}</Text>
+        const s = record.stock.find((x) => x.property_code.toLowerCase() === propertyCode.toLowerCase())
+        return <Text type="secondary">{s?.min_stock ?? '—'}</Text>
       },
     },
     {
       title: 'Supplier',
       dataIndex: 'supplier',
       key: 'supplier',
-      width: 140,
+      width: 160,
       ellipsis: true,
       render: (v: string | null) => v || '—',
     },
@@ -343,26 +332,15 @@ const CafeInventoryPage: NextPage = () => {
       <Page>
         <PageHeader title="Inventory" icon="NoteBook" />
         <PageContent>
-          {/* Outlet + Add button row */}
+          {/* Add button */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
+              justifyContent: 'flex-end',
               marginBottom: 16,
-              flexWrap: 'wrap',
-              gap: 12,
             }}
           >
-            <Segmented
-              value={outlet}
-              onChange={(v) => { setOutlet(v as string); setPage(1) }}
-              options={[
-                { label: 'All', value: 'all' },
-                { label: 'BLR', value: 'blr' },
-                { label: 'WTF', value: 'wtf' },
-              ]}
-            />
             <Button
               type="primary"
               icon={<PlusOutlined />}
