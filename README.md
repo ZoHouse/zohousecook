@@ -163,6 +163,42 @@ The PMS app has Zo House-specific features that only appear for Zo House propert
 └── README.md             # This file
 ```
 
+## Authentication
+
+Auth is **env-driven** — the same code behaves differently on zo.xyz vs zozozo.work.
+
+### On zozozo.work (staging)
+
+`ZOSTEL_APP_ID` is set → apps use unified Zo Admin + Zostel auth. One login covers multiple apps.
+
+| Login | Apps | Auth keys |
+|-------|------|-----------|
+| **Zo Admin + Zostel OTP** (one login) | website, dashboard, meme, /cafezomad | `zo-admin` + `zostel` |
+| **PMS OTP** (separate) | /pm/* | `zo-pms` + `zostel` |
+| **Admin OTP** (separate) | /admin/* | `zo-admin` + `zostel` |
+| **Web-checkin OTP** (separate) | /checkin/* | `zo-web-checkin` + `zostel-web-checkin` |
+
+PMS, admin, web-checkin, and payment auth **cannot be changed** — other teams depend on them.
+
+### On zo.xyz (production)
+
+`ZOSTEL_APP_ID` is NOT set → each app uses its original auth config. **Zero changes to production behavior.**
+
+| App | Auth key | Login |
+|-----|----------|-------|
+| website | `zo-web` | Public (no login required) |
+| dashboard | `zo-web` | Login required |
+| pms | `zo-pms` + `zostel` | Login required |
+| admin | `zo-admin` + `zostel` | Login required |
+
+### How it works
+
+Apps we control (website, dashboard, meme) have a `ConditionalZostelAuth` wrapper in `_app.tsx`:
+- If `ZOSTEL_APP_ID` env var exists → wraps in `ZostelAuthProvider`, uses `zo-admin` localKey
+- If not → skips Zostel auth, uses original `zo-web` localKey
+
+This is set per-Vercel-project via env vars, not in code.
+
 ## Deployment
 
 - **Production (zo.xyz):** AWS ECS Fargate via GitHub Actions (`nx affected` builds only changed apps)
