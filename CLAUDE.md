@@ -6,7 +6,7 @@ Nx monorepo powering zo.xyz (production) and zozozo.work (staging/community).
 
 - **Monorepo:** Nx 17, Next.js 14, React 18, TypeScript
 - **UI:** Ant Design 5 (dark theme, neon green `#cfff50` accent)
-- **Auth:** Zostel auth (phone OTP) + Zo World auth, 5-tier RBAC
+- **Auth:** Env-driven — Zostel + Zo World auth on zozozo.work, Zo World only on zo.xyz. 5-tier RBAC.
 - **Shared libs:** `@zo/auth`, `@zo/moal`, `@zo/zud`, `@zo/utils`, `@zo/assets`
 - **Production backend:** Django REST API at `api.io.zo.xyz`
 - **Staging backend:** Supabase (for Zo House-specific features only)
@@ -85,6 +85,24 @@ Features use Supabase as staging DB. When graduating to production:
 - Bypasses website header/footer (fullscreen mobile experience)
 - Orders appear on kitchen board in real-time
 - Data: Supabase direct calls
+
+## Authentication
+
+Auth is **env-driven** via `ZOSTEL_APP_ID`. Same code, different behavior per deployment.
+
+**On zozozo.work** (`ZOSTEL_APP_ID` is set):
+- website, dashboard, meme use `zo-admin` + `zostel` auth → one login covers all
+- `ConditionalZostelAuth` wrapper in `_app.tsx` activates Zostel auth layer
+- PMS keeps its own `zo-pms` + `zostel` (other teams depend on it — DO NOT CHANGE)
+- Admin keeps `zo-admin` + `zostel` (DO NOT CHANGE)
+- Web-checkin keeps `zo-web-checkin` + `zostel-web-checkin` (DO NOT CHANGE)
+- Payment keeps its custom auth (DO NOT CHANGE)
+
+**On zo.xyz** (`ZOSTEL_APP_ID` not set):
+- Zero changes — website is public (`zo-web`), each app has its original auth
+- The conditional wrapper is a no-op
+
+**Rule:** Never change auth keys for PMS, admin, web-checkin, or payment apps. Other teams across the Zo/Zostel network depend on them.
 
 ## Key Rules
 
