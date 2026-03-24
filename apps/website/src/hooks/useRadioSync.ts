@@ -62,7 +62,7 @@ export function useRadioSync() {
     error: null,
   });
 
-  const playerRef = useRef<YT.Player | null>(null);
+  const playerRef = useRef<any | null>(null);
   const currentSongIdRef = useRef<string | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const djPlayedForRef = useRef<string | null>(null);
@@ -758,7 +758,7 @@ export function useRadioSync() {
     performCrossfade();
   }, [performCrossfade]);
 
-  const onPlayerReady = useCallback((event: { target: YT.Player }) => {
+  const onPlayerReady = useCallback((event: { target: any }) => {
     playerRef.current = event.target;
     playerReadyRef.current = true;
     event.target.setVolume(80);
