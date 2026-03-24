@@ -1,0 +1,85 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/pm",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-pm-samurais-dojo.vercel.app/pm"
+    },
+    {
+      "source": "/pm/:path*",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-pm-samurais-dojo.vercel.app/pm/:path*"
+    },
+    {
+      "source": "/dashboard",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-dashboard-samurais-dojo.vercel.app/dashboard"
+    },
+    {
+      "source": "/dashboard/:path*",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-dashboard-samurais-dojo.vercel.app/dashboard/:path*"
+    },
+    {
+      "source": "/admin",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-admin-samurais-dojo.vercel.app/admin"
+    },
+    {
+      "source": "/admin/:path*",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-admin-samurais-dojo.vercel.app/admin/:path*"
+    },
+    {
+      "source": "/ops",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-ops-samurais-dojo.vercel.app/ops"
+    },
+    {
+      "source": "/ops/:path*",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-ops-samurais-dojo.vercel.app/ops/:path*"
+    },
+    {
+      "source": "/checkin",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-checkin-samurais-dojo.vercel.app/checkin"
+    },
+    {
+      "source": "/checkin/:path*",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-checkin-samurais-dojo.vercel.app/checkin/:path*"
+    },
+    {
+      "source": "/payments",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-payments-samurais-dojo.vercel.app/payments"
+    },
+    {
+      "source": "/payments/:path*",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-payments-samurais-dojo.vercel.app/payments/:path*"
+    },
+    {
+      "source": "/comic",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-comic-samurais-dojo.vercel.app/comic"
+    },
+    {
+      "source": "/comic/:path*",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-comic-samurais-dojo.vercel.app/comic/:path*"
+    },
+    {
+      "source": "/meme",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-meme-samurais-dojo.vercel.app/meme"
+    },
+    {
+      "source": "/meme/:path*",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-meme-samurais-dojo.vercel.app/meme/:path*"
+    }
+  ]
+}
