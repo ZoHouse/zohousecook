@@ -180,6 +180,7 @@ const Provider: React.FC<ProviderProps> = ({ children }) => {
         setSelectedOperator,
         hasAccess,
         effectiveRole,
+        principals: selectedOperatorAccess,
       }}
     >
       {children}

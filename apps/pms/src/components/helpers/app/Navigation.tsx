@@ -9,7 +9,7 @@ import { Dropdown, MenuProps, Input } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useEffect, useRef, useState } from "react";
-import { navigationLinks, ZO_FEATURES, isFeatureVisible } from "../../../configs";
+import { navigationLinks, ZO_FEATURES, isFeatureVisible, hasPrincipalAccess } from "../../../configs";
 import type { ZoFeature } from "../../../configs";
 import { useAssociation } from "../../../hooks";
 import { GlobalSearch } from "../../ui";
@@ -24,6 +24,7 @@ const Navigation: React.FC<Navigation> = () => {
     setSelectedOperator,
     hasAccess,
     effectiveRole,
+    principals,
   } = useAssociation();
   const { logout } = useAuth();
   const { profile } = useProfile();
@@ -132,17 +133,28 @@ const Navigation: React.FC<Navigation> = () => {
   }, [hasAccess, isMac]);
 
   useEffect(() => {
-    if (effectiveRole === "none" || effectiveRole === null) return;
+    if (effectiveRole === null) return;
 
     type AccessRole = "activity-manager" | "property-manager" | "admin";
 
-    // Helper: find the first accessible link
+    // Helper: find the first accessible link (standard nav or feature)
     const findFirstAccessibleLink = () => {
+      // Check standard nav links first
       for (const set of navigationLinks as GeneralObject[]) {
         for (const link of set.list as GeneralObject[]) {
           if (hasAccess(link.minAccess as string as AccessRole)) {
-            return link as GeneralObject;
+            return link.link as string;
           }
+        }
+      }
+      // Fall back to first visible Zo House feature
+      const operatorCode = selectedOperator?.code as string | undefined;
+      for (const feature of Object.values(ZO_FEATURES)) {
+        if (
+          isFeatureVisible(feature, operatorCode) &&
+          (hasAccess(feature.minAccess) || hasPrincipalAccess(feature, principals))
+        ) {
+          return feature.navLinks[0]?.path || null;
         }
       }
       return null;
@@ -153,11 +165,20 @@ const Navigation: React.FC<Navigation> = () => {
       return;
     }
 
+    // Staff-only users (effectiveRole "none") with principal access → redirect to their feature
+    if (effectiveRole === "none") {
+      const first = findFirstAccessibleLink();
+      if (first && router.pathname !== first) {
+        router.replace(first);
+      }
+      return;
+    }
+
     // If on root path, redirect to first accessible link
     if (router.pathname === "/") {
       const first = findFirstAccessibleLink();
-      if (first && router.pathname !== (first.link as string)) {
-        router.replace(first.link as string);
+      if (first && router.pathname !== first) {
+        router.replace(first);
       }
       return;
     }
@@ -181,11 +202,11 @@ const Navigation: React.FC<Navigation> = () => {
 
     if (!isCurrentPathAccessible) {
       const first = findFirstAccessibleLink();
-      if (first && router.pathname !== (first.link as string)) {
-        router.replace(first.link as string);
+      if (first && router.pathname !== first) {
+        router.replace(first);
       }
     }
-  }, [effectiveRole, hasAccess, router, router.pathname, selectedOperator]);
+  }, [effectiveRole, hasAccess, principals, router, router.pathname, selectedOperator]);
 
   return (
     <>
@@ -289,7 +310,7 @@ const Navigation: React.FC<Navigation> = () => {
             const visibleFeatures = Object.values(ZO_FEATURES).filter(
               (feature: ZoFeature) =>
                 isFeatureVisible(feature, selectedOperator?.code) &&
-                hasAccess(feature.minAccess)
+                (hasAccess(feature.minAccess) || hasPrincipalAccess(feature, principals))
             );
 
             return (

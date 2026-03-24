@@ -5,6 +5,7 @@ export {
   ZO_HOUSE_OPERATOR_CODES,
   ZO_FEATURES,
   isFeatureVisible,
+  hasPrincipalAccess,
 } from "./zo-house-features";
 export type {
   ZoFeature,

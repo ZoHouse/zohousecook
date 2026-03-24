@@ -21,6 +21,7 @@ interface ContextInterface {
     | "property-manager"
     | "owner_partner"
     | "admin";
+  principals: string[];
 }
 
 const Context = createContext<ContextInterface>({
@@ -29,6 +30,7 @@ const Context = createContext<ContextInterface>({
   setSelectedOperator: () => {},
   hasAccess: () => false,
   effectiveRole: null,
+  principals: [],
 });
 
 export default Context;

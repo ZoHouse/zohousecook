@@ -4,6 +4,11 @@
  * Features listed here are only visible to Zo House properties during testing.
  * When a feature graduates (status: 'graduated'), it becomes available to all properties.
  *
+ * Access model:
+ * - `minAccess` — role hierarchy check (PM+ sees all features)
+ * - `allowedPrincipals` — staff with these backend principals see this feature
+ *   regardless of role hierarchy (e.g., chef sees only Cafe Zomad)
+ *
  * Migration path:
  * 1. Build feature with Supabase backend → test at zozozo.work
  * 2. Backend team creates Django models + endpoints matching Supabase schema
@@ -33,6 +38,8 @@ export interface ZoFeature {
   minAccess: "activity-manager" | "front-desk-manager" | "property-manager" | "owner_partner" | "admin";
   icon: IconName;
   navLinks: ZoFeatureNavLink[];
+  /** Backend principals that grant direct access to this feature (bypasses role hierarchy) */
+  allowedPrincipals?: string[];
 }
 
 export const ZO_FEATURES: Record<string, ZoFeature> = {
@@ -43,6 +50,7 @@ export const ZO_FEATURES: Record<string, ZoFeature> = {
     status: "testing",
     minAccess: "front-desk-manager",
     icon: "Food",
+    allowedPrincipals: ["group:cafe-manager", "group:chef", "group:kitchen-staff"],
     navLinks: [
       { id: "cafe-dashboard", name: "Dashboard", path: "/cafe", icon: "Food" },
       { id: "cafe-kitchen", name: "Kitchen", path: "/cafe/kitchen", icon: "Food" },
@@ -60,6 +68,7 @@ export const ZO_FEATURES: Record<string, ZoFeature> = {
     status: "testing",
     minAccess: "front-desk-manager",
     icon: "House",
+    allowedPrincipals: ["group:housekeeping-manager", "group:housekeeping-staff"],
     navLinks: [
       { id: "housekeeping-status", name: "Status", path: "/housekeeping", icon: "House" },
       { id: "housekeeping-ops", name: "House Ops", path: "/housekeeping/ops", icon: "Doc" },
@@ -94,4 +103,16 @@ export function isFeatureVisible(
   if (feature.status === "graduated") return true;
   if (!operatorCode) return false;
   return ZO_HOUSE_OPERATOR_CODES.includes(operatorCode);
+}
+
+/**
+ * Check if the user has access to a feature via their principals.
+ * Returns true if any of the user's principals match the feature's allowedPrincipals.
+ */
+export function hasPrincipalAccess(
+  feature: ZoFeature,
+  userPrincipals: string[]
+): boolean {
+  if (!feature.allowedPrincipals || feature.allowedPrincipals.length === 0) return false;
+  return feature.allowedPrincipals.some((p) => userPrincipals.includes(p));
 }
