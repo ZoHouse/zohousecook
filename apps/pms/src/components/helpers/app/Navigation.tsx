@@ -148,6 +148,11 @@ const Navigation: React.FC<Navigation> = () => {
       return null;
     };
 
+    // Zo House feature routes are handled by ZoHouseGuard — skip access check
+    if (router.pathname.startsWith("/cafe") || router.pathname.startsWith("/housekeeping")) {
+      return;
+    }
+
     // If on root path, redirect to first accessible link
     if (router.pathname === "/") {
       const first = findFirstAccessibleLink();
