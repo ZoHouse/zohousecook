@@ -14,7 +14,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import type { TableColumnsType } from 'antd'
 import { PlusOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons'
 import ZoHouseGuard from '../../components/helpers/app/ZoHouseGuard'
 import { Page, PageContent, PageHeader } from '../../components/ui'
@@ -244,7 +244,7 @@ const CafeInventoryPage: NextPage = () => {
 
   const showAll = outlet === 'all'
 
-  const columns: ColumnsType<CafeIngredientWithStock> = [
+  const columns: TableColumnsType<CafeIngredientWithStock> = [
     {
       title: 'Code',
       dataIndex: 'code',

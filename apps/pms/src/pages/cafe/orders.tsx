@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { NextPage } from 'next'
 import { Segmented, Spin, Table, Tag } from 'antd'
-import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
+import type { TableColumnsType } from 'antd'
 import ZoHouseGuard from '../../components/helpers/app/ZoHouseGuard'
 import { Page, PageContent, PageHeader } from '../../components/ui'
 import { useCafeOrders } from '../../hooks/cafe/useCafeOrders'
@@ -35,7 +35,7 @@ const CafeOrdersPage: NextPage = () => {
     pageSize: PAGE_SIZE,
   })
 
-  const columns: ColumnsType<CafeOrderWithItems> = [
+  const columns: TableColumnsType<CafeOrderWithItems> = [
     {
       title: '#',
       key: 'display_number',
@@ -113,7 +113,7 @@ const CafeOrdersPage: NextPage = () => {
     },
   ]
 
-  const pagination: TablePaginationConfig = {
+  const pagination = {
     current: page,
     pageSize: PAGE_SIZE,
     total: totalCount,
