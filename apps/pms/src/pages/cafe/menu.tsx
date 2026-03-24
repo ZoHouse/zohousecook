@@ -136,43 +136,9 @@ const CafeMenuPage: NextPage = () => {
           ) : (
             <Row gutter={[16, 16]}>
               {/* Left sidebar — categories */}
-              <Col xs={24} sm={6} md={5}>
-                {/* Mobile: horizontal scrolling chips */}
-                <div
-                  className="sm:hidden"
-                  style={{
-                    overflowX: 'auto',
-                    display: 'flex',
-                    gap: 8,
-                    paddingBottom: 8,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <Tag
-                    color={!selectedCategoryId ? 'orange' : 'default'}
-                    onClick={() => setSelectedCategoryId(null)}
-                    style={{ cursor: 'pointer', padding: '4px 12px' }}
-                  >
-                    All
-                  </Tag>
-                  {categories.map((cat) => (
-                    <Tag
-                      key={cat.id}
-                      color={selectedCategoryId === cat.id ? 'orange' : 'default'}
-                      onClick={() => setSelectedCategoryId(cat.id)}
-                      style={{
-                        cursor: 'pointer',
-                        padding: '4px 12px',
-                        opacity: cat.is_active ? 1 : 0.5,
-                      }}
-                    >
-                      {cat.name}
-                    </Tag>
-                  ))}
-                </div>
-
+              <Col xs={0} sm={6} md={5}>
                 {/* Desktop: sidebar list */}
-                <div className="hidden sm:block">
+                <div>
                   <div style={{ marginBottom: 8 }}>
                     <Button
                       block
@@ -312,7 +278,7 @@ const CafeMenuPage: NextPage = () => {
                 ) : (
                   <Row gutter={[12, 12]}>
                     {filteredItems.map((item) => (
-                      <Col key={item.id} xs={24} sm={12} lg={8}>
+                      <Col key={item.id} xs={24} sm={12} md={8} xl={6}>
                         <Card
                           hoverable
                           style={{ opacity: item.is_available ? 1 : 0.65 }}
@@ -412,7 +378,7 @@ const CafeMenuPage: NextPage = () => {
                                 fontSize: 13,
                                 fontWeight: 600,
                                 flexShrink: 0,
-                                color: '#1d1d1d',
+                                color: 'rgba(255,255,255,0.85)',
                               }}
                             >
                               {formatPaise(item.price)}
