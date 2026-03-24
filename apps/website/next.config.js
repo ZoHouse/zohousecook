@@ -47,19 +47,33 @@ const nextConfig = {
     MEDIA_BASE_URL: process.env.MEDIA_BASE_URL || "",
   },
   async rewrites() {
-    if (process.env.NODE_ENV === "development") {
-      return [
-        {
-          source: "/dashboard/:path*",
-          destination: "http://localhost:4203/dashboard/:path*",
-        },
-        {
-          source: "/dashboard",
-          destination: "http://localhost:4203/dashboard",
-        },
-      ];
+    // Sub-app routing: proxy path-based routes to their respective Vercel deployments
+    // In development, proxy to local ports. In production/staging, proxy to Vercel URLs.
+    const isDev = process.env.NODE_ENV === "development";
+
+    const subApps = [
+      { path: "pm", devPort: 4204, vercelUrl: process.env.REWRITE_PMS_URL || "https://zozozo-pm-samurais-dojo.vercel.app" },
+      { path: "dashboard", devPort: 4203, vercelUrl: process.env.REWRITE_DASHBOARD_URL || "https://zozozo-dashboard-samurais-dojo.vercel.app" },
+      { path: "admin", devPort: 4201, vercelUrl: process.env.REWRITE_ADMIN_URL || "https://zozozo-admin-samurais-dojo.vercel.app" },
+      { path: "ops", devPort: 4210, vercelUrl: process.env.REWRITE_OPS_URL || "https://zozozo-ops-samurais-dojo.vercel.app" },
+      { path: "checkin", devPort: 4206, vercelUrl: process.env.REWRITE_CHECKIN_URL || "https://zozozo-checkin-samurais-dojo.vercel.app" },
+      { path: "payments", devPort: 4205, vercelUrl: process.env.REWRITE_PAYMENTS_URL || "https://zozozo-payments-samurais-dojo.vercel.app" },
+      { path: "comic", devPort: 4209, vercelUrl: process.env.REWRITE_COMIC_URL || "https://zozozo-comic-samurais-dojo.vercel.app" },
+      { path: "meme", devPort: 4208, vercelUrl: process.env.REWRITE_MEME_URL || "https://zozozo-meme-samurais-dojo.vercel.app" },
+    ];
+
+    const rewrites = [];
+    for (const app of subApps) {
+      const dest = isDev
+        ? `http://localhost:${app.devPort}`
+        : app.vercelUrl;
+      rewrites.push(
+        { source: `/${app.path}`, destination: `${dest}/${app.path}` },
+        { source: `/${app.path}/:path*`, destination: `${dest}/${app.path}/:path*` },
+      );
     }
-    return [];
+
+    return rewrites;
   },
   transpilePackages: [
     "gsap",
