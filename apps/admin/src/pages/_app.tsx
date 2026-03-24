@@ -21,7 +21,7 @@ function CustomApp({ Component, pageProps }: AppProps) {
           <Toaster position="top-right" richColors />
           <ZostelAuthProvider localKey="zostel">
             <AuthProvider
-              localKey="zo-web"
+              localKey="zo-admin"
               isLoginRequired
               isZostelLoginRequired
               allowedLoginTypes={["mobile"]}

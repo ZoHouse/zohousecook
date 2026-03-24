@@ -15,7 +15,7 @@ function CustomApp({ Component, pageProps }: AppProps) {
       <ConfigProvider theme={theme}>
         <ZostelAuthProvider localKey="zostel">
           <AuthProvider
-            localKey="zo-web"
+            localKey="zo-pms"
             isLoginRequired
             isZostelLoginRequired
             allowedLoginTypes={["mobile"]}
