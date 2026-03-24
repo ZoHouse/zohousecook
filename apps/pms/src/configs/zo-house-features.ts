@@ -56,12 +56,26 @@ export const ZO_FEATURES: Record<string, ZoFeature> = {
   housekeeping: {
     id: "housekeeping",
     label: "Housekeeping",
-    backend: "supabase",
+    backend: "django",
     status: "testing",
     minAccess: "front-desk-manager",
     icon: "House",
     navLinks: [
       { id: "housekeeping-status", name: "Status", path: "/housekeeping", icon: "House" },
+      { id: "housekeeping-ops", name: "House Ops", path: "/housekeeping/ops", icon: "Doc" },
+    ],
+  },
+  iot: {
+    id: "iot",
+    label: "IoT",
+    backend: "supabase",
+    status: "testing",
+    minAccess: "front-desk-manager",
+    icon: "Wifi",
+    navLinks: [
+      { id: "iot-cameras", name: "Cameras", path: "/iot/cameras", icon: "Cctv" },
+      { id: "iot-locks", name: "Locks", path: "/iot/locks", icon: "DoorLock" },
+      { id: "iot-screens", name: "Screens", path: "/iot/screens", icon: "Projector" },
     ],
   },
 };

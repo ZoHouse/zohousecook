@@ -149,7 +149,7 @@ const Navigation: React.FC<Navigation> = () => {
     };
 
     // Zo House feature routes are handled by ZoHouseGuard — skip access check
-    if (router.pathname.startsWith("/cafe") || router.pathname.startsWith("/housekeeping")) {
+    if (router.pathname.startsWith("/cafe") || router.pathname.startsWith("/housekeeping") || router.pathname.startsWith("/iot")) {
       return;
     }
 
@@ -332,10 +332,10 @@ const Navigation: React.FC<Navigation> = () => {
                     {/* Inject Zo House features after Activity Manager */}
                     {index === insertAfter &&
                       visibleFeatures.map((feature: ZoFeature) => {
-                        const isExpanded = expandedFeatures[feature.id] || false;
                         const isAnySubLinkActive = feature.navLinks.some((nl) =>
                           isActiveLink(nl.path)
                         );
+                        const isExpanded = isAnySubLinkActive || (expandedFeatures[feature.id] || false);
                         return (
                           <li key={feature.id} className="w-fit">
                             <button
