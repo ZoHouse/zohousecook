@@ -1,4 +1,4 @@
-import { AuthProvider } from "@zo/auth";
+import { AuthProvider, ZostelAuthProvider } from "@zo/auth";
 import { cn, fontClassName } from "@zo/utils/font";
 import { AppProps } from "next/app";
 import { NextPage } from "next";
@@ -7,6 +7,13 @@ import { Footer, Head, Header } from "../components/common";
 import "./styles.css";
 import Icon from "@zo/assets/icons";
 import { Toaster } from "sonner";
+
+const ZOSTEL_ENABLED = !!process.env.ZOSTEL_APP_ID;
+
+function ConditionalZostelAuth({ children }: { children: React.ReactNode }) {
+  if (!ZOSTEL_ENABLED) return <>{children}</>;
+  return <ZostelAuthProvider localKey="zostel">{children}</ZostelAuthProvider>;
+}
 
 export type NextPageWithLayout<P = object, IP = P> = NextPage<P, IP> & {
   getLayout?: (page: ReactElement) => ReactNode;
@@ -37,7 +44,13 @@ function CustomApp({ Component, pageProps }: AppPropsWithLayout) {
 
   return (
     <>
-      <AuthProvider localKey="zo-web" isLoginRequired>
+      <ConditionalZostelAuth>
+        <AuthProvider
+          localKey={ZOSTEL_ENABLED ? "zo-admin" : "zo-web"}
+          isLoginRequired
+          isZostelLoginRequired={ZOSTEL_ENABLED}
+          allowedLoginTypes={ZOSTEL_ENABLED ? ["mobile"] : undefined}
+        >
         <Head />
         {getLayout ? (
           <main
@@ -70,7 +83,8 @@ function CustomApp({ Component, pageProps }: AppPropsWithLayout) {
           position="bottom-center"
           toastOptions={{ classNames: toasterClassNames }}
         />
-      </AuthProvider>
+        </AuthProvider>
+      </ConditionalZostelAuth>
     </>
   );
 }

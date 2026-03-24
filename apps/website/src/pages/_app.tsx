@@ -3,12 +3,21 @@ import { AppProps } from "next/app";
 import "./styles.css";
 
 import Icon from "@zo/assets/icons";
-import { AuthProvider } from "@zo/auth";
+import { AuthProvider, ZostelAuthProvider } from "@zo/auth";
 import { fontClassName } from "@zo/utils/font";
 import { useWindowSize } from "@zo/utils/hooks";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { Toaster } from "sonner";
 import { Head, Main } from "../components/common";
+
+// On zozozo.work (staging), ZOSTEL_APP_ID is set → wrap in Zostel auth for unified login
+// On zo.xyz (production), it's not set → skip Zostel auth (website is public)
+const ZOSTEL_ENABLED = !!process.env.ZOSTEL_APP_ID;
+
+function ConditionalZostelAuth({ children }: { children: React.ReactNode }) {
+  if (!ZOSTEL_ENABLED) return <>{children}</>;
+  return <ZostelAuthProvider localKey="zostel">{children}</ZostelAuthProvider>;
+}
 
 function CustomApp({ Component, pageProps }: AppProps) {
   const { isMobile } = useWindowSize();
@@ -52,10 +61,17 @@ function CustomApp({ Component, pageProps }: AppProps) {
 
   return (
     <main className={fontClassName}>
-      <AuthProvider localKey="zo-web">
-        <Head />
-        <Main Component={Component} pageProps={pageProps} />
-      </AuthProvider>
+      <ConditionalZostelAuth>
+        <AuthProvider
+          localKey={ZOSTEL_ENABLED ? "zo-admin" : "zo-web"}
+          isLoginRequired={ZOSTEL_ENABLED}
+          isZostelLoginRequired={ZOSTEL_ENABLED}
+          allowedLoginTypes={ZOSTEL_ENABLED ? ["mobile"] : undefined}
+        >
+          <Head />
+          <Main Component={Component} pageProps={pageProps} />
+        </AuthProvider>
+      </ConditionalZostelAuth>
       <Toaster
         icons={{
           success: <Icon name="CheckCircle" size={24} fill="#000" />,

@@ -1,10 +1,17 @@
 import { AppProps } from "next/app";
 import "./styles.css";
 
-import { AuthProvider } from "@zo/auth";
-import { useEffect } from "react";
+import { AuthProvider, ZostelAuthProvider } from "@zo/auth";
+import React, { useEffect } from "react";
 import { Toaster } from "sonner";
 import { comicNeueClassName } from "../components/utils";
+
+const ZOSTEL_ENABLED = !!process.env.ZOSTEL_APP_ID;
+
+function ConditionalZostelAuth({ children }: { children: React.ReactNode }) {
+  if (!ZOSTEL_ENABLED) return <>{children}</>;
+  return <ZostelAuthProvider localKey="zostel">{children}</ZostelAuthProvider>;
+}
 
 const mainClass = `h-full w-full ${comicNeueClassName}`;
 
@@ -67,24 +74,31 @@ function CustomApp({ Component, pageProps }: AppProps) {
 
   return (
     <main className={mainClass}>
-      <AuthProvider localKey="zo-web">
-        <Component {...pageProps} />
-        <Toaster
-          richColors
-          position="bottom-center"
-          className="toast-container"
-          toastOptions={{
-            classNames: {
-              success: "zui-toast-success",
-              error: "zui-toast-error",
-              warning: "zui-toast-warning",
-              info: "zui-toast-warning",
-              loading: "zui-toast-warning",
-            },
-          }}
-          offset={20}
-        />
-      </AuthProvider>
+      <ConditionalZostelAuth>
+        <AuthProvider
+          localKey={ZOSTEL_ENABLED ? "zo-admin" : "zo-web"}
+          isLoginRequired={ZOSTEL_ENABLED}
+          isZostelLoginRequired={ZOSTEL_ENABLED}
+          allowedLoginTypes={ZOSTEL_ENABLED ? ["mobile"] : undefined}
+        >
+          <Component {...pageProps} />
+          <Toaster
+            richColors
+            position="bottom-center"
+            className="toast-container"
+            toastOptions={{
+              classNames: {
+                success: "zui-toast-success",
+                error: "zui-toast-error",
+                warning: "zui-toast-warning",
+                info: "zui-toast-warning",
+                loading: "zui-toast-warning",
+              },
+            }}
+            offset={20}
+          />
+        </AuthProvider>
+      </ConditionalZostelAuth>
     </main>
   );
 }
