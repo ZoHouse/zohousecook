@@ -1,155 +1,179 @@
-# Zo Mono Front
+# Zo World — Monorepo
 
-This repository contains the web apps for Zo World.
+Powers **zo.xyz** (production) and **zozozo.work** (staging/community). Same codebase, two deployments.
 
-## Contents
+| Environment | Domain | Infra | Purpose |
+|------------|--------|-------|---------|
+| Production | zo.xyz | AWS ECS Fargate | Live for all 108+ properties |
+| Staging | zozozo.work | Vercel | Community testing ground for Zo House features |
 
-- [Prerequisites](#prerequisites)
-  - [Tools](#tools)
-  - [Knowledge](#knowledge)
-- [Folder Structure](#folder-structure)
-- [Tutorials](#tutorials)
-  - [Create a new Next.js App](#create-a-new-nextjs-app)
-  - [Use SVGs as Icons in the mono-repo](#use-svgs-as-icons-in-the-mono-repo)
-  - How to use the APIs (Coming Soon)
+## Quick Start
 
-## Prerequisites
+```bash
+# 1. Clone
+git clone https://github.com/ZoHouse/zohousecook.git
+cd zohousecook
 
-This project requires the following tools and knowledge to be installed and understood.
+# 2. Install dependencies
+npm install --legacy-peer-deps
 
-### Tools
+# 3. Copy env files (see Environment Variables below)
+cp apps/pms/.env.example apps/pms/.env.local
+cp apps/website/.env.example apps/website/.env.local
 
-- [Node.js](https://nodejs.org/en/) (v18)
-- [Yarn](https://yarnpkg.com/) (latest)
+# 4. Run the app you need
+npx nx serve website    # → http://localhost:4202
+npx nx serve pms        # → http://localhost:4204
+npx nx serve dashboard  # → http://localhost:4203
+```
 
-### Knowledge
+## Apps
 
-- [React](https://reactjs.org/)
-- [Next.js](https://nextjs.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [TypeScript](https://www.typescriptlang.org/)
-- [Nx](https://nx.dev/)
-- [React Query v3](https://react-query.tanstack.com/)
+| App | Route | Port | What it does |
+|-----|-------|------|-------------|
+| **website** | `/` | 4202 | Public site — home, /house, /events, /membership, /cafezomad |
+| **pms** | `/pm` | 4204 | Property Management — check-ins, bookings, guests, staff, **Cafe Zomad** |
+| **dashboard** | `/dashboard` | 4203 | Analytics dashboard |
+| **admin** | `/admin` | 4201 | Admin panel |
+| **zo-ops** | `/ops` | 4210 | Operations — reviews, Slack, WhatsApp |
+| **ops-backend** | — | 4211 | Node.js API for reviews, analytics, notifications |
+| **web-checkin** | `/checkin` | 4206 | Guest web check-in |
+| **payment** | `/payments` | 4205 | Payment processing |
+| **comic** | `/comic` | 4209 | Comic |
+| **meme** | `/meme` | 4208 | Meme generator |
 
-### App Ports:
+## Environment Variables
 
-**Frontend Apps:**
+Each app has its own `.env.local` (dev), `.env.staging`, `.env.production`. These are gitignored.
 
-- Admin: 4201
-- Website: 4202
-- Dashboard: 4203
-- PMS: 4204
-- Payment: 4205
-- Web-Checkin: 4206
-- Maps: 4207
-- Meme: 4208
-- Comic: 4209
-- Zo Ops: 4210
+### PMS App (`apps/pms/.env.local`)
 
-**Backend Apps:**
+```env
+# Core (required)
+APP_ID = fd2c509253239f84db51
+ZOSTEL_APP_ID = 5Njb5awMk0dbC7VNnY7Z35tw2yEE1HtA92r9YA1t
+NODE_ENV = development
+NEXT_ASSET_PREFIX =
+NEXT_BASE_PATH =
 
-- Ops-Backend: 4211
+# API — use production for real data
+API_BASE_URL = https://api.io.zo.xyz
+API_BASE_URL_ZOSTEL = https://api.zostel.com
+API_SOCKET_URL = wss://api.io.zo.xyz
+
+# Sentry (optional)
+SENTRY_AUTH_TOKEN = ""
+
+# Zo House Features — Supabase (only needed for cafe/housekeeping)
+NEXT_PUBLIC_SUPABASE_URL = <ask team for Supabase project URL>
+NEXT_PUBLIC_SUPABASE_ANON_KEY = <ask team for anon key>
+```
+
+### Website App (`apps/website/.env.local`)
+
+```env
+APP_ID = c26ea3e427cf42a88a18
+NODE_ENV = development
+NEXT_ASSET_PREFIX =
+NEXT_BASE_PATH =
+API_BASE_URL = https://api.io.zo.xyz
+API_SOCKET_URL = wss://api.io.zo.xyz
+WEB_BASE_URL = https://zo.xyz
+NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN = <ask team for Mapbox token>
+MEDIA_BASE_URL = https://proxy.cdn.zo.xyz
+
+# Cafe Zomad customer ordering (only needed for /cafezomad)
+NEXT_PUBLIC_SUPABASE_URL = <ask team for Supabase project URL>
+NEXT_PUBLIC_SUPABASE_ANON_KEY = <ask team for anon key>
+```
+
+### Other Apps
+
+All other apps follow the same pattern. Copy from `.env.staging` and update:
+- `API_BASE_URL` → `https://api.io.zo.xyz` (production) or `https://api.nsfp.io.zo.xyz` (staging)
+- `NEXT_BASE_PATH` → the app's route prefix (e.g., `/dashboard`, `/admin`)
+- `NEXT_ASSET_PREFIX` → leave empty for local dev
+
+## Tech Stack
+
+- **Monorepo:** [Nx](https://nx.dev/) 17
+- **Framework:** [Next.js](https://nextjs.org/) 14 (Pages Router)
+- **UI:** [Ant Design](https://ant.design/) 5 + [Tailwind CSS](https://tailwindcss.com/) 3
+- **State:** [React Query](https://tanstack.com/query) 5
+- **Auth:** Zo World + Zostel phone OTP (5-tier RBAC)
+- **Icons:** Custom `@zo/assets/icons` library
+- **Backend:** Django REST API (production), Supabase (staging features)
+
+## Shared Libraries (`libs/`)
+
+| Library | Import | Purpose |
+|---------|--------|---------|
+| `@zo/auth` | API hooks (`useQueryApi`, `useMutationApi`), auth providers | All data fetching + auth |
+| `@zo/moal` | `Head`, `Avatar`, `Button`, `Input`, `Table` | UI components |
+| `@zo/zud` | `ZudTable` | Advanced filterable tables |
+| `@zo/assets/icons` | `Icon`, `IconName` | SVG icon library |
+| `@zo/utils/font` | `cn`, `fontClassName` | Tailwind class merge + fonts |
+| `@zo/utils/hooks` | `useOutsideClick`, `useWindowSize` | Utility hooks |
+| `@zo/definitions` | TypeScript type definitions | Shared types |
+
+## Zo House Features (Cafe Zomad)
+
+The PMS app has Zo House-specific features that only appear for Zo House properties:
+
+- **Operator codes:** `BNGHO812` (Koramangala), `BNGS531` (Whitefield)
+- **Config:** `apps/pms/src/configs/zo-house-features.ts`
+- **Admin pages:** `/pm/cafe/*` — Dashboard, Kitchen, Menu, Orders, Tables, Meal Plan, Inventory
+- **Customer page:** `/cafezomad/[tableId]` — QR scan ordering (in website app)
+- **Backend:** Direct Supabase calls (staging). Will migrate to Django when ready.
+
+### Building a New Zo House Feature
+
+1. Add your feature to `zo-house-features.ts` with `status: 'testing'`
+2. Create pages in `apps/pms/src/pages/` (admin) or `apps/website/src/pages/` (customer)
+3. Use Supabase direct calls for data (see existing cafe hooks as reference)
+4. Wrap admin pages in `ZoHouseGuard` for route protection
+5. Test locally, push to main → auto-deploys to zozozo.work
+6. When ready for production: hand off Supabase schema to backend team for Django endpoints
 
 ## Folder Structure
 
 ```
 .
-├── apps (Apps Directory)
-│   ├── app_1
-│   │   ├── public (Public Directory)
-│   │   ├── src
-│   │   │   ├── components (Components Directory)
-|   |   |   |   ├── common (Common Components, basically Header, Footer, etc.)
-|   |   |   |   ├── helpers (Page Specific components)
-|   |   |   |   └── ui (UI Components)
-│   │   │   ├── configs (Configs Directory)
-│   │   │   ├── contexts (Contexts Directory)
-│   │   │   ├── pages (Pages Directory)
-│   │   │   └── utils (Utilities Directory)
-│   │   ├── .env (Production Environment Variables)
-│   │   ├── .env.local (Local/Development Environment Variables)
-│   │   ├── .env.staging (Staging Environment Variables)
-│   │   ├── next.config.js (Next.js Config)
-│   │   ├── postcss.config.js (PostCSS Config)
-|   |   ├── ...
-│   │   ├── tailwind.config.js (Tailwind Config)
-│   │   └── tsconfig.json (TypeScript Config)
-|   |  ...
-├── libs
-│   ├── auth (Auth Library, contains all the auth, api related code)
-│   ├── assets
-│   │   └── icons (SVG Icons)
-│   ├── definitions (Type Definitions)
-│   │   ├── auth (Auth Definitions)
-│   │   └── general (General Definitions)
-│   └── utils (Utilities)
-│   │   ├── auth (Auth Utilities)
-│   │   ├── hooks (Useful hooks)
-│   │   ├── next (Next Utilities)
-│   │   ├── number (Number Utilities)
-│   │   ├── object (Object Utilities)
-│   │   ├── string (String Utilities)
-│   │   └── web3 (Web3 Utilities)
-.
-
+├── apps/
+│   ├── website/          # Public site (zo.xyz root)
+│   ├── pms/              # Property Management System
+│   ├── dashboard/        # Analytics
+│   ├── admin/            # Admin panel
+│   ├── zo-ops/           # Operations
+│   ├── ops-backend/      # Node.js API
+│   ├── web-checkin/      # Guest check-in
+│   ├── payment/          # Payments
+│   ├── comic/            # Comic
+│   └── meme/             # Meme
+├── libs/
+│   ├── auth/             # Auth + API hooks
+│   ├── assets/icons/     # SVG icon library
+│   ├── definitions/      # Shared TypeScript types
+│   ├── moal/             # UI components
+│   ├── utils/            # Utility functions + hooks
+│   └── zud/              # Advanced table component
+├── docs/
+│   └── superpowers/      # Design specs + implementation plans
+├── CLAUDE.md             # AI assistant instructions
+└── README.md             # This file
 ```
 
-## Tutorials
+## Deployment
 
-### Create a new Next.js App
+- **Production (zo.xyz):** AWS ECS Fargate via GitHub Actions (`nx affected` builds only changed apps)
+- **Staging (zozozo.work):** Vercel auto-deploy on push to `main` (9 separate projects)
 
-1. Run `yarn nx g @nx/next:app {APP_NAME}` to setup a base Next.js app.
-2. Copy the .env\* files from the admin app to this new app.
-3. Change `APP_ID` and `NEXT_BASE_PATH` according to the new app (Get `APP_ID` generated by the backend team).
-4. Copy the contents of `next.config.js` from the admin app to the new app.
-5. Copy `postcss.config.js` and `tailwind.config.js` files from the admin app to the new app.
-6. Add the following to the project.json of the new app under **targets -> build -> options**
-   `"postcssConfig": "apps/{APP_NAME}/postcss.config.js"`
-7. Setup the port of the new app in the `project.json` file under **targets -> serve -> options**
-   `"port": {PORT_NUMBER}`
-   (The port number should be the next one as mentioned in the [App Ports](#app-ports) section).
-8. Add the staging configuration in **targets -> build -> configurations** in the `project.json` file.
-   `"staging": {},`
-9. Add the staging configuration in **targets -> serve -> configurations** in the `project.json` file.
-   ```json
-   "staging": {
-      "buildTarget": "{APP_NAME}:build:staging",
-      "dev": false
-   },
-   `,
-   ```
-10. Make sure the `pages` folder is in the `src` directory in the app. If not, create a `src` folder and move the `pages` folder inside it.
-11. Clear all styles and update the style.css of the app to the following:
+## Contributing
 
-    ```css
-    @tailwind base;
-    @tailwind components;
-    @tailwind utilities;
+1. Create a branch from `main`
+2. Make your changes
+3. Test locally (`npx nx serve <app>`)
+4. Push → creates Vercel preview deployment
+5. PR to `main` → review → merge → auto-deploys to zozozo.work
 
-    html,
-    body,
-    #__next,
-    main > [data-rk] {
-      @apply h-full w-full bg-zui-dark text-zui-white;
-    }
-    ```
-
-### Use SVGs as Icons in the mono-repo
-
-1. Copy the SVG file from Figma. (Remeber the dimensions of the SVG for eg. 24x24)
-2. Paste the SVG code in [React SVGR Playground](https://react-svgr.com/playground/) in `SVG Input`. Make sure `Dimensions`, `Icon`, `Typescript`, `Ref` and `Memo` are selected in the Global Settings.
-3. Copy the code from the `JSX Output` tab.
-4. Create a new TSX File in **libs -> assets -> icons -> src -> lib** with the name of the SVG file (for eg. Calendar.tsx).
-5. Update the following attributes in the svg tag of the new file as follows:
-   - Set width, height and viewBox according to the dimensions of the original SVG. (for eg. `width="24" height="24" viewBox="0 0 24 24"`)
-   - Set `fill={props.fill || #FFF}` in all the child elements of the svg tag.
-6. Add the file import in the `index.tsx` file (ALPHABETICALLY) in the same directory for proper imports and then mention in the `icons` array.
-7. Now you can use the icon anywhere as follows:
-
-   ```tsx
-   import { Icon } from "@zo/assets/icons";
-
-   <Icon name="{ICON_NAME}" size="{SIZE}" fill="{FILL_COLOR}" />;
-   ```
-
-` Coded by zostel 1`
+For Zo House features, see the "Building a New Zo House Feature" section above.
