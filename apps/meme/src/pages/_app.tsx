@@ -67,7 +67,7 @@ function CustomApp({ Component, pageProps }: AppProps) {
 
   return (
     <main className={mainClass}>
-      <AuthProvider localKey="sf-meme">
+      <AuthProvider localKey="zo-web">
         <Component {...pageProps} />
         <Toaster
           richColors
