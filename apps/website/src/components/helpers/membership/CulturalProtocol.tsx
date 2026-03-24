@@ -8,7 +8,7 @@ interface CulturalProtocolProps {}
 const CulturalProtocol: React.FC<CulturalProtocolProps> = () => {
   const sectionRef = useFadeInOnScroll<HTMLDivElement>();
   return (
-    <section className="py-10 md:py-20" ref={sectionRef}>
+    <section className="py-10 md:py-20 px-6 lg:px-[108px] max-w-[1400px] mx-auto" ref={sectionRef}>
       <h2
         className={cn(
           "text-[40px] md:text-[80px] leading-[48px] md:leading-[80px] font-extrabold uppercase whitespace-nowrap text-center",
@@ -20,17 +20,17 @@ const CulturalProtocol: React.FC<CulturalProtocolProps> = () => {
 
       <h4
         className={cn(
-          "mt-4 text-[24px] md:text-[40px] leading-8 md:leading-[48px] -tracking-[3%] font-bold text-center uppercase ",
+          "mt-4 text-[24px] md:text-[40px] leading-8 md:leading-[48px] -tracking-[3%] font-bold text-center uppercase",
           rubikClassName
         )}
       >
         Cultural Protocol
       </h4>
 
-      <div className="mt-20 grid grid-cols-1 md:grid-cols-2 gap-6 md:py-10">
+      <div className="mt-12 md:mt-20 grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
         <video
           src={`${process.env.MEDIA_BASE_URL}/gallery/media/videos/e43298e8-bc4e-4a73-a616-a10068da0284_20241204120335.mp4`}
-          className="w-full h-[328px] md:w-[600px] md:h-[384px] aspect-square md:aspect-auto"
+          className="w-[280px] h-[280px] mx-auto object-contain rounded-2xl"
           autoPlay
           loop
           playsInline
@@ -42,7 +42,7 @@ const CulturalProtocol: React.FC<CulturalProtocolProps> = () => {
         <div>
           <p
             className={cn(
-              "md:text-2xl leading-6 md:leading-8 font-medium text-white/40 md:text-white",
+              "text-base md:text-xl leading-7 md:leading-8 font-medium text-white/40 md:text-white/70",
               rubikClassName
             )}
           >
@@ -51,7 +51,7 @@ const CulturalProtocol: React.FC<CulturalProtocolProps> = () => {
             world and incentivises cultural events and participation.
             <br />
             <br />
-            $Zo unlocks fully in 10years, fairly distributed over time with
+            $Zo unlocks fully in 10 years, fairly distributed over time with
             quarterly emissions & ability to mine at Zo Nodes.
             <br />
             <br />

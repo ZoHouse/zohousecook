@@ -18,7 +18,7 @@ const Events: React.FC<EventsProps> = ({ events }) => {
   const sectionRef = useFadeInOnScroll<HTMLDivElement>();
 
   return (
-    <section className="py-20" ref={sectionRef}>
+    <section className="py-20 px-6 lg:px-[108px] max-w-[1400px] mx-auto" ref={sectionRef}>
       <h4
         className={cn(
           "text-[40px] leading-8 -tracking-[3%] font-bold text-center uppercase",
@@ -36,10 +36,10 @@ const Events: React.FC<EventsProps> = ({ events }) => {
         Round the year cultural events from art to code at Zo Nodes
       </p>
 
-      <Marquee className="mt-10 overflow-hidden">
+      <Marquee className="mt-10 overflow-hidden" speed={40}>
         <div className="flex">
           {events.map((event) => (
-            <div key={event.id} className="w-[288px] rounded-3xl mx-3 ">
+            <div key={event.id} className="w-[288px] rounded-3xl flex-shrink-0 mx-3">
               <video
                 src={event.media}
                 className="w-[288px] aspect-square object-cover rounded-2xl"

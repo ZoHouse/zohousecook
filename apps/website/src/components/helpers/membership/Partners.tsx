@@ -20,7 +20,7 @@ const Partners: React.FC<PartnersProps> = ({ partners }) => {
   const sectionRef = useFadeInOnScroll<HTMLDivElement>();
 
   return (
-    <section className="py-10 md:py-20" ref={sectionRef}>
+    <section className="py-10 md:py-20 px-6 lg:px-[108px] max-w-[1400px] mx-auto" ref={sectionRef}>
       <h4
         className={cn(
           "text-[40px] leading-8 -tracking-[3%] font-bold text-center",

@@ -17,11 +17,11 @@ export interface CommunityCard {
   link: string;
 }
 
-interface CommunitiesProps {
+interface CulturesProps {
   communities: CommunityCard[];
 }
 
-const Communities: React.FC<CommunitiesProps> = ({ communities }) => {
+const Cultures: React.FC<CulturesProps> = ({ communities }) => {
   const sectionRef = useFadeInOnScroll<HTMLDivElement>();
 
   const handleCommunityClick = (link: string) => {
@@ -31,7 +31,7 @@ const Communities: React.FC<CommunitiesProps> = ({ communities }) => {
   };
 
   return (
-    <section className="py-10 md:py-20" ref={sectionRef}>
+    <section className="py-10 md:py-20 px-6 lg:px-[108px] max-w-[1400px] mx-auto" ref={sectionRef}>
       <div>
         <h2
           className={cn(
@@ -42,14 +42,6 @@ const Communities: React.FC<CommunitiesProps> = ({ communities }) => {
           10x <br className="md:hidden" /> yourself
         </h2>
 
-        <p
-          className={cn(
-            "mt-6 leading-6 font-medium text-white/40 text-center tracking-[1%]",
-            rubikClassName
-          )}
-        >
-          with Communities, Nodes, Events & Partners
-        </p>
       </div>
 
       <div>
@@ -59,7 +51,7 @@ const Communities: React.FC<CommunitiesProps> = ({ communities }) => {
             syneClassName
           )}
         >
-          Communities
+          Cultures
         </h4>
 
         <p
@@ -68,7 +60,7 @@ const Communities: React.FC<CommunitiesProps> = ({ communities }) => {
             rubikClassName
           )}
         >
-          Exclusive sub communities for founders, investors and degens
+          Exclusive cultures for founders, investors and degens
         </p>
 
         <div className="mt-10">
@@ -204,4 +196,4 @@ const Communities: React.FC<CommunitiesProps> = ({ communities }) => {
   );
 };
 
-export default Communities;
+export default Cultures;
