@@ -1,0 +1,340 @@
+{
+  "icons": [
+    {
+      "label": "AngleDown",
+      "value": "AngleDown"
+    },
+    {
+      "label": "AngleLeft",
+      "value": "AngleLeft"
+    },
+    {
+      "label": "AngleRight",
+      "value": "AngleRight"
+    },
+    {
+      "label": "AngleUp",
+      "value": "AngleUp"
+    },
+    {
+      "label": "ArrowDown",
+      "value": "ArrowDown"
+    },
+    {
+      "label": "ArrowLeft",
+      "value": "ArrowLeft"
+    },
+    {
+      "label": "ArrowRight",
+      "value": "ArrowRight"
+    },
+    {
+      "label": "Bed",
+      "value": "Bed"
+    },
+    {
+      "label": "Booth",
+      "value": "Booth"
+    },
+    {
+      "label": "Calendar",
+      "value": "Calendar"
+    },
+    {
+      "label": "Cctv",
+      "value": "Cctv"
+    },
+    {
+      "label": "Chat",
+      "value": "Chat"
+    },
+    {
+      "label": "Check",
+      "value": "Check"
+    },
+    {
+      "label": "CheckBox",
+      "value": "CheckBox"
+    },
+    {
+      "label": "CheckboxChecked",
+      "value": "CheckboxChecked"
+    },
+    {
+      "label": "CheckCircle",
+      "value": "CheckCircle"
+    },
+    {
+      "label": "Cigarette",
+      "value": "Cigarette"
+    },
+    {
+      "label": "City",
+      "value": "City"
+    },
+    {
+      "label": "Clock",
+      "value": "Clock"
+    },
+    {
+      "label": "Copy",
+      "value": "Copy"
+    },
+    {
+      "label": "Cross",
+      "value": "Cross"
+    },
+    {
+      "label": "CrossCircle",
+      "value": "CrossCircle"
+    },
+    {
+      "label": "Delete",
+      "value": "Delete"
+    },
+    {
+      "label": "Dining",
+      "value": "Dining"
+    },
+    {
+      "label": "Discord",
+      "value": "Discord"
+    },
+    {
+      "label": "Diamond",
+      "value": "Diamond"
+    },
+    {
+      "label": "Doc",
+      "value": "Doc"
+    },
+    {
+      "label": "DoorLock",
+      "value": "DoorLock"
+    },
+    {
+      "label": "Dorm",
+      "value": "Dorm"
+    },
+    {
+      "label": "Download",
+      "value": "Download"
+    },
+    {
+      "label": "Edit",
+      "value": "Edit"
+    },
+    {
+      "label": "Email",
+      "value": "Email"
+    },
+    {
+      "label": "Ethereum",
+      "value": "Ethereum"
+    },
+    {
+      "label": "Etherscan",
+      "value": "Etherscan"
+    },
+    {
+      "label": "Food",
+      "value": "Food"
+    },
+    {
+      "label": "FounderBadge",
+      "value": "FounderBadge"
+    },
+    {
+      "label": "FounderBadgeBordered",
+      "value": "FounderBadgeBordered"
+    },
+    {
+      "label": "Game",
+      "value": "Game"
+    },
+    {
+      "label": "Gift",
+      "value": "Gift"
+    },
+    {
+      "label": "Glasses",
+      "value": "Glasses"
+    },
+    {
+      "label": "Gym",
+      "value": "Gym"
+    },
+    {
+      "label": "Heart",
+      "value": "Heart"
+    },
+    {
+      "label": "House",
+      "value": "House"
+    },
+    {
+      "label": "Id",
+      "value": "Id"
+    },
+    {
+      "label": "Image",
+      "value": "Image"
+    },
+    {
+      "label": "Info",
+      "value": "Info"
+    },
+    {
+      "label": "InTime",
+      "value": "InTime"
+    },
+    {
+      "label": "Key",
+      "value": "Key"
+    },
+    {
+      "label": "Link",
+      "value": "Link"
+    },
+    {
+      "label": "LinkedIn",
+      "value": "LinkedIn"
+    },
+    {
+      "label": "Live",
+      "value": "Live"
+    },
+    {
+      "label": "Loader",
+      "value": "Loader"
+    },
+    {
+      "label": "Location",
+      "value": "Location"
+    },
+    {
+      "label": "Menu",
+      "value": "Menu"
+    },
+    {
+      "label": "Mic",
+      "value": "Mic"
+    },
+    {
+      "label": "Minus",
+      "value": "Minus"
+    },
+    {
+      "label": "More",
+      "value": "More"
+    },
+    {
+      "label": "NewTab",
+      "value": "NewTab"
+    },
+    {
+      "label": "OpenSea",
+      "value": "OpenSea"
+    },
+    {
+      "label": "OutTime",
+      "value": "OutTime"
+    },
+    {
+      "label": "People",
+      "value": "People"
+    },
+    {
+      "label": "Phone",
+      "value": "Phone"
+    },
+    {
+      "label": "Plus",
+      "value": "Plus"
+    },
+    {
+      "label": "Profile",
+      "value": "Profile"
+    },
+    {
+      "label": "Question",
+      "value": "Question"
+    },
+    {
+      "label": "Radio",
+      "value": "Radio"
+    },
+    {
+      "label": "RadioChecked",
+      "value": "RadioChecked"
+    },
+    {
+      "label": "Rupee",
+      "value": "Rupee"
+    },
+    {
+      "label": "Search",
+      "value": "Search"
+    },
+    {
+      "label": "Snowflake",
+      "value": "Snowflake"
+    },
+    {
+      "label": "SwimmingPool",
+      "value": "SwimmingPool"
+    },
+    {
+      "label": "Table",
+      "value": "Table"
+    },
+    {
+      "label": "Tick",
+      "value": "Tick"
+    },
+    {
+      "label": "Ticket",
+      "value": "Ticket"
+    },
+    {
+      "label": "Username",
+      "value": "Username"
+    },
+    {
+      "label": "Vibe",
+      "value": "Vibe"
+    },
+    {
+      "label": "Water",
+      "value": "Water"
+    },
+    {
+      "label": "Wifi",
+      "value": "Wifi"
+    },
+    {
+      "label": "WorkDesk",
+      "value": "WorkDesk"
+    },
+    {
+      "label": "X",
+      "value": "X"
+    },
+    {
+      "label": "Yoga",
+      "value": "Yoga"
+    },
+    {
+      "label": "Youtube",
+      "value": "Youtube"
+    },
+    {
+      "label": "Zo",
+      "value": "Zo"
+    },
+    {
+      "label": "ZoHouse",
+      "value": "ZoHouse"
+    }
+  ]
+}

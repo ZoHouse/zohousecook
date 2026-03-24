@@ -1,0 +1,24 @@
+# AWS Configuration for Mono Front
+# Generated: Tue Nov  4 16:08:44 IST 2025
+
+AWS_ACCOUNT_ID=670664477975
+AWS_REGION=ap-south-1
+VPC_ID=vpc-0b25e960
+SUBNET_1=subnet-3ff89544
+SUBNET_2=subnet-dc297390
+SECURITY_GROUP_ID=sg-079303d020372cc8b
+ECR_URI=670664477975.dkr.ecr.ap-south-1.amazonaws.com/mono-front
+
+# IAM Role ARNs
+EXECUTION_ROLE_ARN=arn:aws:iam::670664477975:role/mono-front-ecs-execution-role
+TASK_ROLE_ARN=arn:aws:iam::670664477975:role/mono-front-ecs-task-role
+GITHUB_ACTIONS_ROLE_ARN=arn:aws:iam::670664477975:role/mono-front-github-actions-role
+
+# ECS Clusters
+STAGING_CLUSTER=mono-front-cluster-staging
+PRODUCTION_CLUSTER=mono-front-cluster-production
+DEMO_CLUSTER=mono-front-cluster-demo
+
+# Secrets Manager
+STAGING_SECRET_ARN=arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-staging-secrets
+PRODUCTION_SECRET_ARN=arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-production-secrets

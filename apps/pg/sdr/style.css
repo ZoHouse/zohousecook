@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  @apply w-full h-full;
+}
+body {
+  @apply w-full h-full bg-black text-gray-100;
+  font-family: "Space Grotesk", sans-serif;
+}
+main {
+  @apply w-full h-full flex flex-col items-center p-4;
+}
+img {
+  @apply w-16 h-16 mb-8 flex-shrink-0;
+}
+#main-init {
+  @apply flex flex-col items-center flex-1;
+}
+h1 {
+  @apply font-bold text-3xl;
+}
+p {
+  @apply text-gray-400 font-medium text-lg mt-4 max-w-sm text-center;
+}
+.spacer {
+  @apply flex-1;
+}
+#main-init-content {
+  @apply flex space-x-1;
+}
+#code-box {
+  @apply flex flex-wrap justify-center mt-10;
+}
+#code-box span {
+  @apply w-16 h-16 flex items-center justify-center m-2 text-2xl font-bold border border-gray-500;
+}
+.dots-wrap {
+  @apply relative;
+}
+#loading-dots {
+  @apply absolute;
+}
+#main-success {
+  @apply flex flex-col items-center flex-1 hidden;
+}
+#main-success h1 {
+  @apply text-green-500;
+}
+#main-success-content {
+  @apply flex space-x-1 mt-4;
+}

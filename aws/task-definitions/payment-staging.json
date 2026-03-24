@@ -1,0 +1,61 @@
+{
+  "family": "mono-front-payment-staging",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::670664477975:role/mono-front-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::670664477975:role/mono-front-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "payment",
+      "image": "PLACEHOLDER_IMAGE",
+      "portMappings": [
+        {
+          "containerPort": 3000
+        }
+      ],
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/mono-front-payment-staging",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "secrets": [
+        {
+          "name": "APP_ID ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-payment-staging-secrets-ezn20k:APP_ID ::"
+        },
+        {
+          "name": "NODE_ENV ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-payment-staging-secrets-ezn20k:NODE_ENV ::"
+        },
+        {
+          "name": "NEXT_ASSET_PREFIX ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-payment-staging-secrets-ezn20k:NEXT_ASSET_PREFIX ::"
+        },
+        {
+          "name": "NEXT_BASE_PATH ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-payment-staging-secrets-ezn20k:NEXT_BASE_PATH ::"
+        },
+        {
+          "name": "API_BASE_URL ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-payment-staging-secrets-ezn20k:API_BASE_URL ::"
+        },
+        {
+          "name": "API_SOCKET_URL ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-payment-staging-secrets-ezn20k:API_SOCKET_URL ::"
+        },
+        {
+          "name": "WEB_BASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-payment-staging-secrets-ezn20k:WEB_BASE_URL::"
+        }
+      ]
+    }
+  ]
+}

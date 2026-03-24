@@ -1,0 +1,65 @@
+{
+  "family": "mono-front-pms-production",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::670664477975:role/mono-front-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::670664477975:role/mono-front-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "pms",
+      "image": "PLACEHOLDER_IMAGE",
+      "portMappings": [
+        {
+          "containerPort": 3000
+        }
+      ],
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/mono-front-pms-production",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "secrets": [
+        {
+          "name": "APP_ID ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-pms-production-secrets-8J18vI:APP_ID ::"
+        },
+        {
+          "name": "ZOSTEL_APP_ID ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-pms-production-secrets-8J18vI:ZOSTEL_APP_ID ::"
+        },
+        {
+          "name": "NODE_ENV ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-pms-production-secrets-8J18vI:NODE_ENV ::"
+        },
+        {
+          "name": "NEXT_ASSET_PREFIX ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-pms-production-secrets-8J18vI:NEXT_ASSET_PREFIX ::"
+        },
+        {
+          "name": "NEXT_BASE_PATH ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-pms-production-secrets-8J18vI:NEXT_BASE_PATH ::"
+        },
+        {
+          "name": "API_BASE_URL ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-pms-production-secrets-8J18vI:API_BASE_URL ::"
+        },
+        {
+          "name": "API_BASE_URL_ZOSTEL ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-pms-production-secrets-8J18vI:API_BASE_URL_ZOSTEL ::"
+        },
+        {
+          "name": "API_SOCKET_URL ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-pms-production-secrets-8J18vI:API_SOCKET_URL ::"
+        }
+      ]
+    }
+  ]
+}

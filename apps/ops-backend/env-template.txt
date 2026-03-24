@@ -1,0 +1,35 @@
+# Database Configuration
+DATABASE_URL=your_database_url_here
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=your_database_name
+DB_USER=your_database_user
+DB_PASSWORD=your_database_password
+
+# Slack Configuration
+SLACK_BOT_TOKEN=xoxb-your-slack-bot-token
+SLACK_SIGNING_SECRET=your-slack-signing-secret
+SLACK_WEBHOOK_URL=your-slack-webhook-url
+
+# Slack OAuth Configuration (for user account messaging)
+SLACK_CLIENT_ID=your-slack-client-id
+SLACK_CLIENT_SECRET=your-slack-client-secret
+SLACK_REDIRECT_URI=https://zo.xyz/ops-backend/api/slack/oauth/callback
+FRONTEND_URL=https://zo.xyz/ops
+
+# OpenAI Configuration
+OPENAI_API_KEY=your-openai-api-key
+
+# Server Configuration
+PORT=4211
+NODE_ENV=development
+
+# Natural Language Query Configuration
+NL_QUERY_OPENROUTER_API_KEY=your-openrouter-api-key
+NL_QUERY_MODEL=anthropic/claude-sonnet-4.5
+
+# Analytics Database
+ANALYTICS_DB_URL=your-analytics-db-connection-string
+
+# Other API Keys
+MAPBOX_ACCESS_TOKEN=your-mapbox-token

@@ -1,0 +1,29 @@
+{
+  "name": "utils-web3",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/utils/web3/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/utils/web3",
+        "main": "libs/utils/web3/src/index.ts",
+        "tsConfig": "libs/utils/web3/tsconfig.lib.json",
+        "assets": ["libs/utils/web3/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": [
+          "libs/utils/web3/**/*.ts",
+          "libs/utils/web3/package.json"
+        ]
+      }
+    }
+  },
+  "tags": []
+}

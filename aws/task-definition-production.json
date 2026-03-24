@@ -1,0 +1,101 @@
+{
+  "family": "zostel-frontend-production",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "2048",
+  "memory": "4096",
+  "executionRoleArn": "arn:aws:iam::786741319455:role/zostel-frontend-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::786741319455:role/zostel-frontend-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "zostel-frontend",
+      "image": "786741319455.dkr.ecr.ap-south-1.amazonaws.com/zostel-frontend:latest",
+      "portMappings": [{ "containerPort": 3000 }],
+      "essential": true,
+      "cpu": 2048,
+      "memory": 4096,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/zostel-frontend-production",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "secrets": [
+        {
+          "name": "NEXT_PUBLIC_ZO_CLIENT_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:NEXT_PUBLIC_ZO_CLIENT_KEY::"
+        },
+        {
+          "name": "NEXT_PUBLIC_ZOSTEL_SUPPORT_NUMBER",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:NEXT_PUBLIC_ZOSTEL_SUPPORT_NUMBER::"
+        },
+        {
+          "name": "NEXT_PUBLIC_ZO_TRIPS_SUPPORT_NUMBER",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:NEXT_PUBLIC_ZO_TRIPS_SUPPORT_NUMBER::"
+        },
+        {
+          "name": "NEXT_PUBLIC_ZOSTEL_BASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:NEXT_PUBLIC_ZOSTEL_BASE_URL::"
+        },
+        {
+          "name": "NEXT_PUBLIC_ZOSTEL_CLIENT_ID",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:NEXT_PUBLIC_ZOSTEL_CLIENT_ID::"
+        },
+        {
+          "name": "NEXT_PUBLIC_ZO_API_BASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:NEXT_PUBLIC_ZO_API_BASE_URL::"
+        },
+        {
+          "name": "NEXT_PUBLIC_ZOSTEL_API_BASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:NEXT_PUBLIC_ZOSTEL_API_BASE_URL::"
+        },
+        {
+          "name": "NEXT_PUBLIC_GTM_ID",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:NEXT_PUBLIC_GTM_ID::"
+        },
+        {
+          "name": "NEXT_PUBLIC_META_PIXEL_ZOSTEL",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:NEXT_PUBLIC_META_PIXEL_ZOSTEL::"
+        },
+        {
+          "name": "NEXT_PUBLIC_META_PIXEL_ZO_TRIPS",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:NEXT_PUBLIC_META_PIXEL_ZO_TRIPS::"
+        },
+        {
+          "name": "NEXT_PUBLIC_SENTRY_DSN",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:NEXT_PUBLIC_SENTRY_DSN::"
+        },
+        {
+          "name": "SENTRY_DSN",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:SENTRY_DSN::"
+        },
+        {
+          "name": "SENTRY_AUTH_TOKEN",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:SENTRY_AUTH_TOKEN::"
+        },
+        {
+          "name": "NEXT_PUBLIC_ROBOTS_ENABLED",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:NEXT_PUBLIC_ROBOTS_ENABLED::"
+        },
+        {
+          "name": "NEXT_PUBLIC_GOOGLE_MAPS_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:NEXT_PUBLIC_GOOGLE_MAPS_KEY::"
+        },
+        {
+          "name": "NEXT_PUBLIC_ASSET_PREFIX",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:NEXT_PUBLIC_ASSET_PREFIX::"
+        },
+        {
+          "name": "NEXT_PUBLIC_MOENGAGE_APP_ID",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:NEXT_PUBLIC_MOENGAGE_APP_ID::"
+        },
+        {
+          "name": "NEXT_PUBLIC_MOENGAGE_CLUSTER_ID",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:786741319455:secret:zostel-frontend-secrets-OnTIML:NEXT_PUBLIC_MOENGAGE_CLUSTER_ID::"
+        }
+      ]
+    }
+  ]
+}

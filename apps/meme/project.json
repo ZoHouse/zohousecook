@@ -1,0 +1,68 @@
+{
+  "name": "meme",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/meme",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/next:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/meme",
+        "postcssConfig": "apps/meme/postcss.config.js"
+      },
+      "configurations": {
+        "development": {
+          "outputPath": "apps/meme"
+        },
+        "staging": {},
+        "production": {}
+      }
+    },
+    "serve": {
+      "executor": "@nx/next:server",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "meme:build",
+        "dev": true,
+        "port": 4208
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "meme:build:development",
+          "dev": true
+        },
+        "staging": {
+          "buildTarget": "meme:build:staging",
+          "dev": false
+        },
+        "production": {
+          "buildTarget": "meme:build:production",
+          "dev": false
+        }
+      }
+    },
+    "export": {
+      "executor": "@nx/next:export",
+      "options": {
+        "buildTarget": "meme:build:production"
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "apps/meme/jest.config.ts"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["apps/meme/**/*.{ts,tsx,js,jsx}"]
+      }
+    }
+  },
+  "tags": []
+}

@@ -1,0 +1,32 @@
+[
+    {
+        "imgSrc": "https://zoworld-static.s3.ap-south-1.amazonaws.com/media/meme/image17.png",
+        "link": "",
+        "alt": "",
+        "tooltip": "hold your horses"
+    },
+    {
+        "imgSrc": "https://zoworld-static.s3.ap-south-1.amazonaws.com/media/meme/image18.png",
+        "link": "",
+        "alt": "",
+        "tooltip": "hold your horses"
+    },
+    {
+        "imgSrc": "https://zoworld-static.s3.ap-south-1.amazonaws.com/media/meme/image3.png",
+        "link": "",
+        "alt": "",
+        "tooltip": "hold your horses"
+    },
+    {
+        "imgSrc": "https://zoworld.s3.ap-south-1.amazonaws.com/mailers/assets/icons/Twitter.png",
+        "link": "",
+        "alt": "",
+        "tooltip": "hold your horses"
+    },
+    {
+        "imgSrc": "https://zoworld.s3.ap-south-1.amazonaws.com/mailers/assets/icons/Telegram.png",
+        "link": "",
+        "alt": "",
+        "tooltip": "hold your horses"
+    }
+]

@@ -1,0 +1,300 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#__next,
+main > [data-rk] {
+  @apply h-full w-full bg-zui-dark text-zui-white scroll-smooth;
+}
+
+.profile-clip-path {
+  clip-path: polygon(
+    70% 0%,
+    70% 11%,
+    79% 11%,
+    79% 20%,
+    90% 20%,
+    90% 30%,
+    100% 30%,
+    100% 70%,
+    90% 70%,
+    90% 81%,
+    80% 81%,
+    80% 91%,
+    70% 91%,
+    70% 100%,
+    29% 100%,
+    29% 91%,
+    19% 91%,
+    19% 81%,
+    10% 81%,
+    10% 70%,
+    0 70%,
+    0 31%,
+    10% 31%,
+    10% 20%,
+    20% 20%,
+    20% 10%,
+    30% 10%,
+    30% 0
+  );
+}
+
+.frame-clip-path {
+  clip-path: polygon(
+    17% 9%,
+    17% 18%,
+    8% 18%,
+    8% 84%,
+    17% 84%,
+    17% 92%,
+    83% 92%,
+    83% 84%,
+    91% 84%,
+    91% 18%,
+    83% 18%,
+    83% 9%
+  );
+}
+
+.fade-up-small-enter,
+.fade-up-small-appear {
+  opacity: 0;
+  transform: translateY(0.5rem);
+}
+
+.fade-up-small-enter-active,
+.fade-up-small-appear-active,
+.fade-up-small-appear-done {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.fade-left-enter,
+.fade-left-appear {
+  opacity: 0;
+  transform: translateX(10rem);
+}
+
+.fade-left-exit {
+  opacity: 0;
+  transform: translateX(10rem);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.fade-left-enter-active,
+.fade-left-appear-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.date__picker::-webkit-calendar-picker-indicator {
+  background-color: #cfff50;
+  cursor: pointer;
+}
+
+.ql-toolbar {
+  border: none !important;
+}
+
+.ql-container {
+  border: none !important;
+  font-family: "Space Grotesk", sans-serif !important;
+}
+
+.ql-fill {
+  fill: #fff;
+}
+
+.ql-editor::placeholder {
+  color: #5a5a5a;
+}
+
+.quill > .ql-container > .ql-editor.ql-blank::before {
+  color: #5a5a5a;
+  text-decoration: none;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #121212;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #5a5a5a;
+  border: 1px solid #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #5a5a5a;
+}
+
+.hide-scrollbar::-webkit-scrollbar,
+.hide-scrollbar ::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar-thumb,
+.hide-scrollbar ::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.hide-scrollbar::-webkit-scrollbar-track,
+.scroll-hidden ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.show-scrollbar::-webkit-scrollbar,
+.show-scrollbar ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  opacity: 1;
+}
+
+.show-scrollbar::-webkit-scrollbar-thumb,
+.show-scrollbar ::-webkit-scrollbar-thumb {
+  background-color: #5a5a5a;
+  border: 1px solid #1a1a1a;
+}
+
+.show-scrollbar::-webkit-scrollbar-track,
+.scroll-hidden ::-webkit-scrollbar-track {
+  background: #121212;
+}
+
+/* hide the number dial in input type number */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.phone-form-element .form-control {
+  border: none !important;
+  border-radius: 0px !important;
+  background-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.phone-form-element .special-label {
+  background-color: transparent !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #5a5a5a;
+}
+
+hr {
+  border-top: 1px solid #202020;
+}
+
+.sidebar-save-button {
+  @apply text-black bg-white md:flex-grow-0 md:px-10 whitespace-nowrap;
+}
+
+.horizontal-divider {
+  @apply relative mx-auto border-0 h-[1px] bg-transparent before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:h-full before:bg-gradient-to-r before:from-transparent before:via-[#5A5A5A] before:to-transparent;
+}
+
+.locking-cell-background {
+  background-image: url("https://cdn.zo.xyz/gallery/media/images/98355d71-9d64-4d88-8f85-a9f77f18060d_20241220092239.svg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: repeat;
+}
+
+.navigation-menu .ant-menu-submenu-title {
+  @apply md:p-0 !important;
+}
+
+.navigation-menu .ant-menu-item {
+  padding: 24px !important;
+}
+@media (min-width: 768px) {
+  .navigation-menu .ant-menu-item {
+    padding: 24px 0px !important;
+  }
+}
+
+.navigation-menu .ant-menu-submenu:not(:first-child) {
+  margin-top: 24px !important;
+}
+
+@media (min-width: 768px) {
+  .payment-info-collapse .ant-collapse-header {
+    padding-left: 0 !important;
+  }
+
+  .payment-info-collapse .ant-collapse-content-box {
+    padding-left: 0 !important;
+    background-color: rgba(18, 18, 18, 0.8) !important;
+  }
+}
+
+.payment-info-collapse {
+  background-color: #161616 !important;
+}
+.payment-info-collapse .ant-collapse-content-box {
+  background-color: #161616 !important;
+}
+
+.payment-info-collapse .ant-collapse-item {
+  border-bottom: 1px solid #202020;
+}
+.payment-info-collapse
+  .ant-collapse-item:last-child
+  .payment-info-collapse
+  .ant-collapse-item:last-child {
+  border-bottom: 1px solid #202020;
+}
+
+.payment-info-collapse .ant-collapse-item:last-child {
+  border-bottom: 1px solid #202020 !important;
+}
+.payment-info-collapse .ant-collapse-content {
+  border-top: 1px solid #202020;
+}
+
+.leads-info-card .ant-card {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.leads-info-card .ant-card-body {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.ant-btn-primary {
+  background-color: #cfff50 !important;
+  color: #000000 !important;
+  transition: all 0.3s ease !important;
+}
+
+.ant-btn-primary:hover {
+  background-color: #daff7a !important;
+  transform: translateY(-1px) !important;
+}
+
+.ant-btn-primary:active {
+  background-color: #b8e646 !important;
+  transform: translateY(1px) !important;
+}
+

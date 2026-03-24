@@ -1,0 +1,102 @@
+# syntax=docker/dockerfile:1.4
+# Multi-stage Dockerfile for Next.js apps in Nx monorepo
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+# Copy package files FIRST (this layer will be cached unless package files change)
+COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
+
+# Install dependencies with cache mount for faster rebuilds
+# Cache mounts persist between builds, dramatically speeding up installs
+RUN --mount=type=cache,target=/root/.yarn,sharing=locked \
+    --mount=type=cache,target=/root/.npm,sharing=locked \
+    --mount=type=cache,target=/usr/local/share/.cache/yarn,sharing=locked \
+    --mount=type=cache,target=/root/.pnpm-store,sharing=locked \
+    if [ -f yarn.lock ]; then \
+        yarn --frozen-lockfile --cache-folder /root/.yarn --network-timeout 100000; \
+    elif [ -f package-lock.json ]; then \
+        npm_config_cache=/root/.npm npm ci; \
+    elif [ -f pnpm-lock.yaml ]; then \
+        yarn global add pnpm && \
+        pnpm i --store-dir /root/.pnpm-store --frozen-lockfile; \
+    else \
+        echo "Lockfile not found." && exit 1; \
+    fi
+
+# Build stage
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Copy dependencies from deps stage FIRST (this is the largest and most cacheable layer)
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy root config files (these change less frequently)
+COPY nx.json tsconfig.base.json package.json ./
+COPY jest.config.ts jest.preset.js ./
+COPY tailwind-workspace.config.js ./
+
+# Copy libs directory BEFORE apps (libs change less frequently than specific apps)
+COPY libs ./libs
+
+# Copy apps directory LAST (these change most frequently)
+COPY apps ./apps
+
+# Build arguments (app selection + environment)
+ARG APP_NAME
+ARG BUILD_ENV=production
+
+# Public env vars needed at build time (extend as new NEXT_PUBLIC_* vars are added)
+ARG NEXT_PUBLIC_RECAPTCHA_KEY
+
+# Expose public env vars to the build so Next.js can inline them
+ENV NEXT_PUBLIC_RECAPTCHA_KEY=${NEXT_PUBLIC_RECAPTCHA_KEY}
+
+# Set environment variables for build
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    NODE_OPTIONS="--max-old-space-size=4096" \
+    USE_NX=true
+
+# Build the specific app using Nx with the correct configuration
+# --parallel=1 to prevent memory issues from building multiple apps simultaneously
+# --skip-nx-cache to avoid cache contamination across app builds in Docker
+RUN if [ "$BUILD_ENV" = "staging" ]; then \
+        npx nx build ${APP_NAME} --configuration=staging --parallel=1 --skip-nx-cache; \
+    else \
+        npx nx build ${APP_NAME} --configuration=production --parallel=1 --skip-nx-cache; \
+    fi
+
+# Verify the build produced a valid .next directory — fails fast before a broken image is pushed
+RUN test -f /app/dist/apps/${APP_NAME}/.next/BUILD_ID || \
+    (echo "❌ Next.js build verification failed: .next/BUILD_ID not found in dist/apps/${APP_NAME}/" && exit 1)
+
+# Remove cache directories to reduce image size (isolated so build failures above aren't swallowed)
+RUN rm -rf /app/dist/apps/${APP_NAME}/.next/cache 2>/dev/null || true
+
+# Production stage
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1
+
+# Create a non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Copy node_modules from deps
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
+
+# Copy built application
+ARG APP_NAME
+COPY --from=builder --chown=nextjs:nodejs /app/dist/apps/${APP_NAME} ./app
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT=3000 \
+    HOSTNAME="0.0.0.0"
+
+# Start Next.js
+CMD ["node_modules/.bin/next", "start", "./app"]

@@ -1,0 +1,72 @@
+name: Staging Deployment
+
+run-name: Deployed to staging by @${{ github.actor }}
+
+on:
+  push:
+    branches:
+      - staging-old
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build
+        run: |
+          NODE_ENV=staging yarn nx run-many -c=staging --target build --projects=admin,website,dashboard,pms,payment,web-checkin,meme,comic,zo-ops --skip-nx-cache
+          find dist -type f -exec chmod 666 {} +
+        env:
+          NX_SKIP_NX_CLOUD: "true"
+
+      - name: Copy Build Files to Server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SSH_HOST_STAGING }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          source: "dist/*"
+          target: "~/"
+          overwrite: true
+
+      - name: Execute Deployment Commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST_STAGING }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            export NVM_DIR=~/.nvm
+            source ~/.nvm/nvm.sh
+            nvm use 20
+            cd /home/${{ secrets.SSH_USER }}/apps/mono-front
+            sudo rm -rf /home/${{ secrets.SSH_USER }}/apps/mono-front/dist
+            sudo cp -r /home/${{ secrets.SSH_USER }}/dist /home/${{ secrets.SSH_USER }}/apps/mono-front
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/admin/.next/static/ s3://zoworld-static-nsfp/_next/static/ --acl public-read
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/website/.next/static/ s3://zoworld-static-nsfp/_next/static/ --acl public-read
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/dashboard/.next/static/ s3://zoworld-static-nsfp/_next/static/ --acl public-read
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/web-checkin/.next/static/ s3://zoworld-static-nsfp/_next/static/ --acl public-read
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/pms/.next/static/ s3://zoworld-static-nsfp/_next/static/ --acl public-read
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/payment/.next/static/ s3://zoworld-static-nsfp/_next/static/ --acl public-read
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/meme/.next/static/ s3://zoworld-static-nsfp/_next/static/ --acl public-read
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/comic/.next/static/ s3://zoworld-static-nsfp/_next/static/ --acl public-read
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/zo-ops/.next/static/ s3://zoworld-static-nsfp/_next/static/ --acl public-read
+            sudo rm -rf /home/${{ secrets.SSH_USER }}/dist
+            sudo rm -rf /home/${{ secrets.SSH_USER }}/dist
+            git checkout staging
+            git pull origin staging
+            yarn install
+            pm2 restart mono-front

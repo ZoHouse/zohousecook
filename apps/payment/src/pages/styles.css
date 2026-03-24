@@ -1,0 +1,124 @@
+@import url("https://unicons.iconscout.com/release/v4.0.0/css/line.css");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#__next,
+main > [data-rk] {
+  @apply h-full w-full min-h-screen bg-zui-dark text-zui-white;
+}
+
+body {
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+.cta-clip-path {
+  clip-path: polygon(
+    27% 0%,
+    26% 7%,
+    20% 7%,
+    20% 13%,
+    14% 14%,
+    14% 20%,
+    7% 20%,
+    7% 27%,
+    0% 27%,
+    1% 73%,
+    6% 73%,
+    7% 80%,
+    13% 80%,
+    13% 86%,
+    20% 87%,
+    20% 93%,
+    27% 94%,
+    27% 100%,
+    73% 99%,
+    74% 93%,
+    80% 93%,
+    80% 87%,
+    87% 86%,
+    86% 80%,
+    93% 79%,
+    94% 73%,
+    100% 73%,
+    100% 27%,
+    94% 27%,
+    94% 20%,
+    87% 20%,
+    86% 12%,
+    80% 13%,
+    80% 6%,
+    73% 7%,
+    72% 0%
+  );
+}
+
+.card-clip-path {
+  clip-path: polygon(
+    92% 0%,
+    92% 5%,
+    96% 5%,
+    96% 10%,
+    100% 10%,
+    100% 99%,
+    0% 100%,
+    0% 0%
+  );
+}
+
+.heading {
+  @apply text-8xl leading-[110px] font-extrabold;
+}
+.sub-heading {
+  @apply text-5xl font-semibold leading-tight;
+}
+
+.html-content h1 {
+  @apply text-5xl mb-12 font-bold;
+}
+.html-content h2 {
+  @apply text-4xl mb-4 font-semibold;
+}
+.html-content h3 {
+  @apply text-3xl mb-4 font-semibold;
+}
+.html-content h4 {
+  @apply text-2xl mb-4 font-semibold;
+}
+.html-content h5 {
+  @apply text-xl mb-4 font-semibold;
+}
+.html-content h6 {
+  @apply text-lg font-semibold;
+}
+.html-content p {
+  @apply text-lg mb-12 font-normal;
+}
+.html-content a {
+  @apply text-blue-500 underline;
+}
+.html-content ul {
+  @apply list-disc pl-8 mb-8;
+}
+.html-content ol {
+  @apply list-decimal pl-8;
+}
+.html-content li {
+  @apply text-lg font-normal mb-4;
+}
+
+.zui-heading-1 {
+  @apply text-4xl lg:text-[120px] lg:leading-[154px] font-extrabold;
+}
+.zui-heading-2 {
+  @apply text-2xl lg:text-[56px] lg:leading-[72px] font-semibold;
+}
+.zui-heading-3 {
+  @apply text-xl lg:text-[48px] lg:leading-[64px] font-semibold;
+}
+.zui-text-1 {
+  @apply text-lg lg:text-[24px] lg:leading-[36px] tracking-[1%];
+}

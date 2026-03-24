@@ -1,0 +1,373 @@
+@import url("https://unicons.iconscout.com/release/v4.0.0/css/line.css");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes marquee {
+  0% {
+    transform: translateY(0px);
+  }
+
+  100% {
+    transform: translateY(-1500px);
+  }
+}
+
+html {
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  height: 100%;
+  width: 100%;
+  background: #000;
+}
+
+body,
+#__next {
+  @apply w-full h-full p-0 m-0;
+}
+
+body::-webkit-scrollbar,
+body ::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+body::-webkit-scrollbar-thumb,
+body ::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+body::-webkit-scrollbar-track,
+.scroll-hidden ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.bg-gradient {
+  background: linear-gradient(
+    90deg,
+    hsla(15, 88%, 54%, 1) 0%,
+    hsla(276, 77%, 51%, 1) 100%
+  );
+}
+
+.gradient-text {
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    hsla(15, 88%, 54%, 1) 0%,
+    hsla(276, 77%, 51%, 1) 100%
+  );
+}
+
+/* TRANSITIONS CLASSES start*/
+.fade-up-small-enter,
+.fade-up-small-appear {
+  opacity: 0;
+  transform: translateY(0.5rem);
+}
+
+.fade-up-small-enter-active,
+.fade-up-small-appear-active,
+.fade-up-small-appear-done {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.fade-up-small-exit {
+  opacity: 0;
+  transform: translateY(0.5rem);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.fade-left-small-enter,
+.fade-left-small-appear {
+  opacity: 0;
+  transform: translateX(0.5rem);
+}
+
+.fade-left-small-enter-active,
+.fade-left-small-appear-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.fade-left-small-exit-active {
+  opacity: 0;
+  transform: translateX(0.5rem);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.fade-in-enter,
+.fade-in-appear {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.fade-in-enter-active,
+.fade-in-appear-active,
+.fade-in-appear-done {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 500ms, transform 300ms;
+}
+
+.fade-expand-enter,
+.fade-expand-appear {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.fade-expand-enter-active,
+.fade-expand-appear-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.fade-expand-exit {
+  opacity: 1;
+}
+
+.fade-expand-exit-active {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.fade-x-enter {
+  opacity: 0;
+  transform: translateX(-1rem);
+}
+
+.fade-x-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms ease-in, transform 300ms ease-in;
+}
+
+.fade-x-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.fade-x-exit-active {
+  opacity: 0;
+  transform: translateX(-1rem);
+  transition: opacity 300ms ease-out, transform 300ms ease-out;
+}
+
+.fade-y-enter,
+.fade-y-appear {
+  opacity: 0;
+  transform: translateY(2rem);
+}
+
+.fade-y-enter-active,
+.fade-y-appear-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms ease-in, transform 300ms ease-in;
+}
+
+.fade-y-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.fade-y-exit-active {
+  opacity: 0;
+  transform: translateY(2rem);
+  transition: opacity 300ms ease-out, transform 300ms ease-out;
+}
+
+.checkin-splash-enter,
+.checkin-splash-appear {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.checkin-splash-enter-active,
+.checkin-splash-appear-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.checkin-splash-exit {
+  opacity: 0;
+  transform: translateY(-2rem);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.checkin-page-enter,
+.checkin-page-appear,
+.checkin-page-exit {
+  opacity: 0;
+  transform: translateY(1rem);
+}
+
+.checkin-page-enter-active,
+.checkin-page-appear-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition-property: opacity, transform;
+  transition-duration: 300ms;
+  transition-delay: 500ms;
+}
+
+.fade-dropdown-enter {
+  opacity: 0;
+  transform: translateY(-0.4rem);
+}
+
+.fade-dropdown-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 100ms ease-in, transform 100ms ease-in;
+}
+
+.fade-dropdown-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.fade-dropdown-exit-active {
+  opacity: 0;
+  transform: translateY(-0.4rem);
+  transition: opacity 100ms ease-out, transform 100ms ease-out;
+}
+
+/* TRANSITIONS CLASSES end*/
+
+.headroom-wrapper {
+  @apply !absolute !inset-x-0 !top-0 !z-20;
+}
+
+.headroom--pinned,
+.headroom--unfixed {
+  @apply bg-black border-b border-zinc-800;
+}
+
+.headroom--pinned * {
+  @apply !text-zui-white !fill-zui-white;
+}
+
+.text-stroke {
+  -webkit-text-fill-color: black;
+  /* Will override color (regardless of order) */
+  -webkit-text-stroke-width: 2px;
+  -webkit-text-stroke-color: black;
+}
+
+.phone-number-container {
+  color: #000;
+}
+
+.phone-number-container .form-control {
+  border: none !important;
+  border-radius: 0px !important;
+  background-color: white !important;
+  outline: none !important;
+  box-shadow: none !important;
+  width: 100%;
+}
+
+.form-control.phone-number-input::placeholder {
+  color: black !important;
+}
+
+.phone-number-input {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+}
+
+.phone-number-input:focus {
+  outline: none !important;
+}
+
+.phone-number-container .flag-dropdown {
+  background: #fff;
+}
+
+.phone-number-container .special-label {
+  display: none !important;
+}
+
+.phone-number-dropdown {
+  border-radius: 0px !important;
+  margin: 10px 0 0 0;
+  background-color: #202020 !important;
+  color: white;
+}
+
+.phone-number-container .search-box,
+.phone-number-container .search {
+  background-color: #202020 !important;
+}
+
+.phone-number-container .search {
+  padding-bottom: 10px !important;
+}
+
+.phone-number-container .search-box {
+  width: 90%;
+  padding: 10px !important;
+  border: #5a5a5a 1px solid !important;
+  border-radius: 0px !important;
+}
+
+.country:hover {
+  background-color: #5a5a5a50 !important;
+}
+
+.country-list .country.highlight {
+  background-color: #5a5a5a50 !important;
+}
+
+.zui-toast-success {
+  background: #66df48 !important;
+  border-radius: 0px !important;
+  border: none !important;
+  color: black !important;
+  font: "Space Grotesk" !important;
+  font-size: 14px !important;
+  box-shadow: 0px 4px 8px 0px #12121233;
+}
+
+.zui-toast-error {
+  background: #ff4545 !important;
+  border-radius: 0px !important;
+  border: none !important;
+  color: black !important;
+  font: "Space Grotesk" !important;
+  font-size: 14px !important;
+  box-shadow: 0px 4px 8px 0px #12121233;
+}
+
+.zui-toast-warning {
+  background: #ff9e4c !important;
+  border-radius: 0px !important;
+  border: none !important;
+  color: black !important;
+  font: "Space Grotesk" !important;
+  font-size: 14px !important;
+  box-shadow: 0px 4px 8px 0px #12121233;
+}
+
+.zui-toast-success [data-icon],
+.zui-toast-error [data-icon],
+.zui-toast-warning [data-icon] {
+  margin-right: 6px !important;
+}
+
+button.tgme_widget_login_button {
+  background-color: transparent !important;
+  width: 100% !important;
+}

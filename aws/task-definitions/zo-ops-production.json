@@ -1,0 +1,61 @@
+{
+  "family": "mono-front-zo-ops-production",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::670664477975:role/mono-front-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::670664477975:role/mono-front-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "zo-ops",
+      "image": "PLACEHOLDER_IMAGE",
+      "portMappings": [
+        {
+          "containerPort": 3000
+        }
+      ],
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/mono-front-zo-ops-production",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "secrets": [
+        {
+          "name": "REACT_APP_SLACK_BOT_TOKEN",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-zo-ops-production-secrets-1SKh9k:REACT_APP_SLACK_BOT_TOKEN::"
+        },
+        {
+          "name": "REACT_APP_SLACK_SIGNING_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-zo-ops-production-secrets-1SKh9k:REACT_APP_SLACK_SIGNING_SECRET::"
+        },
+        {
+          "name": "REACT_APP_API_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-zo-ops-production-secrets-1SKh9k:REACT_APP_API_URL::"
+        },
+        {
+          "name": "NEXT_PUBLIC_API_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-zo-ops-production-secrets-1SKh9k:NEXT_PUBLIC_API_URL::"
+        },
+        {
+          "name": "REACT_APP_MAPBOX_TOKEN",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-zo-ops-production-secrets-1SKh9k:REACT_APP_MAPBOX_TOKEN::"
+        },
+        {
+          "name": "NEXT_ASSET_PREFIX ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-zo-ops-production-secrets-1SKh9k:NEXT_ASSET_PREFIX ::"
+        },
+        {
+          "name": "NEXT_BASE_PATH ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-zo-ops-production-secrets-1SKh9k:NEXT_BASE_PATH ::"
+        }
+      ]
+    }
+  ]
+}

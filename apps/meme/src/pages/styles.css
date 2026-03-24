@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#__next,
+main>[data-rk] {
+  @apply h-full w-full bg-zui-dark text-zui-white scroll-smooth;
+}
+
+body {
+  font-family: 'Comic Neue', sans-serif !important;
+}
+
+.grayscale {
+  filter: grayscale() brightness(80%);
+}
+
+
+#flood-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.flood-image {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  animation: flood-animation 2s forwards;
+  opacity: 1;
+}
+
+@keyframes flood-animation {
+  0% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(var(--translate-x), var(--translate-y));
+    opacity: 0;
+  }
+}
+
+.toast-container {
+  border-radius: 50px !important;
+  font-family: 'Comic Neue', sans-serif !important;
+}
+
+.zui-toast-success {
+  background: #66DF48 !important;
+  border: none !important;
+  color: black !important;
+  box-shadow: 0px 4px 8px 0px #12121233;
+}
+
+.zui-toast-error {
+  background: #FF4545 !important;
+  border: none !important;
+  color: black !important;
+  box-shadow: 0px 4px 8px 0px #12121233;
+}
+
+.zui-toast-warning {
+  background: #FF9E4C !important;
+  border: none !important;
+  color: black !important;
+  box-shadow: 0px 4px 8px 0px #12121233;
+}
+
+.toast-container div[data-icon] {
+  display: none !important;
+}
+
+.toast-container div[data-content] {
+  width: 100%;
+  text-align: center !important;
+  font-size: 16px;
+  font-weight: 700 !important;
+}

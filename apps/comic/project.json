@@ -1,0 +1,76 @@
+{
+    "name": "comic",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "apps/comic",
+    "projectType": "application",
+    "targets": {
+        "build": {
+            "executor": "@nx/next:build",
+            "outputs": [
+                "{options.outputPath}"
+            ],
+            "defaultConfiguration": "production",
+            "options": {
+                "postcssConfig": "apps/comic/postcss.config.js",
+                "outputPath": "dist/apps/comic"
+            },
+            "configurations": {
+                "development": {
+                    "outputPath": "apps/comic"
+                },
+                "production": {},
+                "staging": {}
+            }
+        },
+        "serve": {
+            "executor": "@nx/next:server",
+            "defaultConfiguration": "development",
+            "options": {
+                "buildTarget": "comic:build",
+                "dev": true,
+                "port": 4209
+            },
+            "configurations": {
+                "development": {
+                    "buildTarget": "comic:build:development",
+                    "dev": true
+                },
+                "production": {
+                    "buildTarget": "comic:build:production",
+                    "dev": false
+                },
+                "staging": {
+                    "buildTarget": "comic:build:staging",
+                    "dev": false
+                }
+            }
+        },
+        "export": {
+            "executor": "@nx/next:export",
+            "options": {
+                "buildTarget": "comic:build:production"
+            }
+        },
+        "test": {
+            "executor": "@nx/jest:jest",
+            "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+            ],
+            "options": {
+                "jestConfig": "apps/comic/jest.config.ts"
+            }
+        },
+        "lint": {
+            "executor": "@nx/eslint:lint",
+            "outputs": [
+                "{options.outputFile}"
+            ],
+            "options": {
+                "lintFilePatterns": [
+                    "apps/comic/**/*.{ts,tsx,js,jsx}"
+                ]
+            }
+        }
+    },
+    "tags": []
+}

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Showcase | Zo World</title>
+    <link
+      rel="shortcut icon"
+      href="https://static.cdn.zo.xyz/media/zo-v2-dynamic.svg"
+      type="image/svg+xml"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./main.css" />
+
+    <script
+      type="text/javascript"
+      src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"
+    ></script>
+    <script src="./renderer.js"></script>
+    <script src="./script.js"></script>
+  </head>
+  <body>
+    <img
+      src="https://static.cdn.zo.xyz/media/zo-v2-white.svg"
+      alt="zo"
+      id="watermark"
+    />
+
+    <!-- SHOWCASE -->
+    <main id="main-showcase">
+      <aside id="info">
+        <div id="info-content"></div>
+        <div id="info-extras"></div>
+      </aside>
+    </main>
+    <!-- LOADING -->
+    <main id="main-loading" class="modal">
+      <div class="modal-head">
+        <img src="https://static.cdn.zo.xyz/media/zo-v2-white.svg" alt="zo" />
+        <span>Showcase</span>
+      </div>
+      <div class="modal-content">
+        <span class="modal-content-text">Loading...</span>
+      </div>
+    </main>
+    <!-- NO DATA -->
+    <main id="main-no-data" class="modal">
+      <div class="modal-head">
+        <img src="https://static.cdn.zo.xyz/media/zo-v2-white.svg" alt="zo" />
+        <span>Showcase</span>
+      </div>
+      <div class="modal-content">
+        <span class="modal-content-text">Wow! So empty.</span>
+        <span id="main-no-data-meditate" class="modal-content-sub-text"
+          >Why not meditate?</span
+        >
+      </div>
+    </main>
+    <!-- NO INTERNET -->
+    <main id="main-no-internet" class="modal">
+      <div class="modal-head">
+        <img src="https://static.cdn.zo.xyz/media/zo-v2-white.svg" alt="zo" />
+        <span>Showcase</span>
+      </div>
+      <div class="modal-content">
+        <span class="modal-content-text"
+          >Beep bop Beep bop. Lost Connection.</span
+        >
+        <span id="main-no-internet-restart" class="modal-content-sub-text"
+          >Restarting the router generally works :/</span
+        >
+      </div>
+    </main>
+    <!-- INTERNET BACK -->
+    <main id="main-internet-back" class="modal">
+      <div class="modal-head">
+        <img src="https://static.cdn.zo.xyz/media/zo-v2-white.svg" alt="zo" />
+        <span>Showcase</span>
+      </div>
+      <div class="modal-content">
+        <span class="modal-content-text text-green">We're back!</span>
+        <span class="modal-content-text">Now taking you back...</span>
+        <span id="main-internet-back-restart" class="modal-content-sub-text"
+          >Restarting worked, i guess :p</span
+        >
+      </div>
+    </main>
+    <!-- SERVER DOWN -->
+    <main id="main-server-down" class="modal">
+      <div class="modal-head">
+        <img src="https://static.cdn.zo.xyz/media/zo-v2-white.svg" alt="zo" />
+        <span>Showcase</span>
+      </div>
+      <div class="modal-content">
+        <span class="modal-content-text"
+          >Looks like the backend guys forgot to flush.</span
+        >
+        <span class="modal-content-text"
+          >Retrying regularly in the hope that things might come back to
+          normal...</span
+        >
+        <span id="main-server-down-bear" class="modal-content-sub-text"
+          >Jokes apart. Shit happens. Bear with us.</span
+        >
+      </div>
+    </main>
+  </body>
+</html>

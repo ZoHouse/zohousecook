@@ -1,0 +1,77 @@
+{
+  "gender": [
+    {
+      "icon": "🙋‍♂️",
+      "id": "male",
+      "value": "Male"
+    },
+    {
+      "icon": "🙋‍♀️",
+      "id": "female",
+      "value": "Female"
+    },
+    {
+      "icon": "🥷",
+      "id": "other",
+      "value": "Other"
+    }
+  ],
+  "ids": [
+    {
+      "id": "aadhar",
+      "icon": "Aadhar",
+      "name": "Aadhar Card",
+      "pages": [
+        {
+          "id": "110",
+          "name": "Front Side",
+          "sample_image": "https://static.cdn.zo.xyz/app-media/samples/aadhar-front.png"
+        },
+        {
+          "id": "111",
+          "name": "Back Side",
+          "sample_image": "https://static.cdn.zo.xyz/app-media/samples/aadhar-back.png"
+        }
+      ]
+    },
+    {
+      "id": "passport-indian",
+      "icon": "Passport",
+      "name": "Passport",
+      "pages": [
+        {
+          "id": "112",
+          "name": "Photo Page",
+          "sample_image": "https://static.cdn.zo.xyz/app-media/samples/passport-photo.png"
+        },
+        {
+          "id": "113",
+          "name": "Address Page",
+          "sample_image": "https://static.cdn.zo.xyz/app-media/samples/passport-address.png"
+        }
+      ]
+    },
+    {
+      "id": "passport",
+      "icon": "Passport",
+      "name": "Passport",
+      "pages": [
+        {
+          "id": "112",
+          "name": "Passport Photo Page",
+          "sample_image": "https://static.cdn.zo.xyz/app-media/samples/passport-photo.png"
+        },
+        {
+          "id": "113",
+          "name": "Passport Address Page",
+          "sample_image": "https://static.cdn.zo.xyz/app-media/samples/passport-address.png"
+        },
+        {
+          "id": "114",
+          "name": "VISA Stamp Page",
+          "sample_image": "https://static.cdn.zo.xyz/app-media/samples/passport-visa.png"
+        }
+      ]
+    }
+  ]
+}

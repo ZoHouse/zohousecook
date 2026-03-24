@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zo World Discord Callback</title>
+    <meta charset="UTF-8" />
+    <link
+      rel="shortcut icon"
+      href="https://static.cdn.zo.xyz/media/zo-v2-dynamic.svg"
+      type="image/svg+xml"
+    />
+
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      body,
+      h1,
+      h2,
+      h3,
+      h4,
+      p,
+      figure,
+      blockquote,
+      dl,
+      dd {
+        margin: 0;
+      }
+      ul[role="list"],
+      ol[role="list"] {
+        list-style: none;
+      }
+      html:focus-within {
+        scroll-behavior: smooth;
+      }
+      body {
+        min-height: 100vh;
+        text-rendering: optimizeSpeed;
+        line-height: 1.5;
+      }
+      a:not([class]) {
+        text-decoration-skip-ink: auto;
+      }
+      img,
+      picture {
+        max-width: 100%;
+        display: block;
+      }
+      input,
+      button,
+      textarea,
+      select {
+        font: inherit;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html:focus-within {
+          scroll-behavior: auto;
+        }
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+      body {
+        width: 100vw;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        height: 100vh;
+        padding: 16px;
+        font-family: "Space Grotesk", sans-serif;
+        color: rgb(249, 250, 251);
+        overflow: hidden;
+        background-color: black;
+      }
+      .container {
+        padding: 16px;
+        background-color: rgb(23, 23, 23);
+        margin-top: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        max-width: 500px;
+        position: relative;
+        width: 100%;
+        overflow: hidden;
+        height: 360px;
+      }
+      #twitter-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 64px;
+        background-color: aliceblue;
+        height: 64px;
+        margin-top: 16px;
+        border-radius: 100%;
+        margin-bottom: 16px;
+      }
+      #twitter-container img {
+        width: 32px;
+        height: 32px;
+      }
+      .logo-bg {
+        position: absolute;
+        bottom: -45px;
+        left: 0px;
+        width: 200px;
+        height: 200px;
+        opacity: 0.2;
+      }
+      h1 {
+        font-size: 24px;
+        font-weight: 600;
+      }
+      p {
+        margin-top: 16px;
+        font-size: 16px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div id="twitter-container">
+        <img
+          src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a69f118df70ad7828d4_icon_clyde_blurple_RGB.svg"
+          alt=""
+        />
+      </div>
+      <!-- <h1></h1> -->
+      <h1>Please Wait</h1>
+      <p>Connecting to Discord...</p>
+      <img
+        src="https://static.cdn.zo.xyz/media/zo-v2-white.svg"
+        alt=""
+        class="logo-bg"
+      />
+    </div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const state = urlParams.get("state");
+      const code = urlParams.get("code");
+
+      const p = document.querySelector("p");
+      const h1 = document.querySelector("h1");
+      p.innerHTML = "Connecting to Discord...";
+
+      fetch("https://api.io.zo.xyz/api/v1/socials/discord/oauth/callback/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          state,
+          code,
+        }),
+      })
+        .then((res) => {
+          if (res.status === 200) {
+            h1.innerHTML = "Success!";
+            p.innerHTML =
+              "You have successfully connected to Discord.<br />You can close this window now.";
+
+            if (window.ReactNativeWebView) {
+              setTimeout(() => {
+                window.ReactNativeWebView.postMessage(
+                  JSON.stringify({
+                    action: "CLOSE-WEBVIEW",
+                  })
+                );
+              }, 2000);
+            }
+          } else {
+            h1.innerHTML = "Error!";
+            p.innerHTML = "Something went wrong. Please try again.";
+          }
+        })
+        .catch(() => {
+          h1.innerHTML = "Error!";
+          p.innerHTML = "Something went wrong. Please try again.";
+        });
+    </script>
+  </body>
+</html>

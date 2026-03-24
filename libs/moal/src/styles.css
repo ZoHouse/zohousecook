@@ -1,0 +1,225 @@
+.phone-input-container .phone-input {
+  width: 100% !important;
+  padding: 1rem !important;
+  background: transparent !important;
+  border: 1px solid #202020 !important;
+  color: #ffffff !important;
+  caret-color: #5a5a5a !important;
+}
+
+.phone-input-container .phone-input::placeholder {
+  color: #5a5a5a !important;
+}
+
+.phone-input-container .phone-input:focus {
+  outline: none !important;
+}
+
+.phone-input-container .phone-button {
+  background: transparent !important;
+  border: none !important;
+  color: #fff !important;
+}
+
+.phone-input-container .phone-dropdown {
+  background: #121212 !important;
+  color: #fff !important;
+  border: solid #202020 !important;
+}
+
+.phone-input-container .phone-dropdown .country:hover {
+  background: #202020 !important;
+  color: #fff !important;
+}
+
+.phone-input-container .phone-dropdown .country.selected {
+  background: #202020 !important;
+  color: #fff !important;
+}
+
+.phone-input-container .phone-dropdown .search {
+  background: #121212 !important;
+  border: none;
+  color: #fff !important;
+  padding: 8px !important;
+}
+
+.phone-input-container .phone-dropdown .search input {
+  background: #121212 !important;
+  border: 1px solid #202020 !important;
+  color: #fff !important;
+  caret-color: #fff !important;
+  padding: 8px !important;
+  width: 100% !important;
+}
+
+.phone-input-container .phone-dropdown .search input::placeholder {
+  color: #fff !important;
+}
+
+.phone-input-container .phone-dropdown .search input:focus {
+  outline: none !important;
+  border-color: #202020 !important;
+}
+
+.phone-input-container.react-tel-input .country-list .country.highlight {
+  background-color: #202020 !important;
+}
+
+.phone-input-container.react-tel-input .country-list {
+  border-radius: 0px !important;
+}
+
+.phone-input-container.react-tel-input .special-label {
+  display: none !important;
+}
+
+.phone-input-container.react-tel-input .flag-dropdown.open .selected-flag {
+  background: #202020 !important;
+}
+
+.phone-input-container.react-tel-input .selected-flag {
+  border-radius: 0px !important;
+  outline: none !important;
+}
+
+.phone-input-container.react-tel-input .selected-flag:hover {
+  background: #202020 !important;
+}
+
+.phone-input-container.react-tel-input .special-label {
+  display: none !important;
+}
+
+.phone-input-container.react-tel-input .form-control {
+  font-size: 16px !important;
+  background: transparent !important;
+  border: 1px solid #202020 !important;
+  border-radius: 0px !important;
+  width: 100% !important;
+  outline: none !important;
+  padding-left: 60px !important;
+  color: #ffffff !important;
+  transition: box-shadow ease 0.25s, border-color ease 0.25s;
+}
+
+.phone-input-container.react-tel-input .form-control:focus {
+  box-shadow: none !important;
+  border-color: #5a5a5a !important;
+}
+
+.otp-input {
+  width: 44px !important;
+  height: 44px !important;
+  text-align: center;
+  border-width: 1px;
+  border-color: #202020;
+  border-radius: 2px;
+  background-color: #121212;
+  color: #ffffff;
+  caret-color: #ffffff;
+}
+
+.otp-input:focus {
+  border-color: #5a5a5a;
+  /* Optional focus border color */
+  outline: none;
+}
+
+input.otp-input::-webkit-outer-spin-button,
+input.otp-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input.otp-input {
+  -moz-appearance: textfield;
+}
+
+.profile-clip-path {
+  clip-path: polygon(
+    70% 0%,
+    70% 11%,
+    79% 11%,
+    79% 20%,
+    90% 20%,
+    90% 30%,
+    100% 30%,
+    100% 70%,
+    90% 70%,
+    90% 81%,
+    80% 81%,
+    80% 91%,
+    70% 91%,
+    70% 100%,
+    29% 100%,
+    29% 91%,
+    19% 91%,
+    19% 81%,
+    10% 81%,
+    10% 70%,
+    0 70%,
+    0 31%,
+    10% 31%,
+    10% 20%,
+    20% 20%,
+    20% 10%,
+    30% 10%,
+    30% 0
+  );
+}
+
+.fade-left-enter,
+.fade-left-appear {
+  opacity: 0;
+  transform: translateX(10rem);
+}
+
+.fade-left-exit {
+  opacity: 0;
+  transform: translateX(10rem);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.fade-left-enter-active,
+.fade-left-appear-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.fade-right-enter,
+.fade-right-appear {
+  opacity: 0;
+  transform: translateX(-10rem);
+}
+
+.fade-right-exit {
+  opacity: 0;
+  transform: translateX(-10rem);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.fade-right-enter-active,
+.fade-right-appear-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.fade-in-enter,
+.fade-in-appear {
+  opacity: 0;
+}
+
+.fade-in-exit {
+  opacity: 0;
+  transition: opacity 300ms;
+}
+
+.fade-in-enter-active,
+.fade-in-appear-active {
+  opacity: 1;
+  transition: opacity 300ms;
+}

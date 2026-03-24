@@ -1,0 +1,29 @@
+{
+  "name": "utils-font",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/utils/font/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/utils/font",
+        "main": "libs/utils/font/src/index.ts",
+        "tsConfig": "libs/utils/font/tsconfig.lib.json",
+        "assets": ["libs/utils/font/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": [
+          "libs/utils/font/**/*.ts",
+          "libs/utils/font/package.json"
+        ]
+      }
+    }
+  },
+  "tags": []
+}

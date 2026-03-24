@@ -1,0 +1,17 @@
+{
+  "Upcoming": {
+    "background": "bg-zui-green",
+    "foreground": "text-zui-dark",
+    "textOnly": "text-zui-green"
+  },
+  "Live": {
+    "background": "bg-zui-yellow",
+    "foreground": "text-zui-dark",
+    "textOnly": "text-zui-yellow"
+  },
+  "Past Event": {
+    "background": "bg-zui-silver",
+    "foreground": "text-zui-dark",
+    "textOnly": "text-zui-silver"
+  }
+}

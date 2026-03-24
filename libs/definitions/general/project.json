@@ -1,0 +1,29 @@
+{
+  "name": "definitions-general",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/definitions/general/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/definitions/general",
+        "main": "libs/definitions/general/src/index.ts",
+        "tsConfig": "libs/definitions/general/tsconfig.lib.json",
+        "assets": ["libs/definitions/general/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": [
+          "libs/definitions/general/**/*.ts",
+          "libs/definitions/general/package.json"
+        ]
+      }
+    }
+  },
+  "tags": []
+}

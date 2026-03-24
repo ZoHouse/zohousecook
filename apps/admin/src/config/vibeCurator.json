@@ -1,0 +1,10 @@
+{
+  "tools": [
+    {
+      "id": "reward",
+      "name": "Vibe Curator Reward",
+      "description": "Manage vibe curator rewards",
+      "icon": "Paid"
+    }
+  ]
+}

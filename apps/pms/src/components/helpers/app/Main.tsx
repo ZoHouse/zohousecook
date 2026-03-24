@@ -1,0 +1,53 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { GeneralObject } from "@zo/definitions/general";
+import { Head } from "@zo/moal";
+import { Spin } from "antd";
+import { NextComponentType, NextPageContext } from "next";
+import React from "react";
+import { useAssociation } from "../../../../src/hooks";
+import { AssociationProvider } from "../../contexts/association";
+import AccessDenied from "./AccessDenied";
+import Navigation from "./Navigation";
+
+interface MainProps {
+  Component: NextComponentType<NextPageContext, any, GeneralObject>;
+  pageProps: any;
+}
+
+const Main: React.FC<MainProps> = ({ Component, pageProps }) => {
+  return (
+    <main className="scrollbar flex min-h-screen w-full transition-all ease-in-out duration-200">
+      <Head />
+
+      <AssociationProvider>
+        <AppShell>
+          <Component {...pageProps} />
+        </AppShell>
+      </AssociationProvider>
+    </main>
+  );
+};
+
+const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { effectiveRole } = useAssociation();
+  const hasAnyAccess = effectiveRole !== "none";
+
+  return (
+    <div className="flex w-full h-full">
+      <Navigation />
+      <div className="flex-1 overflow-x-hidden">
+        {effectiveRole == null ? (
+          <div className="flex items-center justify-center w-full h-[80vh]">
+            <Spin size="large" />
+          </div>
+        ) : !hasAnyAccess ? (
+          <AccessDenied />
+        ) : (
+          children
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Main;

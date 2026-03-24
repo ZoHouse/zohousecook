@@ -1,0 +1,42 @@
+{
+  "requested": {
+    "background": "bg-zui-yellow",
+    "foreground": "text-zui-dark",
+    "textOnly": "text-zui-yellow"
+  },
+  "pending": {
+    "background": "bg-zui-yellow",
+    "foreground": "text-zui-dark",
+    "textOnly": "text-zui-yellow"
+  },
+  "confirmed": {
+    "background": "bg-zui-green",
+    "foreground": "text-zui-dark",
+    "textOnly": "text-zui-green"
+  },
+  "cancelled": {
+    "background": "bg-zui-red",
+    "foreground": "text-zui-dark",
+    "textOnly": "text-zui-red"
+  },
+  "checkin": {
+    "background": "bg-zui-green",
+    "foreground": "text-zui-dark",
+    "textOnly": "text-zui-green"
+  },
+  "checkout": {
+    "background": "bg-zui-green",
+    "foreground": "text-zui-dark",
+    "textOnly": "text-zui-green"
+  },
+  "noshow": {
+    "background": "bg-zui-lighter",
+    "foreground": "text-zui-dark",
+    "textOnly": "text-zui-lighter"
+  },
+  "abandoned": {
+    "background": "bg-zui-orange",
+    "foreground": "text-zui-dark",
+    "textOnly": "text-zui-orange"
+  }
+}

@@ -1,0 +1,436 @@
+name: Demo Environment (ECS Fargate)
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: mono-front
+  ECS_CLUSTER: mono-front-cluster-demo
+  ECS_SUBNETS: subnet-3ff89544
+  ECS_SECURITY_GROUPS: sg-079303d020372cc8b
+  PROJECT_NAME: mono-front
+
+jobs:
+  setup:
+    if: >-
+      ${{ github.event.issue.pull_request != null &&
+          (contains(github.event.comment.body, 'demo-staging') || contains(github.event.comment.body, 'demo-production')) }}
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.parse.outputs.apps }}
+      env: ${{ steps.parse.outputs.env }}
+      pr_number: ${{ steps.pr.outputs.number }}
+      pr_sha: ${{ steps.pr.outputs.sha }}
+      pr_head_repo: ${{ steps.pr.outputs.head_repo }}
+      pr_head_ref: ${{ steps.pr.outputs.head_ref }}
+      pr_base_ref: ${{ steps.pr.outputs.base_ref }}
+      timestamp: ${{ steps.parse.outputs.ts }}
+      demo_branch: ${{ steps.branch.outputs.demo_branch }}
+
+    steps:
+      - name: Verify actor permissions
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const {data} = await github.rest.repos.getCollaboratorPermissionLevel({owner, repo, username: context.actor});
+            if (!['admin','write','maintain'].includes(data.permission)) {
+              core.setFailed(`User ${context.actor} does not have permission to trigger demo environments.`);
+            }
+
+      - name: Extract PR info
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.issue.number;
+            const {data: pr} = await github.rest.pulls.get({...context.repo, pull_number: prNumber});
+            core.setOutput('number', String(pr.number));
+            core.setOutput('head_repo', pr.head.repo.full_name);
+            core.setOutput('head_ref', pr.head.ref);
+            core.setOutput('base_ref', pr.base.ref);
+            core.setOutput('sha', pr.head.sha.substring(0,7));
+
+      - name: Parse comment for environment and apps
+        id: parse
+        run: |
+          COMMENT="${{ github.event.comment.body }}"
+
+          # Determine environment
+          if echo "$COMMENT" | grep -qi "demo-production"; then
+            echo "env=production" >> $GITHUB_OUTPUT
+            ENV_TYPE="production"
+          else
+            echo "env=staging" >> $GITHUB_OUTPUT
+            ENV_TYPE="staging"
+          fi
+
+          # Extract app names (comma-separated) from comment
+          # Format: "demo-staging admin,website" or "demo-production pms,web-checkin"
+          APP_STRING=$(echo "$COMMENT" | grep -oE "demo-(staging|production)\s+[a-z,-]+" | sed -E "s/demo-(staging|production)\s+//")
+
+          if [ -z "$APP_STRING" ]; then
+            echo "❌ No app names specified. Please use format: demo-$ENV_TYPE <app1>,<app2>,..."
+            exit 1
+          fi
+
+          # Convert comma-separated string to JSON array
+          APPS_ARRAY=$(echo "$APP_STRING" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+
+          echo "apps=$APPS_ARRAY" >> $GITHUB_OUTPUT
+          echo "ts=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+
+          echo "📋 Parsed apps: $APPS_ARRAY"
+          echo "🌍 Environment: $ENV_TYPE"
+
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.base_ref }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Create demo branch and merge PR head
+        id: branch
+        run: |
+          DEMO_BRANCH="demo/pr-${{ steps.pr.outputs.number }}-${{ steps.parse.outputs.ts }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$DEMO_BRANCH" "origin/${{ steps.pr.outputs.base_ref }}"
+          git pull --ff-only
+          git remote add prrepo https://github.com/${{ steps.pr.outputs.head_repo }}.git
+          git fetch prrepo ${{ steps.pr.outputs.head_ref }}
+          # Handle merge conflicts, especially in yarn.lock
+          if ! git merge --no-ff --no-edit FETCH_HEAD; then
+            echo "⚠️ Merge has conflicts, attempting to resolve..."
+            # For yarn.lock conflicts, prefer the PR version
+            if [ -f "yarn.lock" ] && git diff --name-only --diff-filter=U | grep -q "yarn.lock"; then
+              echo "🔧 Resolving yarn.lock conflict by using PR version..."
+              git checkout --theirs yarn.lock
+              git add yarn.lock
+            fi
+            # Add any other resolved files and complete merge
+            git add -A
+            git commit --no-edit || git commit -m "fix: resolve merge conflicts"
+          fi
+
+          # Always regenerate yarn.lock after merge to ensure consistency (demo only)
+          echo "🔄 Regenerating yarn.lock to ensure consistency..."
+          yarn install --network-timeout 100000
+
+          # Commit if lockfile changed
+          if ! git diff --quiet yarn.lock; then
+            echo "📝 Lockfile was updated, committing changes..."
+            git add yarn.lock
+            git commit -m "chore: regenerate yarn.lock after merge"
+          else
+            echo "✅ Lockfile is already in sync"
+          fi
+
+          git push -u origin "$DEMO_BRANCH"
+          echo "demo_branch=$DEMO_BRANCH" >> $GITHUB_OUTPUT
+          echo "✅ Created and pushed demo branch: $DEMO_BRANCH"
+
+  deploy:
+    name: Deploy Demo - ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    needs: setup
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        app: ${{ fromJson(needs.setup.outputs.apps) }}
+      fail-fast: false
+      max-parallel: 2
+
+    steps:
+      - name: Free up disk space
+        run: |
+          echo "📊 Initial disk space:"
+          df -h
+
+          # Remove unnecessary tools and packages
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/hostedtoolcache
+
+          # Clean apt cache
+          sudo apt-get clean
+
+          # Remove old Docker images and containers
+          docker system prune -af --volumes || true
+
+          echo "📊 Disk space after cleanup:"
+          df -h
+
+      - name: Checkout demo branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup.outputs.demo_branch }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Ensure CloudWatch Logs group exists
+        run: |
+          aws logs create-log-group --log-group-name "/ecs/mono-front-demo" || true
+          aws logs put-retention-policy --log-group-name "/ecs/mono-front-demo" --retention-in-days 7 || true
+
+      - name: Determine Dockerfile
+        id: dockerfile
+        run: |
+          if [ "${{ matrix.app }}" = "ops-backend" ]; then
+            echo "dockerfile=Dockerfile.nodejs" >> $GITHUB_OUTPUT
+          else
+            echo "dockerfile=Dockerfile.nextjs" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
+          buildkitd-flags: --debug
+
+      - name: Build and push demo image
+        env:
+          IMAGE_TAG: demo-pr-${{ needs.setup.outputs.pr_number }}-${{ matrix.app }}-${{ needs.setup.outputs.pr_sha }}-${{ needs.setup.outputs.timestamp }}
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          # Fetch secrets
+          SECRET_NAME="${{ env.PROJECT_NAME }}-${{ matrix.app }}-${{ needs.setup.outputs.env }}-secrets"
+          SECRET_JSON=$(aws secretsmanager get-secret-value \
+            --secret-id "$SECRET_NAME" \
+            --query SecretString \
+            --output text)
+
+          # Try to pull previous image for layer caching
+          echo "🔄 Attempting to pull previous image for caching..."
+          docker pull $ECR_REGISTRY/$ECR_REPOSITORY:${{ matrix.app }}-latest 2>/dev/null || echo "No previous image found, building from scratch"
+
+          # Generate build args via array
+          ARGS=(--progress=plain -f "${{ steps.dockerfile.outputs.dockerfile }}" -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" --load)
+          ARGS+=(--build-arg "APP_NAME=${{ matrix.app }}")
+          ARGS+=(--build-arg "BUILD_ENV=${{ needs.setup.outputs.env }}")
+
+          # Use registry cache
+          ARGS+=(--cache-from "type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:${{ matrix.app }}-latest")
+
+          set +x
+          while IFS= read -r key; do
+            value=$(echo "$SECRET_JSON" | jq -r --arg k "$key" '.[$k]')
+            clean_key=$(echo "$key" | tr -d '[:space:]')
+            ARGS+=(--build-arg "${clean_key}=${value}")
+          done < <(echo "$SECRET_JSON" | jq -r 'keys[]')
+          set -x
+
+          # Build with --load (keeps image locally)
+          docker buildx build "${ARGS[@]}" .
+
+          # Extract static files from the built image and upload to S3
+          if [ "${{ matrix.app }}" != "ops-backend" ]; then
+            echo "📦 Extracting static files from local image..."
+            CONTAINER_ID=$(docker create $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG)
+            docker cp ${CONTAINER_ID}:/app/app/.next/static ./static-files 2>/dev/null || echo "⚠️ No static files"
+            docker rm ${CONTAINER_ID}
+
+            if [ -d "./static-files" ]; then
+              echo "☁️ Uploading static files to S3..."
+              # Determine S3 bucket based on environment
+              if [ "${{ needs.setup.outputs.env }}" = "production" ]; then
+                S3_BUCKET="zoworld-static"
+              else
+                S3_BUCKET="zoworld-static-nsfp"
+              fi
+
+              aws s3 cp --recursive \
+                ./static-files/ \
+                s3://${S3_BUCKET}/_next/static/ \
+                --acl public-read \
+                --cache-control "public, max-age=31536000, immutable"
+              rm -rf ./static-files
+              echo "✅ Static files uploaded to s3://${S3_BUCKET}/_next/static/"
+            fi
+          fi
+
+          # Push the image
+          echo "📤 Pushing image to ECR..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+          echo "IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
+          echo "✅ Docker image built and pushed"
+
+          # Aggressive cleanup
+          echo "🧹 Cleaning up Docker artifacts..."
+          docker image rm $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG || true
+          docker system prune -af --volumes || true
+
+          echo "📊 Disk space after cleanup:"
+          df -h
+
+      - name: Prepare demo task definition
+        run: |
+          FAMILY="mono-front-demo-pr-${{ needs.setup.outputs.pr_number }}-${{ matrix.app }}-${{ needs.setup.outputs.timestamp }}"
+
+          # Get base task definition
+          BASE_TASK_DEF="aws/task-definitions/${{ matrix.app }}-${{ needs.setup.outputs.env }}.json"
+
+          # Get app-specific secret ARN
+          SECRET_NAME="${{ env.PROJECT_NAME }}-${{ matrix.app }}-${{ needs.setup.outputs.env }}-secrets"
+          SECRET_ARN=$(aws secretsmanager describe-secret \
+            --secret-id "$SECRET_NAME" \
+            --query ARN \
+            --output text)
+
+          # Fetch secrets for runtime
+          SECRET_JSON=$(aws secretsmanager get-secret-value \
+            --secret-id "$SECRET_NAME" \
+            --query SecretString \
+            --output text)
+
+          # Map all secrets to runtime environment variables
+          SECRETS_ARRAY=$(echo "$SECRET_JSON" | jq -r 'to_entries | map({name: .key, valueFrom: "'"$SECRET_ARN"':\(.key)::"}) | .')
+
+          # Create demo task definition with reduced resources
+          jq --arg family "$FAMILY" \
+             --arg image "${{ env.IMAGE_URI }}" \
+             --argjson secrets "$SECRETS_ARRAY" '
+            .family=$family |
+            .cpu = "512" |
+            .memory = "1024" |
+            .containerDefinitions[0].image=$image |
+            .containerDefinitions[0].cpu = 512 |
+            .containerDefinitions[0].memory = 1024 |
+            .containerDefinitions[0].secrets = $secrets |
+            .containerDefinitions[0].logConfiguration.options."awslogs-group" = "/ecs/mono-front-demo" |
+            .containerDefinitions[0].portMappings[0].containerPort=3000
+          ' "$BASE_TASK_DEF" > demo-task-def.json
+
+          echo "TASK_FAMILY=$FAMILY" >> $GITHUB_ENV
+
+      - name: Register task definition
+        id: reg
+        run: |
+          ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://demo-task-def.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+          echo "task_def_arn=$ARN" >> $GITHUB_OUTPUT
+          echo "✅ Registered task definition: $ARN"
+
+      - name: Run Fargate task (public IP)
+        id: run
+        run: |
+          SUBNETS_JSON=$(printf '"%s"' $(echo "${{ env.ECS_SUBNETS }}" | sed 's/,/" "'/g) | sed 's/ /, /g')
+          SGRPS_JSON=$(printf '"%s"' $(echo "${{ env.ECS_SECURITY_GROUPS }}" | sed 's/,/" "'/g) | sed 's/ /, /g')
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --launch-type FARGATE \
+            --count 1 \
+            --task-definition "${{ steps.reg.outputs.task_def_arn }}" \
+            --network-configuration "{\"awsvpcConfiguration\":{\"subnets\":[${SUBNETS_JSON}],\"securityGroups\":[${SGRPS_JSON}],\"assignPublicIp\":\"ENABLED\"}}" \
+            --query 'tasks[0].taskArn' --output text)
+
+          echo "task_arn=$TASK_ARN" >> $GITHUB_OUTPUT
+          echo "✅ Started task: $TASK_ARN"
+
+      - name: Wait for RUNNING
+        run: |
+          echo "⏳ Waiting for task to reach RUNNING state..."
+          aws ecs wait tasks-running --cluster "${{ env.ECS_CLUSTER }}" --tasks "${{ steps.run.outputs.task_arn }}"
+          echo "✅ Task is now RUNNING"
+
+      - name: Describe task on failure
+        if: failure()
+        run: |
+          echo "❌ Task failed to start. Describing task for diagnostics..."
+          aws ecs describe-tasks --cluster "${{ env.ECS_CLUSTER }}" --tasks "${{ steps.run.outputs.task_arn }}" --output json | jq .
+
+      - name: Resolve public URL
+        id: url
+        run: |
+          ENI=$(aws ecs describe-tasks \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --tasks "${{ steps.run.outputs.task_arn }}" \
+            --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' \
+            --output text)
+
+          IP=$(aws ec2 describe-network-interfaces \
+            --network-interface-ids "$ENI" \
+            --query 'NetworkInterfaces[0].Association.PublicIp' \
+            --output text)
+
+          echo "public_url=http://$IP:3000" >> $GITHUB_OUTPUT
+          echo "✅ Demo URL: http://$IP:3000"
+
+      - name: Comment with demo URL for this app
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = Number('${{ needs.setup.outputs.pr_number }}');
+            const envName = '${{ needs.setup.outputs.env }}';
+            const appName = '${{ matrix.app }}';
+            const url = '${{ steps.url.outputs.public_url }}';
+            const task = '${{ steps.run.outputs.task_arn }}';
+            const msg = `### 🚀 Demo: **${appName}**\n\n` +
+                        `**Environment:** ${envName}\n` +
+                        `**URL:** ${url}\n` +
+                        `**Task ARN:** \`${task}\`\n\n` +
+                        `⏰ This demo will run for 60 minutes or until manually stopped.`;
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: prNumber,
+              body: msg
+            });
+
+  cleanup:
+    name: Cleanup Demo Branch
+    runs-on: ubuntu-latest
+    needs: [setup, deploy]
+    if: always()
+    steps:
+      - name: Delete demo branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = '${{ needs.setup.outputs.demo_branch }}';
+            if (!branch) {
+              core.warning('Demo branch not set; skipping deletion');
+              return;
+            }
+
+            try {
+              await github.rest.git.deleteRef({
+                ...context.repo,
+                ref: `heads/${branch}`,
+              });
+              core.info(`✅ Deleted demo branch: ${branch}`);
+            } catch (err) {
+              core.warning(`⚠️ Failed to delete branch ${branch}: ${err.message}`);
+            }

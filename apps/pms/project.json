@@ -1,0 +1,68 @@
+{
+  "name": "pms",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/pms",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/next:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/pms",
+        "postcssConfig": "apps/pms/postcss.config.js"
+      },
+      "configurations": {
+        "development": {
+          "outputPath": "apps/pms"
+        },
+        "staging": {},
+        "production": {}
+      }
+    },
+    "serve": {
+      "executor": "@nx/next:server",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "pms:build",
+        "dev": true,
+        "port": 4204
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "pms:build:development",
+          "dev": true
+        },
+        "staging": {
+          "buildTarget": "pms:build:staging",
+          "dev": false
+        },
+        "production": {
+          "buildTarget": "pms:build:production",
+          "dev": false
+        }
+      }
+    },
+    "export": {
+      "executor": "@nx/next:export",
+      "options": {
+        "buildTarget": "pms:build:production"
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "apps/pms/jest.config.ts"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["apps/pms/**/*.{ts,tsx,js,jsx}"]
+      }
+    }
+  },
+  "tags": []
+}

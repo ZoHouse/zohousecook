@@ -1,0 +1,32 @@
+{
+  "family": "mono-front-ops-backend-production",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::670664477975:role/mono-front-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::670664477975:role/mono-front-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "ops-backend",
+      "image": "PLACEHOLDER_IMAGE",
+      "portMappings": [
+        {
+          "containerPort": 3000
+        }
+      ],
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/mono-front-ops-backend-production",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "secrets": []
+    }
+  ]
+}

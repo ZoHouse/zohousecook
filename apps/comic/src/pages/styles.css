@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#__next,
+main > [data-rk] {
+  @apply h-full w-full bg-zui-dark text-zui-white;
+}

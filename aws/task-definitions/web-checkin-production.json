@@ -1,0 +1,65 @@
+{
+  "family": "mono-front-web-checkin-production",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::670664477975:role/mono-front-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::670664477975:role/mono-front-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "web-checkin",
+      "image": "PLACEHOLDER_IMAGE",
+      "portMappings": [
+        {
+          "containerPort": 3000
+        }
+      ],
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/mono-front-web-checkin-production",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "secrets": [
+        {
+          "name": "APP_ID ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-web-checkin-production-secrets-eKu75l:APP_ID ::"
+        },
+        {
+          "name": "NODE_ENV ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-web-checkin-production-secrets-eKu75l:NODE_ENV ::"
+        },
+        {
+          "name": "NEXT_ASSET_PREFIX ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-web-checkin-production-secrets-eKu75l:NEXT_ASSET_PREFIX ::"
+        },
+        {
+          "name": "NEXT_BASE_PATH ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-web-checkin-production-secrets-eKu75l:NEXT_BASE_PATH ::"
+        },
+        {
+          "name": "API_BASE_URL ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-web-checkin-production-secrets-eKu75l:API_BASE_URL ::"
+        },
+        {
+          "name": "API_SOCKET_URL ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-web-checkin-production-secrets-eKu75l:API_SOCKET_URL ::"
+        },
+        {
+          "name": "API_BASE_URL_ZOSTEL ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-web-checkin-production-secrets-eKu75l:API_BASE_URL_ZOSTEL ::"
+        },
+        {
+          "name": "NEXT_PUBLIC_ZOSTEL_WEB_URL ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-web-checkin-production-secrets-eKu75l:NEXT_PUBLIC_ZOSTEL_WEB_URL ::"
+        }
+      ]
+    }
+  ]
+}

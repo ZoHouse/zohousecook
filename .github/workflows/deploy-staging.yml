@@ -1,0 +1,355 @@
+name: Deploy to AWS ECS Staging (Selective Apps)
+
+on:
+  push:
+    branches:
+      - staging
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: mono-front
+  ECS_CLUSTER_PREFIX: mono-front-cluster-staging
+  PROJECT_NAME: mono-front
+
+jobs:
+  detect-changes:
+    name: Detect Changed Apps
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.detect.outputs.apps }}
+      has_changes: ${{ steps.detect.outputs.has_changes }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect affected apps
+        id: detect
+        run: |
+          # Use GitHub's before SHA for accurate comparison
+          BASE_SHA="${{ github.event.before }}"
+
+          # Fallback to HEAD~1 if before SHA is not available (e.g., first push)
+          if [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ] || [ -z "$BASE_SHA" ]; then
+            echo "First push or SHA unavailable, using HEAD~1"
+            BASE_SHA="HEAD~1"
+          fi
+
+          echo "Comparing HEAD against: $BASE_SHA"
+
+          # Get list of changed files
+          CHANGED_FILES=$(git diff --name-only $BASE_SHA HEAD)
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          echo ""
+
+          # Detect which apps have file changes
+          ALL_APPS=("admin" "pms" "website" "zo-ops" "ops-backend")
+          AFFECTED_APPS=()
+
+          # Check each app for changes
+          for APP in "${ALL_APPS[@]}"; do
+            if echo "$CHANGED_FILES" | grep -q "^apps/$APP/"; then
+              AFFECTED_APPS+=("$APP")
+              echo "✓ $APP has changes"
+            fi
+          done
+
+          # Also check for changes in shared libs or root config that affect all Next.js apps
+          if echo "$CHANGED_FILES" | grep -qE "^(libs/|package.json|yarn.lock|tsconfig.base.json|nx.json)"; then
+            echo "⚠️  Shared files changed, deploying all Next.js apps"
+            AFFECTED_APPS=("admin" "pms" "website" "zo-ops" "ops-backend")
+          fi
+
+          # Convert to JSON array
+          if [ ${#AFFECTED_APPS[@]} -eq 0 ]; then
+            DEPLOYABLE_APPS="[]"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            DEPLOYABLE_APPS=$(printf '%s\n' "${AFFECTED_APPS[@]}" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+          echo ""
+          echo "Affected apps: $DEPLOYABLE_APPS"
+          echo "apps=$DEPLOYABLE_APPS" >> $GITHUB_OUTPUT
+
+  deploy:
+    name: Deploy ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_changes == 'true'
+    strategy:
+      matrix:
+        app: ${{ fromJson(needs.detect-changes.outputs.apps) }}
+      fail-fast: false
+      max-parallel: 2
+
+    steps:
+      - name: Free up disk space
+        run: |
+          echo "📊 Initial disk space:"
+          df -h
+
+          # Remove unnecessary tools and packages
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/hostedtoolcache
+
+          # Clean apt cache
+          sudo apt-get clean
+
+          # Remove old Docker images and containers
+          docker system prune -af --volumes || true
+
+          echo "📊 Disk space after cleanup:"
+          df -h
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Create CloudWatch Logs group
+        run: |
+          aws logs create-log-group --log-group-name "/ecs/mono-front-${{ matrix.app }}-staging" 2>/dev/null || true
+          aws logs put-retention-policy --log-group-name "/ecs/mono-front-${{ matrix.app }}-staging" --retention-in-days 7 || true
+
+      - name: Fetch secrets from AWS Secrets Manager
+        run: |
+          # Get app-specific secret ARN
+          SECRET_NAME="${{ env.PROJECT_NAME }}-${{ matrix.app }}-staging-secrets"
+
+          # Fetch secrets (we'll use them in later steps, not in $GITHUB_ENV to avoid logging)
+          echo "✅ Secrets will be loaded from AWS Secrets Manager for ${{ matrix.app }}"
+
+      - name: Determine Dockerfile
+        id: dockerfile
+        run: |
+          if [ "${{ matrix.app }}" = "ops-backend" ]; then
+            echo "dockerfile=Dockerfile.nodejs" >> $GITHUB_OUTPUT
+          else
+            echo "dockerfile=Dockerfile.nextjs" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
+
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ matrix.app }}-staging-${{ github.sha }}
+        run: |
+          # Fetch secret again to get all keys
+          SECRET_NAME="${{ env.PROJECT_NAME }}-${{ matrix.app }}-staging-secrets"
+          SECRET_JSON=$(aws secretsmanager get-secret-value \
+            --secret-id "$SECRET_NAME" \
+            --query SecretString \
+            --output text)
+
+          echo "Building Docker image for ${{ matrix.app }}..."
+
+          # Try to pull previous staging image for layer caching
+          echo "🔄 Attempting to pull previous image for caching..."
+          docker pull $ECR_REGISTRY/$ECR_REPOSITORY:${{ matrix.app }}-staging-latest 2>/dev/null || \
+          docker pull $ECR_REGISTRY/$ECR_REPOSITORY:${{ matrix.app }}-latest 2>/dev/null || \
+          echo "No previous image found, building from scratch"
+
+          # Build args via array (use --load so image stays local for extraction)
+          ARGS=(--progress=plain -f "${{ steps.dockerfile.outputs.dockerfile }}" -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" -t "$ECR_REGISTRY/$ECR_REPOSITORY:${{ matrix.app }}-staging-latest" --load)
+          ARGS+=(--build-arg "APP_NAME=${{ matrix.app }}")
+          ARGS+=(--build-arg "BUILD_ENV=staging")
+
+          # Use registry cache only (simpler, less disk usage)
+          ARGS+=(--cache-from "type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:${{ matrix.app }}-staging-latest")
+          ARGS+=(--cache-from "type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:${{ matrix.app }}-latest")
+
+          set +x
+          while IFS= read -r key; do
+            value=$(echo "$SECRET_JSON" | jq -r --arg k "$key" '.[$k]')
+            clean_key=$(echo "$key" | tr -d '[:space:]')
+            ARGS+=(--build-arg "${clean_key}=${value}")
+          done < <(echo "$SECRET_JSON" | jq -r 'keys[]')
+          set -x
+
+          # Build with BuildKit (image kept local)
+          docker buildx build "${ARGS[@]}" .
+
+          # Extract static files immediately while image is local
+          if [ "${{ matrix.app }}" != "ops-backend" ]; then
+            echo "📦 Extracting static files from local image..."
+            CONTAINER_ID=$(docker create $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG)
+            docker cp ${CONTAINER_ID}:/app/app/.next/static ./static-files 2>/dev/null || echo "⚠️ No static files"
+            docker rm ${CONTAINER_ID}
+
+            if [ -d "./static-files" ]; then
+              echo "☁️ Uploading static files to S3..."
+              aws s3 cp --recursive \
+                ./static-files/ \
+                s3://zoworld-static-nsfp/_next/static/ \
+                --acl public-read \
+                --cache-control "public, max-age=31536000, immutable"
+              rm -rf ./static-files
+              echo "✅ Static files uploaded"
+            fi
+          fi
+
+          # Push the image to ECR now
+          echo "📤 Pushing image to ECR..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ matrix.app }}-staging-latest
+
+          echo "IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
+          echo "✅ Docker image built and pushed"
+
+          # Aggressive cleanup to free disk space
+          echo "🧹 Cleaning up Docker artifacts..."
+          docker image rm $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG || true
+          docker image rm $ECR_REGISTRY/$ECR_REPOSITORY:${{ matrix.app }}-staging-latest || true
+          docker system prune -af --volumes || true
+
+          echo "📊 Disk space after cleanup:"
+          df -h
+
+      - name: Update task definition with secrets
+        run: |
+          # Get app-specific secret ARN
+          SECRET_NAME="${{ env.PROJECT_NAME }}-${{ matrix.app }}-staging-secrets"
+          SECRET_ARN=$(aws secretsmanager describe-secret \
+            --secret-id "$SECRET_NAME" \
+            --query ARN \
+            --output text)
+
+          # Fetch all secrets for runtime injection
+          SECRET_JSON=$(aws secretsmanager get-secret-value \
+            --secret-id "$SECRET_NAME" \
+            --query SecretString \
+            --output text)
+
+          # Generate secrets array for ECS
+          SECRETS_ARRAY=$(echo "$SECRET_JSON" | jq -r 'to_entries | map({name: .key, valueFrom: "'"$SECRET_ARN"':\(.key)::"}) | .')
+
+          # Update task definition with image and secrets
+          jq --arg IMAGE "${{ env.IMAGE_URI }}" \
+             --argjson secrets "$SECRETS_ARRAY" \
+             '.containerDefinitions[0].image = $IMAGE | .containerDefinitions[0].secrets = $secrets' \
+             aws/task-definitions/${{ matrix.app }}-staging.json > task-def-updated.json
+
+      - name: Register ECS task definition
+        id: task-def
+        run: |
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://task-def-updated.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          echo "task_arn=$TASK_DEF_ARN" >> $GITHUB_OUTPUT
+          echo "✅ Registered task definition: $TASK_DEF_ARN"
+
+      - name: Create or Update ECS service
+        run: |
+          SERVICE_NAME="mono-front-${{ matrix.app }}-staging-service"
+
+          # Get VPC configuration from aws-config.txt
+          SUBNET_1="${{ secrets.ECS_SUBNET_1 || 'subnet-3ff89544' }}"
+          SUBNET_2="${{ secrets.ECS_SUBNET_2 || 'subnet-dc297390' }}"
+          SECURITY_GROUP="${{ secrets.ECS_SECURITY_GROUP || 'sg-079303d020372cc8b' }}"
+
+          # Check if service exists
+          SERVICE_EXISTS=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER_PREFIX }} \
+            --services $SERVICE_NAME \
+            --query 'services[0].status' \
+            --output text 2>/dev/null)
+
+          # Get target group ARN for ALB (shortened name for 32 char limit)
+          TG_NAME="mf-${{ matrix.app }}-stg-tg"
+          TG_ARN=$(aws elbv2 describe-target-groups \
+            --names "$TG_NAME" \
+            --query 'TargetGroups[0].TargetGroupArn' \
+            --output text 2>/dev/null || echo "")
+
+          if [ "$SERVICE_EXISTS" = "ACTIVE" ]; then
+            echo "📝 Updating existing service: $SERVICE_NAME"
+
+            # Check if service has ALB attached
+            HAS_LB=$(aws ecs describe-services \
+              --cluster ${{ env.ECS_CLUSTER_PREFIX }} \
+              --services $SERVICE_NAME \
+              --query 'services[0].loadBalancers' \
+              --output json | jq 'length')
+
+            if [ "$HAS_LB" -eq 0 ] && [ -n "$TG_ARN" ] && [ "$TG_ARN" != "None" ]; then
+              echo "⚠️  Service exists without ALB. Cannot add ALB to existing service."
+              echo "   Please delete and recreate the service, or use update-ecs-services-with-alb.sh"
+            fi
+
+            aws ecs update-service \
+              --cluster ${{ env.ECS_CLUSTER_PREFIX }} \
+              --service $SERVICE_NAME \
+              --task-definition ${{ steps.task-def.outputs.task_arn }} \
+              --force-new-deployment
+
+            echo "✅ Service $SERVICE_NAME updated successfully"
+          else
+            echo "🆕 Creating new service: $SERVICE_NAME"
+
+            # Build create-service command
+            CREATE_CMD="aws ecs create-service \
+              --cluster ${{ env.ECS_CLUSTER_PREFIX }} \
+              --service-name $SERVICE_NAME \
+              --task-definition ${{ steps.task-def.outputs.task_arn }} \
+              --desired-count 1 \
+              --launch-type FARGATE \
+              --network-configuration \"awsvpcConfiguration={subnets=[$SUBNET_1,$SUBNET_2],securityGroups=[$SECURITY_GROUP],assignPublicIp=ENABLED}\" \
+              --enable-execute-command"
+
+            # Add ALB configuration if target group exists
+            if [ -n "$TG_ARN" ] && [ "$TG_ARN" != "None" ]; then
+              echo "   🔗 Attaching to ALB target group: $TG_NAME"
+              CREATE_CMD="$CREATE_CMD --load-balancers \"targetGroupArn=$TG_ARN,containerName=${{ matrix.app }},containerPort=3000\" --health-check-grace-period-seconds 60"
+            fi
+
+            eval $CREATE_CMD
+
+            echo "✅ Service $SERVICE_NAME created successfully"
+          fi
+
+  summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [detect-changes, deploy]
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "## Deployment Summary 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** Staging" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Apps Deployed:** ${{ needs.detect-changes.outputs.apps }}" >> $GITHUB_STEP_SUMMARY

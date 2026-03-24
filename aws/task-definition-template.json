@@ -1,0 +1,28 @@
+{
+  "family": "zostel-frontend-TEMPLATE",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": 0,
+  "memory": 0,
+  "executionRoleArn": "arn:aws:iam::786741319455:role/zostel-frontend-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::786741319455:role/zostel-frontend-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "zostel-frontend",
+      "image": "TEMPLATE_IMAGE",
+      "portMappings": [{ "containerPort": 3000 }],
+      "essential": true,
+      "cpu": 0,
+      "memory": 0,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "TEMPLATE_LOG_GROUP",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "secrets": []
+    }
+  ]
+}

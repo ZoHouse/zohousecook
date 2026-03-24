@@ -1,0 +1,29 @@
+{
+  "name": "utils-next",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/utils/next/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/utils/next",
+        "main": "libs/utils/next/src/index.ts",
+        "tsConfig": "libs/utils/next/tsconfig.lib.json",
+        "assets": ["libs/utils/next/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": [
+          "libs/utils/next/**/*.ts",
+          "libs/utils/next/package.json"
+        ]
+      }
+    }
+  },
+  "tags": []
+}

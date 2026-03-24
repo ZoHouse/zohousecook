@@ -1,0 +1,29 @@
+{
+  "name": "definitions-admin",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/definitions/admin/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/definitions/admin",
+        "main": "libs/definitions/admin/src/index.ts",
+        "tsConfig": "libs/definitions/admin/tsconfig.lib.json",
+        "assets": ["libs/definitions/admin/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": [
+          "libs/definitions/admin/**/*.ts",
+          "libs/definitions/admin/package.json"
+        ]
+      }
+    }
+  },
+  "tags": []
+}

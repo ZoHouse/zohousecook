@@ -1,0 +1,252 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#__next,
+main > [data-rk] {
+  @apply h-full w-full bg-zui-dark text-zui-white;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.profile-clip-path {
+  clip-path: polygon(
+    70% 0%,
+    70% 11%,
+    79% 11%,
+    79% 20%,
+    90% 20%,
+    90% 30%,
+    100% 30%,
+    100% 70%,
+    90% 70%,
+    90% 81%,
+    80% 81%,
+    80% 91%,
+    70% 91%,
+    70% 100%,
+    29% 100%,
+    29% 91%,
+    19% 91%,
+    19% 81%,
+    10% 81%,
+    10% 70%,
+    0 70%,
+    0 31%,
+    10% 31%,
+    10% 20%,
+    20% 20%,
+    20% 10%,
+    30% 10%,
+    30% 0
+  );
+}
+
+.frame-clip-path {
+  clip-path: polygon(
+    17% 9%,
+    17% 18%,
+    8% 18%,
+    8% 84%,
+    17% 84%,
+    17% 92%,
+    83% 92%,
+    83% 84%,
+    91% 84%,
+    91% 18%,
+    83% 18%,
+    83% 9%
+  );
+}
+
+.fade-up-small-enter,
+.fade-up-small-appear {
+  opacity: 0;
+  transform: translateY(0.5rem);
+}
+
+.fade-up-small-enter-active,
+.fade-up-small-appear-active,
+.fade-up-small-appear-done {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.fade-up-fast-enter,
+.fade-up-fast-appear {
+  opacity: 0;
+  transform: translateY(5rem);
+}
+
+.fade-up-fast-exit {
+  opacity: 0;
+  transform: translateY(5rem);
+  transition: opacity 150ms, transform 150ms;
+}
+
+.fade-up-fast-enter-active,
+.fade-up-fast-appear-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 150ms, transform 150ms;
+}
+
+.fade-left-enter,
+.fade-left-appear {
+  opacity: 0;
+  transform: translateX(10rem);
+}
+
+.fade-left-exit {
+  opacity: 0;
+  transform: translateX(10rem);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.fade-left-enter-active,
+.fade-left-appear-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.date__picker::-webkit-calendar-picker-indicator {
+  background-color: #cfff50;
+  cursor: pointer;
+}
+
+.ql-toolbar {
+  border: none !important;
+}
+
+.ql-container {
+  border: none !important;
+  font-family: "Space Grotesk", sans-serif !important;
+}
+
+.ql-fill {
+  fill: #fff;
+}
+
+.ql-editor::placeholder {
+  color: #5a5a5a;
+}
+
+.quill > .ql-container > .ql-editor.ql-blank::before {
+  color: #5a5a5a;
+  text-decoration: none;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #121212;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #5a5a5a;
+  border: 1px solid #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #5a5a5a;
+}
+
+.table-container :global(.ant-table) * {
+  font-family: "Space Grotesk";
+}
+.table-container :global(.ant-table) {
+  overflow: hidden;
+}
+.table-container :global(.ant-table-thead > tr > th) {
+  position: sticky;
+  top: 0;
+  background: #181818;
+  z-index: 2;
+}
+/* Ensure the top-left header cell (first column header) stays above when scrolling */
+.table-container :global(.ant-table-thead > tr > th.ant-table-cell-fix-left) {
+  left: 0;
+  z-index: 3;
+  background: #181818;
+}
+.table-container :global(.ant-table-cell) {
+  vertical-align: top;
+  background-clip: padding-box;
+}
+
+.ant-notification-bottomLeft {
+  margin-bottom: 40px !important;
+  margin-left: 40px !important;
+}
+
+.custom-notification.ant-notification-notice {
+  background: #202020 !important;
+  padding: 16px !important;
+  width: 272px !important;
+  margin-bottom: 0 !important;
+}
+
+.custom-notification .ant-notification-notice-content {
+  background: #202020 !important;
+}
+
+.custom-notification .ant-notification-notice-message {
+  margin-bottom: 0 !important;
+  margin-left: 0 !important;
+  padding-right: 0 !important;
+  color: #ffffff !important;
+}
+
+.custom-notification .ant-notification-notice-description {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+  color: #ffffff !important;
+}
+
+.custom-notification .ant-notification-notice-close {
+  display: none !important;
+}
+
+.custom-notification
+  .ant-notification-notice-with-icon
+  .ant-notification-notice-message {
+  margin-left: 0 !important;
+}
+
+.custom-notification .ant-notification-notice-icon {
+  display: none !important;
+}
+
+.custom-notification.ant-notification-notice,
+.custom-notification .ant-notification-notice-wrapper {
+  box-shadow: none !important;
+}
+
+.custom-notification .ant-notification-notice-wrapper {
+  background: #202020 !important;
+}
+
+.ant-btn-primary {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  transition: all 0.3s ease !important;
+}
+
+.ant-btn-primary:hover {
+  opacity: 0.9 !important;
+}
+
+.ant-btn-primary:active {
+  opacity: 0.8 !important;
+}

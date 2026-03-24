@@ -1,0 +1,29 @@
+{
+  "name": "utils-string",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/utils/string/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/utils/string",
+        "main": "libs/utils/string/src/index.ts",
+        "tsConfig": "libs/utils/string/tsconfig.lib.json",
+        "assets": ["libs/utils/string/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": [
+          "libs/utils/string/**/*.ts",
+          "libs/utils/string/package.json"
+        ]
+      }
+    }
+  },
+  "tags": []
+}

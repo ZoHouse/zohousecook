@@ -1,0 +1,80 @@
+[
+  {
+    "id": "",
+    "title": "",
+    "list": [
+      {
+        "id": "overview",
+        "name": "Overview",
+        "link": "/overview",
+        "iconName": "Menu",
+        "minAccess": "front-desk-manager"
+      },
+      {
+        "id": "pending",
+        "name": "Pending Web Check-ins",
+        "link": "/pending-web-checkins",
+        "iconName": "Info",
+        "minAccess": "front-desk-manager"
+      },
+      {
+        "id": "web-checkins",
+        "name": "Future Web Check-ins",
+        "link": "/web-checkins",
+        "iconName": "WorkBooth",
+        "minAccess": "front-desk-manager"
+      },
+      {
+        "id": "digital-register",
+        "name": "Digital Register",
+        "link": "/digital-register",
+        "iconName": "Doc",
+        "minAccess": "front-desk-manager"
+      },
+      {
+        "id": "activities",
+        "name": "Activity Manager",
+        "link": "/activity-manager",
+        "iconName": "SwimmingPool",
+        "minAccess": "activity-manager"
+      },
+      {
+        "id": "chat-access",
+        "name": "Chat Access",
+        "link": "/chat-access",
+        "iconName": "Chat",
+        "minAccess": "front-desk-manager"
+      },
+      {
+        "id": "reports",
+        "name": "Reports",
+        "link": "/reports",
+        "iconName": "Monitor",
+        "minAccess": "front-desk-manager"
+      },
+      {
+        "id": "demand-dashboard",
+        "name": "Demand Dashboard",
+        "link": "/demand-dashboard",
+        "iconName": "Monitor",
+        "minAccess": "property-manager",
+        "requiredDataKey": "demand_dashboard_url"
+      },
+      {
+        "id": "resource-center",
+        "name": "Resource Center",
+        "link": "/resource-center",
+        "iconName": "Info",
+        "minAccess": "property-manager",
+        "requiredDataKey": "resource_center_url"
+      },
+      {
+        "id": "staff",
+        "name": "Staff",
+        "link": "/staff",
+        "iconName": "People",
+        "minAccess": "property-manager"
+      }
+    ]
+  }
+]

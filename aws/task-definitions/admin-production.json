@@ -1,0 +1,89 @@
+{
+  "family": "mono-front-admin-production",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::670664477975:role/mono-front-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::670664477975:role/mono-front-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "admin",
+      "image": "PLACEHOLDER_IMAGE",
+      "portMappings": [
+        {
+          "containerPort": 3000
+        }
+      ],
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/mono-front-admin-production",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "secrets": [
+        {
+          "name": "APP_ID ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-admin-production-secrets-uUYLiD:APP_ID ::"
+        },
+        {
+          "name": "NODE_ENV ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-admin-production-secrets-uUYLiD:NODE_ENV ::"
+        },
+        {
+          "name": "NEXT_ASSET_PREFIX ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-admin-production-secrets-uUYLiD:NEXT_ASSET_PREFIX ::"
+        },
+        {
+          "name": "NEXT_BASE_PATH ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-admin-production-secrets-uUYLiD:NEXT_BASE_PATH ::"
+        },
+        {
+          "name": "API_BASE_URL ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-admin-production-secrets-uUYLiD:API_BASE_URL ::"
+        },
+        {
+          "name": "API_SOCKET_URL ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-admin-production-secrets-uUYLiD:API_SOCKET_URL ::"
+        },
+        {
+          "name": "WEB_BASE_URL ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-admin-production-secrets-uUYLiD:WEB_BASE_URL ::"
+        },
+        {
+          "name": "ZOSTEL_BASE_WEB_URL ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-admin-production-secrets-uUYLiD:ZOSTEL_BASE_WEB_URL ::"
+        },
+        {
+          "name": "API_BASE_URL_ZOSTEL ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-admin-production-secrets-uUYLiD:API_BASE_URL_ZOSTEL ::"
+        },
+        {
+          "name": "ZOSTEL_APP_ID ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-admin-production-secrets-uUYLiD:ZOSTEL_APP_ID ::"
+        },
+        {
+          "name": "NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-admin-production-secrets-uUYLiD:NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ::"
+        },
+        {
+          "name": "ZOSTEL_ADMIN_URL ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-admin-production-secrets-uUYLiD:ZOSTEL_ADMIN_URL ::"
+        },
+        {
+          "name": "TRIP_OPERATOR_ID ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-admin-production-secrets-uUYLiD:TRIP_OPERATOR_ID ::"
+        },
+        {
+          "name": "POA_CONTRACT_ID ",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:670664477975:secret:mono-front-admin-production-secrets-uUYLiD:POA_CONTRACT_ID ::"
+        }
+      ]
+    }
+  ]
+}

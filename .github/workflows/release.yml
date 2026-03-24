@@ -1,0 +1,81 @@
+name: Production Deployment
+
+run-name: Deployed to Production by @${{ github.actor }}
+
+on:
+  push:
+    branches:
+      - main-old
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # - name: Checkout Repository
+      #   uses: actions/checkout@v4
+
+      # - name: Set up Node.js
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: "20"
+
+      # - name: Install Dependencies
+      #   run: yarn install --frozen-lockfile --prefer-offline
+
+      # - name: Build (Parallel)
+      #   run: |
+      #     NODE_ENV=production yarn nx run-many --target build --projects=admin,website,dashboard,pms,payment,web-checkin,meme,comic,zo-ops,ops-backend --parallel=4 --maxParallel=4 --skip-nx-cache
+      #     find dist -type f -exec chmod 666 {} +
+      #   env:
+      #     NX_CLOUD_DISTRIBUTED_EXECUTION: false
+
+      # - name: Copy Build Files to Server
+      #   uses: appleboy/scp-action@master
+      #   with:
+      #     host: ${{ secrets.SSH_HOST_PRODUCTION }}
+      #     username: ${{ secrets.SSH_USER }}
+      #     key: ${{ secrets.SSH_PRIVATE_KEY }}
+      #     port: 22
+      #     source: "dist/*"
+      #     target: "~/"
+      #     overwrite: true
+
+      - name: Execute Deployment Commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST_PRODUCTION }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            export NVM_DIR=~/.nvm
+            source ~/.nvm/nvm.sh
+            nvm use 20
+            cd /home/${{ secrets.SSH_USER }}/apps/mono-front
+            git checkout main
+            git pull origin main
+            yarn install
+            NODE_ENV=production yarn nx run-many --target build --projects=admin,website,dashboard,pms,payment,web-checkin,meme,comic,zo-ops,ops-backend --parallel=4 --maxParallel=4 --skip-nx-cache
+            # sudo rm -rf /home/${{ secrets.SSH_USER }}/apps/mono-front/dist
+            # sudo cp -r /home/${{ secrets.SSH_USER }}/dist /home/${{ secrets.SSH_USER }}/apps/mono-front
+            # sudo chown -R ${{ secrets.SSH_USER }}:${{ secrets.SSH_USER }} /home/${{ secrets.SSH_USER }}/apps/mono-front/dist
+            sudo chmod -R 755 /home/${{ secrets.SSH_USER }}/apps/mono-front/dist
+            # Upload Next.js static files to S3 in parallel
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/admin/.next/static/ s3://zoworld-static/_next/static/ --acl public-read &
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/pms/.next/static/ s3://zoworld-static/_next/static/ --acl public-read &
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/website/.next/static/ s3://zoworld-static/_next/static/ --acl public-read &
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/dashboard/.next/static/ s3://zoworld-static/_next/static/ --acl public-read &
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/web-checkin/.next/static/ s3://zoworld-static/_next/static/ --acl public-read &
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/payment/.next/static/ s3://zoworld-static/_next/static/ --acl public-read &
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/meme/.next/static/ s3://zoworld-static/_next/static/ --acl public-read &
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/comic/.next/static/ s3://zoworld-static/_next/static/ --acl public-read &
+            sudo aws s3 cp --recursive /home/${{ secrets.SSH_USER }}/apps/mono-front/dist/apps/zo-ops/.next/static/ s3://zoworld-static/_next/static/ --acl public-read &
+            # Wait for all uploads to complete
+            wait
+            # sudo rm -rf /home/${{ secrets.SSH_USER }}/dist
+            # git checkout main
+            # git pull origin main
+            # yarn install
+            pm2 restart mono-front
+
