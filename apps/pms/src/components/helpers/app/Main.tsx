@@ -11,7 +11,7 @@ import AccessDenied from "./AccessDenied";
 import Navigation from "./Navigation";
 
 // Customer-facing routes bypass admin shell (no sidebar, no role check)
-const CUSTOMER_ROUTES = ["/cafe/order"];
+const CUSTOMER_ROUTES = ["/cafe/order/"];
 
 interface MainProps {
   Component: NextComponentType<NextPageContext, any, GeneralObject>;

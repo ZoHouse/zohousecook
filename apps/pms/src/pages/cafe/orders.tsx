@@ -1,17 +1,17 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { NextPage } from "next";
-import { Button, Empty, Segmented, Spin, Table, Tag } from "antd";
+import { Empty, Segmented, Spin, Table, Tag } from "antd";
 import type { TableColumnsType } from "antd";
 import ZoHouseGuard from "../../components/helpers/app/ZoHouseGuard";
 import { Page, PageContent, PageHeader } from "../../components/ui";
-import { useCafeOrders } from "../../hooks/cafe/useCafeOrders";
 import { usePropertyId } from "../../hooks/cafe/usePropertyId";
+import { supabase } from "../../configs/supabase";
 import {
   STATUS_LABELS,
   STATUS_TAG_COLORS,
 } from "../../lib/cafe/kitchen-status";
 import { formatPaise } from "../../lib/cafe/order-calculator";
-import type { CafeOrderWithItems, KitchenStatus } from "../../types/cafe";
+import type { KitchenStatus } from "../../types/cafe";
 
 const PAGE_SIZE = 25;
 
@@ -25,39 +25,57 @@ const STATUS_OPTIONS = [
   { label: "Cancelled", value: "cancelled" },
 ];
 
-function formatTime(iso: string): string {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleTimeString("en-IN", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  } catch {
-    return "--:--";
-  }
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Order = Record<string, any>;
 
 const CafeOrdersPage: NextPage = () => {
-  const { propertyId, isLoading: isLoadingProperty } = usePropertyId();
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const { propertyId, isLoading: propLoading } = usePropertyId();
+  const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  const { orders, totalCount, isLoading } = useCafeOrders({
-    propertyId,
-    kitchenStatus: statusFilter || null,
-    page,
-    pageSize: PAGE_SIZE,
-  });
+  const fetchOrders = useCallback(async () => {
+    if (!propertyId) {
+      setOrders([]);
+      setTotal(0);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const from = (page - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
 
-  const columns: TableColumnsType<CafeOrderWithItems> = [
+    let q = supabase
+      .from("cafe_orders")
+      .select("*", { count: "exact" })
+      .eq("property_id", propertyId)
+      .order("created_at", { ascending: false })
+      .range(from, to);
+
+    if (statusFilter) {
+      q = q.eq("kitchen_status", statusFilter);
+    }
+
+    const { data, count } = await q;
+    setOrders(data || []);
+    setTotal(count ?? 0);
+    setLoading(false);
+  }, [propertyId, statusFilter, page]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  const columns: TableColumnsType<Order> = [
     {
       title: "#",
-      key: "display_number",
+      key: "num",
       width: 60,
-      render: (_: unknown, order: CafeOrderWithItems) => (
+      render: (_: unknown, r: Order) => (
         <span style={{ fontFamily: "monospace", fontWeight: 600 }}>
-          #{order.display_number}
+          #{r.display_number}
         </span>
       ),
     },
@@ -65,52 +83,50 @@ const CafeOrdersPage: NextPage = () => {
       title: "Time",
       key: "time",
       width: 80,
-      render: (_: unknown, order: CafeOrderWithItems) => (
-        <span style={{ fontFamily: "monospace", fontSize: 12 }}>
-          {formatTime(order.created_at)}
-        </span>
-      ),
-    },
-    {
-      title: "Table",
-      key: "table",
-      width: 100,
-      render: (_: unknown, order: CafeOrderWithItems) => (
-        <span style={{ textTransform: "capitalize" }}>
-          {order.table?.code || (order.mode || "").replace("_", " ")}
-        </span>
-      ),
-    },
-    {
-      title: "Items",
-      key: "items",
-      width: 60,
-      render: (_: unknown, order: CafeOrderWithItems) => {
-        const count =
-          order.order_items?.filter(
-            (i) => i.item_status === "active"
-          ).length ?? 0;
-        return <span style={{ fontFamily: "monospace" }}>{count}</span>;
+      render: (_: unknown, r: Order) => {
+        try {
+          return (
+            <span style={{ fontFamily: "monospace", fontSize: 12 }}>
+              {new Date(r.created_at).toLocaleTimeString("en-IN", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              })}
+            </span>
+          );
+        } catch {
+          return "--:--";
+        }
       },
+    },
+    {
+      title: "Mode",
+      key: "mode",
+      width: 100,
+      render: (_: unknown, r: Order) => (
+        <span style={{ textTransform: "capitalize" }}>
+          {(r.mode || "").replace("_", " ")}
+        </span>
+      ),
     },
     {
       title: "Total",
       key: "total",
       width: 90,
-      render: (_: unknown, order: CafeOrderWithItems) => (
-        <span style={{ fontWeight: 600 }}>{formatPaise(order.total)}</span>
+      render: (_: unknown, r: Order) => (
+        <span style={{ fontWeight: 600 }}>{formatPaise(r.total || 0)}</span>
       ),
     },
     {
       title: "Status",
       key: "status",
       width: 110,
-      render: (_: unknown, order: CafeOrderWithItems) => {
-        const status = order.kitchen_status as KitchenStatus;
-        if (!status) return <Tag>Pending</Tag>;
+      render: (_: unknown, r: Order) => {
+        const s = r.kitchen_status as KitchenStatus;
+        if (!s) return <Tag>Pending</Tag>;
         return (
-          <Tag color={STATUS_TAG_COLORS[status] || "default"}>
-            {STATUS_LABELS[status] || status}
+          <Tag color={STATUS_TAG_COLORS[s] || "default"}>
+            {STATUS_LABELS[s] || s}
           </Tag>
         );
       },
@@ -119,16 +135,9 @@ const CafeOrdersPage: NextPage = () => {
       title: "Payment",
       key: "payment",
       width: 120,
-      render: (_: unknown, order: CafeOrderWithItems) => (
-        <span
-          style={{
-            fontSize: 12,
-            color: "rgba(255,255,255,0.55)",
-            textTransform: "capitalize",
-          }}
-        >
-          {(order.payment_mode || "").replace("_", " ")} /{" "}
-          {order.payment_status || "pending"}
+      render: (_: unknown, r: Order) => (
+        <span style={{ fontSize: 12, opacity: 0.6, textTransform: "capitalize" }}>
+          {(r.payment_mode || "").replace("_", " ")} / {r.payment_status || "pending"}
         </span>
       ),
     },
@@ -143,21 +152,15 @@ const CafeOrdersPage: NextPage = () => {
             <Segmented
               options={STATUS_OPTIONS}
               value={statusFilter}
-              onChange={(val) => {
-                setStatusFilter(val as string);
+              onChange={(v) => {
+                setStatusFilter(v as string);
                 setPage(1);
               }}
             />
           </div>
 
-          {isLoading || isLoadingProperty ? (
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                padding: 60,
-              }}
-            >
+          {loading || propLoading ? (
+            <div className="flex justify-center py-16">
               <Spin size="large" />
             </div>
           ) : orders.length === 0 ? (
@@ -166,18 +169,18 @@ const CafeOrdersPage: NextPage = () => {
               image={Empty.PRESENTED_IMAGE_SIMPLE}
             />
           ) : (
-            <Table<CafeOrderWithItems>
+            <Table
               dataSource={orders}
               columns={columns}
               rowKey="id"
               pagination={{
                 current: page,
                 pageSize: PAGE_SIZE,
-                total: totalCount,
+                total,
                 onChange: (p: number) => setPage(p),
                 showSizeChanger: false,
               }}
-              scroll={{ x: 600 }}
+              scroll={{ x: 560 }}
               size="small"
             />
           )}
