@@ -49,8 +49,10 @@ const Navigation: React.FC<Navigation> = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
 
-  const isActiveLink = (href: string) =>
-    href === "/" ? router.pathname === "/" : router.pathname.startsWith(href);
+  const isActiveLink = (href: string) => {
+    if (href === "/" || href === "/cafe") return router.pathname === href;
+    return router.pathname.startsWith(href);
+  };
 
   const handleOpenMenu: React.MouseEventHandler<HTMLButtonElement> = (e) => {
     e.preventDefault();

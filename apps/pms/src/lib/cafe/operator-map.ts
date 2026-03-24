@@ -1,27 +1,15 @@
-import { supabase } from '../../configs/supabase'
+/**
+ * Maps PMS operator codes to Supabase cafe_properties UUIDs.
+ *
+ * Hardcoded mapping avoids RLS issues with the cafe_properties table.
+ * If a new Zo House property is added, add its operator code + property UUID here.
+ */
 
-const operatorPropertyCache: Record<string, string> = {}
-
-const CODE_MAP: Record<string, string> = {
-  BNGHO812: 'BLR',
-  BNGS531: 'WTF',
+const OPERATOR_TO_PROPERTY: Record<string, string> = {
+  BNGHO812: 'f8113423-fb4b-4c43-91d7-e281bdd2f81a',  // Zo House BLR (Koramangala)
+  BNGS531: '19736bbd-e9d8-4de5-881c-ecd2adc1e9f9',   // WTFxZo (Whitefield)
 }
 
 export async function getPropertyId(operatorCode: string): Promise<string | null> {
-  if (operatorPropertyCache[operatorCode]) {
-    return operatorPropertyCache[operatorCode]
-  }
-  const propertyCode = CODE_MAP[operatorCode]
-  if (!propertyCode) return null
-
-  const { data } = await supabase
-    .from('cafe_properties')
-    .select('id')
-    .eq('code', propertyCode)
-    .single()
-
-  if (data?.id) {
-    operatorPropertyCache[operatorCode] = data.id
-  }
-  return data?.id || null
+  return OPERATOR_TO_PROPERTY[operatorCode] || null
 }
