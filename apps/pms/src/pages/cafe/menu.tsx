@@ -137,10 +137,51 @@ const CafeMenuPage: NextPage = () => {
               <Spin size="large" />
             </div>
           ) : (
+            <>
+              {/* Mobile category chips — horizontal scroll */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 6,
+                  overflowX: 'auto',
+                  paddingBottom: 12,
+                  marginBottom: 4,
+                  WebkitOverflowScrolling: 'touch',
+                }}
+              >
+                <Button
+                  size="small"
+                  type={!selectedCategoryId ? 'primary' : 'default'}
+                  onClick={() => setSelectedCategoryId(null)}
+                  style={{ flexShrink: 0 }}
+                >
+                  All ({items.length})
+                </Button>
+                {categories.map((cat) => (
+                  <Button
+                    key={cat.id}
+                    size="small"
+                    type={selectedCategoryId === cat.id ? 'primary' : 'default'}
+                    onClick={() => setSelectedCategoryId(cat.id)}
+                    style={{
+                      flexShrink: 0,
+                      opacity: cat.is_active ? 1 : 0.5,
+                    }}
+                  >
+                    {cat.name} ({getItemCount(cat.id)})
+                  </Button>
+                ))}
+                <Button
+                  size="small"
+                  icon={<PlusOutlined />}
+                  onClick={() => setAddCategoryModalOpen(true)}
+                  style={{ flexShrink: 0 }}
+                />
+              </div>
+
             <Row gutter={[16, 16]}>
-              {/* Left sidebar — categories */}
-              <Col xs={0} sm={6} md={5}>
-                {/* Desktop: sidebar list */}
+              {/* Left sidebar — categories (desktop only) */}
+              <Col xs={0} lg={5}>
                 <div>
                   <div style={{ marginBottom: 8 }}>
                     <Button
@@ -219,14 +260,14 @@ const CafeMenuPage: NextPage = () => {
               </Col>
 
               {/* Right — items grid */}
-              <Col xs={24} sm={18} md={19}>
+              <Col xs={24} lg={19}>
                 {/* Header row */}
                 <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: 12,
+                    gap: 8,
                     marginBottom: 16,
                     flexWrap: 'wrap',
                   }}
@@ -243,13 +284,13 @@ const CafeMenuPage: NextPage = () => {
                       </span>
                     )}
                   </span>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <Input
                       prefix={<SearchOutlined style={{ color: '#8c8c8c' }} />}
                       placeholder="Search items..."
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      style={{ width: 200 }}
+                      style={{ width: 180, minWidth: 120 }}
                       allowClear
                     />
                     {selectedCategoryId && (
@@ -414,6 +455,7 @@ const CafeMenuPage: NextPage = () => {
                 )}
               </Col>
             </Row>
+            </>
           )}
         </PageContent>
       </Page>

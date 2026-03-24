@@ -1,9 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Badge, Button, Card, Space, Tag, Typography } from 'antd'
 import { useCafeRealtimeOrders } from '../../hooks/cafe/useCafeRealtimeOrders'
 import {
   ADVANCE_ACTION_LABELS,
-  KANBAN_COLUMNS,
   STATUS_LABELS,
   STATUS_TAG_COLORS,
 } from '../../lib/cafe/kitchen-status'
@@ -12,7 +11,6 @@ import moment from 'moment'
 
 const { Text, Title } = Typography
 
-// Columns shown on the board — 3 visible: New+Accepted merged, Preparing, Ready
 const BOARD_COLUMNS: {
   key: string
   label: string
@@ -47,6 +45,7 @@ interface KitchenBoardProps {
 export function KitchenBoard({ propertyId, onViewDetail }: KitchenBoardProps) {
   const { orders, isLoading, advanceStatus, cancelOrder } =
     useCafeRealtimeOrders(propertyId)
+  const [mobileTab, setMobileTab] = useState('new')
 
   if (isLoading) {
     return (
@@ -64,95 +63,185 @@ export function KitchenBoard({ propertyId, onViewDetail }: KitchenBoardProps) {
     )
   }
 
+  const getColumnOrders = (statuses: KitchenStatus[]) =>
+    orders.filter((o) => statuses.includes(o.kitchen_status as KitchenStatus))
+
   return (
-    <div
-      style={{
-        display: 'flex',
-        gap: 16,
-        alignItems: 'flex-start',
-        overflowX: 'auto',
-        paddingBottom: 8,
-      }}
-    >
-      {BOARD_COLUMNS.map((col) => {
-        const colOrders = orders.filter((o) =>
-          col.statuses.includes(o.kitchen_status as KitchenStatus)
-        )
-
-        return (
-          <div
-            key={col.key}
-            style={{
-              flex: '1 1 300px',
-              minWidth: 280,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-            }}
-          >
-            {/* Column header */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '8px 12px',
-                background: 'rgba(255,255,255,0.06)',
-                borderRadius: 8,
-                marginBottom: 4,
-              }}
-            >
-              <Text strong style={{ fontSize: 14 }}>
-                {col.label}
-              </Text>
-              <Badge
-                count={colOrders.length}
+    <>
+      {/* ── Mobile: tab switcher + single column ─────────────────────────── */}
+      <div className="kitchen-mobile" style={{ display: 'none' }}>
+        {/* Tab bar */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 6,
+            marginBottom: 12,
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
+            paddingBottom: 8,
+            paddingTop: 4,
+          }}
+        >
+          {BOARD_COLUMNS.map((col) => {
+            const count = getColumnOrders(col.statuses).length
+            const isActive = mobileTab === col.key
+            return (
+              <button
+                key={col.key}
+                onClick={() => setMobileTab(col.key)}
                 style={{
-                  backgroundColor: col.badgeColor,
+                  flex: 1,
+                  padding: '10px 8px',
+                  borderRadius: 8,
+                  border: isActive ? `2px solid ${col.badgeColor}` : '2px solid rgba(255,255,255,0.1)',
+                  background: isActive ? 'rgba(255,255,255,0.08)' : 'transparent',
+                  color: isActive ? '#fff' : 'rgba(255,255,255,0.5)',
                   fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  transition: 'all 0.15s',
                 }}
-                showZero
-              />
-            </div>
+              >
+                {col.label.split(' / ')[0]}
+                <Badge
+                  count={count}
+                  style={{ backgroundColor: col.badgeColor, fontWeight: 600 }}
+                  showZero
+                />
+              </button>
+            )
+          })}
+        </div>
 
-            {/* Order cards */}
+        {/* Active column orders */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {(() => {
+            const activeCol = BOARD_COLUMNS.find((c) => c.key === mobileTab) || BOARD_COLUMNS[0]
+            const colOrders = getColumnOrders(activeCol.statuses)
+            if (colOrders.length === 0) {
+              return (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>
+                  No orders
+                </div>
+              )
+            }
+            return colOrders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                onAdvance={advanceStatus}
+                onCancel={cancelOrder}
+                onViewDetail={onViewDetail}
+              />
+            ))
+          })()}
+        </div>
+      </div>
+
+      {/* ── Desktop: 3-column kanban ─────────────────────────────────────── */}
+      <div
+        className="kitchen-desktop"
+        style={{
+          display: 'flex',
+          gap: 16,
+          alignItems: 'flex-start',
+        }}
+      >
+        {BOARD_COLUMNS.map((col) => {
+          const colOrders = getColumnOrders(col.statuses)
+
+          return (
             <div
+              key={col.key}
               style={{
+                flex: '1 1 300px',
+                minWidth: 280,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 8,
-                maxHeight: 'calc(100vh - 220px)',
-                overflowY: 'auto',
-                paddingRight: 2,
               }}
             >
-              {colOrders.length === 0 ? (
-                <div
+              {/* Column header */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '8px 12px',
+                  background: 'rgba(255,255,255,0.06)',
+                  borderRadius: 8,
+                  marginBottom: 4,
+                }}
+              >
+                <Text strong style={{ fontSize: 14 }}>
+                  {col.label}
+                </Text>
+                <Badge
+                  count={colOrders.length}
                   style={{
-                    textAlign: 'center',
-                    padding: '32px 0',
-                    color: 'rgba(255,255,255,0.3)',
-                    fontSize: 13,
+                    backgroundColor: col.badgeColor,
+                    fontWeight: 600,
                   }}
-                >
-                  No orders
-                </div>
-              ) : (
-                colOrders.map((order) => (
-                  <OrderCard
-                    key={order.id}
-                    order={order}
-                    onAdvance={advanceStatus}
-                    onCancel={cancelOrder}
-                    onViewDetail={onViewDetail}
-                  />
-                ))
-              )}
+                  showZero
+                />
+              </div>
+
+              {/* Order cards */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  maxHeight: 'calc(100vh - 220px)',
+                  overflowY: 'auto',
+                  paddingRight: 2,
+                }}
+              >
+                {colOrders.length === 0 ? (
+                  <div
+                    style={{
+                      textAlign: 'center',
+                      padding: '32px 0',
+                      color: 'rgba(255,255,255,0.3)',
+                      fontSize: 13,
+                    }}
+                  >
+                    No orders
+                  </div>
+                ) : (
+                  colOrders.map((order) => (
+                    <OrderCard
+                      key={order.id}
+                      order={order}
+                      onAdvance={advanceStatus}
+                      onCancel={cancelOrder}
+                      onViewDetail={onViewDetail}
+                    />
+                  ))
+                )}
+              </div>
             </div>
-          </div>
-        )
-      })}
-    </div>
+          )
+        })}
+      </div>
+
+      {/* Responsive styles */}
+      <style>{`
+        @media (max-width: 768px) {
+          .kitchen-mobile { display: block !important; }
+          .kitchen-desktop { display: none !important; }
+        }
+        @media (min-width: 769px) {
+          .kitchen-mobile { display: none !important; }
+          .kitchen-desktop { display: flex !important; }
+        }
+      `}</style>
+    </>
   )
 }
 
@@ -224,7 +313,7 @@ function OrderCard({ order, onAdvance, onCancel, onViewDetail }: OrderCardProps)
           <div
             key={item.id}
             style={{
-              fontSize: 12,
+              fontSize: 13,
               color: 'rgba(255,255,255,0.75)',
               lineHeight: '1.6',
             }}
@@ -235,7 +324,7 @@ function OrderCard({ order, onAdvance, onCancel, onViewDetail }: OrderCardProps)
       </div>
 
       {/* Action buttons */}
-      <Space size={6} style={{ width: '100%' }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
         {advanceLabel && (
           <Button
             type="primary"
@@ -255,7 +344,7 @@ function OrderCard({ order, onAdvance, onCancel, onViewDetail }: OrderCardProps)
         >
           Cancel
         </Button>
-      </Space>
+      </div>
     </Card>
   )
 }
