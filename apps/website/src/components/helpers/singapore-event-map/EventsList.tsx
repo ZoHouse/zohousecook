@@ -1,16 +1,15 @@
 import { Loader } from "@zo/assets/lotties";
 import { useWindowSize } from "@zo/utils/hooks";
-import { isValidString, slugify } from "@zo/utils/string";
 import { forwardRef } from "react";
-import { BookingExperienceResponse } from "../../../config";
+import { UnifiedEventItem } from "../../../config";
 import EventCard from "./EventCard";
 
 interface EventsListProps {
-  events: BookingExperienceResponse[];
+  events: UnifiedEventItem[];
   isLoading: boolean;
   selectedEventId?: string;
   setSelectedEvent: React.Dispatch<
-    React.SetStateAction<BookingExperienceResponse | null>
+    React.SetStateAction<UnifiedEventItem | null>
   >;
 }
 
@@ -33,26 +32,24 @@ const EventsList = forwardRef<HTMLDivElement, EventsListProps>(
               <span className="text-zui-white mt-2">Loading events...</span>
             </div>
           ) : events.length > 0 ? (
-            events.map((event) => (
+            events.map((item) => (
               <EventCard
-                key={event.pid}
-                isSelected={event.pid === selectedEventId}
-                name={event.name}
-                startAt={event.start_at}
-                subcategory={event.subcategory}
-                price={String(event.price)}
-                onSelect={setSelectedEvent.bind(null, event)}
-                icon={event.icon}
-                location={event.location}
-                distance={event.distance}
-                registerLink={
-                  isValidString(event.registration_link)
-                    ? event.registration_link
-                    : `${process.env.WEB_BASE_URL}/events/${slugify(
-                        event.name.split(" ").join("-")
-                      )}-${event.pid}`
-                }
-                navigationLink={event.navigation_link}
+                key={item.id}
+                isSelected={item.id === selectedEventId}
+                name={item.name}
+                startAt={item.date}
+                startTime={item.startTime}
+                endTime={item.endTime}
+                subcategory={item.subcategory}
+                price={String(item.price || 0)}
+                onSelect={setSelectedEvent.bind(null, item)}
+                icon={item.icon}
+                location={item.location}
+                distance={item.distance as number}
+                registerLink={item.registrationLink || ''}
+                navigationLink={item.navigationLink || ''}
+                itemType={item.type}
+                operatorName={item.operatorName}
               />
             ))
           ) : (

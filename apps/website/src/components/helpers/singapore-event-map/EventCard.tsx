@@ -7,6 +7,8 @@ import { rubikClassName } from "../../utils";
 interface EventCardProps {
   name: string;
   startAt: string;
+  startTime?: string;
+  endTime?: string | null;
   price: string;
   location: string;
   distance: number;
@@ -17,11 +19,15 @@ interface EventCardProps {
   icon?: string;
   onSelect?: () => void;
   isInSearch?: boolean;
+  itemType?: 'event' | 'activity';
+  operatorName?: string;
 }
 
 const EventCard: React.FC<EventCardProps> = ({
   name,
   startAt,
+  startTime,
+  endTime,
   onSelect,
   price,
   location,
@@ -32,6 +38,8 @@ const EventCard: React.FC<EventCardProps> = ({
   isInSearch,
   icon,
   isSelected,
+  itemType,
+  operatorName,
 }) => {
   return (
     <div
@@ -52,23 +60,37 @@ const EventCard: React.FC<EventCardProps> = ({
         {name}
       </button>
       <span className="flex items-center gap-2 text-sm mt-3 text-zui-silver">
-        {icon ? (
-          <img src={icon} alt="icon" className="w-4 h-4" />
+        {itemType === 'activity' ? (
+          <>
+            <span>⚡</span>
+            <span>{subcategory || 'Activity'}</span>
+          </>
+        ) : icon ? (
+          <>
+            <img src={icon} alt="icon" className="w-4 h-4" />
+            <span>{subcategory}</span>
+          </>
         ) : (
-          <span>
-            {subcategory ? cultureMarkers[subcategory.toLowerCase()] : "📍"}
-          </span>
+          <>
+            <span>
+              {subcategory ? cultureMarkers[subcategory.toLowerCase()] : "📍"}
+            </span>
+            <span>{subcategory}</span>
+          </>
         )}
-        <span>{subcategory}</span>
       </span>
       <div className="flex items-center gap-10 text-sm mt-2 text-zui-silver">
         <span className="flex items-center gap-2">
           <span>🕒</span>
-          <span>{moment(startAt).format("ddd, DD MMM")}</span>
+          <span>
+            {itemType === 'activity' && startTime
+              ? `${moment(startAt).format("ddd, DD MMM")} • ${startTime}${endTime ? ` - ${endTime}` : ''}`
+              : moment(startAt).format("ddd, DD MMM")}
+          </span>
         </span>
         <span className="flex items-center gap-2">
           <span>💰</span>
-          <span>{price}</span>
+          <span>{itemType === 'activity' && price === "0" ? "Free" : price}</span>
         </span>
       </div>
       <span className="text-sm mt-2 text-zui-silver flex items-start gap-2">
@@ -78,13 +100,15 @@ const EventCard: React.FC<EventCardProps> = ({
         </span>
       </span>
       <div className="flex items-center gap-3 mt-3">
-        <a
-          href={registerLink}
-          target="_blank"
-          className="px-3 py-2 bg-white text-black rounded-full text-xs font-semibold"
-        >
-          Register
-        </a>
+        {!(itemType === 'activity' && price === "0") && (
+          <a
+            href={registerLink}
+            target="_blank"
+            className="px-3 py-2 bg-white text-black rounded-full text-xs font-semibold"
+          >
+            Register
+          </a>
+        )}
         <a
           href={navigationLink}
           target="_blank"

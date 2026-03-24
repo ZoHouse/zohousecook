@@ -14,8 +14,10 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { BookingExperienceResponse } from "../../../config";
+import { BookingExperienceResponse, ZoActivity, UnifiedEventItem } from "../../../config";
 import cultureMarkers from "../../../config/token2049";
+import { mergeEventsAndActivities } from "../../../lib/events/normalize";
+import { CONTENT_FILTER_OPTIONS } from "../../../lib/events/constants";
 import DateFilter from "../singapore-event-map/DateFilter";
 import EventsList from "../singapore-event-map/EventsList";
 import { buildingLayer } from "../singapore-event-map/MapConfig";
@@ -72,6 +74,7 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
   );
 
   const [selectedDate, setSelectedDate] = useState("all");
+  const [contentFilter, setContentFilter] = useState<string>('all');
   const [mapCenter, setMapCenter] = useState<{
     lng: number;
     lat: number;
@@ -92,12 +95,10 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
 
   const { isMobile } = useWindowSize();
 
-  const [filteredEvents, setFilteredEvents] = useState<
-    BookingExperienceResponse[]
-  >([]);
+  const [filteredEvents, setFilteredEvents] = useState<UnifiedEventItem[]>([]);
 
   const [selectedEvent, setSelectedEvent] =
-    useState<BookingExperienceResponse | null>(null);
+    useState<UnifiedEventItem | null>(null);
 
   const { isLoading, data: eventsData } = useQueryApi<
     BookingExperienceResponse[]
@@ -138,6 +139,37 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
       ? generateBoundingBoxQuery(bounds!.getSouthWest(), bounds!.getNorthEast())
       : ""
   );
+
+  const today = new Date().toISOString().split('T')[0];
+  const twoWeeksOut = new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
+  const activityDateParams = `start_date=${today}&end_date=${twoWeeksOut}`;
+
+  const { data: blrActivitiesRaw } = useQueryApi<any>(
+    "BOOKINGS_ACTIVITY_OPERATOR",
+    {
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
+    },
+    `BNGHO812/inventory/`,
+    activityDateParams
+  );
+
+  const { data: wtfActivitiesRaw } = useQueryApi<any>(
+    "BOOKINGS_ACTIVITY_OPERATOR",
+    {
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
+    },
+    `BNGS531/inventory/`,
+    activityDateParams
+  );
+
+  const allActivities = useMemo<ZoActivity[]>(() => [
+    ...((blrActivitiesRaw as any)?.data?.results || blrActivitiesRaw?.results || []),
+    ...((wtfActivitiesRaw as any)?.data?.results || wtfActivitiesRaw?.results || []),
+  ], [blrActivitiesRaw, wtfActivitiesRaw]);
 
   const dateOptions = useMemo(() => {
     if (eventsData) {
@@ -197,9 +229,9 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
     });
   }
 
-  const showEventOnMap = useCallback((event: BookingExperienceResponse) => {
+  const showEventOnMap = useCallback((item: UnifiedEventItem) => {
     if (mapRef.current) {
-      zoomToLocation(mapRef.current, [+event.longitude, +event.latitude], 16);
+      zoomToLocation(mapRef.current, [item.longitude, item.latitude], 16);
     }
   }, []);
 
@@ -271,7 +303,7 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
   }, [userLocation]);
 
   const plotMarkers = useCallback(
-    (events: BookingExperienceResponse[]) => {
+    (events: UnifiedEventItem[]) => {
       if (!mapRef?.current) return;
 
       console.log("Plotting markers...", events.length);
@@ -284,52 +316,45 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
       markerRefs.current = [];
 
       // Plot new markers based on filtered events
-      events.forEach((event, index) => {
-        if (event.category === "listing") {
-          let eventMarkerElement;
-          if (event.icon) {
-            eventMarkerElement = document.createElement("img");
-            eventMarkerElement.src = event.icon;
+      events.forEach((item, index) => {
+        let markerElement: HTMLElement;
 
-            eventMarkerElement.className =
+        if (item.type === 'activity') {
+          markerElement = document.createElement("span");
+          markerElement.className =
+            "text-sm bg-[#cfff50]/80 w-8 h-8 rounded-full flex justify-center items-center text-black font-bold";
+          markerElement.textContent = "⚡";
+        } else if (item.originalEvent?.category === "listing") {
+          if (item.icon) {
+            markerElement = document.createElement("img");
+            (markerElement as HTMLImageElement).src = item.icon;
+            markerElement.className =
               "mapbox-custom-image-marker w-10 h-10";
           } else {
-            eventMarkerElement = document.createElement("span");
-            eventMarkerElement.className =
+            markerElement = document.createElement("span");
+            markerElement.className =
               "mapbox-custom-marker text-xl md:text-lg bg-zui-dark/50 w-10 h-10 rounded-full flex justify-center items-center";
-            eventMarkerElement.textContent =
-              cultureMarkers[event.subcategory!.toLowerCase()] || "📍";
+            markerElement.textContent =
+              cultureMarkers[item.subcategory?.toLowerCase() || ""] || "📍";
           }
-
-          markerRefs.current.push(eventMarkerElement);
-
-          new mapboxgl.Marker(eventMarkerElement)
-            .setLngLat([event.longitude, event.latitude])
-            .addTo(mapRef.current!);
-
-          eventMarkerElement.addEventListener("click", () => {
-            setSelectedEvent(event);
-            scrollToCard(index);
-          });
         } else {
-          const eventMarkerElement = document.createElement("img");
-          eventMarkerElement.src =
-            event.icon ||
+          markerElement = document.createElement("img");
+          (markerElement as HTMLImageElement).src =
+            item.icon ||
             `${process.env.MEDIA_BASE_URL}/gallery/media/images/1de63b88-e13d-48f8-8ffa-b6aa1692485d_20240914074959.svg`;
-
-          eventMarkerElement.className = "zo-event-marker";
-
-          markerRefs.current.push(eventMarkerElement);
-
-          new mapboxgl.Marker(eventMarkerElement)
-            .setLngLat([event.longitude, event.latitude])
-            .addTo(mapRef.current!);
-
-          eventMarkerElement.addEventListener("click", () => {
-            setSelectedEvent(event);
-            scrollToCard(index);
-          });
+          markerElement.className = "zo-event-marker";
         }
+
+        markerRefs.current.push(markerElement);
+
+        new mapboxgl.Marker(markerElement)
+          .setLngLat([item.longitude, item.latitude])
+          .addTo(mapRef.current!);
+
+        markerElement.addEventListener("click", () => {
+          setSelectedEvent(item);
+          scrollToCard(index);
+        });
       });
       console.log("Markers plotted successfully!", markerRefs.current);
     },
@@ -409,29 +434,24 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
   }, [filteredEvents]);
 
   useEffect(() => {
-    if (!eventsData) {
-      return;
-    }
+    if (!eventsData && allActivities.length === 0) return;
 
-    const filtered = eventsData.filter((event) => {
-      const eventStartDate = moment(event.start_at);
-      const eventEndDate = moment(event.end_at);
+    const merged = mergeEventsAndActivities(
+      contentFilter === 'activities' ? [] : (eventsData || []),
+      contentFilter === 'events' ? [] : allActivities,
+    );
 
-      const isDateMatch =
-        selectedDate !== "all"
-          ? moment(selectedDate).isBetween(
-              eventStartDate,
-              eventEndDate,
-              "date",
-              "[]"
-            )
-          : true;
-
-      return isDateMatch;
+    const filtered = merged.filter((item) => {
+      // Date filter
+      if (selectedDate !== 'all') {
+        const itemDate = item.date?.split('T')[0];
+        if (itemDate !== selectedDate) return false;
+      }
+      return true;
     });
 
     setFilteredEvents(filtered);
-  }, [selectedDate, eventsData, userLocation]);
+  }, [selectedDate, contentFilter, eventsData, allActivities]);
 
   // Get user's location
   useEffect(() => {
@@ -506,12 +526,12 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
       console.log("Selected event:", selectedEvent);
       showEventOnMap(selectedEvent);
       const index = filteredEvents.findIndex(
-        (event) => event.pid === selectedEvent.pid
+        (item) => item.id === selectedEvent.id
       );
       scaleMarker(index);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedEvent, showEventOnMap]);
+  }, [selectedEvent, showEventOnMap, filteredEvents, scaleMarker]);
 
   return (
     <>
@@ -537,6 +557,15 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
               selectedDate={selectedDate}
               onDateChange={setSelectedDate}
             />
+            <select
+              value={contentFilter}
+              onChange={(e) => setContentFilter(e.target.value)}
+              className="bg-zui-dark/80 text-white border border-white/20 rounded-lg px-3 py-2 text-sm backdrop-blur-sm"
+            >
+              {CONTENT_FILTER_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
           </div>
         </header>
 
@@ -569,7 +598,7 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
           events={filteredEvents}
           isLoading={isLoading}
           setSelectedEvent={setSelectedEvent}
-          selectedEventId={selectedEvent?.pid}
+          selectedEventId={selectedEvent?.id}
         />
       </section>
     </>
