@@ -30,6 +30,9 @@ export type {
   Questionnaire,
   Sku,
   Tweets,
+  UnifiedEventItem,
+  ZoActivity,
+  ZoActivitySku,
   ZoWorldDestinationResponse,
 } from "./definitions";
 

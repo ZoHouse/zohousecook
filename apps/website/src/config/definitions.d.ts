@@ -102,6 +102,61 @@ export type BookingExperienceResponse = {
   tags: string[];
 };
 
+export type ZoActivitySku = {
+  pid: string;
+  name: string;
+  specifications: Record<string, unknown>;
+  price: number;
+  slabs: unknown[];
+  units: number;
+  has_infinite_units: boolean;
+  sellable: boolean;
+  date: string;
+  start_time: string;
+  end_time: string | null;
+  inventory: string;
+  currency: Currency;
+};
+
+export type ZoActivity = {
+  operator: string;
+  type: string;
+  category: string;
+  status: string;
+  skus: ZoActivitySku[];
+  media: Media[];
+  pid: string;
+  sort_index: number;
+  name: string;
+  description: string;
+  data: Record<string, unknown>;
+  subcategory: string;
+  occupancy?: number;
+  tax_category: number;
+};
+
+export type UnifiedEventItem = {
+  id: string;
+  type: 'event' | 'activity';
+  name: string;
+  date: string;
+  startTime?: string;
+  endTime?: string | null;
+  category: string;
+  subcategory?: string;
+  price: number;
+  latitude: number;
+  longitude: number;
+  location: string;
+  distance?: number | string;
+  icon?: string;
+  coverImage?: string;
+  registrationLink?: string;
+  navigationLink?: string;
+  operatorName?: string;
+  originalEvent?: BookingExperienceResponse;
+};
+
 export type Pricing = {
   pid: string;
   strike_price: number;

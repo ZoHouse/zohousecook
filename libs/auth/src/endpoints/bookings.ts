@@ -181,6 +181,22 @@ export const bookingsQueryApis = {
         ),
     };
   }) as QueryObjectFunction,
+  // /activity/{operatorID}/inventory/
+  BOOKINGS_ACTIVITY_OPERATOR: ((additionalRoute, search) => {
+    return {
+      queryKey: [
+        "bookings",
+        "activity",
+        "operator",
+        additionalRoute,
+        search,
+      ],
+      queryFn: async () =>
+        await zoServer.get(
+          `/api/v1/bookings/activity/${additionalRoute}?${search}`
+        ),
+    };
+  }) as QueryObjectFunction,
   BOOKINGS_SEED: ((additionalRoute, search) => {
     return {
       queryKey: ["bookings", "seed", additionalRoute, search],
