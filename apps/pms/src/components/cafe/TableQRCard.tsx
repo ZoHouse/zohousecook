@@ -1,7 +1,9 @@
 import React from 'react'
-import { Card, Badge, Switch, Button, Space } from 'antd'
-import { DownloadOutlined, EditOutlined } from '@ant-design/icons'
+import { Card, Switch, Button, Space, Typography } from 'antd'
+import { DownloadOutlined } from '@ant-design/icons'
 import type { CafeTable } from '../../types/cafe'
+
+const { Text } = Typography
 
 interface TableQRCardProps {
   table: CafeTable
@@ -9,8 +11,9 @@ interface TableQRCardProps {
   onEdit?: (table: CafeTable) => void
 }
 
-const TableQRCard: React.FC<TableQRCardProps> = ({ table, onToggleActive, onEdit }) => {
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(table.qr_data)}`
+const TableQRCard: React.FC<TableQRCardProps> = ({ table, onToggleActive }) => {
+  const orderUrl = `https://zozozo.work/cafezomad/${table.id}`
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(orderUrl)}`
 
   const handleDownloadQR = () => {
     const link = document.createElement('a')
@@ -22,69 +25,65 @@ const TableQRCard: React.FC<TableQRCardProps> = ({ table, onToggleActive, onEdit
   return (
     <Card
       size="small"
-      style={{ opacity: table.is_active ? 1 : 0.6, transition: 'opacity 0.2s' }}
-      styles={{ body: { padding: 12 } }}
+      style={{
+        opacity: table.is_active ? 1 : 0.5,
+        transition: 'opacity 0.2s',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+      styles={{ body: { padding: 16, display: 'flex', flexDirection: 'column', height: '100%' } }}
     >
-      {/* Header row */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <Space size={8}>
-          <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 15 }}>{table.code}</span>
-          {table.label && (
-            <span style={{ color: '#8c8c8c', fontSize: 12 }}>{table.label}</span>
-          )}
-        </Space>
-        <Badge
-          count={`${table.capacity} seats`}
-          style={{ backgroundColor: '#595959', fontSize: 11 }}
-        />
+      {/* Label + code */}
+      <div style={{ marginBottom: 4 }}>
+        <Text strong style={{ fontSize: 14, display: 'block' }}>
+          {table.label || table.code}
+        </Text>
+        <Text type="secondary" style={{ fontSize: 11, fontFamily: 'monospace' }}>
+          {table.code} &middot; {table.capacity} seats
+        </Text>
       </div>
 
       {/* Area */}
-      <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 10 }}>{table.area}</div>
+      <Text type="secondary" style={{ fontSize: 11, marginBottom: 12, display: 'block' }}>
+        {table.area}
+      </Text>
 
-      {/* QR code image */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
+      {/* QR code — fixed size container */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 12,
+      }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={qrUrl}
-          alt={`QR code for table ${table.code}`}
-          width={120}
-          height={120}
-          style={{ borderRadius: 6, border: '1px solid #f0f0f0' }}
+          alt={`QR code for ${table.label || table.code}`}
+          width={140}
+          height={140}
+          style={{ borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', display: 'block' }}
         />
       </div>
 
-      {/* Actions row */}
+      {/* Actions row — pinned to bottom */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <Space size={6}>
-          <Button
-            size="small"
-            icon={<DownloadOutlined />}
-            onClick={handleDownloadQR}
-          >
-            QR
-          </Button>
-          {onEdit && (
-            <Button
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => onEdit(table)}
-            >
-              Edit
-            </Button>
-          )}
-        </Space>
+        <Button
+          size="small"
+          icon={<DownloadOutlined />}
+          onClick={handleDownloadQR}
+        >
+          QR
+        </Button>
 
-        <Space size={6}>
-          <span style={{ fontSize: 12, color: table.is_active ? '#52c41a' : '#8c8c8c' }}>
-            {table.is_active ? 'Active' : 'Inactive'}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
           <Switch
             size="small"
             checked={table.is_active}
             onChange={(checked) => onToggleActive(table.id, checked)}
           />
-        </Space>
+        </div>
       </div>
     </Card>
   )

@@ -58,9 +58,6 @@ export function useCafeTables(propertyId: string | null): UseCafeTablesResult {
   }) => {
     if (!propertyId) throw new Error('No property selected')
 
-    // Build qr_data — a URL customers will land on
-    const qrData = `https://zozozo.work/cafe/order/${data.code}`
-
     const { error: err } = await supabase
       .from('cafe_tables')
       .insert({
@@ -70,7 +67,6 @@ export function useCafeTables(propertyId: string | null): UseCafeTablesResult {
         area: data.area,
         capacity: data.capacity,
         is_active: true,
-        qr_data: qrData,
       })
     if (err) throw err
     await fetchTables()
