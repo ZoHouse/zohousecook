@@ -1,5 +1,5 @@
 import { QueryObjectFunction } from "@zo/definitions/auth";
-import { zoServer, zostelServer } from "../utils";
+import { zostelServer } from "../utils";
 
 export const authorizationMutationApis = {};
 
@@ -18,7 +18,7 @@ export const authorizationQueryApis = {
     return {
       queryKey: ["authorization", "scope", "me", additionalRoute, search],
       queryFn: async () =>
-        await zoServer.get(
+        await zostelServer.get(
           `/api/v1/authorization/scope/me/${additionalRoute}?${search}`
         ),
     };
