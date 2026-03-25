@@ -1,11 +1,11 @@
-// apps/pms/src/pages/iot/index.tsx
 import { Spin } from 'antd';
-import { useAssociation } from '../../hooks';
+import useAssociation from '../../hooks/useAssociation';
 import { useIoTCameras, useIoTChat } from '../../hooks/iot';
 import { PulseLine } from '../../components/iot/PulseLine';
 import { FeaturedCamera } from '../../components/iot/FeaturedCamera';
 import { ChatBar } from '../../components/iot/ChatBar';
 import ZoHouseGuard from '../../components/helpers/app/ZoHouseGuard';
+import { Page, PageContent, PageHeader } from '../../components/ui';
 import type { HouseStatus } from '../../types/iot';
 
 function CommandCenter() {
@@ -31,28 +31,31 @@ function CommandCenter() {
   const propertyName = operatorCode === 'BNGHO812' ? 'BLRxZo' : 'WTFxZo';
 
   return (
-    <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', height: '100%', gap: 16 }}>
-      <PulseLine
-        status={houseStatus}
-        isLoading={camerasLoading}
-        propertyName={propertyName}
-      />
+    <Page>
+      <PageHeader title="Command Center" icon="Monitor" />
+      <PageContent>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 16 }}>
+          <PulseLine
+            status={houseStatus}
+            isLoading={camerasLoading}
+            propertyName={propertyName}
+          />
 
-      {camerasLoading ? (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Spin />
+          {camerasLoading ? (
+            <div className="flex justify-center py-20"><Spin size="large" /></div>
+          ) : (
+            <FeaturedCamera cameras={cameras} featured={featured} />
+          )}
+
+          <ChatBar
+            messages={messages}
+            isLoading={chatLoading}
+            onSend={sendMessage}
+            onClear={clearChat}
+          />
         </div>
-      ) : (
-        <FeaturedCamera cameras={cameras} featured={featured} />
-      )}
-
-      <ChatBar
-        messages={messages}
-        isLoading={chatLoading}
-        onSend={sendMessage}
-        onClear={clearChat}
-      />
-    </div>
+      </PageContent>
+    </Page>
   );
 }
 
