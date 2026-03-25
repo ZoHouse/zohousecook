@@ -6,7 +6,6 @@ import { NextComponentType, NextPageContext } from "next";
 import { useRouter } from "next/router";
 import React from "react";
 import { useAssociation } from "../../../../src/hooks";
-import { ZO_FEATURES, isFeatureVisible, hasPrincipalAccess } from "../../../configs";
 import { AssociationProvider } from "../../contexts/association";
 import AccessDenied from "./AccessDenied";
 import Navigation from "./Navigation";
@@ -47,14 +46,8 @@ const Main: React.FC<MainProps> = ({ Component, pageProps }) => {
 };
 
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { effectiveRole, principals, selectedOperator } = useAssociation();
-  const hasAnyAccess =
-    effectiveRole !== "none" ||
-    Object.values(ZO_FEATURES).some(
-      (f) =>
-        isFeatureVisible(f, selectedOperator?.code) &&
-        hasPrincipalAccess(f, principals)
-    );
+  const { effectiveRole } = useAssociation();
+  const hasAnyAccess = effectiveRole !== "none";
 
   return (
     <div className="flex w-full h-full">

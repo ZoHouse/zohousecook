@@ -2,7 +2,6 @@ import { useQueryApi, useZostelAuth } from "@zo/auth";
 import { GeneralObject } from "@zo/definitions/general";
 import { isValidObject } from "@zo/utils/object";
 import React, { useEffect, useMemo, useState } from "react";
-import { ZO_HOUSE_OPERATOR_CODES } from "../../../configs/zo-house-features";
 import Context from "./Context";
 
 interface ProviderProps {
@@ -43,32 +42,25 @@ const Provider: React.FC<ProviderProps> = ({ children }) => {
     const operators = allOperatorsResponse.data?.data?.results || [];
     const permissions = scopeData?.data?.permissions;
 
-    // If the Zo backend has permissions, use them to filter operators
-    if (permissions && permissions.length > 0) {
-      const hasWildcard = permissions.some(
-        (p: GeneralObject) => p.scope === "*"
-      );
-      if (hasWildcard) return operators;
-
-      return operators.filter((op: GeneralObject) => {
-        const code = op?.code;
-        if (!code) return false;
-        return permissions.some(
-          (p: GeneralObject) =>
-            typeof p.scope === "string" && p.scope.includes(code)
-        );
-      });
+    if (!permissions) {
+      return [];
     }
 
-    // Fallback: if no permissions from Zo backend but we have operators
-    // from the Zostel association, show all associated operators.
-    // This handles staff added via PMS who don't exist in the Zo backend.
-    if (!isFetchingScope && operators.length > 0) {
+    const hasWildcard = permissions.some((p: GeneralObject) => p.scope === "*");
+
+    if (hasWildcard) {
       return operators;
     }
 
-    return [];
-  }, [allOperatorsResponse, scopeData, isFetchingScope]);
+    return operators.filter((op: GeneralObject) => {
+      const code = op?.code;
+      if (!code) return false;
+      return permissions.some(
+        (p: GeneralObject) =>
+          typeof p.scope === "string" && p.scope.includes(code)
+      );
+    });
+  }, [allOperatorsResponse, scopeData]);
 
   const { isFetching: isFetchingAssociations } = useQueryApi<{
     operators: string[];
@@ -91,40 +83,24 @@ const Provider: React.FC<ProviderProps> = ({ children }) => {
   });
 
   const selectedOperatorAccess = useMemo(() => {
-    const permissions = scopeData?.data?.permissions;
-    const operatorAccess = permissions
-      ? permissions
-          .filter(
-            (p: GeneralObject) =>
-              p.scope?.includes(selectedOperator.code) || p.scope === "*"
-          )
-          .map((p: GeneralObject) => p.principal)
-      : [];
-    const hasCASAdminAccess = permissions
-      ? permissions.find(
-          (p: GeneralObject) => p.principal === "group:cas-admin"
+    const operatorAccess =
+      scopeData?.data?.permissions
+        .filter(
+          (p: GeneralObject) =>
+            p.scope?.includes(selectedOperator.code) || p.scope === "*"
         )
-      : false;
+        .map((p: GeneralObject) => p.principal) || [];
+    const hasCASAdminAccess =
+      scopeData?.data?.permissions.find(
+        (p: GeneralObject) => p.principal === "group:cas-admin"
+      ) || false;
 
     if (hasCASAdminAccess) {
       operatorAccess.push("group:cas-admin");
     }
 
-    // Fallback: staff added via PMS (Zostel backend) may not have permissions
-    // in the Zo backend. If they have an association with a Zo House operator,
-    // grant front-desk-manager level access so they can use the PMS.
-    if (
-      operatorAccess.length === 0 &&
-      !isFetchingScope &&
-      selectedOperator?.code &&
-      ZO_HOUSE_OPERATOR_CODES.includes(selectedOperator.code) &&
-      associatedOperatorsQuery.length > 0
-    ) {
-      operatorAccess.push("group:front-desk-manager");
-    }
-
     return operatorAccess;
-  }, [scopeData, selectedOperator, isFetchingScope, associatedOperatorsQuery]);
+  }, [scopeData, selectedOperator]);
 
   const effectiveRole = useMemo<
     | "none"
