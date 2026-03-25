@@ -24,7 +24,6 @@ const Music: React.FC<
 
   const { showLoginModal, isLoggedIn } = useAuth();
 
-  const [backgroundImage, setBackgroundImage] = useState("");
 
   const { mutate: createInquiry } = useMutationApi("LEADS_INQUIRIES");
 
@@ -46,28 +45,6 @@ const Music: React.FC<
 
   const isPlaying = status === "playing" || status === "dj-speaking";
 
-  useEffect(() => {
-    const handleResize = () => {
-      setBackgroundImage(
-        `url(${
-          window.innerWidth < 768
-            ? "https://static.cdn.zo.xyz/web-media/bg-music-mobile.jpeg"
-            : "https://static.cdn.zo.xyz/web-media/bg-music.jpg"
-        })`
-      );
-    };
-
-    if (typeof window !== "undefined") {
-      handleResize();
-      window.addEventListener("resize", handleResize);
-    }
-
-    return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("resize", handleResize);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -81,11 +58,17 @@ const Music: React.FC<
 
   return (
     <div
-      className="relative w-screen h-screen bg-red-100 bg-center bg-no-repeat bg-cover max-w-full"
-      style={{
-        backgroundImage: backgroundImage,
-      }}
+      className="relative w-screen h-screen bg-black max-w-full overflow-hidden"
     >
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ transform: "scale(1.15)" }}
+        src="/zomusic.mp4"
+      />
       <MetaTags
         title={metaData?.title}
         description={metaData?.description}
@@ -106,30 +89,45 @@ const Music: React.FC<
         />
       </div>
 
-      <div className="z-20 absolute left-[50%] bottom-[180px] -translate-x-[50%]">
-        {/* ZO FM Radio Pill */}
+      {/* Wallet toggle — top right */}
+      <div className="absolute z-20 top-4 right-4">
+        <button
+          onClick={() => {
+            if (!profile.profile?.wallet_address) showLoginModal(["wallet"]);
+          }}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs text-white/80 transition-all"
+          style={{
+            background: "rgba(255,255,255,0.1)",
+            backdropFilter: "blur(16px)",
+            border: "1px solid rgba(255,255,255,0.15)",
+          }}
+        >
+          <Icon name="Ethereum" size={14} />
+          {profile.profile?.wallet_address
+            ? formatAddress(profile.profile.wallet_address)
+            : "Connect Wallet"}
+        </button>
+      </div>
+
+      {/* Radio pill + status — center bottom */}
+      <div className="z-20 absolute left-[50%] bottom-[300px] -translate-x-[50%] flex flex-col items-center gap-3">
         <button
           onClick={!tunedIn ? handleTuneIn : undefined}
-          className="w-[350px] md:w-[430px] h-[60px] mb-0 flex items-center gap-3 px-4 md:px-6 py-4 text-lg font-bold border-b transition-all duration-300"
+          className="w-[320px] md:w-[380px] flex items-center gap-3 px-5 py-3 rounded-2xl text-white transition-all duration-300"
           style={{
-            background: tunedIn && isPlaying
-              ? "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)"
-              : "rgba(0, 0, 0, 0.7)",
-            color: "#fff",
-            borderColor: tunedIn && isPlaying ? "#a78bfa" : "rgba(255,255,255,0.15)",
+            background: "rgba(255,255,255,0.08)",
+            backdropFilter: "blur(20px)",
+            border: "1px solid rgba(255,255,255,0.15)",
             cursor: tunedIn ? "default" : "pointer",
-            backdropFilter: "blur(12px)",
           }}
         >
           {/* Pulsing dot */}
-          <span
-            className="relative flex h-3 w-3 shrink-0"
-          >
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
             {tunedIn && isPlaying && (
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75" />
             )}
             <span
-              className="relative inline-flex rounded-full h-3 w-3"
+              className="relative inline-flex rounded-full h-2.5 w-2.5"
               style={{
                 background: tunedIn && isPlaying ? "#a78bfa" : "rgba(255,255,255,0.3)",
               }}
@@ -138,12 +136,12 @@ const Music: React.FC<
 
           <div className="flex flex-col items-start min-w-0 flex-1">
             {!tunedIn ? (
-              <span className="text-sm tracking-widest uppercase opacity-60">
+              <span className="text-xs tracking-widest uppercase opacity-60">
                 Tune into ZO FM 86.13
               </span>
             ) : isPlaying && currentSong ? (
               <>
-                <span className="text-sm truncate w-full" style={{ color: "#e2e8f0" }}>
+                <span className="text-sm truncate w-full font-medium" style={{ color: "#e2e8f0" }}>
                   {currentSong.title}
                 </span>
                 <span className="text-xs opacity-40 truncate w-full">
@@ -151,15 +149,14 @@ const Music: React.FC<
                 </span>
               </>
             ) : (
-              <span className="text-sm opacity-50">Tuning in...</span>
+              <span className="text-xs opacity-50">Tuning in...</span>
             )}
           </div>
 
-          {/* Frequency badge */}
           <span
-            className="text-xs font-mono shrink-0 px-2 py-1 rounded"
+            className="text-[10px] font-mono shrink-0 px-1.5 py-0.5 rounded"
             style={{
-              background: tunedIn && isPlaying ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.08)",
               color: tunedIn && isPlaying ? "#a78bfa" : "rgba(255,255,255,0.35)",
             }}
           >
@@ -167,30 +164,10 @@ const Music: React.FC<
           </span>
         </button>
 
-        <div className="bg-white w-[350px] md:w-[430px] h-[60px] border-b border-zui-dark flex items-center gap-4 text-zui-dark font-bold px-4 md:px-6 py-4 text-lg">
-          <Icon name="Ethereum" size={24} />
-          {profile.profile?.wallet_address ? (
-            formatAddress(profile.profile.wallet_address)
-          ) : (
-            <button
-              onClick={() => {
-                showLoginModal(["wallet"]);
-              }}
-            >
-              Connect your Wallet to tune in
-            </button>
-          )}
-        </div>
-        {/* <div className="bg-white w-[350px] md:w-[430px] h-[60px] border-b border-zui-dark flex items-center gap-4 text-zui-dark font-bold px-4 md:px-6 py-4 text-lg">
-          <Icon name="X" size={24} />
-          Connect X to share your vibes
-        </div> */}
         {profile.profile?.wallet_address && (
-          <div className="bg-zui-green w-[350px] md:w-[430px] h-[60px] flex items-center gap-4 text-zui-dark px-4 md:px-6 py-4 text-lg">
-            <span>
-              Thanks for showing your interest in <strong>$MUSIC</strong>
-            </span>
-          </div>
+          <span className="text-xs text-white/50 tracking-wide">
+            You are Tuned into Zo
+          </span>
         )}
       </div>
       <a
