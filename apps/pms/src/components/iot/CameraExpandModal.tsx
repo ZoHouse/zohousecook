@@ -45,7 +45,7 @@ export function CameraExpandModal({ camera, onClose }: CameraExpandModalProps) {
       onCancel={onClose}
       footer={null}
       width={800}
-      styles={{ content: { background: '#141420', padding: 16 } }}
+      styles={{ content: { padding: 16 } }}
       title={
         camera && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -53,9 +53,9 @@ export function CameraExpandModal({ camera, onClose }: CameraExpandModalProps) {
               width: 8,
               height: 8,
               borderRadius: '50%',
-              backgroundColor: camera.status === 'online' ? '#cfff50' : '#ff4d4f',
+              backgroundColor: camera.status === 'online' ? '#52c41a' : '#ff4d4f',
             }} />
-            <span style={{ color: '#fff' }}>{camera.name}</span>
+            <span>{camera.name}</span>
             <Tag color={camera.status === 'online' ? 'green' : 'red'} style={{ marginLeft: 8 }}>
               {camera.status === 'online' ? 'LIVE' : 'OFFLINE'}
             </Tag>
@@ -67,7 +67,7 @@ export function CameraExpandModal({ camera, onClose }: CameraExpandModalProps) {
         <div>
           {/* Feed */}
           <div style={{
-            background: '#0d0d1a',
+            background: '#141414',
             borderRadius: 8,
             aspectRatio: '16/9',
             display: 'flex',
@@ -85,19 +85,19 @@ export function CameraExpandModal({ camera, onClose }: CameraExpandModalProps) {
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
             ) : (
-              <Text style={{ color: '#666', fontFamily: 'monospace' }}>
+              <Text style={{ color: 'rgba(255,255,255,0.25)' }}>
                 {camera.status === 'offline' ? 'Camera offline' : 'Awaiting go2rtc setup'}
               </Text>
             )}
           </div>
 
           {/* Info row */}
-          <div style={{ display: 'flex', gap: 16, fontSize: 11, fontFamily: 'monospace', color: '#888' }}>
-            <span>Location: <span style={{ color: '#ccc' }}>{camera.location || '—'}</span></span>
-            <span>Floor: <span style={{ color: '#ccc' }}>{camera.floor || '—'}</span></span>
-            <span>Provider: <span style={{ color: '#ccc' }}>{camera.provider}</span></span>
+          <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
+            <span>Location: <span style={{ fontWeight: 500, color: 'rgba(255,255,255,0.85)' }}>{camera.location || '—'}</span></span>
+            <span>Floor: <span style={{ fontWeight: 500, color: 'rgba(255,255,255,0.85)' }}>{camera.floor || '—'}</span></span>
+            <span>Provider: <span style={{ fontWeight: 500, color: 'rgba(255,255,255,0.85)' }}>{camera.provider}</span></span>
             {camera.last_seen_at && (
-              <span>Last seen: <span style={{ color: '#ccc' }}>
+              <span>Last seen: <span style={{ fontWeight: 500, color: 'rgba(255,255,255,0.85)' }}>
                 {new Date(camera.last_seen_at).toLocaleString('en-IN')}
               </span></span>
             )}

@@ -32,9 +32,9 @@ export function ChatBar({ messages, isLoading, onSend, onClear }: ChatBarProps) 
   return (
     <>
       <div style={{
-        background: '#1a1a2e',
-        border: '1px solid #2a2a4a',
-        borderRadius: 10,
+        background: '#141414',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 8,
         padding: '10px 14px',
         display: 'flex',
         alignItems: 'center',
@@ -43,7 +43,7 @@ export function ChatBar({ messages, isLoading, onSend, onClear }: ChatBarProps) 
         <div style={{
           width: 8,
           height: 8,
-          backgroundColor: '#cfff50',
+          backgroundColor: '#52c41a',
           borderRadius: '50%',
           flexShrink: 0,
         }} />
@@ -55,16 +55,14 @@ export function ChatBar({ messages, isLoading, onSend, onClear }: ChatBarProps) 
           variant="borderless"
           style={{
             flex: 1,
-            background: '#0d0d1a',
+            background: 'rgba(255,255,255,0.04)',
             borderRadius: 6,
-            color: '#ccc',
-            fontFamily: 'monospace',
-            fontSize: 11,
+            fontSize: 12,
           }}
         />
         <span
           onClick={() => setExpanded(true)}
-          style={{ fontSize: 9, color: '#444', fontFamily: 'monospace', cursor: 'pointer' }}
+          style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', cursor: 'pointer' }}
         >
           ⌘K
         </span>
@@ -75,7 +73,7 @@ export function ChatBar({ messages, isLoading, onSend, onClear }: ChatBarProps) 
         onCancel={() => setExpanded(false)}
         footer={null}
         width={560}
-        styles={{ content: { background: '#141420', padding: 0 } }}
+        styles={{ content: { background: '#1f1f1f', padding: 0 } }}
         closable={false}
       >
         <ChatPanel

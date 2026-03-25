@@ -1,4 +1,3 @@
-// apps/pms/src/components/iot/ChatPanel.tsx
 import { useState, useRef, useEffect } from 'react';
 import { Input, Button, Typography } from 'antd';
 import type { ChatMessage } from '../../types/iot';
@@ -32,22 +31,22 @@ export function ChatPanel({ messages, isLoading, onSend, onClear, onClose }: Cha
       {/* Header */}
       <div style={{
         padding: '12px 16px',
-        borderBottom: '1px solid #333',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 8, height: 8, background: '#cfff50', borderRadius: '50%' }} />
-          <Text style={{ color: '#cfff50', fontFamily: 'monospace', fontWeight: 'bold', fontSize: 12 }}>
+          <div style={{ width: 8, height: 8, background: '#52c41a', borderRadius: '50%' }} />
+          <Text strong style={{ fontSize: 13 }}>
             House AI
           </Text>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button size="small" type="text" onClick={onClear} style={{ color: '#666', fontSize: 10 }}>
+          <Button size="small" type="text" onClick={onClear}>
             Clear
           </Button>
-          <Button size="small" type="text" onClick={onClose} style={{ color: '#666', fontSize: 10 }}>
+          <Button size="small" type="text" onClick={onClose}>
             Close
           </Button>
         </div>
@@ -57,7 +56,7 @@ export function ChatPanel({ messages, isLoading, onSend, onClear, onClose }: Cha
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
         {messages.length === 0 && (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <Text style={{ color: '#444', fontFamily: 'monospace', fontSize: 11 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12 }}>
               Ask about cameras, lights, locks, or anything about the house.
             </Text>
           </div>
@@ -65,23 +64,20 @@ export function ChatPanel({ messages, isLoading, onSend, onClear, onClose }: Cha
         {messages.map((msg) => (
           <div key={msg.id} style={{ marginBottom: 12 }}>
             <Text style={{
-              color: msg.role === 'user' ? '#888' : '#cfff50',
-              fontFamily: 'monospace',
-              fontSize: 9,
+              color: msg.role === 'user' ? 'rgba(255,255,255,0.45)' : '#52c41a',
+              fontSize: 10,
               display: 'block',
               marginBottom: 4,
             }}>
               {msg.role === 'user' ? 'You' : 'House AI'}
             </Text>
             <div style={{
-              background: msg.role === 'user' ? '#2a2a4a' : '#1a2a1a',
-              border: msg.role === 'assistant' ? '1px solid #333' : 'none',
+              background: msg.role === 'user' ? 'rgba(255,255,255,0.06)' : 'rgba(82,196,26,0.06)',
+              border: msg.role === 'assistant' ? '1px solid rgba(255,255,255,0.08)' : 'none',
               borderRadius: 6,
-              padding: '8px 10px',
-              fontSize: 11,
-              color: '#ccc',
-              fontFamily: 'monospace',
-              lineHeight: 1.5,
+              padding: '8px 12px',
+              fontSize: 12,
+              lineHeight: 1.6,
             }}>
               {msg.content}
             </div>
@@ -89,17 +85,16 @@ export function ChatPanel({ messages, isLoading, onSend, onClear, onClose }: Cha
         ))}
         {isLoading && (
           <div style={{ marginBottom: 12 }}>
-            <Text style={{ color: '#cfff50', fontFamily: 'monospace', fontSize: 9, display: 'block', marginBottom: 4 }}>
+            <Text style={{ color: '#52c41a', fontSize: 10, display: 'block', marginBottom: 4 }}>
               House AI
             </Text>
             <div style={{
-              background: '#1a2a1a',
-              border: '1px solid #333',
+              background: 'rgba(82,196,26,0.06)',
+              border: '1px solid rgba(255,255,255,0.08)',
               borderRadius: 6,
-              padding: '8px 10px',
-              fontSize: 11,
-              color: '#888',
-              fontFamily: 'monospace',
+              padding: '8px 12px',
+              fontSize: 12,
+              color: 'rgba(255,255,255,0.45)',
             }}>
               Thinking...
             </div>
@@ -108,7 +103,7 @@ export function ChatPanel({ messages, isLoading, onSend, onClear, onClose }: Cha
       </div>
 
       {/* Input */}
-      <div style={{ padding: '8px 16px', borderTop: '1px solid #333', display: 'flex', gap: 8 }}>
+      <div style={{ padding: '8px 16px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: 8 }}>
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -117,25 +112,16 @@ export function ChatPanel({ messages, isLoading, onSend, onClear, onClose }: Cha
           variant="borderless"
           style={{
             flex: 1,
-            background: '#0d0d1a',
+            background: 'rgba(255,255,255,0.04)',
             borderRadius: 6,
-            color: '#ccc',
-            fontFamily: 'monospace',
-            fontSize: 11,
+            fontSize: 12,
           }}
           disabled={isLoading}
         />
         <Button
           onClick={handleSend}
           loading={isLoading}
-          style={{
-            background: '#cfff50',
-            color: '#000',
-            border: 'none',
-            fontFamily: 'monospace',
-            fontWeight: 'bold',
-            fontSize: 11,
-          }}
+          type="primary"
         >
           Send
         </Button>

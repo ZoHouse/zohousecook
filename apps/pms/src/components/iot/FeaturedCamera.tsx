@@ -54,9 +54,9 @@ export function FeaturedCamera({ cameras, featured }: FeaturedCameraProps) {
   return (
     <div style={{
       flex: 1,
-      background: '#0d0d1a',
-      border: '1px solid #2a2a4a',
-      borderRadius: 10,
+      background: '#141414',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: 8,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -75,11 +75,11 @@ export function FeaturedCamera({ cameras, featured }: FeaturedCameraProps) {
         />
       ) : (
         <div style={{ textAlign: 'center' }}>
-          <div style={{ color: '#666', fontFamily: 'monospace', fontSize: 13, marginBottom: 4 }}>
+          <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, marginBottom: 4 }}>
             {selected?.name || 'No camera selected'}
           </div>
-          <div style={{ color: '#444', fontFamily: 'monospace', fontSize: 11 }}>
-            {selected?.status === 'offline' ? 'camera offline' : 'awaiting go2rtc setup'}
+          <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11 }}>
+            {selected?.status === 'offline' ? 'Camera offline' : 'Awaiting go2rtc setup'}
           </div>
         </div>
       )}
@@ -88,15 +88,15 @@ export function FeaturedCamera({ cameras, featured }: FeaturedCameraProps) {
       {selected && (
         <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', gap: 6 }}>
           {selected.status === 'online' ? (
-            <Tag color="#cfff50" style={{ color: '#000', fontFamily: 'monospace', fontSize: 10, border: 'none' }}>
+            <Tag color="green" style={{ fontSize: 10, border: 'none' }}>
               LIVE
             </Tag>
           ) : (
-            <Tag color="#ff4d4f" style={{ fontFamily: 'monospace', fontSize: 10, border: 'none' }}>
+            <Tag color="red" style={{ fontSize: 10, border: 'none' }}>
               OFFLINE
             </Tag>
           )}
-          <Tag style={{ background: 'rgba(0,0,0,0.5)', color: '#888', fontFamily: 'monospace', fontSize: 10, border: '1px solid #333' }}>
+          <Tag style={{ background: 'rgba(0,0,0,0.5)', color: 'rgba(255,255,255,0.45)', fontSize: 10, border: '1px solid rgba(255,255,255,0.08)' }}>
             {selected.location || selected.floor || '—'}
           </Tag>
         </div>
@@ -112,7 +112,7 @@ export function FeaturedCamera({ cameras, featured }: FeaturedCameraProps) {
           style={{ minWidth: 140 }}
           popupMatchSelectWidth={false}
           variant="borderless"
-          dropdownStyle={{ background: '#1a1a2e' }}
+          dropdownStyle={{ background: '#1f1f1f' }}
         />
       </div>
     </div>

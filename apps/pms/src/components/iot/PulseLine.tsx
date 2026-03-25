@@ -20,7 +20,7 @@ export function PulseLine({ status, isLoading, propertyName }: PulseLineProps) {
           borderRadius: '50%',
           backgroundColor: '#888',
         }} />
-        <Text style={{ color: '#888', fontFamily: 'monospace', fontSize: 14 }}>
+        <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14 }}>
           Checking {propertyName}...
         </Text>
       </div>
@@ -41,17 +41,16 @@ export function PulseLine({ status, isLoading, propertyName }: PulseLineProps) {
           width: 10,
           height: 10,
           borderRadius: '50%',
-          backgroundColor: online ? '#cfff50' : '#ff4d4f',
-          boxShadow: online ? '0 0 8px rgba(207,255,80,0.4)' : '0 0 8px rgba(255,77,79,0.4)',
+          backgroundColor: online ? '#52c41a' : '#ff4d4f',
         }} />
-        <Text style={{ color: '#fff', fontFamily: 'monospace', fontSize: 14 }}>
-          {propertyName} is <span style={{ color: online ? '#cfff50' : '#ff4d4f' }}>
+        <Text style={{ fontSize: 14 }}>
+          {propertyName} is <span style={{ color: online ? '#52c41a' : '#ff4d4f' }}>
             {online ? 'alive' : 'offline'}
           </span>
         </Text>
       </div>
       {status && (
-        <Text style={{ color: '#888', fontFamily: 'monospace', fontSize: 11 }}>
+        <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>
           {status.cameras.online}/{status.cameras.total} cams
           {' · '}
           {status.screens.online}/{status.screens.total} screens

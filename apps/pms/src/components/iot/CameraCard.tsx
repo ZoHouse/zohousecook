@@ -47,7 +47,7 @@ export function CameraCard({ camera, onClick }: CameraCardProps) {
             width: 6,
             height: 6,
             borderRadius: '50%',
-            backgroundColor: camera.status === 'online' ? '#cfff50' : '#ff4d4f',
+            backgroundColor: camera.status === 'online' ? '#52c41a' : '#ff4d4f',
           }} />
           <span>{camera.name}</span>
         </div>
@@ -55,11 +55,12 @@ export function CameraCard({ camera, onClick }: CameraCardProps) {
       extra={<Tag color={TYPE_COLORS[camera.type] || 'default'}>{camera.type}</Tag>}
       hoverable
       onClick={() => onClick(camera)}
-      style={{ background: '#1a1a2e', border: '1px solid #2a2a4a', cursor: 'pointer' }}
+      style={{ cursor: 'pointer' }}
+      styles={{ header: { padding: '8px 12px', minHeight: 0 }, body: { padding: '8px 12px' } }}
     >
       {/* Feed area */}
       <div style={{
-        background: '#0d0d1a',
+        background: '#141414',
         borderRadius: 4,
         aspectRatio: '16/9',
         display: 'flex',
@@ -77,24 +78,24 @@ export function CameraCard({ camera, onClick }: CameraCardProps) {
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         ) : (
-          <span style={{ color: '#666', fontFamily: 'monospace', fontSize: 11 }}>
+          <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12 }}>
             {camera.status === 'offline' ? 'Camera offline' : 'Awaiting setup'}
           </span>
         )}
       </div>
 
       {/* Meta */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#888' }}>
-        <span>Location</span>
-        <span style={{ color: '#ccc' }}>{camera.location || '—'}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+        <span style={{ color: 'rgba(255,255,255,0.45)' }}>Location</span>
+        <span style={{ fontWeight: 500 }}>{camera.location || '—'}</span>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#888' }}>
-        <span>Floor</span>
-        <span style={{ color: '#ccc' }}>{camera.floor || '—'}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 4 }}>
+        <span style={{ color: 'rgba(255,255,255,0.45)' }}>Floor</span>
+        <span style={{ fontWeight: 500 }}>{camera.floor || '—'}</span>
       </div>
       {camera.last_seen_at && camera.status === 'offline' && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#888', marginTop: 4 }}>
-          <span>Last seen</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 4 }}>
+          <span style={{ color: 'rgba(255,255,255,0.45)' }}>Last seen</span>
           <span style={{ color: '#ff4d4f' }}>
             {new Date(camera.last_seen_at).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit' })}
           </span>
