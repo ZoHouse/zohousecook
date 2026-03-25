@@ -82,9 +82,11 @@ export const ZO_FEATURES: Record<string, ZoFeature> = {
     minAccess: "front-desk-manager",
     icon: "Wifi",
     navLinks: [
+      { id: "iot-overview", name: "Command Center", path: "/iot", icon: "Monitor" },
       { id: "iot-cameras", name: "Cameras", path: "/iot/cameras", icon: "Cctv" },
       { id: "iot-locks", name: "Locks", path: "/iot/locks", icon: "DoorLock" },
       { id: "iot-screens", name: "Screens", path: "/iot/screens", icon: "Projector" },
+      { id: "iot-lights", name: "Lights", path: "/iot/lights", icon: "Vibe" },
     ],
   },
 };
