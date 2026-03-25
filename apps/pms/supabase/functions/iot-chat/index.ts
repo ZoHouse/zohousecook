@@ -98,16 +98,30 @@ async function executeFunction(name: string, args: Record<string, string>, opera
     case 'get_camera_snapshot': {
       const cameraId = args.camera_id;
 
-      // Try to resolve by name if not a UUID
+      // Try to resolve by UUID first, then by name (safe — no .or() with unsanitized input)
       let camera;
-      const { data } = await supabase
-        .from('iot_cameras')
-        .select('*')
-        .eq('operator_code', operatorCode)
-        .or(`id.eq.${cameraId},name.ilike.%${cameraId}%`)
-        .limit(1)
-        .single();
-      camera = data;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(cameraId)) {
+        const { data } = await supabase
+          .from('iot_cameras')
+          .select('*')
+          .eq('operator_code', operatorCode)
+          .eq('id', cameraId)
+          .single();
+        camera = data;
+      }
+      if (!camera) {
+        // Sanitize: only allow alphanumeric, spaces, hyphens
+        const safeName = cameraId.replace(/[^a-zA-Z0-9 -]/g, '');
+        const { data } = await supabase
+          .from('iot_cameras')
+          .select('*')
+          .eq('operator_code', operatorCode)
+          .ilike('name', `%${safeName}%`)
+          .limit(1)
+          .single();
+        camera = data;
+      }
 
       if (!camera) return { error: `Camera "${cameraId}" not found` };
       if (camera.status === 'offline') return { description: `${camera.name} is offline. Last seen: ${camera.last_seen_at || 'unknown'}` };

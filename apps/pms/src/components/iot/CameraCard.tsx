@@ -20,13 +20,14 @@ export function CameraCard({ camera, onClick }: CameraCardProps) {
   const [imgError, setImgError] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const snapshotUrl = camera.relay_url && camera.go2rtc_name && camera.status === 'online'
-    ? buildSnapshotUrl(camera.relay_url, camera.go2rtc_name, imgKey)
+  const hasStream = !!(camera.relay_url && camera.go2rtc_name && camera.status === 'online');
+  const snapshotUrl = hasStream
+    ? buildSnapshotUrl(camera.relay_url!, camera.go2rtc_name!, imgKey)
     : null;
 
-  // Auto-refresh snapshot every 10 seconds
+  // Auto-refresh snapshot every 10 seconds — depend on stable hasStream, not snapshotUrl
   useEffect(() => {
-    if (snapshotUrl) {
+    if (hasStream) {
       intervalRef.current = setInterval(() => {
         setImgKey((k) => k + 1);
         setImgError(false);
@@ -35,7 +36,7 @@ export function CameraCard({ camera, onClick }: CameraCardProps) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [snapshotUrl]);
+  }, [hasStream]);
 
   return (
     <Card

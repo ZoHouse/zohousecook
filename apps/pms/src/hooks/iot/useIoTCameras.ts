@@ -16,7 +16,10 @@ export function useIoTCameras(operatorCode: string | undefined): UseIoTCamerasRe
   const [error, setError] = useState<string | null>(null);
 
   const fetchCameras = useCallback(async () => {
-    if (!operatorCode) return;
+    if (!operatorCode) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     setError(null);
 
