@@ -177,7 +177,8 @@ function BioHackTab({
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
 
-    const phone = user.mobile_number
+    const rawPhone = user.mobile_number || ''
+    const phone = rawPhone.replace(/^\+?91/, '').replace(/\D/g, '')
     const userFilter = phone
       ? `zo_user_id.eq.${user.id},customer_phone.eq.${phone}`
       : `zo_user_id.eq.${user.id}`
@@ -599,9 +600,10 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
 
     if (user?.id && propertyId) {
       // Logged in — get orders by user ID or phone at this property, plus session orders
-      const phone = user.mobile_number
-      const userMatch = phone
-        ? `zo_user_id.eq.${user.id},customer_phone.eq.${phone}`
+      const rawPh = user.mobile_number || ''
+      const phoneCleaned = rawPh.replace(/^\+?91/, '').replace(/\D/g, '')
+      const userMatch = phoneCleaned
+        ? `zo_user_id.eq.${user.id},customer_phone.eq.${phoneCleaned}`
         : `zo_user_id.eq.${user.id}`
       if (myIds.length > 0) {
         query = query.or(`${userMatch},id.in.(${myIds.join(',')})`)

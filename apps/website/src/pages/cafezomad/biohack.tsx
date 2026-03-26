@@ -69,7 +69,9 @@ export default function BioHackPage() {
     todayStart.setHours(0, 0, 0, 0)
 
     // Match by zo_user_id OR phone number (historic data has no user IDs)
-    const phone = user.mobile_number
+    // Normalize phone: strip country code prefix (91, +91) to match DB format
+    const rawPhone = user.mobile_number || ''
+    const phone = rawPhone.replace(/^\+?91/, '').replace(/\D/g, '')
     const userFilter = phone
       ? `zo_user_id.eq.${user.id},customer_phone.eq.${phone}`
       : `zo_user_id.eq.${user.id}`
