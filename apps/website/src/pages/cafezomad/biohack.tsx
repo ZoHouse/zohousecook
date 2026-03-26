@@ -117,26 +117,27 @@ export default function BioHackPage() {
       .order('created_at', { ascending: true })
       .then(({ data }) => {
         if (!data) return
-        const menuMap = new Map(menuItems.map((m) => [m.id, m]))
+        const menuMapById = new Map(menuItems.map((m) => [m.id, m]))
+        // Fallback: match by name (case-insensitive) for Fudr migrated orders
+        const menuMapByName = new Map(menuItems.map((m) => [m.name.toLowerCase().trim(), m]))
         const totals = { calories: 0, protein: 0, carbs: 0, fats: 0, fibre: 0, sugar: 0, items: 0 }
         const log: typeof mealLog = []
 
         for (const order of data) {
           for (const oi of (order.order_items as { menu_item_id: string; quantity: number; name: string }[]) || []) {
-            const menu = menuMap.get(oi.menu_item_id)
-            if (!menu) continue
+            const menu = menuMapById.get(oi.menu_item_id) || menuMapByName.get((oi.name || '').toLowerCase().trim())
             const qty = oi.quantity || 1
-            const has = menu.calories != null
+            const has = !!menu && menu.calories != null
             if (has) {
-              totals.calories += (menu.calories || 0) * qty
-              totals.protein += (menu.protein || 0) * qty
-              totals.carbs += (menu.carbs || 0) * qty
-              totals.fats += (menu.fats || 0) * qty
-              totals.fibre += (menu.fibre || 0) * qty
-              totals.sugar += (menu.sugar || 0) * qty
+              totals.calories += (menu!.calories || 0) * qty
+              totals.protein += (menu!.protein || 0) * qty
+              totals.carbs += (menu!.carbs || 0) * qty
+              totals.fats += (menu!.fats || 0) * qty
+              totals.fibre += (menu!.fibre || 0) * qty
+              totals.sugar += (menu!.sugar || 0) * qty
             }
             totals.items += qty
-            log.push({ name: oi.name, qty, cal: has ? (menu.calories || 0) * qty : -1, protein: has ? (menu.protein || 0) * qty : -1, time: new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) })
+            log.push({ name: oi.name, qty, cal: has ? (menu!.calories || 0) * qty : -1, protein: has ? (menu!.protein || 0) * qty : -1, time: new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) })
           }
         }
         setTodayNutrition(totals)
