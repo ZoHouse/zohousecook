@@ -172,22 +172,19 @@ function BioHackTab({
 
   // Calculate today's nutrition from orders
   useEffect(() => {
-    if (!user?.id || !propertyId) return
+    if (!user?.mobile_number || !propertyId) return
 
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
 
     const rawPhone = user.mobile_number || ''
     const phone = rawPhone.replace(/^\+?91/, '').replace(/\D/g, '')
-    const userFilter = phone
-      ? `zo_user_id.eq.${user.id},customer_phone.eq.${phone}`
-      : `zo_user_id.eq.${user.id}`
 
     supabase
       .from('cafe_orders')
       .select('created_at, order_items:cafe_order_items(menu_item_id, quantity, name)')
       .eq('property_id', propertyId)
-      .or(userFilter)
+      .eq('customer_phone', phone)
       .not('kitchen_status', 'eq', 'cancelled')
       .gte('created_at', todayStart.toISOString())
       .order('created_at', { ascending: true })
@@ -602,14 +599,13 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       // Logged in — get orders by user ID or phone at this property, plus session orders
       const rawPh = user.mobile_number || ''
       const phoneCleaned = rawPh.replace(/^\+?91/, '').replace(/\D/g, '')
-      const userMatch = phoneCleaned
-        ? `zo_user_id.eq.${user.id},customer_phone.eq.${phoneCleaned}`
-        : `zo_user_id.eq.${user.id}`
-      if (myIds.length > 0) {
-        query = query.or(`${userMatch},id.in.(${myIds.join(',')})`)
+      if (myIds.length > 0 && phoneCleaned) {
+        query = query.or(`customer_phone.eq.${phoneCleaned},id.in.(${myIds.join(',')})`)
           .eq('property_id', propertyId)
-      } else {
-        query = query.or(userMatch).eq('property_id', propertyId)
+      } else if (phoneCleaned) {
+        query = query.eq('customer_phone', phoneCleaned).eq('property_id', propertyId)
+      } else if (myIds.length > 0) {
+        query = query.in('id', myIds).eq('property_id', propertyId)
       }
     } else if (myIds.length > 0) {
       query = query.in('id', myIds)

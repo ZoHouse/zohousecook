@@ -63,24 +63,21 @@ export default function BioHackPage() {
 
   // Fetch today's nutrition + order history
   useEffect(() => {
-    if (!user?.id || menuItems.length === 0) return
+    if (!user?.mobile_number || menuItems.length === 0) return
 
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
 
-    // Match by zo_user_id OR phone number (historic data has no user IDs)
-    // Normalize phone: strip country code prefix (91, +91) to match DB format
+    // Match by phone number (historic data has no zo_user_ids)
+    // Normalize: strip country code prefix (+91/91) to get bare 10-digit number
     const rawPhone = user.mobile_number || ''
     const phone = rawPhone.replace(/^\+?91/, '').replace(/\D/g, '')
-    const userFilter = phone
-      ? `zo_user_id.eq.${user.id},customer_phone.eq.${phone}`
-      : `zo_user_id.eq.${user.id}`
 
     // Today's orders for nutrition
     supabase
       .from('cafe_orders')
       .select('created_at, order_items:cafe_order_items(menu_item_id, quantity, name)')
-      .or(userFilter)
+      .eq('customer_phone', phone)
       .not('kitchen_status', 'eq', 'cancelled')
       .gte('created_at', todayStart.toISOString())
       .order('created_at', { ascending: true })
@@ -116,7 +113,7 @@ export default function BioHackPage() {
     supabase
       .from('cafe_orders')
       .select('id, display_number, total, kitchen_status, created_at, order_items:cafe_order_items(name, quantity)')
-      .or(userFilter)
+      .eq('customer_phone', phone)
       .order('created_at', { ascending: false })
       .limit(20)
       .then(({ data }) => {
