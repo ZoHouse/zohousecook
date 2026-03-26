@@ -31,50 +31,35 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
     setError(null)
 
     try {
-      // Fetch all categories, then deduplicate by name (data has per-property dupes)
-      const catResult = await supabase
+      // Fetch categories — filter by property if provided
+      let catQuery = supabase
         .from('cafe_menu_categories')
         .select('*')
         .order('sort_order')
 
-      if (catResult.error) throw catResult.error
-
-      // Deduplicate categories by name — keep first occurrence
-      const seenNames = new Set<string>()
-      const uniqueCats = (catResult.data || []).filter((cat) => {
-        const lower = cat.name.toLowerCase()
-        if (seenNames.has(lower)) return false
-        seenNames.add(lower)
-        return true
-      })
-      setCategories(uniqueCats)
-
-      // Build a set of all category IDs that share the same name as our unique set
-      // This way items linked to either BLR or WTF category IDs are included
-      const allCatIds = new Set<string>()
-      const nameToIds = new Map<string, string[]>()
-      for (const cat of catResult.data || []) {
-        const lower = cat.name.toLowerCase()
-        if (!nameToIds.has(lower)) nameToIds.set(lower, [])
-        nameToIds.get(lower)!.push(cat.id)
-        allCatIds.add(cat.id)
+      if (propertyId) {
+        catQuery = catQuery.eq('property_id', propertyId)
       }
 
-      // If filtering by category, include all IDs for that category name
+      const catResult = await catQuery
+      if (catResult.error) throw catResult.error
+      setCategories(catResult.data || [])
+
+      // If filtering by category
       let targetCatIds: string[] | null = null
       if (categoryId) {
-        const selectedCat = (catResult.data || []).find((c) => c.id === categoryId)
-        if (selectedCat) {
-          targetCatIds = nameToIds.get(selectedCat.name.toLowerCase()) || [categoryId]
-        } else {
-          targetCatIds = [categoryId]
-        }
+        targetCatIds = [categoryId]
       }
 
       let itemQuery = supabase
         .from('cafe_menu_items')
         .select('*')
         .order('sort_order')
+
+      // Filter by property — critical for is_available to show correct state
+      if (propertyId) {
+        itemQuery = itemQuery.eq('property_id', propertyId)
+      }
 
       if (targetCatIds) {
         itemQuery = itemQuery.in('category_id', targetCatIds)
@@ -97,7 +82,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
     } finally {
       setIsLoading(false)
     }
-  }, [categoryId])
+  }, [categoryId, propertyId])
 
   useEffect(() => { fetchData() }, [fetchData])
 
