@@ -58,6 +58,10 @@ export function PulseLine({ status, isLoading, propertyName }: PulseLineProps) {
           {status.lights.online}/{status.lights.total} lights
           {' · '}
           {status.locks.locked}/{status.locks.total} locked
+          {' · '}
+          {status.wifi.online}/{status.wifi.total} wifi
+          {' · '}
+          {status.power.online}/{status.power.total} power
         </Text>
       )}
     </div>

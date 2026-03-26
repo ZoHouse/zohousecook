@@ -1,6 +1,6 @@
 import { Spin } from 'antd';
 import useAssociation from '../../hooks/useAssociation';
-import { useIoTCameras, useIoTChat } from '../../hooks/iot';
+import { useIoTDevices, useIoTCameras, useIoTChat } from '../../hooks/iot';
 import { PulseLine } from '../../components/iot/PulseLine';
 import { FeaturedCamera } from '../../components/iot/FeaturedCamera';
 import { ChatBar } from '../../components/iot/ChatBar';
@@ -12,20 +12,20 @@ function CommandCenter() {
   const { selectedOperator } = useAssociation();
   const operatorCode = selectedOperator?.code;
 
-  const { cameras, featured, isLoading: camerasLoading } = useIoTCameras(operatorCode);
+  const { devices, isLoading: devicesLoading } = useIoTDevices(operatorCode);
+  const { cameras, featured } = useIoTCameras(operatorCode);
   const { messages, isLoading: chatLoading, sendMessage, clearChat } = useIoTChat(operatorCode);
 
-  // V1: derive house status from camera data only
-  const houseStatus: HouseStatus | null = camerasLoading ? null : {
-    online: cameras.some((c) => c.status === 'online'),
-    cameras: {
-      total: cameras.length,
-      online: cameras.filter((c) => c.status === 'online').length,
-    },
-    // Hardcoded counts for V1 — will come from APIs in V2
-    screens: { total: 8, online: 0 },
-    lights: { total: 6, online: 0 },
-    locks: { total: 4, locked: 0 },
+  const byCategory = (cat: string) => devices.filter((d) => d.category === cat);
+
+  const houseStatus: HouseStatus | null = devicesLoading ? null : {
+    online: devices.some((d) => d.status === 'online'),
+    cameras: { total: byCategory('camera').length, online: byCategory('camera').filter((d) => d.status === 'online').length },
+    screens: { total: byCategory('screen').length, online: byCategory('screen').filter((d) => d.status === 'online').length },
+    lights: { total: byCategory('light').length, online: byCategory('light').filter((d) => d.status === 'online').length },
+    locks: { total: byCategory('lock').length, locked: byCategory('lock').filter((d) => d.lock_state === 'locked').length },
+    wifi: { total: byCategory('wifi').length, online: byCategory('wifi').filter((d) => d.status === 'online').length },
+    power: { total: byCategory('power').length, online: byCategory('power').filter((d) => d.status === 'online').length },
   };
 
   const propertyName = operatorCode === 'BNGHO812' ? 'BLRxZo' : 'WTFxZo';
@@ -37,11 +37,11 @@ function CommandCenter() {
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 16 }}>
           <PulseLine
             status={houseStatus}
-            isLoading={camerasLoading}
+            isLoading={devicesLoading}
             propertyName={propertyName}
           />
 
-          {camerasLoading ? (
+          {devicesLoading ? (
             <div className="flex justify-center py-20"><Spin size="large" /></div>
           ) : (
             <FeaturedCamera cameras={cameras} featured={featured} />
