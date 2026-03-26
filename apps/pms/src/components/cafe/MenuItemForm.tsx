@@ -187,7 +187,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
     setAiFilling(true)
     try {
       const diet = form.getFieldValue('diet') || 'veg'
-      const resp = await fetch('/api/cafe/ai-fill', {
+      const resp = await fetch('/pm/api/cafe/ai-fill', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), diet }),
