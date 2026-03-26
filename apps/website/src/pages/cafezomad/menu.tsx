@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import { supabase } from '../../config/supabase'
 
 interface MenuCategory { id: string; name: string; sort_order: number }
-interface MenuItem { id: string; category_id: string; name: string; description: string | null; price: number; image_url: string | null; diet: 'veg' | 'non_veg' | 'egg'; calories: number | null; protein: number | null }
+interface MenuItem { id: string; category_id: string; name: string; description: string | null; price: number; image_url: string | null; diet: 'veg' | 'non_veg' | 'egg'; calories: number | null; protein: number | null; carbs: number | null; fats: number | null }
 interface CafeTable { id: string; code: string; label: string | null; area: string }
 interface CafeProperty { id: string; name: string }
 
@@ -34,7 +34,7 @@ export default function CafeMenuPage() {
     if (!selectedPropertyId) return
     Promise.all([
       supabase.from('cafe_menu_categories').select('id, name, sort_order').eq('property_id', selectedPropertyId).eq('is_active', true).order('sort_order'),
-      supabase.from('cafe_menu_items').select('id, category_id, name, description, price, image_url, diet, calories, protein').eq('property_id', selectedPropertyId).eq('is_available', true).order('sort_order'),
+      supabase.from('cafe_menu_items').select('id, category_id, name, description, price, image_url, diet, calories, protein, carbs, fats').eq('property_id', selectedPropertyId).eq('is_available', true).order('sort_order'),
       supabase.from('cafe_tables').select('id, code, label, area').eq('property_id', selectedPropertyId).eq('is_active', true).order('area').order('code'),
     ]).then(([c, i, t]) => {
       setCategories((c.data as MenuCategory[]) || [])
@@ -89,9 +89,14 @@ export default function CafeMenuPage() {
               )}
             </div>
           </div>
-          <button onClick={() => setShowTablePicker(true)} className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl active:scale-95 transition-all">
-            Order Now
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => router.push('/cafezomad/biohack')} className="px-3 py-2 bg-white/80 text-black text-xs font-bold rounded-xl active:scale-95 transition-all">
+              Bio Hack
+            </button>
+            <button onClick={() => setShowTablePicker(true)} className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl active:scale-95 transition-all">
+              Order Now
+            </button>
+          </div>
         </div>
 
         {properties.length > 1 && (
