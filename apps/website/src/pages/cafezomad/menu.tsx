@@ -1,0 +1,289 @@
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/router'
+import { supabase } from '../../config/supabase'
+
+interface MenuCategory {
+  id: string
+  name: string
+  sort_order: number
+}
+
+interface MenuItem {
+  id: string
+  category_id: string
+  name: string
+  description: string | null
+  price: number
+  image_url: string | null
+  diet: 'veg' | 'non_veg' | 'egg'
+  calories: number | null
+  protein: number | null
+}
+
+interface CafeTable {
+  id: string
+  code: string
+  label: string | null
+  area: string
+}
+
+interface CafeProperty {
+  id: string
+  name: string
+}
+
+function formatPaise(paise: number): string {
+  return `₹${(paise / 100).toFixed(paise % 100 === 0 ? 0 : 2)}`
+}
+
+export default function CafeMenuPage() {
+  const router = useRouter()
+  const [properties, setProperties] = useState<CafeProperty[]>([])
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null)
+  const [categories, setCategories] = useState<MenuCategory[]>([])
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+  const [tables, setTables] = useState<CafeTable[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [showTablePicker, setShowTablePicker] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  useEffect(() => {
+    supabase
+      .from('cafe_properties')
+      .select('id, name')
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setProperties(data)
+          setSelectedPropertyId(data[0].id)
+        }
+        setIsLoading(false)
+      })
+  }, [])
+
+  useEffect(() => {
+    if (!selectedPropertyId) return
+    Promise.all([
+      supabase.from('cafe_menu_categories').select('id, name, sort_order').eq('property_id', selectedPropertyId).eq('is_active', true).order('sort_order'),
+      supabase.from('cafe_menu_items').select('id, category_id, name, description, price, image_url, diet, calories, protein').eq('property_id', selectedPropertyId).eq('is_available', true).order('sort_order'),
+      supabase.from('cafe_tables').select('id, code, label, area').eq('property_id', selectedPropertyId).eq('is_active', true).order('area').order('code'),
+    ]).then(([c, i, t]) => {
+      setCategories((c.data as MenuCategory[]) || [])
+      setMenuItems((i.data as MenuItem[]) || [])
+      setTables((t.data as CafeTable[]) || [])
+    })
+  }, [selectedPropertyId])
+
+  const searched = searchQuery.trim()
+    ? menuItems.filter((i) => i.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : menuItems
+
+  const filtered = activeCategory
+    ? searched.filter((i) => i.category_id === activeCategory)
+    : searched
+
+  const grouped = new Map<string, { name: string; items: MenuItem[] }>()
+  for (const item of filtered) {
+    if (!grouped.has(item.category_id)) {
+      const cat = categories.find((c) => c.id === item.category_id)
+      grouped.set(item.category_id, { name: cat?.name || 'Other', items: [] })
+    }
+    grouped.get(item.category_id)!.items.push(item)
+  }
+
+  const tablesByArea = new Map<string, CafeTable[]>()
+  for (const t of tables) {
+    if (!tablesByArea.has(t.area)) tablesByArea.set(t.area, [])
+    tablesByArea.get(t.area)!.push(t)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#f5f0e8]">
+        <div className="w-10 h-10 border-[3px] border-black/80 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-[#f5f0e8]">
+      {/* Header */}
+      <header className="sticky top-0 z-20 bg-orange-500 px-5 pt-4 pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <button onClick={() => router.push('/cafezomad')} className="w-9 h-9 rounded-xl bg-white overflow-hidden active:scale-95 transition-all shrink-0 p-1">
+              <img src="/cafezomad/logo.png" alt="Cafe Zomad" className="w-full h-full object-contain" />
+            </button>
+            <div>
+              <h1 className="text-lg font-extrabold tracking-tight text-black">Menu</h1>
+              {properties.length > 1 && selectedPropertyId && (
+                <p className="text-[10px] text-black/50 font-medium uppercase tracking-widest">
+                  {properties.find((p) => p.id === selectedPropertyId)?.name}
+                </p>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => setShowTablePicker(true)}
+            className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl active:scale-95 transition-all"
+          >
+            Order Now
+          </button>
+        </div>
+
+        {properties.length > 1 && (
+          <div className="flex gap-2 mt-3 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+            {properties.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => { setSelectedPropertyId(p.id); setActiveCategory(null) }}
+                className={`px-3 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
+                  selectedPropertyId === p.id ? 'bg-black text-white' : 'bg-black/10 text-black/60'
+                }`}
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="relative mt-3">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search menu..."
+            className="w-full pl-9 pr-4 py-2.5 text-sm bg-white/80 rounded-xl ring-1 ring-black/10 focus:outline-none focus:ring-2 focus:ring-black/20 placeholder:text-black/30"
+          />
+        </div>
+      </header>
+
+      {/* Category chips */}
+      <div className="sticky top-[132px] z-10 bg-[#f5f0e8]/95 backdrop-blur-sm px-4 py-2.5 flex gap-2 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <button
+          onClick={() => setActiveCategory(null)}
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all ${
+            !activeCategory ? 'bg-orange-500 text-black' : 'bg-white ring-1 ring-black/10 text-black/60'
+          }`}
+        >
+          All ({menuItems.length})
+        </button>
+        {categories.map((cat) => {
+          const count = menuItems.filter((i) => i.category_id === cat.id).length
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all ${
+                activeCategory === cat.id ? 'bg-orange-500 text-black' : 'bg-white ring-1 ring-black/10 text-black/60'
+              }`}
+            >
+              {cat.name} ({count})
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Menu items */}
+      <div className="px-4 py-3 pb-24 space-y-3">
+        {grouped.size === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <svg className="w-12 h-12 text-black/15" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+            </svg>
+            <p className="text-black/35 font-medium text-sm">
+              {searchQuery.trim() ? `No items matching "${searchQuery}"` : 'Menu is being prepared — check back soon!'}
+            </p>
+          </div>
+        ) : (
+          Array.from(grouped.entries()).map(([catId, { name, items }]) => (
+            <div key={catId} className="space-y-2.5">
+              {!activeCategory && (
+                <div className="flex items-center gap-3 pt-3 first:pt-0">
+                  <h2 className="text-xs font-semibold text-black/40 uppercase tracking-widest shrink-0">{name}</h2>
+                  <div className="flex-1 h-px bg-black/10" />
+                </div>
+              )}
+              {items.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 p-4 rounded-2xl bg-white ring-1 ring-black/10 shadow-sm">
+                  {item.image_url && (
+                    <img src={item.image_url} alt={item.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                        item.diet === 'veg' ? 'bg-green-500' : item.diet === 'egg' ? 'bg-yellow-500' : 'bg-red-500'
+                      }`} />
+                      <span className="font-bold text-sm text-black tracking-tight truncate">{item.name}</span>
+                    </div>
+                    {item.description && (
+                      <p className="text-xs text-black/45 font-medium mt-0.5 ml-[18px] line-clamp-1">{item.description}</p>
+                    )}
+                    <div className="flex items-center gap-3 mt-1.5 ml-[18px]">
+                      <span className="text-sm font-bold text-black">{formatPaise(item.price)}</span>
+                      {item.calories != null && (
+                        <span className="text-[10px] text-black/35 font-medium font-mono">{item.calories} kcal</span>
+                      )}
+                      {item.protein != null && (
+                        <span className="text-[10px] text-orange-500/70 font-medium font-mono">{item.protein}g P</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Sticky bottom CTA */}
+      <div className="fixed bottom-0 left-0 right-0 z-20 p-4 bg-gradient-to-t from-[#f5f0e8] via-[#f5f0e8] to-transparent pt-8">
+        <button
+          onClick={() => setShowTablePicker(true)}
+          className="w-full bg-orange-500 text-black py-4 text-base font-bold tracking-wide rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all"
+        >
+          Start Ordering
+        </button>
+      </div>
+
+      {/* Table Picker */}
+      {showTablePicker && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setShowTablePicker(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[70vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white px-5 pt-5 pb-3 border-b border-black/5">
+              <div className="w-10 h-1 bg-black/15 rounded-full mx-auto mb-4" />
+              <h2 className="text-lg font-extrabold text-black">Pick your table</h2>
+              <p className="text-xs text-black/40 font-medium mt-0.5">Select where you&apos;re sitting to start ordering</p>
+            </div>
+            <div className="px-5 py-4 space-y-4 pb-8">
+              {Array.from(tablesByArea.entries()).map(([area, areaTables]) => (
+                <div key={area}>
+                  <h3 className="text-[10px] font-semibold text-black/40 uppercase tracking-widest mb-2">{area}</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {areaTables.map((table) => (
+                      <button
+                        key={table.id}
+                        onClick={() => router.push(`/cafezomad/${table.id}`)}
+                        className="p-3 rounded-xl bg-[#f5f0e8] ring-1 ring-black/5 text-left active:scale-95 transition-all hover:ring-orange-500/50"
+                      >
+                        <span className="text-sm font-bold text-black block">{table.label || table.code}</span>
+                        <span className="text-[10px] text-black/35 font-medium">{table.code}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {tables.length === 0 && (
+                <p className="text-center text-black/35 text-sm font-medium py-8">No tables set up yet</p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}

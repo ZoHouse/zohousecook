@@ -1,53 +1,71 @@
+import { useRouter } from 'next/router'
+import { useAuth } from '@zo/auth'
+
 export default function CafeZomadIndex() {
+  const router = useRouter()
+  const { isLoggedIn, user, showLoginModal } = useAuth()
+
+  const isReturning = isLoggedIn && user
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#f5f0e8] px-6">
-      {/* ZO Logo */}
-      <div className="w-16 h-16 bg-black rounded-3xl flex items-center justify-center mb-6 shadow-lg shadow-black/20">
-        <span className="text-lg font-bold text-white font-mono tracking-wider">ZO</span>
-      </div>
+      {/* Logo */}
+      <img src="/cafezomad/logo.png" alt="Cafe Zomad" className="w-20 h-20 rounded-[1.75rem] mb-8 shadow-xl shadow-black/20 object-contain bg-white p-2" />
 
       {/* Title */}
-      <h1 className="text-3xl font-extrabold tracking-tight text-black mb-2">Cafe Zomad</h1>
-
-      {/* Divider */}
-      <div className="w-12 h-1 bg-orange-500 rounded-full mb-6" />
-
-      {/* Message */}
-      <div className="text-center max-w-xs">
-        <p className="text-base font-semibold text-black/70 leading-relaxed">
-          Scan the QR code at your table to order.
-        </p>
-        <p className="text-sm text-black/40 font-medium mt-3">
-          Each table has a unique QR code — point your camera at it to get started.
-        </p>
-      </div>
-
-      {/* QR icon */}
-      <div className="mt-10 w-20 h-20 rounded-2xl bg-white ring-1 ring-black/10 shadow-sm flex items-center justify-center">
-        <svg
-          className="w-10 h-10 text-black/30"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={1.5}
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z"
-          />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z"
-          />
-        </svg>
-      </div>
-
-      {/* Footer */}
-      <p className="mt-12 text-xs text-black/25 font-medium tracking-wide">
-        Zo House — Whitefield, Bangalore
+      <h1 className="text-4xl font-extrabold tracking-tight text-black mb-2">Cafe Zomad</h1>
+      <div className="w-12 h-1 bg-orange-500 rounded-full mb-4" />
+      <p className="text-sm text-black/50 font-medium text-center max-w-[260px] leading-relaxed">
+        Fresh food, good vibes, and nutrition tracking for every citizen.
       </p>
+
+      {/* CTA */}
+      <div className="mt-10 flex flex-col items-center gap-3 w-full max-w-xs">
+        {isReturning ? (
+          <>
+            {/* Returning user — greet and go to menu */}
+            <p className="text-sm text-black/60 font-semibold mb-1">
+              Welcome back, {user.first_name || 'citizen'}
+            </p>
+            <button
+              onClick={() => router.push('/cafezomad/menu')}
+              className="w-full bg-orange-500 text-black py-4 text-base font-bold tracking-wide rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all"
+            >
+              Check Menu
+            </button>
+          </>
+        ) : (
+          <>
+            {/* First time / not logged in */}
+            <button
+              onClick={() => router.push('/cafezomad/menu')}
+              className="w-full bg-orange-500 text-black py-4 text-base font-bold tracking-wide rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all"
+            >
+              View Menu
+            </button>
+            <button
+              onClick={() => showLoginModal()}
+              className="w-full bg-black text-white py-3.5 text-sm font-bold tracking-wide rounded-2xl active:scale-[0.98] transition-all"
+            >
+              Sign In
+            </button>
+            <p className="text-xs text-black/35 font-medium text-center mt-1">
+              Sign in to order, track nutrition, and earn XP
+            </p>
+          </>
+        )}
+      </div>
+
+      {/* Scan QR hint */}
+      <div className="mt-12 flex items-center gap-3 px-4 py-3 rounded-xl bg-white/60 ring-1 ring-black/5">
+        <svg className="w-5 h-5 text-black/25 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
+        </svg>
+        <span className="text-xs text-black/40 font-medium">
+          Or scan the QR code at your table to order directly
+        </span>
+      </div>
     </div>
   )
 }

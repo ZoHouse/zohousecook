@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
-import { useAuth } from '@zo/auth'
+import { useAuth, useProfile, useQueryApi } from '@zo/auth'
 import { supabase } from '../../config/supabase'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -96,7 +96,7 @@ interface CafeOrderWithItems {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = 'menu' | 'orders' | 'cart' | 'wallet'
+type Tab = 'menu' | 'cart' | 'wallet'
 
 interface CartItem {
   menu_item_id: string
@@ -125,6 +125,359 @@ function OrderStatusBadge({ status }: { status: string | null }) {
     <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${c.bg}`}>
       {c.label}
     </span>
+  )
+}
+
+// ─── Bio Hack Tab ─────────────────────────────────────────────────────────────
+
+interface NutritionTotals {
+  calories: number
+  protein: number
+  carbs: number
+  fats: number
+  fibre: number
+  sugar: number
+  items: number
+}
+
+const DAILY_TARGETS: NutritionTotals = {
+  calories: 2200,
+  protein: 60,
+  carbs: 275,
+  fats: 65,
+  fibre: 30,
+  sugar: 50,
+  items: 0,
+}
+
+function BioHackTab({
+  isLoggedIn,
+  user,
+  showLoginModal,
+  propertyId,
+  orders,
+  menuItems,
+}: {
+  isLoggedIn: boolean | null
+  user: { id: string; first_name: string; last_name: string; mobile_number: string; wallet_address: string; membership: string } | null
+  showLoginModal: () => void
+  propertyId: string | null
+  orders: CafeOrderWithItems[]
+  menuItems: MenuItem[]
+}) {
+  const { profile } = useProfile()
+  const { data: balanceData } = useQueryApi('WEBTHREE_LEDGER_BALANCE', { enabled: isLoggedIn === true }, '', '')
+  const [todayNutrition, setTodayNutrition] = useState<NutritionTotals | null>(null)
+  const [mealLog, setMealLog] = useState<{ name: string; qty: number; cal: number; protein: number; time: string }[]>([])
+
+  // Calculate today's nutrition from orders
+  useEffect(() => {
+    if (!user?.id || !propertyId) return
+
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+
+    supabase
+      .from('cafe_orders')
+      .select('created_at, order_items:cafe_order_items(menu_item_id, quantity, name)')
+      .eq('property_id', propertyId)
+      .eq('zo_user_id', user.id)
+      .not('kitchen_status', 'eq', 'cancelled')
+      .gte('created_at', todayStart.toISOString())
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        if (!data) return
+
+        const menuMap = new Map(menuItems.map((m) => [m.id, m]))
+        const totals: NutritionTotals = { calories: 0, protein: 0, carbs: 0, fats: 0, fibre: 0, sugar: 0, items: 0 }
+        const log: typeof mealLog = []
+
+        for (const order of data) {
+          const items = (order.order_items as { menu_item_id: string; quantity: number; name: string }[]) || []
+          for (const oi of items) {
+            const menu = menuMap.get(oi.menu_item_id)
+            if (!menu) continue
+            const hasNutrition = menu.calories != null
+            const qty = oi.quantity || 1
+            if (hasNutrition) {
+              totals.calories += (menu.calories || 0) * qty
+              totals.protein += (menu.protein || 0) * qty
+              totals.carbs += (menu.carbs || 0) * qty
+              totals.fats += (menu.fats || 0) * qty
+              totals.fibre += (menu.fibre || 0) * qty
+              totals.sugar += (menu.sugar || 0) * qty
+            }
+            totals.items += qty
+            log.push({
+              name: oi.name,
+              qty,
+              cal: hasNutrition ? (menu.calories || 0) * qty : -1,
+              protein: hasNutrition ? (menu.protein || 0) * qty : -1,
+              time: new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+            })
+          }
+        }
+
+        setTodayNutrition(totals)
+        setMealLog(log)
+      })
+  }, [user?.id, propertyId, menuItems, orders])
+
+  const p = profile as {
+    nickname?: string; avatar_url?: string; first_name?: string; last_name?: string;
+    experience?: number; level?: number; level_percent?: number; bio?: string;
+    membership?: string; work_role?: string
+  } | undefined
+  const displayName = p?.nickname || (user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : '') || 'Citizen'
+  const avatarUrl = p?.avatar_url
+  const balance = (balanceData as { data?: { balance?: number } })?.data?.balance
+
+  const nt = todayNutrition || { calories: 0, protein: 0, carbs: 0, fats: 0, fibre: 0, sugar: 0, items: 0 }
+
+  function MacroRing({ label, value, target, color, unit }: { label: string; value: number; target: number; color: string; unit: string }) {
+    const pct = Math.min(100, target > 0 ? (value / target) * 100 : 0)
+    const r = 28
+    const circ = 2 * Math.PI * r
+    const offset = circ - (pct / 100) * circ
+    return (
+      <div className="flex flex-col items-center">
+        <div className="relative w-16 h-16">
+          <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r={r} fill="none" stroke="#0000000d" strokeWidth="5" />
+            <circle
+              cx="32" cy="32" r={r} fill="none"
+              stroke={color} strokeWidth="5"
+              strokeDasharray={circ} strokeDashoffset={offset}
+              strokeLinecap="round"
+              className="transition-all duration-500"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-xs font-bold text-black">{Math.round(value)}</span>
+          </div>
+        </div>
+        <span className="text-[10px] font-semibold text-black/50 mt-1">{label}</span>
+        <span className="text-[9px] text-black/30 font-medium">/ {target}{unit}</span>
+      </div>
+    )
+  }
+
+  if (!isLoggedIn || !user) {
+    return (
+      <div className="px-4 py-4">
+        <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-8 text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-bold text-black mb-1">Bio Hack</h3>
+          <p className="text-sm text-black/50 font-medium mb-5">
+            Sign in to track your nutrition from every meal at Zo House
+          </p>
+          <button
+            onClick={() => showLoginModal()}
+            className="px-6 py-3 bg-orange-500 text-black text-sm font-bold rounded-xl active:scale-95 transition-all"
+          >
+            Sign In
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-4 py-4 space-y-3">
+      {/* Profile Card */}
+      <div className="rounded-2xl bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500 p-5 relative overflow-hidden">
+        <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10" />
+        <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/10" />
+        <div className="relative flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-black/15 flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-white/30">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-xl font-black text-white/80">
+                {displayName.charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-extrabold text-black tracking-tight truncate">{displayName}</h2>
+            {p?.work_role && (
+              <p className="text-[11px] text-black/50 font-medium truncate">{p.work_role}</p>
+            )}
+            <div className="flex items-center gap-2 mt-1">
+              <span className="px-2 py-0.5 bg-black/15 rounded-full text-[10px] font-bold text-black/70 uppercase tracking-wider">
+                {p?.membership || user.membership || 'Member'}
+              </span>
+              {p?.level != null && (
+                <span className="text-[10px] font-bold text-black/50">Lvl {p.level}</span>
+              )}
+            </div>
+          </div>
+          {balance != null && (
+            <div className="text-right shrink-0">
+              <p className="text-lg font-extrabold text-black">{balance.toLocaleString()}</p>
+              <p className="text-[9px] text-black/50 font-semibold uppercase tracking-wider">credits</p>
+            </div>
+          )}
+        </div>
+        {p?.level_percent != null && (
+          <div className="relative mt-3">
+            <div className="h-1.5 bg-black/10 rounded-full overflow-hidden">
+              <div className="h-full bg-black/30 rounded-full transition-all" style={{ width: `${p.level_percent}%` }} />
+            </div>
+            <div className="flex justify-between mt-1 text-[9px] font-semibold text-black/40">
+              <span>{p.experience?.toLocaleString() || 0} XP</span>
+              <span>Level {(p.level || 0) + 1}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bio Hack Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-extrabold text-black tracking-tight">Bio Hack</h2>
+          <p className="text-[11px] text-black/40 font-medium">
+            {displayName}&apos;s nutrition today
+          </p>
+        </div>
+        <div className="px-3 py-1.5 bg-green-100 rounded-full">
+          <span className="text-[11px] font-bold text-green-700">
+            {nt.items} item{nt.items !== 1 ? 's' : ''} logged
+          </span>
+        </div>
+      </div>
+
+      {/* Calorie Hero Card */}
+      <div className="rounded-2xl bg-gradient-to-br from-green-400 via-emerald-500 to-teal-500 p-5 relative overflow-hidden">
+        <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-white/10" />
+        <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/10" />
+        <div className="relative">
+          <p className="text-xs font-semibold text-black/50 uppercase tracking-widest mb-1">Calories Today</p>
+          <div className="flex items-end gap-2">
+            <span className="text-4xl font-black text-black tracking-tighter">
+              {Math.round(nt.calories).toLocaleString()}
+            </span>
+            <span className="text-sm font-semibold text-black/50 mb-1">/ {DAILY_TARGETS.calories} kcal</span>
+          </div>
+          {/* Calorie bar */}
+          <div className="mt-3 h-2.5 bg-black/10 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${Math.min(100, (nt.calories / DAILY_TARGETS.calories) * 100)}%`,
+                background: nt.calories > DAILY_TARGETS.calories ? '#ef4444' : '#000000aa',
+              }}
+            />
+          </div>
+          <div className="flex justify-between mt-1.5 text-[10px] font-semibold text-black/40">
+            <span>{Math.round((nt.calories / DAILY_TARGETS.calories) * 100)}% of daily goal</span>
+            <span>{Math.max(0, DAILY_TARGETS.calories - Math.round(nt.calories))} remaining</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Macro Rings */}
+      <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-4">
+        <h3 className="text-xs font-bold text-black/60 uppercase tracking-widest mb-3">Macros</h3>
+        <div className="grid grid-cols-5 gap-1">
+          <MacroRing label="Protein" value={nt.protein} target={DAILY_TARGETS.protein} color="#f97316" unit="g" />
+          <MacroRing label="Carbs" value={nt.carbs} target={DAILY_TARGETS.carbs} color="#3b82f6" unit="g" />
+          <MacroRing label="Fats" value={nt.fats} target={DAILY_TARGETS.fats} color="#eab308" unit="g" />
+          <MacroRing label="Fibre" value={nt.fibre} target={DAILY_TARGETS.fibre} color="#22c55e" unit="g" />
+          <MacroRing label="Sugar" value={nt.sugar} target={DAILY_TARGETS.sugar} color="#ef4444" unit="g" />
+        </div>
+      </div>
+
+      {/* Meal Log */}
+      {mealLog.length > 0 && (
+        <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-4">
+          <h3 className="text-xs font-bold text-black/60 uppercase tracking-widest mb-3">
+            Today&apos;s Meals
+          </h3>
+          <div className="space-y-2">
+            {mealLog.map((meal, idx) => (
+              <div key={idx} className="flex items-center gap-3 py-1.5">
+                <span className="text-[10px] font-mono text-black/30 w-10 shrink-0">{meal.time}</span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-semibold text-black truncate block">
+                    {meal.qty > 1 && <span className="font-mono text-black/40">{meal.qty}× </span>}
+                    {meal.name}
+                  </span>
+                </div>
+                <div className="text-right shrink-0">
+                  {meal.cal >= 0 ? (
+                    <>
+                      <span className="text-xs font-bold text-black">{meal.cal} kcal</span>
+                      <span className="text-[10px] text-orange-500 font-semibold ml-1">{meal.protein}g P</span>
+                    </>
+                  ) : (
+                    <span className="text-[10px] text-black/30 font-medium">no nutrition data</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state when no meals logged */}
+      {mealLog.length === 0 && (
+        <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-6 text-center">
+          <p className="text-sm text-black/40 font-medium">
+            No meals logged today. Order from the menu to start tracking.
+          </p>
+        </div>
+      )}
+
+      {/* Live Orders */}
+      {orders.length > 0 && (
+        <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-4">
+          <h3 className="text-xs font-bold text-black/60 uppercase tracking-widest mb-3">
+            Active Orders
+          </h3>
+          <div className="space-y-3">
+            {orders.map((order) => (
+              <div key={order.id} className="rounded-xl bg-black/[0.02] ring-1 ring-black/5 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-mono font-bold text-sm text-black">
+                    #{order.display_number}
+                  </span>
+                  <OrderStatusBadge status={order.kitchen_status} />
+                </div>
+                <div className="space-y-1">
+                  {order.order_items?.map((item) => (
+                    <div key={item.id} className="flex justify-between text-xs">
+                      <span className="text-black/50 font-medium">
+                        <span className="font-mono font-semibold">{item.quantity}×</span>{' '}
+                        {item.name}
+                      </span>
+                      <span className="font-semibold text-black/70">
+                        {formatPaise(item.price * item.quantity)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between items-center mt-2 pt-2 border-t border-black/5">
+                  <span className="text-[10px] text-black/30 font-medium font-mono">
+                    {new Date(order.created_at).toLocaleTimeString('en-IN', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                  <span className="font-bold text-sm text-black">
+                    {formatPaise(order.total)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -167,6 +520,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   const [showCategories, setShowCategories] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
+  const [errorToast, setErrorToast] = useState<string | null>(null)
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -227,33 +581,74 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     }
   }, [getMyOrderIds, storageKey])
 
-  // ── Data: fetch + poll orders (only this session's) ──────────────────────
+  // ── Data: fetch + poll orders (session IDs + user ID for logged-in users) ──
   const fetchOrders = useCallback(async () => {
     const myIds = getMyOrderIds()
-    if (myIds.length === 0) { setOrders([]); return }
 
-    const { data } = await supabase
+    // Build query: session orders OR user's orders at this property
+    let query = supabase
       .from('cafe_orders')
       .select('*, order_items:cafe_order_items(*)')
-      .in('id', myIds)
       .order('created_at', { ascending: false })
+      .limit(20)
 
+    if (user?.id && propertyId) {
+      // Logged in — get orders by user ID at this property, plus any session orders
+      if (myIds.length > 0) {
+        query = query.or(`zo_user_id.eq.${user.id},id.in.(${myIds.join(',')})`)
+          .eq('property_id', propertyId)
+      } else {
+        query = query.eq('zo_user_id', user.id).eq('property_id', propertyId)
+      }
+    } else if (myIds.length > 0) {
+      query = query.in('id', myIds)
+    } else {
+      setOrders([])
+      return
+    }
+
+    const { data } = await query
     if (data) setOrders(data as CafeOrderWithItems[])
-  }, [getMyOrderIds])
+  }, [getMyOrderIds, user?.id, propertyId])
 
+  // Fix #6: Only poll when tab is visible
   useEffect(() => {
     fetchOrders()
-    pollRef.current = setInterval(fetchOrders, 5000)
-    return () => {
+
+    const startPolling = () => {
       if (pollRef.current) clearInterval(pollRef.current)
+      pollRef.current = setInterval(fetchOrders, 5000)
+    }
+    const stopPolling = () => {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+    }
+
+    const handleVisibility = () => {
+      if (document.hidden) { stopPolling() } else { fetchOrders(); startPolling() }
+    }
+
+    startPolling()
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      stopPolling()
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [fetchOrders])
 
   // ── Cart helpers ───────────────────────────────────────────────────────────
+  const MAX_QTY_PER_ITEM = 10
+
   const addToCart = (item: Pick<MenuItem, 'id' | 'name' | 'price'>) => {
+    // Verify item is still in the loaded menu (not removed/unavailable)
+    const menuItem = menuItems.find((m) => m.id === item.id)
+    if (!menuItem || !menuItem.is_available) return
+
     setCart((prev) => {
       const existing = prev.find((c) => c.menu_item_id === item.id)
       if (existing) {
+        const limit = menuItem.daily_limit ?? MAX_QTY_PER_ITEM
+        if (existing.quantity >= limit) return prev
         return prev.map((c) =>
           c.menu_item_id === item.id ? { ...c, quantity: c.quantity + 1 } : c
         )
@@ -286,19 +681,44 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
 
     setIsOrdering(true)
     try {
-      // 1. Get next display number
-      const { data: lastOrder } = await supabase
-        .from('cafe_orders')
-        .select('display_number')
-        .eq('property_id', propertyId)
-        .order('display_number', { ascending: false })
-        .limit(1)
-        .single()
+      // 1. Re-validate cart items are still available and prices haven't changed
+      const cartItemIds = cart.map((c) => c.menu_item_id)
+      const { data: freshItems } = await supabase
+        .from('cafe_menu_items')
+        .select('id, name, price, is_available')
+        .in('id', cartItemIds)
 
-      const displayNumber = (lastOrder?.display_number || 0) + 1
-      const totalAmount = cart.reduce((sum, c) => sum + c.price * c.quantity, 0)
+      if (!freshItems) throw new Error('Could not verify menu items')
 
-      // 2. Insert order with user identity
+      const freshMap = new Map(freshItems.map((i) => [i.id, i]))
+      const unavailable: string[] = []
+      const priceChanged: string[] = []
+
+      for (const cartItem of cart) {
+        const fresh = freshMap.get(cartItem.menu_item_id)
+        if (!fresh || !fresh.is_available) {
+          unavailable.push(cartItem.name)
+        } else if (fresh.price !== cartItem.price) {
+          priceChanged.push(cartItem.name)
+        }
+      }
+
+      if (unavailable.length > 0) {
+        throw new Error(`No longer available: ${unavailable.join(', ')}. Remove them and try again.`)
+      }
+
+      // Use fresh prices for the order
+      const validatedCart = cart.map((c) => ({
+        ...c,
+        price: freshMap.get(c.menu_item_id)?.price ?? c.price,
+      }))
+      const totalAmount = validatedCart.reduce((sum, c) => sum + c.price * c.quantity, 0)
+
+      // 2. Use timestamp-based display number to avoid race conditions
+      // Format: last 4 digits of epoch seconds — cycles every ~2.7 hours, unique enough for a cafe
+      const displayNumber = Math.floor(Date.now() / 1000) % 10000
+
+      // 3. Insert order with user identity
       const { data: order, error: orderError } = await supabase
         .from('cafe_orders')
         .insert({
@@ -324,9 +744,9 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         throw new Error(orderError?.message || 'Failed to create order')
       }
 
-      // 3. Insert order items
+      // 4. Insert order items with validated prices
       const { error: itemsError } = await supabase.from('cafe_order_items').insert(
-        cart.map((item) => ({
+        validatedCart.map((item) => ({
           order_id: order.id,
           menu_item_id: item.menu_item_id,
           name: item.name,
@@ -340,15 +760,17 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         throw new Error(itemsError.message)
       }
 
-      // Success — save order ID to this session
+      // Success — save order ID to this session and update cart with fresh prices
       saveOrderId(order.id)
       setCart([])
       setOrderPlaced(true)
-      setActiveTab('orders')
+      setActiveTab('wallet')
       fetchOrders()
       setTimeout(() => setOrderPlaced(false), 3500)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to place order')
+      const msg = err instanceof Error ? err.message : 'Failed to place order'
+      setErrorToast(msg)
+      setTimeout(() => setErrorToast(null), 5000)
     } finally {
       setIsOrdering(false)
     }
@@ -391,9 +813,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 bg-black rounded-2xl flex items-center justify-center">
-                <span className="text-xs font-bold text-white font-mono">ZO</span>
-              </div>
+              <img src="/cafezomad/logo.png" alt="Cafe Zomad" className="w-9 h-9 rounded-2xl object-contain bg-white p-1" />
               <h1 className="text-xl font-extrabold tracking-tight text-black">Cafe Zomad</h1>
             </div>
             <p className="text-[11px] text-black/60 font-medium tracking-[0.15em] uppercase mt-0.5 ml-[46px]">
@@ -427,10 +847,18 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         </div>
       </header>
 
-      {/* ── Success Toast ────────────────────────────────────────────────────── */}
+      {/* ── Toasts ─────────────────────────────────────────────────────────── */}
       {orderPlaced && (
         <div className="fixed top-4 left-4 right-4 z-50 bg-green-400 text-black px-5 py-3.5 rounded-2xl text-sm font-semibold text-center shadow-2xl shadow-black/20 animate-in fade-in slide-in-from-top-2">
           Order placed! Kitchen has been notified.
+        </div>
+      )}
+      {errorToast && (
+        <div
+          className="fixed top-4 left-4 right-4 z-50 bg-red-400 text-white px-5 py-3.5 rounded-2xl text-sm font-semibold text-center shadow-2xl shadow-black/20 cursor-pointer"
+          onClick={() => setErrorToast(null)}
+        >
+          {errorToast}
         </div>
       )}
 
@@ -585,9 +1013,18 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
 
                 if (categoryMap.size === 0) {
                   return (
-                    <p className="text-center text-black/35 py-12 font-medium">
-                      No items found
-                    </p>
+                    <div className="flex flex-col items-center justify-center py-16 gap-3">
+                      <svg className="w-12 h-12 text-black/15" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                      </svg>
+                      <p className="text-black/35 font-medium text-sm">
+                        {searchQuery.trim()
+                          ? `No items matching "${searchQuery}"`
+                          : menuItems.length === 0
+                          ? 'Menu is being prepared — check back soon!'
+                          : 'No items in this category'}
+                      </p>
+                    </div>
                   )
                 }
 
@@ -611,6 +1048,14 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                           key={item.id}
                           className="flex items-center gap-3 p-4 rounded-2xl bg-white ring-1 ring-black/10 shadow-sm"
                         >
+                          {/* Dish image */}
+                          {item.image_url && (
+                            <img
+                              src={item.image_url}
+                              alt={item.name}
+                              className="w-16 h-16 rounded-xl object-cover shrink-0"
+                            />
+                          )}
                           <div className="flex-1 min-w-0">
                             {/* Diet dot + name */}
                             <div className="flex items-center gap-2">
@@ -681,68 +1126,6 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
               })()}
             </div>
           </>
-        )}
-
-        {/* ── ORDERS TAB ────────────────────────────────────────────────────── */}
-        {activeTab === 'orders' && (
-          <div className="px-4 py-4 space-y-3">
-            {orders.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <svg
-                  className="w-12 h-12 text-black/20"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <p className="text-black/35 font-medium">No orders yet</p>
-              </div>
-            ) : (
-              orders.map((order) => (
-                <div
-                  key={order.id}
-                  className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-4"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="font-mono font-bold text-base text-black">
-                      #{order.display_number}
-                    </span>
-                    <OrderStatusBadge status={order.kitchen_status} />
-                  </div>
-                  <div className="space-y-1.5">
-                    {order.order_items?.map((item) => (
-                      <div key={item.id} className="flex justify-between text-sm">
-                        <span className="text-black/60 font-medium">
-                          <span className="font-mono font-semibold">{item.quantity}×</span>{' '}
-                          {item.name}
-                        </span>
-                        <span className="font-semibold text-black">
-                          {formatPaise(item.price * item.quantity)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-black/10">
-                    <span className="text-xs text-black/35 font-medium font-mono">
-                      {new Date(order.created_at).toLocaleTimeString('en-IN', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                    <span className="font-bold text-base text-black">
-                      {formatPaise(order.total)}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
         )}
 
         {/* ── CART TAB ──────────────────────────────────────────────────────── */}
@@ -855,39 +1238,16 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
           </div>
         )}
 
-        {/* ── WALLET TAB ────────────────────────────────────────────────────── */}
+        {/* ── BIO HACK TAB ──────────────────────────────────────────────────── */}
         {activeTab === 'wallet' && (
-          <div className="px-4 py-4">
-            <div className="rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 p-6 text-black mb-4 text-center">
-              <div className="w-14 h-14 bg-black/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <svg
-                  className="w-7 h-7 text-black/60"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.8}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"
-                  />
-                </svg>
-              </div>
-              <h2 className="text-xl font-extrabold tracking-tight text-black">Zo Card</h2>
-              <p className="text-sm text-black/60 font-medium mt-1">Prepaid wallet — coming soon</p>
-            </div>
-
-            <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-5 text-center">
-              <p className="text-black/50 text-sm font-medium leading-relaxed">
-                Zo Card lets you load credits and pay for meals, events, and more across all Zo House
-                properties.
-              </p>
-              <p className="text-black/35 text-xs font-medium mt-3">
-                ZoPassport integration coming soon.
-              </p>
-            </div>
-          </div>
+          <BioHackTab
+            isLoggedIn={isLoggedIn}
+            user={user}
+            showLoginModal={showLoginModal}
+            propertyId={propertyId}
+            orders={orders}
+            menuItems={menuItems}
+          />
         )}
       </div>
 
@@ -923,16 +1283,6 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                 ),
               },
               {
-                key: 'orders' as Tab,
-                label: 'Orders',
-                badge: activeOrders.length > 0 ? activeOrders.length : undefined,
-                icon: (active: boolean) => (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={active ? 2.2 : 1.8} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                ),
-              },
-              {
                 key: 'cart' as Tab,
                 label: 'Cart',
                 badge: totalItems > 0 ? totalItems : undefined,
@@ -944,11 +1294,11 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
               },
               {
                 key: 'wallet' as Tab,
-                label: 'Zo Card',
-                badge: undefined as number | undefined,
+                label: 'Bio Hack',
+                badge: activeOrders.length > 0 ? activeOrders.length : undefined,
                 icon: (active: boolean) => (
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={active ? 2.2 : 1.8} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
                   </svg>
                 ),
               },
