@@ -1050,87 +1050,69 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                       </div>
                     )}
 
-                    {/* Item cards */}
-                    {items.map((item) => {
-                      const inCart = cart.find((c) => c.menu_item_id === item.id)
-                      return (
-                        <div
-                          key={item.id}
-                          className="flex items-center gap-3 p-4 rounded-2xl bg-white ring-1 ring-black/10 shadow-sm"
-                        >
-                          {/* Dish image */}
-                          {item.image_url && (
-                            <img
-                              src={item.image_url}
-                              alt={item.name}
-                              className="w-16 h-16 rounded-xl object-cover shrink-0"
-                            />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            {/* Diet dot + name */}
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                                  item.diet === 'veg'
-                                    ? 'bg-green-500'
-                                    : item.diet === 'egg'
-                                    ? 'bg-yellow-500'
-                                    : 'bg-red-500'
-                                }`}
-                              />
-                              <span className="font-bold text-sm text-black tracking-tight truncate">
-                                {item.name}
-                              </span>
-                            </div>
-                            {/* Description */}
-                            {item.description && (
-                              <p className="text-xs text-black/45 font-medium mt-0.5 ml-[18px] line-clamp-1">
-                                {item.description}
-                              </p>
-                            )}
-                            {/* Price + calories */}
-                            <div className="flex items-center gap-3 mt-1.5 ml-[18px]">
-                              <span className="text-sm font-bold text-black">
-                                {formatPaise(item.price)}
-                              </span>
-                              {item.calories && (
-                                <span className="text-[10px] text-black/35 font-medium font-mono">
-                                  {item.calories} kcal
-                                </span>
+                    {/* Item cards — 2-col square grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {items.map((item) => {
+                        const inCart = cart.find((c) => c.menu_item_id === item.id)
+                        return (
+                          <div key={item.id} className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm overflow-hidden">
+                            {/* Square image */}
+                            <div className="aspect-square bg-stone-100 relative">
+                              {item.image_url ? (
+                                <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-black/15 text-3xl font-bold">{item.name.charAt(0)}</div>
                               )}
+                              <span className={`absolute top-2 left-2 w-3 h-3 rounded-full ring-2 ring-white ${item.diet === 'veg' ? 'bg-green-500' : item.diet === 'egg' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                            </div>
+                            {/* Info */}
+                            <div className="p-3">
+                              <p className="font-bold text-sm text-black tracking-tight truncate">{item.name}</p>
+                              <div className="flex items-center justify-between mt-1">
+                                <span className="text-sm font-bold text-black">{formatPaise(item.price)}</span>
+                                {item.calories != null && <span className="text-[10px] text-black/40 font-mono">{item.calories} kcal</span>}
+                              </div>
+                              {(item.protein != null || item.carbs != null || item.fats != null) && (
+                                <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                                  {item.protein != null && <span className="text-[9px] text-orange-600/70 font-semibold font-mono bg-orange-50 px-1.5 py-0.5 rounded">{item.protein}g P</span>}
+                                  {item.carbs != null && <span className="text-[9px] text-blue-600/70 font-semibold font-mono bg-blue-50 px-1.5 py-0.5 rounded">{item.carbs}g C</span>}
+                                  {item.fats != null && <span className="text-[9px] text-amber-600/70 font-semibold font-mono bg-amber-50 px-1.5 py-0.5 rounded">{item.fats}g F</span>}
+                                </div>
+                              )}
+                              {/* Cart control */}
+                              <div className="mt-2.5">
+                                {!inCart ? (
+                                  <button
+                                    onClick={() => addToCart(item)}
+                                    className="w-full py-2 bg-orange-500 rounded-xl text-black text-xs font-bold uppercase tracking-wider active:scale-[0.98] transition-all"
+                                  >
+                                    ADD
+                                  </button>
+                                ) : (
+                                  <div className="flex items-center justify-center rounded-xl bg-black overflow-hidden">
+                                    <button
+                                      onClick={() => removeFromCart(item.id)}
+                                      className="w-10 h-9 flex items-center justify-center text-white font-bold text-lg active:bg-white/10 transition-colors"
+                                    >
+                                      -
+                                    </button>
+                                    <span className="text-white font-bold text-sm font-mono w-6 text-center">
+                                      {inCart.quantity}
+                                    </span>
+                                    <button
+                                      onClick={() => addToCart(item)}
+                                      className="w-10 h-9 flex items-center justify-center text-white font-bold text-lg active:bg-white/10 transition-colors"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
-
-                          {/* Add to cart / quantity control */}
-                          {!inCart ? (
-                            <button
-                              onClick={() => addToCart(item)}
-                              className="shrink-0 px-4 py-2 bg-orange-500 rounded-xl text-black text-xs font-bold uppercase tracking-wider active:scale-95 active:translate-y-px transition-all"
-                            >
-                              ADD
-                            </button>
-                          ) : (
-                            <div className="shrink-0 flex items-center rounded-xl bg-black overflow-hidden">
-                              <button
-                                onClick={() => removeFromCart(item.id)}
-                                className="w-9 h-9 flex items-center justify-center text-white font-bold text-lg active:bg-white/10 transition-colors"
-                              >
-                                -
-                              </button>
-                              <span className="text-white font-bold text-sm font-mono w-5 text-center">
-                                {inCart.quantity}
-                              </span>
-                              <button
-                                onClick={() => addToCart(item)}
-                                className="w-9 h-9 flex items-center justify-center text-white font-bold text-lg active:bg-white/10 transition-colors"
-                              >
-                                +
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
+                        )
+                      })}
+                    </div>
                   </div>
                 ))
               })()}

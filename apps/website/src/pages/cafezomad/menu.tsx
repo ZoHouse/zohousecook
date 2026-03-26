@@ -150,23 +150,36 @@ export default function CafeMenuPage() {
                   <div className="flex-1 h-px bg-black/10" />
                 </div>
               )}
-              {items.map((item) => (
-                <div key={item.id} className="flex items-center gap-3 p-4 rounded-2xl bg-white ring-1 ring-black/10 shadow-sm">
-                  {item.image_url && <img src={item.image_url} alt={item.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${item.diet === 'veg' ? 'bg-green-500' : item.diet === 'egg' ? 'bg-yellow-500' : 'bg-red-500'}`} />
-                      <span className="font-bold text-sm text-black tracking-tight truncate">{item.name}</span>
+              <div className="grid grid-cols-2 gap-3">
+                {items.map((item) => (
+                  <div key={item.id} className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm overflow-hidden">
+                    {/* Image */}
+                    <div className="aspect-square bg-stone-100 relative">
+                      {item.image_url ? (
+                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-black/15 text-3xl font-bold">{item.name.charAt(0)}</div>
+                      )}
+                      <span className={`absolute top-2 left-2 w-3 h-3 rounded-full ring-2 ring-white ${item.diet === 'veg' ? 'bg-green-500' : item.diet === 'egg' ? 'bg-yellow-500' : 'bg-red-500'}`} />
                     </div>
-                    {item.description && <p className="text-xs text-black/45 font-medium mt-0.5 ml-[18px] line-clamp-1">{item.description}</p>}
-                    <div className="flex items-center gap-3 mt-1.5 ml-[18px]">
-                      <span className="text-sm font-bold text-black">{formatPaise(item.price)}</span>
-                      {item.calories != null && <span className="text-[10px] text-black/35 font-medium font-mono">{item.calories} kcal</span>}
-                      {item.protein != null && <span className="text-[10px] text-orange-500/70 font-medium font-mono">{item.protein}g P</span>}
+                    {/* Info */}
+                    <div className="p-3">
+                      <p className="font-bold text-sm text-black tracking-tight truncate">{item.name}</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-sm font-bold text-black">{formatPaise(item.price)}</span>
+                        {item.calories != null && <span className="text-[10px] text-black/40 font-mono">{item.calories} kcal</span>}
+                      </div>
+                      {(item.protein != null || item.carbs != null || item.fats != null) && (
+                        <div className="flex gap-2 mt-1.5">
+                          {item.protein != null && <span className="text-[9px] text-orange-600/70 font-semibold font-mono bg-orange-50 px-1.5 py-0.5 rounded">{item.protein}g P</span>}
+                          {item.carbs != null && <span className="text-[9px] text-blue-600/70 font-semibold font-mono bg-blue-50 px-1.5 py-0.5 rounded">{item.carbs}g C</span>}
+                          {item.fats != null && <span className="text-[9px] text-amber-600/70 font-semibold font-mono bg-amber-50 px-1.5 py-0.5 rounded">{item.fats}g F</span>}
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           ))
         )}
