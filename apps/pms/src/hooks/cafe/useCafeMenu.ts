@@ -54,6 +54,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       let itemQuery = supabase
         .from('cafe_menu_items')
         .select('*')
+        .order('is_available', { ascending: false })
         .order('sort_order')
 
       // Filter by property — critical for is_available to show correct state
