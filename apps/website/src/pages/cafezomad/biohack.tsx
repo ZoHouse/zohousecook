@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
-import { useAuth, useProfile, useQueryApi } from '@zo/auth'
+import { useAuth, useProfile } from '@zo/auth'
 import { supabase } from '../../config/supabase'
+import { useFoodCreditBalance } from '../../hooks/useFoodCreditBalance'
 
 interface MenuItem { id: string; name: string; calories: number | null; protein: number | null; carbs: number | null; fats: number | null; fibre: number | null; sugar: number | null }
 interface OrderHistoryItem { id: string; display_number: number; total: number; kitchen_status: string; created_at: string; items: { name: string; quantity: number }[] }
@@ -45,7 +46,7 @@ export default function BioHackPage() {
   const router = useRouter()
   const { user, isLoggedIn, showLoginModal } = useAuth()
   const { profile } = useProfile()
-  const { data: balanceData } = useQueryApi('WEBTHREE_LEDGER_BALANCE', { enabled: isLoggedIn === true }, '', '')
+  const { balance: foodCreditBalance } = useFoodCreditBalance(user?.mobile_number || null)
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [todayNutrition, setTodayNutrition] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0, fibre: 0, sugar: 0, items: 0 })
@@ -165,7 +166,7 @@ export default function BioHackPage() {
   }, [user?.id, user?.mobile_number, menuItems])
 
   const p = profile as { nickname?: string; avatar?: { image?: string }; pfp_image?: string; level?: number; level_percent?: number; experience?: number; membership?: string; work_role?: string } | undefined
-  const balance = (balanceData as { data?: { balance?: number } })?.data?.balance
+  const balance = foodCreditBalance
   const nt = todayNutrition
 
   // Not logged in
@@ -238,7 +239,7 @@ export default function BioHackPage() {
             {balance != null && (
               <div className="text-right shrink-0">
                 <p className="text-lg font-extrabold text-black">{balance.toLocaleString()}</p>
-                <p className="text-[9px] text-black/50 font-semibold uppercase tracking-wider">credits</p>
+                <p className="text-[9px] text-black/50 font-semibold uppercase tracking-wider">$food</p>
               </div>
             )}
           </div>

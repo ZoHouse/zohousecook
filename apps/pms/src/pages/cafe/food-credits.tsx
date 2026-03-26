@@ -33,7 +33,7 @@ const TYPE_COLORS: Record<string, string> = {
 
 const FoodCreditsPage: NextPage = () => {
   const {
-    wallet, transactions, isLoading, stats,
+    wallet, transactions, customerMatch, isLoading, stats,
     searchByPhone, issueCredits, revokeCredits,
     recentTransactions,
   } = useFoodCredits()
@@ -125,7 +125,7 @@ const FoodCreditsPage: NextPage = () => {
       align: 'right',
       render: (v: number, r: FoodCreditTransaction) => (
         <Text strong style={{ color: r.type === 'issue' || r.type === 'refund' ? '#52c41a' : '#ff4d4f' }}>
-          {r.type === 'issue' || r.type === 'refund' ? '+' : '-'}{v}
+          {r.type === 'issue' || r.type === 'refund' ? '+' : '-'}{v} $food
         </Text>
       ),
     },
@@ -133,9 +133,9 @@ const FoodCreditsPage: NextPage = () => {
       title: 'Balance',
       dataIndex: 'balance_after',
       key: 'balance',
-      width: 80,
+      width: 100,
       align: 'right',
-      render: (v: number) => <Text code>{v}</Text>,
+      render: (v: number) => <Text code>{v} $food</Text>,
     },
     {
       title: 'Note',
@@ -162,17 +162,17 @@ const FoodCreditsPage: NextPage = () => {
           <Row gutter={16} style={{ marginBottom: 20 }}>
             <Col span={8}>
               <Card size="small">
-                <Statistic title="Total Issued" value={stats.totalIssued} prefix="$" valueStyle={{ color: '#52c41a' }} />
+                <Statistic title="Total Issued" value={stats.totalIssued} suffix=" $food" valueStyle={{ color: '#52c41a' }} />
               </Card>
             </Col>
             <Col span={8}>
               <Card size="small">
-                <Statistic title="Total Spent" value={stats.totalSpent} prefix="$" valueStyle={{ color: '#faad14' }} />
+                <Statistic title="Total Spent" value={stats.totalSpent} suffix=" $food" valueStyle={{ color: '#faad14' }} />
               </Card>
             </Col>
             <Col span={8}>
               <Card size="small">
-                <Statistic title="Outstanding" value={stats.totalOutstanding} prefix="$" valueStyle={{ color: '#1890ff' }} />
+                <Statistic title="Outstanding" value={stats.totalOutstanding} suffix=" $food" valueStyle={{ color: '#1890ff' }} />
               </Card>
             </Col>
           </Row>
@@ -243,6 +243,32 @@ const FoodCreditsPage: NextPage = () => {
                   style={{ marginTop: 8 }}
                 />
               </div>
+            </Card>
+          ) : customerMatch ? (
+            <Card style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div>
+                  <Title level={4} style={{ margin: 0 }}>{customerMatch.name || 'Unknown'}</Title>
+                  <Text type="secondary">{customerMatch.phone}</Text>
+                  <div style={{ marginTop: 4 }}>
+                    <Tag>{customerMatch.orderCount} order{customerMatch.orderCount !== 1 ? 's' : ''}</Tag>
+                    <Tag color="orange">No $food wallet yet</Tag>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 32, fontWeight: 700, fontFamily: 'monospace', color: '#666' }}>
+                    0
+                  </div>
+                  <Text type="secondary">$food balance</Text>
+                </div>
+              </div>
+              <Button
+                icon={<PlusOutlined />}
+                onClick={() => { setIssuePhone(customerMatch.phone); setIssueName(customerMatch.name || ''); setIssueOpen(true) }}
+                style={{ background: '#cfff50', borderColor: '#cfff50', color: '#000' }}
+              >
+                Issue first $food
+              </Button>
             </Card>
           ) : (
             <div>

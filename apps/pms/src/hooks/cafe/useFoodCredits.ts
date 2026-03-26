@@ -9,9 +9,16 @@ interface FoodCreditStats {
   totalOutstanding: number
 }
 
+export interface CustomerMatch {
+  phone: string
+  name: string | null
+  orderCount: number
+}
+
 interface UseFoodCreditsResult {
   wallet: FoodCreditWallet | null
   transactions: FoodCreditTransaction[]
+  customerMatch: CustomerMatch | null
   isLoading: boolean
   error: string | null
   searchByPhone: (phone: string) => Promise<void>
@@ -25,6 +32,7 @@ interface UseFoodCreditsResult {
 export function useFoodCredits(): UseFoodCreditsResult {
   const [wallet, setWallet] = useState<FoodCreditWallet | null>(null)
   const [transactions, setTransactions] = useState<FoodCreditTransaction[]>([])
+  const [customerMatch, setCustomerMatch] = useState<CustomerMatch | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState<FoodCreditStats>({ totalIssued: 0, totalSpent: 0, totalOutstanding: 0 })
@@ -78,6 +86,7 @@ export function useFoodCredits(): UseFoodCreditsResult {
 
     if (w) {
       setWallet(w as FoodCreditWallet)
+      setCustomerMatch(null)
       const { data: txns } = await supabase
         .from('food_credit_transactions')
         .select('*')
@@ -88,6 +97,21 @@ export function useFoodCredits(): UseFoodCreditsResult {
     } else {
       setWallet(null)
       setTransactions([])
+
+      // No wallet — check if this phone has placed orders (potential customer)
+      const { data: orders } = await supabase
+        .from('cafe_orders')
+        .select('customer_name, customer_phone')
+        .eq('customer_phone', normalized)
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (orders && orders.length > 0) {
+        const name = orders.find((o) => o.customer_name)?.customer_name || null
+        setCustomerMatch({ phone: normalized, name, orderCount: orders.length })
+      } else {
+        setCustomerMatch(null)
+      }
     }
     setIsLoading(false)
   }, [])
@@ -127,7 +151,7 @@ export function useFoodCredits(): UseFoodCreditsResult {
   }, [wallet, searchByPhone, fetchStats, fetchRecent])
 
   return {
-    wallet, transactions, isLoading, error,
+    wallet, transactions, customerMatch, isLoading, error,
     searchByPhone, issueCredits, revokeCredits,
     stats, recentTransactions, refetch,
   }
