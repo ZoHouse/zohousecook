@@ -52,6 +52,10 @@ export default function BioHackPage() {
   const [mealLog, setMealLog] = useState<{ name: string; qty: number; cal: number; protein: number; time: string }[]>([])
   const [orderHistory, setOrderHistory] = useState<OrderHistoryItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [goals, setGoals] = useState(DAILY_TARGETS)
+  const [showGoalsEditor, setShowGoalsEditor] = useState(false)
+  const [editGoals, setEditGoals] = useState(DAILY_TARGETS)
+  const [savingGoals, setSavingGoals] = useState(false)
 
   // Fetch all menu items (for nutrition lookup)
   useEffect(() => {
@@ -60,6 +64,33 @@ export default function BioHackPage() {
       setIsLoading(false)
     })
   }, [])
+
+  // Fetch user's nutrition goals
+  useEffect(() => {
+    if (!user?.mobile_number) return
+    const phone = (user.mobile_number || '').replace(/^\+?91/, '').replace(/\D/g, '')
+    supabase.from('cafe_nutrition_goals').select('*').eq('customer_phone', phone).single().then(({ data }) => {
+      if (data) {
+        const g = { calories: data.calories, protein: data.protein, carbs: data.carbs, fats: data.fats, fibre: data.fibre, sugar: data.sugar }
+        setGoals(g)
+        setEditGoals(g)
+      }
+    })
+  }, [user?.mobile_number])
+
+  const handleSaveGoals = async () => {
+    if (!user?.mobile_number) return
+    setSavingGoals(true)
+    const phone = (user.mobile_number || '').replace(/^\+?91/, '').replace(/\D/g, '')
+    await supabase.from('cafe_nutrition_goals').upsert({
+      customer_phone: phone,
+      ...editGoals,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'customer_phone' })
+    setGoals(editGoals)
+    setShowGoalsEditor(false)
+    setSavingGoals(false)
+  }
 
   // Fetch today's nutrition + order history
   useEffect(() => {
@@ -129,7 +160,7 @@ export default function BioHackPage() {
       })
   }, [user?.id, menuItems])
 
-  const p = profile as { nickname?: string; avatar_url?: string; level?: number; level_percent?: number; experience?: number; membership?: string; work_role?: string } | undefined
+  const p = profile as { nickname?: string; avatar?: { image?: string }; pfp_image?: string; level?: number; level_percent?: number; experience?: number; membership?: string; work_role?: string } | undefined
   const balance = (balanceData as { data?: { balance?: number } })?.data?.balance
   const nt = todayNutrition
 
@@ -153,7 +184,10 @@ export default function BioHackPage() {
   }
 
   const displayName = p?.nickname || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Citizen'
-  const avatarUrl = p?.avatar_url
+  const rawAvatar = p?.avatar?.image || p?.pfp_image
+  const avatarUrl = rawAvatar && rawAvatar.length > 0
+    ? rawAvatar.startsWith('ipfs://') ? rawAvatar.replace('ipfs://', 'https://ipfs.io/ipfs/') : rawAvatar.replace('static.cdn.zo.xyz', 'proxy.cdn.zo.xyz')
+    : null
 
   if (isLoading) {
     return (
@@ -223,8 +257,13 @@ export default function BioHackPage() {
             <h2 className="text-lg font-extrabold text-black tracking-tight">Today</h2>
             <p className="text-[11px] text-black/40 font-medium">{displayName}&apos;s nutrition</p>
           </div>
-          <div className="px-3 py-1.5 bg-orange-100 rounded-full">
-            <span className="text-[11px] font-bold text-orange-700">{nt.items} item{nt.items !== 1 ? 's' : ''}</span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => { setEditGoals(goals); setShowGoalsEditor(true) }} className="px-2.5 py-1.5 rounded-full bg-white ring-1 ring-black/10 text-[11px] font-semibold text-black/50 active:scale-95 transition-all">
+              Set Goals
+            </button>
+            <div className="px-3 py-1.5 bg-orange-100 rounded-full">
+              <span className="text-[11px] font-bold text-orange-700">{nt.items} item{nt.items !== 1 ? 's' : ''}</span>
+            </div>
           </div>
         </div>
 
@@ -235,14 +274,14 @@ export default function BioHackPage() {
             <p className="text-xs font-semibold text-black/50 uppercase tracking-widest mb-1">Calories</p>
             <div className="flex items-end gap-2">
               <span className="text-4xl font-black text-black tracking-tighter">{Math.round(nt.calories).toLocaleString()}</span>
-              <span className="text-sm font-semibold text-black/50 mb-1">/ {DAILY_TARGETS.calories} kcal</span>
+              <span className="text-sm font-semibold text-black/50 mb-1">/ {goals.calories} kcal</span>
             </div>
             <div className="mt-3 h-2.5 bg-black/10 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, (nt.calories / DAILY_TARGETS.calories) * 100)}%`, background: nt.calories > DAILY_TARGETS.calories ? '#ef4444' : '#000000aa' }} />
+              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, (nt.calories / goals.calories) * 100)}%`, background: nt.calories > goals.calories ? '#ef4444' : '#000000aa' }} />
             </div>
             <div className="flex justify-between mt-1.5 text-[10px] font-semibold text-black/40">
-              <span>{Math.round((nt.calories / DAILY_TARGETS.calories) * 100)}%</span>
-              <span>{Math.max(0, DAILY_TARGETS.calories - Math.round(nt.calories))} remaining</span>
+              <span>{Math.round((nt.calories / goals.calories) * 100)}%</span>
+              <span>{Math.max(0, goals.calories - Math.round(nt.calories))} remaining</span>
             </div>
           </div>
         </div>
@@ -251,11 +290,11 @@ export default function BioHackPage() {
         <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-4">
           <h3 className="text-xs font-bold text-black/60 uppercase tracking-widest mb-3">Macros</h3>
           <div className="grid grid-cols-5 gap-1">
-            <MacroRing label="Protein" value={nt.protein} target={DAILY_TARGETS.protein} color="#f97316" unit="g" />
-            <MacroRing label="Carbs" value={nt.carbs} target={DAILY_TARGETS.carbs} color="#3b82f6" unit="g" />
-            <MacroRing label="Fats" value={nt.fats} target={DAILY_TARGETS.fats} color="#eab308" unit="g" />
-            <MacroRing label="Fibre" value={nt.fibre} target={DAILY_TARGETS.fibre} color="#22c55e" unit="g" />
-            <MacroRing label="Sugar" value={nt.sugar} target={DAILY_TARGETS.sugar} color="#ef4444" unit="g" />
+            <MacroRing label="Protein" value={nt.protein} target={goals.protein} color="#f97316" unit="g" />
+            <MacroRing label="Carbs" value={nt.carbs} target={goals.carbs} color="#3b82f6" unit="g" />
+            <MacroRing label="Fats" value={nt.fats} target={goals.fats} color="#eab308" unit="g" />
+            <MacroRing label="Fibre" value={nt.fibre} target={goals.fibre} color="#22c55e" unit="g" />
+            <MacroRing label="Sugar" value={nt.sugar} target={goals.sugar} color="#ef4444" unit="g" />
           </div>
         </div>
 
@@ -317,6 +356,52 @@ export default function BioHackPage() {
           </div>
         )}
       </div>
+
+      {/* Goals Editor Modal */}
+      {showGoalsEditor && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setShowGoalsEditor(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl">
+            <div className="px-5 pt-5 pb-3 border-b border-black/5">
+              <div className="w-10 h-1 bg-black/15 rounded-full mx-auto mb-4" />
+              <h2 className="text-lg font-extrabold text-black">Set Daily Goals</h2>
+              <p className="text-xs text-black/40 font-medium mt-0.5">Customize your nutrition targets</p>
+            </div>
+            <div className="px-5 py-4 space-y-3 pb-8">
+              {([
+                { key: 'calories', label: 'Calories (kcal)', step: 100 },
+                { key: 'protein', label: 'Protein (g)', step: 5 },
+                { key: 'carbs', label: 'Carbs (g)', step: 10 },
+                { key: 'fats', label: 'Fats (g)', step: 5 },
+                { key: 'fibre', label: 'Fibre (g)', step: 5 },
+                { key: 'sugar', label: 'Sugar (g)', step: 5 },
+              ] as const).map(({ key, label, step }) => (
+                <div key={key} className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-black/70">{label}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setEditGoals((g) => ({ ...g, [key]: Math.max(0, g[key] - step) }))}
+                      className="w-8 h-8 rounded-lg bg-black/5 flex items-center justify-center text-black/60 font-bold active:scale-95"
+                    >-</button>
+                    <span className="w-14 text-center font-bold text-black tabular-nums">{editGoals[key]}</span>
+                    <button
+                      onClick={() => setEditGoals((g) => ({ ...g, [key]: g[key] + step }))}
+                      className="w-8 h-8 rounded-lg bg-black/5 flex items-center justify-center text-black/60 font-bold active:scale-95"
+                    >+</button>
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={handleSaveGoals}
+                disabled={savingGoals}
+                className="w-full bg-orange-500 text-black py-3.5 text-sm font-bold rounded-xl mt-4 active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                {savingGoals ? 'Saving...' : 'Save Goals'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
