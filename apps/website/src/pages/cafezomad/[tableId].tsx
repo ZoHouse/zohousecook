@@ -165,6 +165,7 @@ function BioHackTab({
   const [allMenuItems, setAllMenuItems] = useState<MenuItem[]>([])
   const [todayNutrition, setTodayNutrition] = useState<NutritionTotals | null>(null)
   const [mealLog, setMealLog] = useState<{ name: string; qty: number; cal: number; protein: number; time: string }[]>([])
+  const [orderHistory, setOrderHistory] = useState<{ id: string; display_number: number; total: number; kitchen_status: string; created_at: string; order_items: { name: string; quantity: number; id?: string; price?: number }[] }[]>([])
 
   // Fetch ALL menu items (across all properties) for nutrition lookup
   useEffect(() => {
@@ -227,6 +228,17 @@ function BioHackTab({
 
         setTodayNutrition(totals)
         setMealLog(log)
+      })
+
+    // Order history (last 20)
+    supabase
+      .from('cafe_orders')
+      .select('id, display_number, total, kitchen_status, created_at, order_items:cafe_order_items(id, name, quantity, price)')
+      .eq('customer_phone', phone)
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        if (data) setOrderHistory(data as typeof orderHistory)
       })
   }, [user?.id, user?.mobile_number, allMenuItems])
 
@@ -440,14 +452,14 @@ function BioHackTab({
         </div>
       )}
 
-      {/* Live Orders */}
-      {orders.length > 0 && (
+      {/* Order History */}
+      {orderHistory.length > 0 && (
         <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-4">
           <h3 className="text-xs font-bold text-black/60 uppercase tracking-widest mb-3">
-            Active Orders
+            Order History
           </h3>
           <div className="space-y-3">
-            {orders.map((order) => (
+            {orderHistory.map((order) => (
               <div key={order.id} className="rounded-xl bg-black/[0.02] ring-1 ring-black/5 p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-mono font-bold text-sm text-black">
@@ -456,15 +468,17 @@ function BioHackTab({
                   <OrderStatusBadge status={order.kitchen_status} />
                 </div>
                 <div className="space-y-1">
-                  {order.order_items?.map((item) => (
-                    <div key={item.id} className="flex justify-between text-xs">
+                  {order.order_items?.map((item, idx) => (
+                    <div key={item.id || idx} className="flex justify-between text-xs">
                       <span className="text-black/50 font-medium">
                         <span className="font-mono font-semibold">{item.quantity}×</span>{' '}
                         {item.name}
                       </span>
-                      <span className="font-semibold text-black/70">
-                        {formatPaise(item.price * item.quantity)}
-                      </span>
+                      {item.price != null && (
+                        <span className="font-semibold text-black/70">
+                          {formatPaise(item.price * item.quantity)}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
