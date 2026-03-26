@@ -177,11 +177,16 @@ function BioHackTab({
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
 
+    const phone = user.mobile_number
+    const userFilter = phone
+      ? `zo_user_id.eq.${user.id},customer_phone.eq.${phone}`
+      : `zo_user_id.eq.${user.id}`
+
     supabase
       .from('cafe_orders')
       .select('created_at, order_items:cafe_order_items(menu_item_id, quantity, name)')
       .eq('property_id', propertyId)
-      .eq('zo_user_id', user.id)
+      .or(userFilter)
       .not('kitchen_status', 'eq', 'cancelled')
       .gte('created_at', todayStart.toISOString())
       .order('created_at', { ascending: true })
@@ -593,12 +598,16 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       .limit(20)
 
     if (user?.id && propertyId) {
-      // Logged in — get orders by user ID at this property, plus any session orders
+      // Logged in — get orders by user ID or phone at this property, plus session orders
+      const phone = user.mobile_number
+      const userMatch = phone
+        ? `zo_user_id.eq.${user.id},customer_phone.eq.${phone}`
+        : `zo_user_id.eq.${user.id}`
       if (myIds.length > 0) {
-        query = query.or(`zo_user_id.eq.${user.id},id.in.(${myIds.join(',')})`)
+        query = query.or(`${userMatch},id.in.(${myIds.join(',')})`)
           .eq('property_id', propertyId)
       } else {
-        query = query.eq('zo_user_id', user.id).eq('property_id', propertyId)
+        query = query.or(userMatch).eq('property_id', propertyId)
       }
     } else if (myIds.length > 0) {
       query = query.in('id', myIds)
