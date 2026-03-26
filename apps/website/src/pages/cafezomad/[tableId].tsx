@@ -350,15 +350,15 @@ function BioHackTab({
             {displayName}&apos;s nutrition today
           </p>
         </div>
-        <div className="px-3 py-1.5 bg-green-100 rounded-full">
-          <span className="text-[11px] font-bold text-green-700">
+        <div className="px-3 py-1.5 bg-orange-100 rounded-full">
+          <span className="text-[11px] font-bold text-orange-700">
             {nt.items} item{nt.items !== 1 ? 's' : ''} logged
           </span>
         </div>
       </div>
 
       {/* Calorie Hero Card */}
-      <div className="rounded-2xl bg-gradient-to-br from-green-400 via-emerald-500 to-teal-500 p-5 relative overflow-hidden">
+      <div className="rounded-2xl bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500 p-5 relative overflow-hidden">
         <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-white/10" />
         <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/10" />
         <div className="relative">
