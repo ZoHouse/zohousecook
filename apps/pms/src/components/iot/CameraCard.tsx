@@ -52,7 +52,7 @@ export function CameraCard({ camera, onClick }: CameraCardProps) {
           <span>{camera.name}</span>
         </div>
       }
-      extra={<Tag color={TYPE_COLORS[camera.type] || 'default'}>{camera.type}</Tag>}
+      extra={<Tag color={TYPE_COLORS[camera.type ?? ''] || 'default'}>{camera.type}</Tag>}
       hoverable
       onClick={() => onClick(camera)}
       style={{ cursor: 'pointer' }}
