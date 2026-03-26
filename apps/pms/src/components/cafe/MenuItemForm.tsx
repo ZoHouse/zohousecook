@@ -38,7 +38,7 @@ interface IngredientOption {
 interface MenuItemFormProps {
   open: boolean
   onClose: () => void
-  onSubmit: (values: Record<string, unknown>) => void
+  onSubmit: (values: Record<string, unknown>) => Promise<string | null> | void
   editItem?: MenuItem | null
   categoryId: string
 }
@@ -284,7 +284,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
       const values = await form.validateFields()
 
       // Save the menu item first
-      onSubmit({
+      const result = await onSubmit({
         category_id: categoryId,
         name: values.name,
         description: values.description || null,
@@ -303,11 +303,12 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
         is_available: values.is_available ?? true,
       })
 
-      // Save recipe mappings (only when editing — we have the menu item ID)
-      if (editItem?.id) {
+      // Save recipe mappings — for edit (existing ID) or create (returned ID)
+      const menuItemId = editItem?.id || (typeof result === 'string' ? result : null)
+      if (menuItemId && recipeRows.length > 0) {
         setRecipeSaving(true)
         try {
-          await saveRecipeRows(editItem.id)
+          await saveRecipeRows(menuItemId)
         } catch (err) {
           console.error('Failed to save recipe:', err)
           message.warning('Menu item saved but recipe update failed')
@@ -492,8 +493,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
         </Form.Item>
 
         {/* ── Recipe → Inventory Mapping ── */}
-        {isEdit && (
-          <>
+        <>
             <Divider style={{ margin: '12px 0 16px' }} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <div style={{ fontWeight: 500, fontSize: 13 }}>
@@ -581,8 +581,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
                 ))}
               </div>
             )}
-          </>
-        )}
+        </>
 
         <Form.Item name="daily_limit" label="Daily Limit">
           <InputNumber min={1} style={{ width: '100%' }} placeholder="Unlimited" />

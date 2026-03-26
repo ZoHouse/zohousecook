@@ -15,7 +15,7 @@ interface UseCafeMenuResult {
   refetch: () => Promise<void>
   createCategory: (name: string) => Promise<void>
   toggleCategory: (id: string, isActive: boolean) => Promise<void>
-  createItem: (data: Record<string, unknown>) => Promise<void>
+  createItem: (data: Record<string, unknown>) => Promise<string | null>
   updateItem: (id: string, data: Record<string, unknown>) => Promise<void>
   toggleAvailability: (id: string, isAvailable: boolean) => Promise<void>
 }
@@ -124,7 +124,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
     await fetchData()
   }, [fetchData])
 
-  const createItem = useCallback(async (data: Record<string, unknown>) => {
+  const createItem = useCallback(async (data: Record<string, unknown>): Promise<string | null> => {
     // Standardised menu: create item for all properties under matching category names
     const categoryId = data.category_id as string
     if (!categoryId) throw new Error('category_id is required')
@@ -149,11 +149,14 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       property_id: cat.property_id,
       sort_order: 0,
     }))
-    const { error } = await supabase
+    const { data: created, error } = await supabase
       .from('cafe_menu_items')
       .insert(rows)
+      .select('id')
     if (error) throw error
     await fetchData()
+    // Return the first created item's ID (for recipe saving)
+    return created?.[0]?.id ?? null
   }, [fetchData])
 
   const updateItem = useCallback(async (id: string, data: Record<string, unknown>) => {

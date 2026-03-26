@@ -44,10 +44,12 @@ interface LowStockAlert {
 function StockCell({
   stock,
   ingredientId,
+  propertyId,
   onSave,
 }: {
   stock: IngredientStockWithProperty | undefined
   ingredientId: string
+  propertyId: string
   onSave: (ingredientId: string, data: UpdateStockRequest) => Promise<void>
 }) {
   const [editing, setEditing] = useState(false)
@@ -59,10 +61,10 @@ function StockCell({
   const isEmpty = currentStock === 0
 
   const handleSave = async () => {
-    if (value !== null && value >= 0 && stock) {
+    if (value !== null && value >= 0) {
       try {
         await onSave(ingredientId, {
-          property_id: stock.property_id,
+          property_id: stock?.property_id || propertyId,
           current_stock: value,
           min_stock: minStock,
         })
@@ -109,6 +111,76 @@ function StockCell({
         }}
       >
         {currentStock}
+      </span>
+    </Tooltip>
+  )
+}
+
+// Inline min-stock edit cell
+function MinStockCell({
+  stock,
+  ingredientId,
+  propertyId,
+  onSave,
+}: {
+  stock: IngredientStockWithProperty | undefined
+  ingredientId: string
+  propertyId: string
+  onSave: (ingredientId: string, data: UpdateStockRequest) => Promise<void>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState<number | null>(null)
+
+  const currentStock = stock?.current_stock ?? 0
+  const minStock = stock?.min_stock ?? null
+
+  const handleSave = async () => {
+    if (value !== null && value >= 0) {
+      try {
+        await onSave(ingredientId, {
+          property_id: stock?.property_id || propertyId,
+          current_stock: currentStock,
+          min_stock: value,
+        })
+      } catch {
+        message.error('Failed to update min stock')
+      }
+    }
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <InputNumber
+        size="small"
+        min={0}
+        step={1}
+        value={value}
+        onChange={setValue}
+        onBlur={handleSave}
+        onPressEnter={handleSave}
+        autoFocus
+        style={{ width: 80 }}
+      />
+    )
+  }
+
+  return (
+    <Tooltip title="Click to set min stock threshold">
+      <span
+        style={{
+          cursor: 'pointer',
+          fontFamily: 'monospace',
+          padding: '2px 6px',
+          borderRadius: 4,
+          color: minStock === null ? '#8c8c8c' : undefined,
+        }}
+        onClick={() => {
+          setValue(minStock ?? 0)
+          setEditing(true)
+        }}
+      >
+        {minStock ?? '—'}
       </span>
     </Tooltip>
   )
@@ -290,17 +362,17 @@ const CafeInventoryPage: NextPage = () => {
       align: 'center' as const,
       render: (_: unknown, record: CafeIngredientWithStock) => {
         const s = record.stock.find((x) => x.property_code.toLowerCase() === propertyCode.toLowerCase())
-        return <StockCell stock={s} ingredientId={record.id} onSave={updateStock} />
+        return <StockCell stock={s} ingredientId={record.id} propertyId={propertyId || ''} onSave={updateStock} />
       },
     },
     {
       title: 'Min Stock',
       key: 'min_stock',
       width: 90,
-      align: 'right',
+      align: 'center' as const,
       render: (_: unknown, record: CafeIngredientWithStock) => {
         const s = record.stock.find((x) => x.property_code.toLowerCase() === propertyCode.toLowerCase())
-        return <Text type="secondary">{s?.min_stock ?? '—'}</Text>
+        return <MinStockCell stock={s} ingredientId={record.id} propertyId={propertyId || ''} onSave={updateStock} />
       },
     },
     {

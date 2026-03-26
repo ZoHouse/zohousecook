@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../configs/supabase'
 import { getNextStatus } from '../../lib/cafe/kitchen-status'
-import { deductInventoryForOrder } from '../../lib/cafe/inventory-deduct'
+import { deductInventoryForOrder, restoreInventoryForOrder } from '../../lib/cafe/inventory-deduct'
 import type { CafeOrder, CafeOrderWithItems, KitchenStatus } from '../../types/cafe'
 
 const ACTIVE_STATUSES: KitchenStatus[] = ['new', 'accepted', 'preparing', 'ready']
@@ -177,9 +177,14 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
 
       // Deduct inventory when order is accepted (kitchen commits to making it)
       if (nextStatus === 'accepted') {
-        const order = orders.find((o) => o.id === orderId)
-        if (order?.property_id) {
-          deductInventoryForOrder(orderId, order.property_id).catch((err) =>
+        // Fetch property_id directly to avoid stale closure over orders
+        const { data: orderRow } = await supabase
+          .from('cafe_orders')
+          .select('property_id')
+          .eq('id', orderId)
+          .single()
+        if (orderRow?.property_id) {
+          deductInventoryForOrder(orderId, orderRow.property_id).catch((err) =>
             console.error('Inventory deduction failed:', err)
           )
         }
@@ -189,6 +194,10 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
   )
 
   const cancelOrder = useCallback(async (orderId: string) => {
+    // Check if order was already accepted (inventory was deducted)
+    const order = orders.find((o) => o.id === orderId)
+    const wasAccepted = order?.kitchen_status && ['accepted', 'preparing', 'ready'].includes(order.kitchen_status)
+
     const { error } = await supabase
       .from('cafe_orders')
       .update({ kitchen_status: 'cancelled' })
@@ -201,7 +210,14 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
 
     // Remove from active board immediately
     setOrders((prev) => prev.filter((o) => o.id !== orderId))
-  }, [])
+
+    // Restore inventory if order had been accepted
+    if (wasAccepted && order?.property_id) {
+      restoreInventoryForOrder(orderId, order.property_id).catch((err) =>
+        console.error('Inventory restore failed:', err)
+      )
+    }
+  }, [orders])
 
   return { orders, isLoading, advanceStatus, cancelOrder }
 }

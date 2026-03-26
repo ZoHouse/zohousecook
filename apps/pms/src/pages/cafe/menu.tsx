@@ -83,19 +83,24 @@ const CafeMenuPage: NextPage = () => {
   }
 
   // --- Item actions ---
-  const handleSubmitItem = async (data: Record<string, unknown>) => {
+  const handleSubmitItem = async (data: Record<string, unknown>): Promise<string | null> => {
     try {
       if (editingItem) {
         await updateItem(editingItem.id, data)
         message.success('Item updated')
+        setShowForm(false)
+        setEditingItem(null)
+        return editingItem.id
       } else {
-        await createItem(data)
+        const newId = await createItem(data)
         message.success('Item added')
+        setShowForm(false)
+        setEditingItem(null)
+        return newId
       }
-      setShowForm(false)
-      setEditingItem(null)
     } catch {
       message.error(editingItem ? 'Failed to update item' : 'Failed to add item')
+      return null
     }
   }
 
