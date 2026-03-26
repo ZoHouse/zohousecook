@@ -1348,7 +1348,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
           ).map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => tab.key === 'wallet' ? router.push('/cafezomad/biohack') : setActiveTab(tab.key)}
               className={`relative flex flex-col items-center justify-center gap-0.5 w-14 h-12 rounded-2xl transition-all ${
                 activeTab === tab.key
                   ? 'text-orange-600'
