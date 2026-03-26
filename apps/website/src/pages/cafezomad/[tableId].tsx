@@ -97,7 +97,7 @@ interface CafeOrderWithItems {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = 'menu' | 'cart' | 'wallet'
+type Tab = 'menu' | 'orders' | 'wallet'
 
 interface CartItem {
   menu_item_id: string
@@ -868,14 +868,6 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {activeOrders.length > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-300 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
-                <span className="text-[11px] font-semibold text-black/80 tracking-wide">
-                  {activeOrders.length} active
-                </span>
-              </div>
-            )}
             {isLoggedIn && user ? (
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-black/10 rounded-full">
                 <span className="text-[11px] font-semibold text-black/70">
@@ -1157,140 +1149,142 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
           </>
         )}
 
-        {/* ── CART TAB ──────────────────────────────────────────────────────── */}
-        {activeTab === 'cart' && (
-          <div className="px-4 py-4">
-            {cart.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <svg
-                  className="w-12 h-12 text-black/20"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"
-                  />
-                </svg>
-                <p className="text-black/35 font-medium">Your cart is empty</p>
-                <button
-                  onClick={() => setActiveTab('menu')}
-                  className="mt-2 px-5 py-2.5 bg-orange-500 text-black text-sm font-bold rounded-xl active:scale-95 transition-all"
-                >
-                  Browse Menu
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Cart items */}
-                <div className="space-y-3 mb-6">
-                  {cart.map((item) => (
-                    <div
-                      key={item.menu_item_id}
-                      className="flex items-center justify-between p-4 rounded-2xl bg-white ring-1 ring-black/10 shadow-sm"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-black truncate">{item.name}</p>
-                        <p className="text-sm text-black/45 font-medium">
-                          {formatPaise(item.price)}
-                        </p>
+        {/* ── ORDERS TAB (cart + active orders + past orders) ────────────── */}
+        {activeTab === 'orders' && (
+          <div className="px-4 py-4 space-y-4">
+
+            {/* Active orders (being prepared) */}
+            {activeOrders.length > 0 && (
+              <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-4">
+                <h3 className="text-xs font-bold text-black/60 uppercase tracking-widest mb-3">
+                  Being Prepared
+                </h3>
+                <div className="space-y-3">
+                  {activeOrders.map((order) => (
+                    <div key={order.id} className="rounded-xl bg-orange-50 ring-1 ring-orange-200 p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-mono font-bold text-sm text-black">#{order.display_number}</span>
+                        <OrderStatusBadge status={order.kitchen_status} />
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center rounded-xl bg-black/5 overflow-hidden ring-1 ring-black/10">
-                          <button
-                            onClick={() => removeFromCart(item.menu_item_id)}
-                            className="w-9 h-9 flex items-center justify-center font-bold text-lg text-black active:bg-black/10 transition-colors"
-                          >
-                            -
-                          </button>
-                          <span className="font-bold text-sm font-mono w-5 text-center text-black">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() =>
-                              addToCart({
-                                id: item.menu_item_id,
-                                name: item.name,
-                                price: item.price,
-                              })
-                            }
-                            className="w-9 h-9 flex items-center justify-center font-bold text-lg text-black active:bg-black/10 transition-colors"
-                          >
-                            +
-                          </button>
-                        </div>
-                        <span className="font-bold w-16 text-right text-black">
-                          {formatPaise(item.price * item.quantity)}
+                      <div className="space-y-1">
+                        {order.order_items?.map((item) => (
+                          <div key={item.id} className="flex justify-between text-xs">
+                            <span className="text-black/50 font-medium">
+                              <span className="font-mono font-semibold">{item.quantity}×</span> {item.name}
+                            </span>
+                            <span className="font-semibold text-black/70">{formatPaise(item.price * item.quantity)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-between items-center mt-2 pt-2 border-t border-black/5">
+                        <span className="text-[10px] text-black/30 font-medium font-mono">
+                          {new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                         </span>
+                        <span className="font-bold text-sm text-black">{formatPaise(order.total)}</span>
                       </div>
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Cart (new order) */}
+            {cart.length > 0 ? (
+              <>
+                <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-4">
+                  <h3 className="text-xs font-bold text-black/60 uppercase tracking-widest mb-3">
+                    New Order
+                  </h3>
+                  <div className="space-y-3">
+                    {cart.map((item) => (
+                      <div key={item.menu_item_id} className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-black truncate">{item.name}</p>
+                          <p className="text-xs text-black/45 font-medium">{formatPaise(item.price)}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center rounded-xl bg-black/5 overflow-hidden ring-1 ring-black/10">
+                            <button onClick={() => removeFromCart(item.menu_item_id)} className="w-8 h-8 flex items-center justify-center font-bold text-black active:bg-black/10">-</button>
+                            <span className="font-bold text-sm font-mono w-5 text-center text-black">{item.quantity}</span>
+                            <button onClick={() => addToCart({ id: item.menu_item_id, name: item.name, price: item.price })} className="w-8 h-8 flex items-center justify-center font-bold text-black active:bg-black/10">+</button>
+                          </div>
+                          <span className="font-bold text-sm w-14 text-right text-black">{formatPaise(item.price * item.quantity)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
                 {/* Bill summary */}
-                <div className="rounded-2xl bg-yellow-200 ring-1 ring-black/10 p-4 mb-4">
-                  <h3 className="font-bold text-sm text-black mb-3">Bill Summary</h3>
-                  <div className="space-y-1.5 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-black/50 font-medium">Subtotal</span>
-                      <span className="font-semibold text-black">{formatPaise(totalAmount)}</span>
-                    </div>
-                    <div className="text-xs text-black/35 font-medium">
-                      Taxes &amp; charges included
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-black/15">
+                <div className="rounded-2xl bg-yellow-200 ring-1 ring-black/10 p-4">
+                  <div className="flex justify-between items-center">
                     <span className="font-bold text-black">Total</span>
-                    <span className="text-xl font-extrabold text-black">
-                      {formatPaise(totalAmount)}
-                    </span>
+                    <span className="text-xl font-extrabold text-black">{formatPaise(totalAmount)}</span>
                   </div>
+                  <p className="text-xs text-black/35 font-medium mt-1">Taxes &amp; charges included</p>
                 </div>
 
                 {/* $food Credits slider */}
                 {foodBalance > 0 && (
-                  <div style={{ background: '#1a1a2e', borderRadius: 12, padding: 14, marginBottom: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <span style={{ color: '#cfff50', fontWeight: 600, fontSize: 14 }}>$food Balance</span>
-                      <span style={{ color: '#cfff50', fontFamily: 'monospace', fontWeight: 700 }}>{foodBalance}</span>
+                  <div className="rounded-2xl bg-black p-4">
+                    <div className="flex justify-between mb-2">
+                      <span className="text-orange-400 font-semibold text-sm">$food Balance</span>
+                      <span className="text-orange-400 font-mono font-bold">{foodBalance}</span>
                     </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={Math.min(foodBalance, Math.floor(totalAmount / 100))}
-                      value={foodCreditAmount}
-                      onChange={(e) => setFoodCreditAmount(Number(e.target.value))}
-                      style={{ width: '100%', accentColor: '#cfff50' }}
-                    />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginTop: 6 }}>
-                      <span style={{ color: '#aaa' }}>Apply: ₹{foodCreditAmount}</span>
-                      <span style={{ color: '#fff', fontWeight: 600 }}>
-                        To pay: {formatPaise(totalAmount - foodCreditAmount * 100)}
-                      </span>
+                    <input type="range" min={0} max={Math.min(foodBalance, Math.floor(totalAmount / 100))} value={foodCreditAmount} onChange={(e) => setFoodCreditAmount(Number(e.target.value))} className="w-full" style={{ accentColor: '#f97316' }} />
+                    <div className="flex justify-between text-xs mt-2">
+                      <span className="text-white/50">Apply: ₹{foodCreditAmount}</span>
+                      <span className="text-white font-semibold">To pay: {formatPaise(totalAmount - foodCreditAmount * 100)}</span>
                     </div>
                   </div>
                 )}
 
-                {/* Place Order button */}
-                <button
-                  onClick={handlePlaceOrder}
-                  disabled={isOrdering}
-                  className="w-full bg-orange-500 text-black py-4 text-base font-bold tracking-wide rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] active:translate-y-px transition-all disabled:opacity-50"
-                >
+                {/* Place Order */}
+                <button onClick={handlePlaceOrder} disabled={isOrdering} className="w-full bg-orange-500 text-black py-4 text-base font-bold tracking-wide rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all disabled:opacity-50">
                   {isOrdering ? 'Placing Order...' : `Place Order · ${formatPaise(totalAmount - foodCreditAmount * 100)}`}
                 </button>
-
-                <p className="text-center text-xs text-black/35 font-medium mt-3">
-                  {foodCreditAmount > 0
-                    ? `₹${foodCreditAmount} $food applied · pay ₹${Math.ceil((totalAmount - foodCreditAmount * 100) / 100)} at counter`
-                    : 'Pay at the counter after your meal'
-                  }
+                <p className="text-center text-xs text-black/35 font-medium">
+                  {foodCreditAmount > 0 ? `₹${foodCreditAmount} $food applied · pay ₹${Math.ceil((totalAmount - foodCreditAmount * 100) / 100)} at counter` : 'Pay at the counter after your meal'}
                 </p>
               </>
+            ) : activeOrders.length === 0 && orders.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <svg className="w-12 h-12 text-black/20" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                </svg>
+                <p className="text-black/35 font-medium">No orders yet</p>
+                <button onClick={() => setActiveTab('menu')} className="mt-2 px-5 py-2.5 bg-orange-500 text-black text-sm font-bold rounded-xl active:scale-95 transition-all">
+                  Browse Menu
+                </button>
+              </div>
+            ) : null}
+
+            {/* Past orders (served/ready) */}
+            {orders.filter((o) => o.kitchen_status && ['ready', 'served'].includes(o.kitchen_status)).length > 0 && (
+              <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-4">
+                <h3 className="text-xs font-bold text-black/60 uppercase tracking-widest mb-3">Completed</h3>
+                <div className="space-y-3">
+                  {orders.filter((o) => o.kitchen_status && ['ready', 'served'].includes(o.kitchen_status)).map((order) => (
+                    <div key={order.id} className="rounded-xl bg-black/[0.02] ring-1 ring-black/5 p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-mono font-bold text-sm text-black">#{order.display_number}</span>
+                        <OrderStatusBadge status={order.kitchen_status} />
+                      </div>
+                      <p className="text-xs text-black/50 font-medium truncate">
+                        {order.order_items?.map((i) => `${i.quantity}× ${i.name}`).join(', ')}
+                      </p>
+                      <div className="flex justify-between items-center mt-1.5">
+                        <span className="text-[10px] text-black/30 font-mono">
+                          {new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className="font-bold text-sm text-black">{formatPaise(order.total)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
+
           </div>
         )}
 
@@ -1305,9 +1299,9 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       </div>
 
       {/* ── Go to Cart floating bar ────────────────────────────────────────────── */}
-      {totalItems > 0 && activeTab !== 'cart' && (
+      {totalItems > 0 && activeTab === 'menu' && (
         <button
-          onClick={() => setActiveTab('cart')}
+          onClick={() => setActiveTab('orders')}
           className="fixed bottom-24 left-5 right-5 z-50 bg-orange-500 text-black px-5 py-3.5 rounded-2xl shadow-2xl shadow-orange-500/30 flex items-center justify-between active:scale-[0.98] transition-all"
         >
           <div className="flex items-center gap-2">
@@ -1336,9 +1330,9 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                 ),
               },
               {
-                key: 'cart' as Tab,
-                label: 'Cart',
-                badge: totalItems > 0 ? totalItems : undefined,
+                key: 'orders' as Tab,
+                label: 'Orders',
+                badge: (totalItems + activeOrders.length) > 0 ? (totalItems + activeOrders.length) : undefined,
                 icon: (active: boolean) => (
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={active ? 2.2 : 1.8} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
