@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../configs/supabase'
 import { getNextStatus } from '../../lib/cafe/kitchen-status'
 import { deductInventoryForOrder, restoreInventoryForOrder } from '../../lib/cafe/inventory-deduct'
+import { debitFoodCredits, restoreFoodCredits } from '../../lib/cafe/food-credit-debit'
 import type { CafeOrder, CafeOrderWithItems, KitchenStatus } from '../../types/cafe'
 
 const ACTIVE_STATUSES: KitchenStatus[] = ['new', 'accepted', 'preparing', 'ready']
@@ -188,6 +189,11 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
             console.error('Inventory deduction failed:', err)
           )
         }
+
+        // $food credit debit
+        debitFoodCredits(orderId).catch((err) =>
+          console.error('Food credit debit failed:', err)
+        )
       }
     },
     []
@@ -215,6 +221,13 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
     if (wasAccepted && order?.property_id) {
       restoreInventoryForOrder(orderId, order.property_id).catch((err) =>
         console.error('Inventory restore failed:', err)
+      )
+    }
+
+    // Restore $food credits if order had been accepted
+    if (wasAccepted) {
+      restoreFoodCredits(orderId).catch((err) =>
+        console.error('Food credit restore failed:', err)
       )
     }
   }, [orders])

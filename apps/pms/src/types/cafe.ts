@@ -80,28 +80,30 @@ export type KitchenStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'served
 export type PaymentStatus = 'pending' | 'paid' | 'refunded'
 export type PaymentMode = 'razorpay' | 'cash' | 'zo_card'
 
-export interface ZoCardWallet {
+// ── $food Credits ──
+
+export interface FoodCreditWallet {
   id: string
   phone: string
   name: string | null
-  balance_paise: number
-  is_active: boolean
+  balance: number
   created_at: string
   updated_at: string
 }
 
-export interface ZoCardTransaction {
+export interface FoodCreditTransaction {
   id: string
   wallet_id: string
-  type: 'credit' | 'debit' | 'refund'
-  amount_paise: number
-  balance_after_paise: number
+  type: 'issue' | 'spend' | 'revoke' | 'refund'
+  amount: number
+  balance_after: number
   reference_type: string | null
   reference_id: string | null
-  description: string | null
+  note: string | null
   created_by: string | null
   created_at: string
 }
+
 export type OrderMode = 'dine_in' | 'pickup' | 'room_service'
 
 export interface CafeOrder {
@@ -123,6 +125,7 @@ export interface CafeOrder {
   payment_mode: PaymentMode
   payment_id: string | null
   notes: string | null
+  food_credit_applied_paise: number
   created_at: string
   updated_at: string
 }

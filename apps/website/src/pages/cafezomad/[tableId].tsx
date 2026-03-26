@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth, useProfile, useQueryApi } from '@zo/auth'
 import { supabase } from '../../config/supabase'
+import { useFoodCreditBalance } from '../../hooks/useFoodCreditBalance'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -519,6 +520,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   const [isLoadingInit, setIsLoadingInit] = useState(true)
 
   const [cart, setCart] = useState<CartItem[]>([])
+  const [foodCreditAmount, setFoodCreditAmount] = useState(0)
   const [activeTab, setActiveTab] = useState<Tab>('menu')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [isOrdering, setIsOrdering] = useState(false)
@@ -529,6 +531,9 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   const [errorToast, setErrorToast] = useState<string | null>(null)
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // $food credits
+  const { balance: foodBalance } = useFoodCreditBalance(user?.mobile_number || null)
 
   // ── Data: fetch table + property + menu ────────────────────────────────────
   useEffect(() => {
@@ -762,6 +767,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
           total: totalAmount,
           payment_status: 'pending',
           payment_mode: 'cash',
+          food_credit_applied_paise: foodCreditAmount * 100,
         })
         .select()
         .single()
@@ -789,6 +795,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       // Success — save order ID to this session and update cart with fresh prices
       saveOrderId(order.id)
       setCart([])
+      setFoodCreditAmount(0)
       setOrderPlaced(true)
       setActiveTab('wallet')
       fetchOrders()
@@ -1229,17 +1236,44 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                   </div>
                 </div>
 
+                {/* $food Credits slider */}
+                {foodBalance > 0 && (
+                  <div style={{ background: '#1a1a2e', borderRadius: 12, padding: 14, marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ color: '#cfff50', fontWeight: 600, fontSize: 14 }}>$food Balance</span>
+                      <span style={{ color: '#cfff50', fontFamily: 'monospace', fontWeight: 700 }}>{foodBalance}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={Math.min(foodBalance, Math.floor(totalAmount / 100))}
+                      value={foodCreditAmount}
+                      onChange={(e) => setFoodCreditAmount(Number(e.target.value))}
+                      style={{ width: '100%', accentColor: '#cfff50' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginTop: 6 }}>
+                      <span style={{ color: '#aaa' }}>Apply: ₹{foodCreditAmount}</span>
+                      <span style={{ color: '#fff', fontWeight: 600 }}>
+                        To pay: {formatPaise(totalAmount - foodCreditAmount * 100)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Place Order button */}
                 <button
                   onClick={handlePlaceOrder}
                   disabled={isOrdering}
                   className="w-full bg-orange-500 text-black py-4 text-base font-bold tracking-wide rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] active:translate-y-px transition-all disabled:opacity-50"
                 >
-                  {isOrdering ? 'Placing Order...' : `Place Order · ${formatPaise(totalAmount)}`}
+                  {isOrdering ? 'Placing Order...' : `Place Order · ${formatPaise(totalAmount - foodCreditAmount * 100)}`}
                 </button>
 
                 <p className="text-center text-xs text-black/35 font-medium mt-3">
-                  Pay at the counter after your meal
+                  {foodCreditAmount > 0
+                    ? `₹${foodCreditAmount} $food applied · pay ₹${Math.ceil((totalAmount - foodCreditAmount * 100) / 100)} at counter`
+                    : 'Pay at the counter after your meal'
+                  }
                 </p>
               </>
             )}

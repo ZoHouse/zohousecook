@@ -1,0 +1,134 @@
+import { useState, useCallback, useEffect } from 'react'
+import { supabase } from '../../configs/supabase'
+import { normalizePhone } from '../../lib/cafe/phone-normalize'
+import type { FoodCreditWallet, FoodCreditTransaction } from '../../types/cafe'
+
+interface FoodCreditStats {
+  totalIssued: number
+  totalSpent: number
+  totalOutstanding: number
+}
+
+interface UseFoodCreditsResult {
+  wallet: FoodCreditWallet | null
+  transactions: FoodCreditTransaction[]
+  isLoading: boolean
+  error: string | null
+  searchByPhone: (phone: string) => Promise<void>
+  issueCredits: (phone: string, amount: number, name?: string, note?: string) => Promise<void>
+  revokeCredits: (walletId: string, amount: number, reason: string) => Promise<void>
+  stats: FoodCreditStats
+  recentTransactions: FoodCreditTransaction[]
+  refetch: () => Promise<void>
+}
+
+export function useFoodCredits(): UseFoodCreditsResult {
+  const [wallet, setWallet] = useState<FoodCreditWallet | null>(null)
+  const [transactions, setTransactions] = useState<FoodCreditTransaction[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [stats, setStats] = useState<FoodCreditStats>({ totalIssued: 0, totalSpent: 0, totalOutstanding: 0 })
+  const [recentTransactions, setRecentTransactions] = useState<FoodCreditTransaction[]>([])
+
+  const fetchStats = useCallback(async () => {
+    const [txnRes, walletRes] = await Promise.all([
+      supabase.from('food_credit_transactions').select('type, amount'),
+      supabase.from('food_credit_wallets').select('balance'),
+    ])
+
+    let totalIssued = 0, totalSpent = 0
+    for (const t of txnRes.data || []) {
+      if (t.type === 'issue') totalIssued += t.amount
+      if (t.type === 'spend') totalSpent += t.amount
+    }
+    const totalOutstanding = (walletRes.data || []).reduce((sum: number, w: { balance: number }) => sum + w.balance, 0)
+    setStats({ totalIssued, totalSpent, totalOutstanding })
+  }, [])
+
+  const fetchRecent = useCallback(async () => {
+    const { data } = await supabase
+      .from('food_credit_transactions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20)
+    setRecentTransactions((data || []) as FoodCreditTransaction[])
+  }, [])
+
+  useEffect(() => {
+    fetchStats()
+    fetchRecent()
+  }, [fetchStats, fetchRecent])
+
+  const searchByPhone = useCallback(async (phone: string) => {
+    setIsLoading(true)
+    setError(null)
+    const normalized = normalizePhone(phone)
+    if (normalized.length !== 10) {
+      setWallet(null)
+      setTransactions([])
+      setIsLoading(false)
+      return
+    }
+
+    const { data: w } = await supabase
+      .from('food_credit_wallets')
+      .select('*')
+      .eq('phone', normalized)
+      .single()
+
+    if (w) {
+      setWallet(w as FoodCreditWallet)
+      const { data: txns } = await supabase
+        .from('food_credit_transactions')
+        .select('*')
+        .eq('wallet_id', w.id)
+        .order('created_at', { ascending: false })
+        .limit(50)
+      setTransactions((txns || []) as FoodCreditTransaction[])
+    } else {
+      setWallet(null)
+      setTransactions([])
+    }
+    setIsLoading(false)
+  }, [])
+
+  const issueCredits = useCallback(async (phone: string, amount: number, name?: string, note?: string) => {
+    const normalized = normalizePhone(phone)
+    const { error: err } = await supabase.rpc('issue_food_credits', {
+      p_phone: normalized,
+      p_name: name || null,
+      p_amount: amount,
+      p_note: note || null,
+      p_created_by: 'admin',
+    })
+    if (err) throw new Error(err.message)
+    await searchByPhone(normalized)
+    await fetchStats()
+    await fetchRecent()
+  }, [searchByPhone, fetchStats, fetchRecent])
+
+  const revokeCredits = useCallback(async (walletId: string, amount: number, reason: string) => {
+    const { error: err } = await supabase.rpc('revoke_food_credits', {
+      p_wallet_id: walletId,
+      p_amount: amount,
+      p_note: reason,
+      p_created_by: 'admin',
+    })
+    if (err) throw new Error(err.message)
+    if (wallet?.phone) await searchByPhone(wallet.phone)
+    await fetchStats()
+    await fetchRecent()
+  }, [wallet, searchByPhone, fetchStats, fetchRecent])
+
+  const refetch = useCallback(async () => {
+    if (wallet?.phone) await searchByPhone(wallet.phone)
+    await fetchStats()
+    await fetchRecent()
+  }, [wallet, searchByPhone, fetchStats, fetchRecent])
+
+  return {
+    wallet, transactions, isLoading, error,
+    searchByPhone, issueCredits, revokeCredits,
+    stats, recentTransactions, refetch,
+  }
+}
