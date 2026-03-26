@@ -30,7 +30,7 @@ export default function CafeMenuPage() {
     })
   }, [])
 
-  useEffect(() => {
+  const fetchMenu = () => {
     if (!selectedPropertyId) return
     Promise.all([
       supabase.from('cafe_menu_categories').select('id, name, sort_order').eq('property_id', selectedPropertyId).eq('is_active', true).order('sort_order'),
@@ -41,6 +41,15 @@ export default function CafeMenuPage() {
       setMenuItems((i.data as MenuItem[]) || [])
       setTables((t.data as CafeTable[]) || [])
     })
+  }
+
+  useEffect(() => { fetchMenu() }, [selectedPropertyId])
+
+  // Refetch menu when user returns to tab (catches chef availability toggles)
+  useEffect(() => {
+    const onVisible = () => { if (!document.hidden) fetchMenu() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [selectedPropertyId])
 
   const searched = searchQuery.trim()

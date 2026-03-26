@@ -571,6 +571,22 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     init()
   }, [tableId])
 
+  // Refetch menu when user returns to tab (catches chef availability/image changes)
+  useEffect(() => {
+    if (!propertyId) return
+    const onVisible = async () => {
+      if (document.hidden) return
+      const [{ data: cats }, { data: items }] = await Promise.all([
+        supabase.from('cafe_menu_categories').select('*').eq('property_id', propertyId).eq('is_active', true).order('sort_order'),
+        supabase.from('cafe_menu_items').select('*').eq('property_id', propertyId).eq('is_available', true).order('sort_order'),
+      ])
+      if (cats) setCategories(cats as MenuCategory[])
+      if (items) setMenuItems(items as MenuItem[])
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [propertyId])
+
   // ── Session order tracking (only show this user's orders) ─────────────────
   const storageKey = `cafezomad_orders_${tableId}`
 
