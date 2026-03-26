@@ -4,6 +4,7 @@ import type { MenuCategory, MenuItem } from '../../types/cafe'
 
 interface UseCafeMenuParams {
   categoryId?: string | null
+  propertyId?: string | null
 }
 
 interface UseCafeMenuResult {
@@ -19,7 +20,7 @@ interface UseCafeMenuResult {
   toggleAvailability: (id: string, isAvailable: boolean) => Promise<void>
 }
 
-export function useCafeMenu({ categoryId }: UseCafeMenuParams = {}): UseCafeMenuResult {
+export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}): UseCafeMenuResult {
   const [categories, setCategories] = useState<MenuCategory[]>([])
   const [items, setItems] = useState<MenuItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -101,9 +102,15 @@ export function useCafeMenu({ categoryId }: UseCafeMenuParams = {}): UseCafeMenu
   useEffect(() => { fetchData() }, [fetchData])
 
   const createCategory = useCallback(async (name: string) => {
+    // Standardised menu: create category for all Zo House properties
+    const { data: properties } = await supabase
+      .from('cafe_properties')
+      .select('id')
+    if (!properties?.length) throw new Error('No properties found')
+    const rows = properties.map((p) => ({ property_id: p.id, name, is_active: true, sort_order: 0 }))
     const { error } = await supabase
       .from('cafe_menu_categories')
-      .insert({ name, is_active: true, sort_order: 0 })
+      .insert(rows)
     if (error) throw error
     await fetchData()
   }, [fetchData])
@@ -118,9 +125,33 @@ export function useCafeMenu({ categoryId }: UseCafeMenuParams = {}): UseCafeMenu
   }, [fetchData])
 
   const createItem = useCallback(async (data: Record<string, unknown>) => {
+    // Standardised menu: create item for all properties under matching category names
+    const categoryId = data.category_id as string
+    if (!categoryId) throw new Error('category_id is required')
+
+    // Find the category name, then find matching categories across all properties
+    const { data: sourceCat } = await supabase
+      .from('cafe_menu_categories')
+      .select('name')
+      .eq('id', categoryId)
+      .single()
+    if (!sourceCat) throw new Error('Category not found')
+
+    const { data: matchingCats } = await supabase
+      .from('cafe_menu_categories')
+      .select('id, property_id')
+      .eq('name', sourceCat.name)
+    if (!matchingCats?.length) throw new Error('No matching categories')
+
+    const rows = matchingCats.map((cat) => ({
+      ...data,
+      category_id: cat.id,
+      property_id: cat.property_id,
+      sort_order: 0,
+    }))
     const { error } = await supabase
       .from('cafe_menu_items')
-      .insert({ ...data, sort_order: 0 })
+      .insert(rows)
     if (error) throw error
     await fetchData()
   }, [fetchData])
