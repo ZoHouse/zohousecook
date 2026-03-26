@@ -36,7 +36,7 @@ const STATUS_COLORS: Record<string, string> = {
   new: 'bg-blue-100 text-blue-700',
   accepted: 'bg-amber-100 text-amber-700',
   preparing: 'bg-orange-100 text-orange-700',
-  ready: 'bg-green-100 text-green-700',
+  ready: 'bg-orange-100 text-orange-700',
   served: 'bg-stone-100 text-stone-500',
   cancelled: 'bg-red-100 text-red-700',
 }
@@ -138,8 +138,8 @@ export default function BioHackPage() {
     return (
       <div className="min-h-screen bg-[#f5f0e8] flex flex-col items-center justify-center px-6">
         <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-8 text-center max-w-xs w-full">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-orange-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
             </svg>
           </div>
@@ -166,7 +166,7 @@ export default function BioHackPage() {
   return (
     <div className="min-h-screen bg-[#f5f0e8]">
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-emerald-500 px-5 pt-4 pb-3">
+      <header className="sticky top-0 z-20 bg-orange-500 px-5 pt-4 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <button onClick={() => router.push('/cafezomad')} className="w-9 h-9 rounded-xl bg-white overflow-hidden active:scale-95 transition-all shrink-0 p-1">
@@ -223,13 +223,13 @@ export default function BioHackPage() {
             <h2 className="text-lg font-extrabold text-black tracking-tight">Today</h2>
             <p className="text-[11px] text-black/40 font-medium">{displayName}&apos;s nutrition</p>
           </div>
-          <div className="px-3 py-1.5 bg-green-100 rounded-full">
-            <span className="text-[11px] font-bold text-green-700">{nt.items} item{nt.items !== 1 ? 's' : ''}</span>
+          <div className="px-3 py-1.5 bg-orange-100 rounded-full">
+            <span className="text-[11px] font-bold text-orange-700">{nt.items} item{nt.items !== 1 ? 's' : ''}</span>
           </div>
         </div>
 
         {/* Calorie Card */}
-        <div className="rounded-2xl bg-gradient-to-br from-green-400 via-emerald-500 to-teal-500 p-5 relative overflow-hidden">
+        <div className="rounded-2xl bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500 p-5 relative overflow-hidden">
           <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-white/10" />
           <div className="relative">
             <p className="text-xs font-semibold text-black/50 uppercase tracking-widest mb-1">Calories</p>
