@@ -245,12 +245,14 @@ function BioHackTab({
   }, [user?.id, user?.mobile_number, allMenuItems])
 
   const p = profile as {
-    nickname?: string; avatar_url?: string; first_name?: string; last_name?: string;
+    nickname?: string; avatar?: { image?: string }; pfp_image?: string; avatar_url?: string;
+    first_name?: string; last_name?: string;
     experience?: number; level?: number; level_percent?: number; bio?: string;
     membership?: string; work_role?: string
   } | undefined
   const displayName = p?.nickname || (user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : '') || 'Citizen'
-  const avatarUrl = p?.avatar_url
+  const rawAvatar = p?.avatar?.image || p?.pfp_image || p?.avatar_url
+  const avatarUrl = rawAvatar && rawAvatar.length > 0 ? rawAvatar : null
   const balance = foodCreditBalance
 
   const nt = todayNutrition || { calories: 0, protein: 0, carbs: 0, fats: 0, fibre: 0, sugar: 0, items: 0 }
