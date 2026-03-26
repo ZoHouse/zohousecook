@@ -155,27 +155,28 @@ function BioHackTab({
   isLoggedIn,
   user,
   showLoginModal,
-  propertyId,
-  orders,
-  menuItems,
 }: {
   isLoggedIn: boolean | null
   user: { id: string; first_name: string; last_name: string; mobile_number: string; wallet_address: string; membership: string } | null
   showLoginModal: () => void
-  propertyId: string | null
-  orders: CafeOrderWithItems[]
-  menuItems: MenuItem[]
 }) {
   const { profile } = useProfile()
   const { data: balanceData } = useQueryApi('WEBTHREE_LEDGER_BALANCE', { enabled: isLoggedIn === true }, '', '')
+  const [allMenuItems, setAllMenuItems] = useState<MenuItem[]>([])
   const [todayNutrition, setTodayNutrition] = useState<NutritionTotals | null>(null)
   const [mealLog, setMealLog] = useState<{ name: string; qty: number; cal: number; protein: number; time: string }[]>([])
 
-  // Calculate today's nutrition from orders
+  // Fetch ALL menu items (across all properties) for nutrition lookup
   useEffect(() => {
-    if (!user?.mobile_number || !propertyId) return
+    supabase.from('cafe_menu_items').select('id, name, calories, protein, carbs, fats, fibre, sugar').then(({ data }) => {
+      if (data) setAllMenuItems(data as MenuItem[])
+    })
+  }, [])
 
-    // IST midnight = UTC 18:30 previous day
+  // Calculate today's nutrition — user-level, all properties
+  useEffect(() => {
+    if (!user?.mobile_number || allMenuItems.length === 0) return
+
     const now = new Date()
     const istOffset = 5.5 * 60 * 60 * 1000
     const istNow = new Date(now.getTime() + istOffset)
@@ -184,7 +185,6 @@ function BioHackTab({
     const rawPhone = user.mobile_number || ''
     const phone = rawPhone.replace(/^\+?91/, '').replace(/\D/g, '')
 
-    // Bio Hack is user-level, not property-level — show nutrition across all properties
     supabase
       .from('cafe_orders')
       .select('created_at, order_items:cafe_order_items(menu_item_id, quantity, name)')
@@ -195,8 +195,8 @@ function BioHackTab({
       .then(({ data }) => {
         if (!data) return
 
-        const menuMapById = new Map(menuItems.map((m) => [m.id, m]))
-        const menuMapByName = new Map(menuItems.map((m) => [m.name.toLowerCase().trim(), m]))
+        const menuMapById = new Map(allMenuItems.map((m) => [m.id, m]))
+        const menuMapByName = new Map(allMenuItems.map((m) => [m.name.toLowerCase().trim(), m]))
         const totals: NutritionTotals = { calories: 0, protein: 0, carbs: 0, fats: 0, fibre: 0, sugar: 0, items: 0 }
         const log: typeof mealLog = []
 
@@ -228,7 +228,7 @@ function BioHackTab({
         setTodayNutrition(totals)
         setMealLog(log)
       })
-  }, [user?.id, propertyId, menuItems, orders])
+  }, [user?.id, user?.mobile_number, allMenuItems])
 
   const p = profile as {
     nickname?: string; avatar_url?: string; first_name?: string; last_name?: string;
@@ -509,7 +509,6 @@ export default function CustomerOrderPage() {
 // ─── Content ───────────────────────────────────────────────────────────────────
 
 function CustomerOrderContent({ tableId }: { tableId: string }) {
-  const router = useRouter()
   const { user, isLoggedIn, showLoginModal } = useAuth()
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -1287,9 +1286,6 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
             isLoggedIn={isLoggedIn}
             user={user}
             showLoginModal={showLoginModal}
-            propertyId={propertyId}
-            orders={orders}
-            menuItems={menuItems}
           />
         )}
       </div>
@@ -1349,7 +1345,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
           ).map((tab) => (
             <button
               key={tab.key}
-              onClick={() => tab.key === 'wallet' ? router.push('/cafezomad/biohack') : setActiveTab(tab.key)}
+              onClick={() => setActiveTab(tab.key)}
               className={`relative flex flex-col items-center justify-center gap-0.5 w-14 h-12 rounded-2xl transition-all ${
                 activeTab === tab.key
                   ? 'text-orange-600'
