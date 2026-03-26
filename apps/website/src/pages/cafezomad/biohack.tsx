@@ -96,8 +96,11 @@ export default function BioHackPage() {
   useEffect(() => {
     if (!user?.mobile_number || menuItems.length === 0) return
 
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
+    // IST midnight = UTC 18:30 previous day
+    const now = new Date()
+    const istOffset = 5.5 * 60 * 60 * 1000 // +05:30
+    const istNow = new Date(now.getTime() + istOffset)
+    const todayStart = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate()) - istOffset)
 
     // Match by phone number (historic data has no zo_user_ids)
     // Normalize: strip country code prefix (+91/91) to get bare 10-digit number
@@ -158,7 +161,7 @@ export default function BioHackPage() {
           items: ((o.order_items as { name: string; quantity: number }[]) || []),
         })))
       })
-  }, [user?.id, menuItems])
+  }, [user?.id, user?.mobile_number, menuItems])
 
   const p = profile as { nickname?: string; avatar?: { image?: string }; pfp_image?: string; level?: number; level_percent?: number; experience?: number; membership?: string; work_role?: string } | undefined
   const balance = (balanceData as { data?: { balance?: number } })?.data?.balance
