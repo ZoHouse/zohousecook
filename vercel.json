@@ -1,9 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "echo 'skip install'",
-  "buildCommand": "mkdir -p public && echo '<!-- gateway -->' > public/index.html",
-  "outputDirectory": "public",
-  "framework": null,
   "rewrites": [
     {
       "source": "/pm",
