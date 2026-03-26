@@ -42,8 +42,10 @@ const Provider: React.FC<ProviderProps> = ({ children }) => {
     const operators = allOperatorsResponse.data?.data?.results || [];
     const permissions = scopeData?.data?.permissions;
 
-    if (!permissions) {
-      return [];
+    // If no Zo permissions but user has Zostel associations, show their operators
+    // (staff added via PMS have Zostel associations but may lack Zo backend permissions)
+    if (!permissions || permissions.length === 0) {
+      return operators;
     }
 
     const hasWildcard = permissions.some((p: GeneralObject) => p.scope === "*");
@@ -83,15 +85,16 @@ const Provider: React.FC<ProviderProps> = ({ children }) => {
   });
 
   const selectedOperatorAccess = useMemo(() => {
+    const permissions = scopeData?.data?.permissions || [];
     const operatorAccess =
-      scopeData?.data?.permissions
+      permissions
         .filter(
           (p: GeneralObject) =>
             p.scope?.includes(selectedOperator.code) || p.scope === "*"
         )
         .map((p: GeneralObject) => p.principal) || [];
     const hasCASAdminAccess =
-      scopeData?.data?.permissions.find(
+      permissions.find(
         (p: GeneralObject) => p.principal === "group:cas-admin"
       ) || false;
 
@@ -99,8 +102,18 @@ const Provider: React.FC<ProviderProps> = ({ children }) => {
       operatorAccess.push("group:cas-admin");
     }
 
+    // Staff added via PMS have Zostel associations but may lack Zo backend permissions.
+    // Grant front-desk-manager fallback if user has operators but no Zo permissions.
+    if (
+      operatorAccess.length === 0 &&
+      associatedOperators.length > 0 &&
+      isValidObject(selectedOperator)
+    ) {
+      operatorAccess.push("group:front-desk-manager");
+    }
+
     return operatorAccess;
-  }, [scopeData, selectedOperator]);
+  }, [scopeData, selectedOperator, associatedOperators]);
 
   const effectiveRole = useMemo<
     | "none"
