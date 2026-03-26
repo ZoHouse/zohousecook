@@ -509,6 +509,7 @@ export default function CustomerOrderPage() {
 // ─── Content ───────────────────────────────────────────────────────────────────
 
 function CustomerOrderContent({ tableId }: { tableId: string }) {
+  const router = useRouter()
   const { user, isLoggedIn, showLoginModal } = useAuth()
 
   // ── State ──────────────────────────────────────────────────────────────────
