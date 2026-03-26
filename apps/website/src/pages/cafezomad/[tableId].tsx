@@ -174,8 +174,11 @@ function BioHackTab({
   useEffect(() => {
     if (!user?.mobile_number || !propertyId) return
 
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
+    // IST midnight = UTC 18:30 previous day
+    const now = new Date()
+    const istOffset = 5.5 * 60 * 60 * 1000
+    const istNow = new Date(now.getTime() + istOffset)
+    const todayStart = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate()) - istOffset)
 
     const rawPhone = user.mobile_number || ''
     const phone = rawPhone.replace(/^\+?91/, '').replace(/\D/g, '')
@@ -191,31 +194,31 @@ function BioHackTab({
       .then(({ data }) => {
         if (!data) return
 
-        const menuMap = new Map(menuItems.map((m) => [m.id, m]))
+        const menuMapById = new Map(menuItems.map((m) => [m.id, m]))
+        const menuMapByName = new Map(menuItems.map((m) => [m.name.toLowerCase().trim(), m]))
         const totals: NutritionTotals = { calories: 0, protein: 0, carbs: 0, fats: 0, fibre: 0, sugar: 0, items: 0 }
         const log: typeof mealLog = []
 
         for (const order of data) {
           const items = (order.order_items as { menu_item_id: string; quantity: number; name: string }[]) || []
           for (const oi of items) {
-            const menu = menuMap.get(oi.menu_item_id)
-            if (!menu) continue
-            const hasNutrition = menu.calories != null
+            const menu = menuMapById.get(oi.menu_item_id) || menuMapByName.get((oi.name || '').toLowerCase().trim())
+            const hasNutrition = !!menu && menu.calories != null
             const qty = oi.quantity || 1
             if (hasNutrition) {
-              totals.calories += (menu.calories || 0) * qty
-              totals.protein += (menu.protein || 0) * qty
-              totals.carbs += (menu.carbs || 0) * qty
-              totals.fats += (menu.fats || 0) * qty
-              totals.fibre += (menu.fibre || 0) * qty
-              totals.sugar += (menu.sugar || 0) * qty
+              totals.calories += (menu!.calories || 0) * qty
+              totals.protein += (menu!.protein || 0) * qty
+              totals.carbs += (menu!.carbs || 0) * qty
+              totals.fats += (menu!.fats || 0) * qty
+              totals.fibre += (menu!.fibre || 0) * qty
+              totals.sugar += (menu!.sugar || 0) * qty
             }
             totals.items += qty
             log.push({
               name: oi.name,
               qty,
-              cal: hasNutrition ? (menu.calories || 0) * qty : -1,
-              protein: hasNutrition ? (menu.protein || 0) * qty : -1,
+              cal: hasNutrition ? (menu!.calories || 0) * qty : -1,
+              protein: hasNutrition ? (menu!.protein || 0) * qty : -1,
               time: new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
             })
           }
