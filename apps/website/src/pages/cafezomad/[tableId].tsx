@@ -184,10 +184,10 @@ function BioHackTab({
     const rawPhone = user.mobile_number || ''
     const phone = rawPhone.replace(/^\+?91/, '').replace(/\D/g, '')
 
+    // Bio Hack is user-level, not property-level — show nutrition across all properties
     supabase
       .from('cafe_orders')
       .select('created_at, order_items:cafe_order_items(menu_item_id, quantity, name)')
-      .eq('property_id', propertyId)
       .eq('customer_phone', phone)
       .not('kitchen_status', 'eq', 'cancelled')
       .gte('created_at', todayStart.toISOString())
