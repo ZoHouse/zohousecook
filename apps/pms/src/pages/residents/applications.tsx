@@ -28,7 +28,7 @@ const ApplicationsPage: NextPage = () => {
     addNote,
     getActivity,
     getNotes,
-  } = useResidentLeads({ property, stageFilter: 'inquiry' })
+  } = useResidentLeads({ property, stage: 'inquiry' })
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedLead, setSelectedLead] = useState<ResidentLead | null>(null)

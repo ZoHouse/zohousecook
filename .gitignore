@@ -73,3 +73,4 @@ demo-task-def.json
 
 # Claude Code session memory (local SQLite DB)
 .claude/memory.db
+.vercel
