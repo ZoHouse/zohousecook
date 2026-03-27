@@ -90,6 +90,20 @@ export const ZO_FEATURES: Record<string, ZoFeature> = {
       { id: "iot-lights", name: "Lights", path: "/iot/lights", icon: "Vibe" },
     ],
   },
+  residents: {
+    id: "residents",
+    label: "Residents",
+    backend: "supabase",
+    status: "testing",
+    minAccess: "front-desk-manager",
+    icon: "People",
+    navLinks: [
+      { id: "residents-dashboard", name: "Dashboard", path: "/residents", icon: "People" },
+      { id: "residents-occupancy", name: "Occupancy", path: "/residents/occupancy", icon: "Calendar" },
+      { id: "residents-pipeline", name: "Pipeline", path: "/residents/pipeline", icon: "Slip" },
+      { id: "residents-applications", name: "Applications", path: "/residents/applications", icon: "Doc" },
+    ],
+  },
 };
 
 /**
