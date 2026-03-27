@@ -29,6 +29,16 @@ export function getRoomInfo(roomtypeunkid: string) {
   return ROOM_MAP[roomtypeunkid] || { name: `Room ${roomtypeunkid?.slice(-3)}`, type: 'dorm' as const, beds: 1 }
 }
 
+// All rooms for each property — used by grid to show empty beds
+const BLR_ROOMS = ['5415000000000000001', '5415000000000000002', '5415000000000000003', '5415000000000000004', '5415000000000000005', '5415000000000000006']
+const WTF_ROOMS = ['5558000000000000001', '5558000000000000002', '5558000000000000003', '5558000000000000004', '5558000000000000005', '5558000000000000006']
+
+export function getAllRoomsForProperty(operatorCode: string | null): string[] {
+  if (operatorCode === 'BNGHO812') return BLR_ROOMS
+  if (operatorCode === 'BNGS531') return WTF_ROOMS
+  return [...BLR_ROOMS, ...WTF_ROOMS]
+}
+
 export interface OccupancyEntry {
   id: string
   guestname: string

@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react'
 import { Tooltip } from 'antd'
-import { OccupancyEntry } from '../../hooks/residents/useOccupancy'
+import { OccupancyEntry, getRoomInfo, getAllRoomsForProperty } from '../../hooks/residents/useOccupancy'
 
 interface OccupancyGridProps {
   entries: OccupancyEntry[]
   days: Date[]
+  operatorCode: string | null
 }
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -44,41 +45,43 @@ function isOnDay(entry: OccupancyEntry, dayStr: string): boolean {
   return arrival <= dayStr && dayStr < departure
 }
 
-const OccupancyGrid: React.FC<OccupancyGridProps> = ({ entries, days }) => {
+const OccupancyGrid: React.FC<OccupancyGridProps> = ({ entries, days, operatorCode }) => {
   const todayStr = formatDate(new Date())
 
-  // Build one row per bed
+  // Build one row per bed — include ALL rooms even if no bookings
   const bedRows = useMemo(() => {
     // Group entries by room
-    const roomMap = new Map<string, {
-      roomName: string
-      roomType: 'private' | 'dorm'
-      roomBeds: number
-      guests: OccupancyEntry[]
-    }>()
-
+    const guestsByRoom = new Map<string, OccupancyEntry[]>()
     for (const entry of entries) {
       const key = entry.roomtypeunkid
-      if (!roomMap.has(key)) {
-        roomMap.set(key, {
-          roomName: entry.roomName,
-          roomType: entry.roomType,
-          roomBeds: entry.roomBeds,
-          guests: [],
-        })
-      }
-      roomMap.get(key)!.guests.push(entry)
+      if (!guestsByRoom.has(key)) guestsByRoom.set(key, [])
+      guestsByRoom.get(key)!.push(entry)
     }
 
+    // Get ALL rooms for this property (including empty ones)
+    const allRoomIds = getAllRoomsForProperty(operatorCode)
+
+    // Build room list with info
+    const allRooms = allRoomIds.map((id) => {
+      const info = getRoomInfo(id)
+      return {
+        roomtypeunkid: id,
+        roomName: info.name,
+        roomType: info.type,
+        roomBeds: info.beds,
+        guests: guestsByRoom.get(id) || [],
+      }
+    })
+
     // Sort rooms: private first, then dorms alphabetically
-    const sortedRooms = [...roomMap.entries()].sort(([, a], [, b]) => {
+    const sortedRooms = allRooms.sort((a, b) => {
       if (a.roomType !== b.roomType) return a.roomType === 'private' ? -1 : 1
       return a.roomName.localeCompare(b.roomName)
     })
 
     const rows: BedRow[] = []
 
-    for (const [roomtypeunkid, room] of sortedRooms) {
+    for (const room of sortedRooms) {
       // Sort guests by arrival date for consistent bed assignment
       const sortedGuests = [...room.guests].sort(
         (a, b) => (a.arrivaldate || '').localeCompare(b.arrivaldate || '')
@@ -91,7 +94,7 @@ const OccupancyGrid: React.FC<OccupancyGridProps> = ({ entries, days }) => {
           roomName: room.roomName,
           roomType: 'private',
           bedIndex: 0,
-          roomtypeunkid,
+          roomtypeunkid: room.roomtypeunkid,
           guest: sortedGuests[0] || null,
         })
       } else {
@@ -104,7 +107,7 @@ const OccupancyGrid: React.FC<OccupancyGridProps> = ({ entries, days }) => {
             roomName: room.roomName,
             roomType: 'dorm',
             bedIndex: bedIdx,
-            roomtypeunkid,
+            roomtypeunkid: room.roomtypeunkid,
             guest: sortedGuests[bedIdx] || null,
           })
         }

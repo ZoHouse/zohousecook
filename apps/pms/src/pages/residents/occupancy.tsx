@@ -88,7 +88,7 @@ const OccupancyPage: NextPage = () => {
               <h3 className="text-sm font-semibold mb-3 text-zui-silver">
                 Bed Calendar — 35 Day View
               </h3>
-              <OccupancyGrid entries={entries} days={days} />
+              <OccupancyGrid entries={entries} days={days} operatorCode={selectedOperator?.code ?? null} />
             </>
           )}
         </PageContent>
