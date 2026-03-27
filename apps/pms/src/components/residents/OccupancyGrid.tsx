@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { Tooltip, Tag } from 'antd'
+import { Tooltip } from 'antd'
 import { OccupancyEntry } from '../../hooks/residents/useOccupancy'
 
 interface OccupancyGridProps {
@@ -17,20 +17,45 @@ function daysBetween(a: Date, b: Date): number {
   return Math.ceil((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24))
 }
 
-interface RoomRow {
+interface BedRow {
+  label: string         // "Gutter Den #3" or "721A"
   roomName: string
   roomType: 'private' | 'dorm'
-  roomBeds: number
+  bedIndex: number      // 0 for private, 0-N for dorm beds
   roomtypeunkid: string
-  guests: OccupancyEntry[]
+  guest: OccupancyEntry | null  // assigned guest (by arrival order)
+}
+
+function getEntryColor(entry: OccupancyEntry, day: Date): string {
+  if ((entry.total ?? 0) === 0) return '#374151' // gray — comp
+
+  const departure = entry.departuredate ? new Date(entry.departuredate) : null
+  if (!departure) return '#065f46'
+
+  const daysLeft = daysBetween(day, departure)
+  if (daysLeft <= 3) return '#7f1d1d'   // red
+  if (daysLeft <= 7) return '#78350f'   // yellow
+  return '#065f46'                       // green
+}
+
+function isOnDay(entry: OccupancyEntry, dayStr: string): boolean {
+  const arrival = (entry.arrivaldate || '').split('T')[0]
+  const departure = (entry.departuredate || '').split('T')[0]
+  return arrival <= dayStr && dayStr < departure
 }
 
 const OccupancyGrid: React.FC<OccupancyGridProps> = ({ entries, days }) => {
   const todayStr = formatDate(new Date())
 
-  // Group entries by room
-  const rooms = useMemo(() => {
-    const roomMap = new Map<string, RoomRow>()
+  // Build one row per bed
+  const bedRows = useMemo(() => {
+    // Group entries by room
+    const roomMap = new Map<string, {
+      roomName: string
+      roomType: 'private' | 'dorm'
+      roomBeds: number
+      guests: OccupancyEntry[]
+    }>()
 
     for (const entry of entries) {
       const key = entry.roomtypeunkid
@@ -39,46 +64,65 @@ const OccupancyGrid: React.FC<OccupancyGridProps> = ({ entries, days }) => {
           roomName: entry.roomName,
           roomType: entry.roomType,
           roomBeds: entry.roomBeds,
-          roomtypeunkid: key,
           guests: [],
         })
       }
       roomMap.get(key)!.guests.push(entry)
     }
 
-    // Sort: private rooms first, then dorms
-    return [...roomMap.values()].sort((a, b) => {
+    // Sort rooms: private first, then dorms alphabetically
+    const sortedRooms = [...roomMap.entries()].sort(([, a], [, b]) => {
       if (a.roomType !== b.roomType) return a.roomType === 'private' ? -1 : 1
       return a.roomName.localeCompare(b.roomName)
     })
+
+    const rows: BedRow[] = []
+
+    for (const [roomtypeunkid, room] of sortedRooms) {
+      // Sort guests by arrival date for consistent bed assignment
+      const sortedGuests = [...room.guests].sort(
+        (a, b) => (a.arrivaldate || '').localeCompare(b.arrivaldate || '')
+      )
+
+      if (room.roomType === 'private') {
+        // Private room = 1 bed, 1 row
+        rows.push({
+          label: room.roomName,
+          roomName: room.roomName,
+          roomType: 'private',
+          bedIndex: 0,
+          roomtypeunkid,
+          guest: sortedGuests[0] || null,
+        })
+      } else {
+        // Dorm = N beds, N rows
+        // Assign guests to beds: each unique guest gets a bed slot
+        // (a guest who leaves and a new one arrives can reuse the same bed)
+        for (let bedIdx = 0; bedIdx < room.roomBeds; bedIdx++) {
+          rows.push({
+            label: `${room.roomName} #${bedIdx + 1}`,
+            roomName: room.roomName,
+            roomType: 'dorm',
+            bedIndex: bedIdx,
+            roomtypeunkid,
+            guest: sortedGuests[bedIdx] || null,
+          })
+        }
+      }
+    }
+
+    return rows
   }, [entries])
 
-  function getGuestsOnDay(room: RoomRow, day: Date): OccupancyEntry[] {
+  // For each bed row + day, find who occupies it
+  function getOccupant(row: BedRow, day: Date): OccupancyEntry | null {
+    if (!row.guest) return null
     const dayStr = formatDate(day)
-    return room.guests.filter((e) => {
-      const arrival = (e.arrivaldate || '').split('T')[0]
-      const departure = (e.departuredate || '').split('T')[0]
-      return arrival <= dayStr && dayStr < departure
-    })
+    return isOnDay(row.guest, dayStr) ? row.guest : null
   }
 
-  function getCellColor(guests: OccupancyEntry[], day: Date): string {
-    if (guests.length === 0) return 'transparent'
-
-    const allComp = guests.every((g) => (g.total ?? 0) === 0)
-    if (allComp) return '#374151' // gray — comp
-
-    // Check closest checkout
-    const minDaysLeft = Math.min(
-      ...guests.map((g) =>
-        g.departuredate ? daysBetween(day, new Date(g.departuredate)) : 999
-      )
-    )
-
-    if (minDaysLeft <= 3) return '#7f1d1d' // red
-    if (minDaysLeft <= 7) return '#78350f' // yellow
-    return '#065f46' // green
-  }
+  // Track room boundaries for visual grouping
+  let lastRoomName = ''
 
   return (
     <div style={{ overflowX: 'auto', borderRadius: 8 }}>
@@ -103,12 +147,12 @@ const OccupancyGrid: React.FC<OccupancyGridProps> = ({ entries, days }) => {
                 background: '#141414',
                 padding: '6px 12px',
                 textAlign: 'left',
-                borderBottom: '1px solid #333',
+                borderBottom: '1px solid #444',
                 minWidth: 200,
                 color: '#cfff50',
               }}
             >
-              Room
+              Bed
             </th>
             {days.map((day) => {
               const isToday = formatDate(day) === todayStr
@@ -118,7 +162,7 @@ const OccupancyGrid: React.FC<OccupancyGridProps> = ({ entries, days }) => {
                   style={{
                     padding: '4px 6px',
                     textAlign: 'center',
-                    borderBottom: '1px solid #333',
+                    borderBottom: '1px solid #444',
                     background: isToday ? '#1a2a1a' : '#141414',
                     color: isToday ? '#cfff50' : '#999',
                     minWidth: 44,
@@ -134,72 +178,72 @@ const OccupancyGrid: React.FC<OccupancyGridProps> = ({ entries, days }) => {
           </tr>
         </thead>
         <tbody>
-          {rooms.map((room) => (
-            <tr key={room.roomtypeunkid}>
-              <td
-                style={{
-                  position: 'sticky',
-                  left: 0,
-                  zIndex: 1,
-                  background: '#1a1a1a',
-                  padding: '4px 12px',
-                  borderBottom: '1px solid #222',
-                  color: '#ddd',
-                  fontWeight: 500,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>{room.roomName}</span>
-                  <Tag
-                    style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px' }}
-                    color={room.roomType === 'private' ? 'blue' : 'default'}
-                  >
-                    {room.roomType === 'private' ? 'Private' : `${room.roomBeds}-bed`}
-                  </Tag>
-                </div>
-              </td>
-              {days.map((day) => {
-                const guests = getGuestsOnDay(room, day)
-                const isToday = formatDate(day) === todayStr
-                const bgColor = guests.length > 0
-                  ? getCellColor(guests, day)
-                  : isToday ? '#1a2a1a' : 'transparent'
+          {bedRows.map((row, rowIdx) => {
+            const isNewRoom = row.roomName !== lastRoomName
+            lastRoomName = row.roomName
+            const borderTop = isNewRoom && rowIdx > 0 ? '2px solid #444' : undefined
 
-                const occupancy = room.roomType === 'private'
-                  ? (guests.length > 0 ? '■' : '')
-                  : (guests.length > 0 ? `${guests.length}` : '')
+            return (
+              <tr key={`${row.roomtypeunkid}-${row.bedIndex}`}>
+                <td
+                  style={{
+                    position: 'sticky',
+                    left: 0,
+                    zIndex: 1,
+                    background: '#1a1a1a',
+                    padding: '3px 12px',
+                    borderBottom: '1px solid #222',
+                    borderTop,
+                    color: isNewRoom ? '#ddd' : '#888',
+                    fontWeight: isNewRoom ? 600 : 400,
+                    whiteSpace: 'nowrap',
+                    fontSize: isNewRoom ? 12 : 11,
+                  }}
+                >
+                  {row.roomType === 'private' ? (
+                    <span>{row.roomName} <span style={{ color: '#3b82f6', fontSize: 10 }}>pvt</span></span>
+                  ) : (
+                    <span>
+                      {isNewRoom ? row.roomName : ''}
+                      <span style={{ color: '#666' }}>
+                        {isNewRoom ? ` #${row.bedIndex + 1}` : `#${row.bedIndex + 1}`}
+                      </span>
+                    </span>
+                  )}
+                </td>
+                {days.map((day) => {
+                  const occupant = getOccupant(row, day)
+                  const isToday = formatDate(day) === todayStr
+                  const bgColor = occupant
+                    ? getEntryColor(occupant, day)
+                    : isToday ? '#1a2a1a' : 'transparent'
 
-                const tooltipText = guests.length > 0
-                  ? guests.map((g) => `${g.guestname} (out ${g.departuredate?.split('T')[0]})`).join('\n')
-                  : 'Available'
+                  const tooltipText = occupant
+                    ? `${occupant.guestname}\nCheckout: ${occupant.departuredate?.split('T')[0]}${occupant.total === 0 ? '\n(comp)' : ''}`
+                    : 'Available'
 
-                return (
-                  <Tooltip
-                    key={formatDate(day)}
-                    title={<span style={{ whiteSpace: 'pre-line' }}>{tooltipText}</span>}
-                  >
-                    <td
-                      style={{
-                        padding: 0,
-                        borderBottom: '1px solid #222',
-                        background: bgColor,
-                        minWidth: 44,
-                        height: 28,
-                        textAlign: 'center',
-                        fontSize: 10,
-                        color: '#fff',
-                        fontWeight: 600,
-                      }}
+                  return (
+                    <Tooltip
+                      key={formatDate(day)}
+                      title={<span style={{ whiteSpace: 'pre-line' }}>{tooltipText}</span>}
                     >
-                      {occupancy}
-                    </td>
-                  </Tooltip>
-                )
-              })}
-            </tr>
-          ))}
-          {rooms.length === 0 && (
+                      <td
+                        style={{
+                          padding: 0,
+                          borderBottom: '1px solid #222',
+                          borderTop,
+                          background: bgColor,
+                          minWidth: 44,
+                          height: 26,
+                        }}
+                      />
+                    </Tooltip>
+                  )
+                })}
+              </tr>
+            )
+          })}
+          {bedRows.length === 0 && (
             <tr>
               <td
                 colSpan={days.length + 1}
