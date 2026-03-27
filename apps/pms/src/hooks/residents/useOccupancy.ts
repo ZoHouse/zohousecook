@@ -6,10 +6,36 @@ const OPERATOR_TO_PROPERTY: Record<string, string> = {
   BNGS531: 'WTFxZo',
 }
 
+// roomtypeunkid → room name mapping
+// BLR: 5415000000000000001-006, WTF: 5558000000000000001-006
+const ROOM_MAP: Record<string, { name: string; type: 'private' | 'dorm'; beds: number }> = {
+  // BLRxZo (Koramangala)
+  '5415000000000000001': { name: 'Bored Room', type: 'private', beds: 1 },
+  '5415000000000000002': { name: 'Satoshi', type: 'dorm', beds: 3 },
+  '5415000000000000003': { name: 'PUNK Room', type: 'private', beds: 1 },
+  '5415000000000000004': { name: '721A', type: 'private', beds: 1 },
+  '5415000000000000005': { name: 'Gutter Den', type: 'dorm', beds: 5 },
+  '5415000000000000006': { name: 'CC0', type: 'dorm', beds: 4 },
+  // WTFxZo (Whitefield)
+  '5558000000000000001': { name: '721A', type: 'private', beds: 1 },
+  '5558000000000000002': { name: 'Bored Room', type: 'private', beds: 1 },
+  '5558000000000000003': { name: 'Satoshi', type: 'private', beds: 1 },
+  '5558000000000000004': { name: 'Punk Room', type: 'private', beds: 1 },
+  '5558000000000000005': { name: 'Gutter Den', type: 'dorm', beds: 8 },
+  '5558000000000000006': { name: 'CC0', type: 'dorm', beds: 8 },
+}
+
+export function getRoomInfo(roomtypeunkid: string) {
+  return ROOM_MAP[roomtypeunkid] || { name: `Room ${roomtypeunkid?.slice(-3)}`, type: 'dorm' as const, beds: 1 }
+}
+
 export interface OccupancyEntry {
   id: string
   guestname: string
   roomtypeunkid: string
+  roomName: string
+  roomType: 'private' | 'dorm'
+  roomBeds: number
   arrivaldate: string
   departuredate: string
   total: number
@@ -50,15 +76,21 @@ export function useOccupancy({ operatorCode }: UseOccupancyParams): UseOccupancy
 
       if (error) throw error
 
-      const mapped: OccupancyEntry[] = (data || []).map((row: any) => ({
-        id: row.tranunkid,
-        guestname: row.guestname || 'Unknown',
-        roomtypeunkid: row.roomtypeunkid || '',
-        arrivaldate: row.arrivaldate,
-        departuredate: row.departuredate,
-        total: row.total || 0,
-        property_id: row.property_id || '',
-      }))
+      const mapped: OccupancyEntry[] = (data || []).map((row: any) => {
+        const room = getRoomInfo(row.roomtypeunkid)
+        return {
+          id: row.tranunkid,
+          guestname: row.guestname || 'Unknown',
+          roomtypeunkid: row.roomtypeunkid || '',
+          roomName: room.name,
+          roomType: room.type,
+          roomBeds: room.beds,
+          arrivaldate: row.arrivaldate,
+          departuredate: row.departuredate,
+          total: row.total || 0,
+          property_id: row.property_id || '',
+        }
+      })
 
       setEntries(mapped)
     } catch (err) {
