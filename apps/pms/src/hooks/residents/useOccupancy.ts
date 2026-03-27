@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../configs/supabase'
-import type { OccupancyEntry } from '../../types/residents'
 
 // Map operator codes to property filter values
 // NOTE: pms_bookings may use different property_id values than "BLRxZo"/"WTFxZo".
@@ -8,6 +7,17 @@ import type { OccupancyEntry } from '../../types/residents'
 const OPERATOR_TO_PROPERTY: Record<string, string> = {
   BNGHO812: 'BLRxZo',
   BNGS531: 'WTFxZo',
+}
+
+export interface OccupancyEntry {
+  id: string
+  guestname: string | null
+  roomname: string | null
+  arrivaldate: string | null
+  departuredate: string | null
+  total: number | null
+  property_id: string | null
+  status: string | null
 }
 
 interface UseOccupancyParams {

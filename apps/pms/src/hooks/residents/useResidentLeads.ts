@@ -23,7 +23,7 @@ interface UseResidentLeadsResult {
   updateStage: (leadId: string, newStage: ResidentStage, userId?: string | null) => Promise<void>
   createLead: (lead: Partial<ResidentLead>) => Promise<ResidentLead | null>
   updateLead: (leadId: string, updates: Partial<ResidentLead>, userId?: string | null) => Promise<void>
-  addNote: (leadId: string, content: string, userId?: string | null) => Promise<void>
+  addNote: (leadId: string, content: string, author?: string) => Promise<void>
   getActivity: (leadId: string) => Promise<ResidentLeadActivity[]>
   getNotes: (leadId: string) => Promise<ResidentLeadNote[]>
 }
@@ -90,26 +90,30 @@ export function useResidentLeads({
       if (!lead) return
 
       const oldStage = lead.stage
+      const now = new Date().toISOString()
 
       // Optimistic update
       setLeads((prev) =>
-        prev.map((l) => (l.id === leadId ? { ...l, stage: newStage, updated_at: new Date().toISOString() } : l))
+        prev.map((l) =>
+          l.id === leadId ? { ...l, stage: newStage, stage_changed_at: now, updated_at: now } : l
+        )
       )
 
       try {
         const { error } = await supabase
           .from('resident_leads')
-          .update({ stage: newStage, updated_at: new Date().toISOString() })
+          .update({ stage: newStage, stage_changed_at: now, updated_at: now })
           .eq('id', leadId)
 
         if (error) throw error
 
         // Log activity
         await supabase.from('resident_lead_activity').insert({
-          lead_id: leadId,
+          resident_lead_id: leadId,
           action: 'stage_changed',
-          details: { from: oldStage, to: newStage },
-          created_by: userId ?? null,
+          from_stage: oldStage,
+          to_stage: newStage,
+          metadata: userId ? { changed_by: userId } : null,
         })
       } catch (err) {
         console.error('useResidentLeads updateStage error:', err)
@@ -129,8 +133,12 @@ export function useResidentLeads({
           .from('resident_leads')
           .insert({
             ...lead,
-            stage: lead.stage || 'new_inquiry',
+            stage: lead.stage || 'inquiry',
+            priority: lead.priority || 'normal',
             is_dead: false,
+            is_renewed: false,
+            events_attended: lead.events_attended ?? 0,
+            total_nights_stayed: lead.total_nights_stayed ?? 0,
           })
           .select()
           .single()
@@ -139,10 +147,11 @@ export function useResidentLeads({
 
         // Log activity
         await supabase.from('resident_lead_activity').insert({
-          lead_id: data.id,
+          resident_lead_id: data.id,
           action: 'lead_created',
-          details: { source: lead.source, property: lead.property },
-          created_by: null,
+          from_stage: null,
+          to_stage: data.stage,
+          metadata: { source: lead.source, property: lead.property },
         })
 
         // Add to local state
@@ -168,10 +177,11 @@ export function useResidentLeads({
 
         // Log activity
         await supabase.from('resident_lead_activity').insert({
-          lead_id: leadId,
+          resident_lead_id: leadId,
           action: 'lead_updated',
-          details: { fields: Object.keys(updates) },
-          created_by: userId ?? null,
+          from_stage: null,
+          to_stage: null,
+          metadata: { fields: Object.keys(updates), changed_by: userId ?? null },
         })
 
         // Update local state
@@ -188,22 +198,23 @@ export function useResidentLeads({
   )
 
   const addNote = useCallback(
-    async (leadId: string, content: string, userId?: string | null) => {
+    async (leadId: string, content: string, author?: string) => {
       try {
         const { error: noteError } = await supabase.from('resident_lead_notes').insert({
-          lead_id: leadId,
+          resident_lead_id: leadId,
           content,
-          created_by: userId ?? null,
+          author: author ?? 'system',
         })
 
         if (noteError) throw noteError
 
         // Log activity
         await supabase.from('resident_lead_activity').insert({
-          lead_id: leadId,
+          resident_lead_id: leadId,
           action: 'note_added',
-          details: { preview: content.slice(0, 100) },
-          created_by: userId ?? null,
+          from_stage: null,
+          to_stage: null,
+          metadata: { preview: content.slice(0, 100), author: author ?? 'system' },
         })
       } catch (err) {
         console.error('useResidentLeads addNote error:', err)
@@ -217,7 +228,7 @@ export function useResidentLeads({
       const { data, error } = await supabase
         .from('resident_lead_activity')
         .select('*')
-        .eq('lead_id', leadId)
+        .eq('resident_lead_id', leadId)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -233,7 +244,7 @@ export function useResidentLeads({
       const { data, error } = await supabase
         .from('resident_lead_notes')
         .select('*')
-        .eq('lead_id', leadId)
+        .eq('resident_lead_id', leadId)
         .order('created_at', { ascending: false })
 
       if (error) throw error

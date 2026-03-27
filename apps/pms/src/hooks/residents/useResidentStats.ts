@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../configs/supabase'
-import type { ResidentLead, ResidentStats } from '../../types/residents'
+import type { ResidentLead } from '../../types/residents'
+
+interface ResidentStats {
+  totalLeads: number
+  byStage: Record<string, number>
+  bedsFilled: { blr: number; wtf: number }
+  callsDueToday: number
+  conversionRate: number
+}
 
 interface UseResidentStatsParams {
   property: string | null // "BLRxZo" | "WTFxZo" | null (all)
@@ -49,16 +57,13 @@ export function useResidentStats({ property }: UseResidentStatsParams): UseResid
         byStage[lead.stage] = (byStage[lead.stage] || 0) + 1
       }
 
-      // Beds filled: count moved_in per property
-      // Need to query without property filter for beds filled across both
-      let bedsQuery = supabase
+      // Beds filled: count moved_in per property (query without property filter)
+      const { data: movedIn, error: bedsError } = await supabase
         .from('resident_leads')
         .select('property')
         .is('deleted_at', null)
         .eq('is_dead', false)
         .eq('stage', 'moved_in')
-
-      const { data: movedIn, error: bedsError } = await bedsQuery
 
       if (bedsError) throw bedsError
 
