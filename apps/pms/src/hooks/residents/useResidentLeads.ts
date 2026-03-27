@@ -42,7 +42,7 @@ export function useResidentLeads({
 
     try {
       let query = supabase
-        .from('resident_leads')
+        .from('pipeline_leads')
         .select('*')
         .is('deleted_at', null)
         .eq('is_dead', false)
@@ -101,7 +101,7 @@ export function useResidentLeads({
 
       try {
         const { error } = await supabase
-          .from('resident_leads')
+          .from('pipeline_leads')
           .update({ stage: newStage, stage_changed_at: now, updated_at: now })
           .eq('id', leadId)
 
@@ -109,11 +109,11 @@ export function useResidentLeads({
 
         // Log activity
         await supabase.from('resident_lead_activity').insert({
-          resident_lead_id: leadId,
+          lead_id: leadId,
           action: 'stage_changed',
           from_stage: oldStage,
           to_stage: newStage,
-          metadata: userId ? { changed_by: userId } : null,
+          detail: userId ? `Changed by ${userId}` : null,
         })
       } catch (err) {
         console.error('useResidentLeads updateStage error:', err)
@@ -130,7 +130,7 @@ export function useResidentLeads({
     async (lead: Partial<ResidentLead>): Promise<ResidentLead | null> => {
       try {
         const { data, error } = await supabase
-          .from('resident_leads')
+          .from('pipeline_leads')
           .insert({
             ...lead,
             stage: lead.stage || 'inquiry',
@@ -147,11 +147,11 @@ export function useResidentLeads({
 
         // Log activity
         await supabase.from('resident_lead_activity').insert({
-          resident_lead_id: data.id,
+          lead_id: data.id,
           action: 'lead_created',
           from_stage: null,
           to_stage: data.stage,
-          metadata: { source: lead.source, property: lead.property },
+          detail: `Created from ${lead.source || 'manual'}`,
         })
 
         // Add to local state
@@ -169,7 +169,7 @@ export function useResidentLeads({
     async (leadId: string, updates: Partial<ResidentLead>, userId?: string | null) => {
       try {
         const { error } = await supabase
-          .from('resident_leads')
+          .from('pipeline_leads')
           .update({ ...updates, updated_at: new Date().toISOString() })
           .eq('id', leadId)
 
@@ -177,11 +177,11 @@ export function useResidentLeads({
 
         // Log activity
         await supabase.from('resident_lead_activity').insert({
-          resident_lead_id: leadId,
+          lead_id: leadId,
           action: 'lead_updated',
           from_stage: null,
           to_stage: null,
-          metadata: { fields: Object.keys(updates), changed_by: userId ?? null },
+          detail: `Updated: ${Object.keys(updates).join(', ')}`,
         })
 
         // Update local state
@@ -201,7 +201,7 @@ export function useResidentLeads({
     async (leadId: string, content: string, author?: string) => {
       try {
         const { error: noteError } = await supabase.from('resident_lead_notes').insert({
-          resident_lead_id: leadId,
+          lead_id: leadId,
           content,
           author: author ?? 'system',
         })
@@ -210,11 +210,11 @@ export function useResidentLeads({
 
         // Log activity
         await supabase.from('resident_lead_activity').insert({
-          resident_lead_id: leadId,
+          lead_id: leadId,
           action: 'note_added',
           from_stage: null,
           to_stage: null,
-          metadata: { preview: content.slice(0, 100), author: author ?? 'system' },
+          detail: `Note by ${author ?? 'system'}: ${content.slice(0, 100)}`,
         })
       } catch (err) {
         console.error('useResidentLeads addNote error:', err)
@@ -226,9 +226,9 @@ export function useResidentLeads({
   const getActivity = useCallback(async (leadId: string): Promise<ResidentLeadActivity[]> => {
     try {
       const { data, error } = await supabase
-        .from('resident_lead_activity')
+        .from('pipeline_lead_activity')
         .select('*')
-        .eq('resident_lead_id', leadId)
+        .eq('lead_id', leadId)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -242,9 +242,9 @@ export function useResidentLeads({
   const getNotes = useCallback(async (leadId: string): Promise<ResidentLeadNote[]> => {
     try {
       const { data, error } = await supabase
-        .from('resident_lead_notes')
+        .from('lead_notes')
         .select('*')
-        .eq('resident_lead_id', leadId)
+        .eq('lead_id', leadId)
         .order('created_at', { ascending: false })
 
       if (error) throw error

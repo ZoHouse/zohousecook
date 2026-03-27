@@ -35,7 +35,7 @@ export function useResidentStats({ property }: UseResidentStatsParams): UseResid
     try {
       // Fetch all active leads (not deleted, not dead)
       let query = supabase
-        .from('resident_leads')
+        .from('pipeline_leads')
         .select('*')
         .is('deleted_at', null)
         .eq('is_dead', false)
@@ -59,7 +59,7 @@ export function useResidentStats({ property }: UseResidentStatsParams): UseResid
 
       // Beds filled: count moved_in per property (query without property filter)
       const { data: movedIn, error: bedsError } = await supabase
-        .from('resident_leads')
+        .from('pipeline_leads')
         .select('property')
         .is('deleted_at', null)
         .eq('is_dead', false)
@@ -80,7 +80,7 @@ export function useResidentStats({ property }: UseResidentStatsParams): UseResid
       todayEnd.setHours(23, 59, 59, 999)
 
       let callsQuery = supabase
-        .from('resident_leads')
+        .from('pipeline_leads')
         .select('id', { count: 'exact' })
         .is('deleted_at', null)
         .eq('is_dead', false)
