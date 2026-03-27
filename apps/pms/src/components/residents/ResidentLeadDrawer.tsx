@@ -114,7 +114,7 @@ const ResidentLeadDrawer: React.FC<ResidentLeadDrawerProps> = ({
           : a.action === 'lead_created'
           ? 'Lead created'
           : a.action === 'note_added'
-          ? `Note added by ${(a.metadata as Record<string, string>)?.author ?? 'system'}`
+          ? (a.detail || 'Note added')
           : a.action,
       author: null,
     })),

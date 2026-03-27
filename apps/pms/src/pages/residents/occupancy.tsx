@@ -42,15 +42,11 @@ const OccupancyPage: NextPage = () => {
   }, [])
 
   const occupiedToday = useMemo(() => {
-    const rooms = new Set<string>()
-    entries.forEach((e) => {
-      const arrival = e.arrivaldate || ''
-      const departure = e.departuredate || ''
-      if (e.roomname && arrival <= todayStr && todayStr < departure) {
-        rooms.add(e.roomname)
-      }
-    })
-    return rooms.size
+    return entries.filter((e) => {
+      const arrival = (e.arrivaldate || '').split('T')[0]
+      const departure = (e.departuredate || '').split('T')[0]
+      return arrival <= todayStr && todayStr < departure
+    }).length
   }, [entries, todayStr])
 
   const occupancyPct = totalBeds > 0 ? Math.round((occupiedToday / totalBeds) * 100) : 0

@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../configs/supabase'
 
-// Map operator codes to property filter values
-// NOTE: pms_bookings may use different property_id values than "BLRxZo"/"WTFxZo".
-// If the filter returns empty results, revisit and check actual property_id values in the table.
 const OPERATOR_TO_PROPERTY: Record<string, string> = {
   BNGHO812: 'BLRxZo',
   BNGS531: 'WTFxZo',
@@ -11,13 +8,12 @@ const OPERATOR_TO_PROPERTY: Record<string, string> = {
 
 export interface OccupancyEntry {
   id: string
-  guestname: string | null
-  roomname: string | null
-  arrivaldate: string | null
-  departuredate: string | null
-  total: number | null
-  property_id: string | null
-  status: string | null
+  guestname: string
+  roomtypeunkid: string
+  arrivaldate: string
+  departuredate: string
+  total: number
+  property_id: string
 }
 
 interface UseOccupancyParams {
@@ -42,11 +38,10 @@ export function useOccupancy({ operatorCode }: UseOccupancyParams): UseOccupancy
 
       let query = supabase
         .from('pms_bookings')
-        .select('tranunkid, guestname, roomname, arrivaldate, departuredate, total, property_id, bookstatus')
+        .select('tranunkid, guestname, roomtypeunkid, arrivaldate, departuredate, total, property_id')
         .gte('departuredate', today)
         .order('arrivaldate', { ascending: true })
 
-      // Apply property filter if operator code is known
       if (operatorCode && OPERATOR_TO_PROPERTY[operatorCode]) {
         query = query.eq('property_id', OPERATOR_TO_PROPERTY[operatorCode])
       }
@@ -55,15 +50,14 @@ export function useOccupancy({ operatorCode }: UseOccupancyParams): UseOccupancy
 
       if (error) throw error
 
-      const mapped: OccupancyEntry[] = (data || []).map((row) => ({
+      const mapped: OccupancyEntry[] = (data || []).map((row: any) => ({
         id: row.tranunkid,
-        guestname: row.guestname,
-        roomname: row.roomname,
+        guestname: row.guestname || 'Unknown',
+        roomtypeunkid: row.roomtypeunkid || '',
         arrivaldate: row.arrivaldate,
         departuredate: row.departuredate,
-        total: row.total,
-        property_id: row.property_id,
-        status: row.bookstatus,
+        total: row.total || 0,
+        property_id: row.property_id || '',
       }))
 
       setEntries(mapped)

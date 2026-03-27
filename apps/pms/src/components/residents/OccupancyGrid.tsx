@@ -21,49 +21,28 @@ function getCellColor(entry: OccupancyEntry, day: Date): string {
   const departure = entry.departuredate ? new Date(entry.departuredate) : null
   if (!departure) return '#065f46'
 
-  const daysUntilCheckout = daysBetween(day, departure)
+  const daysLeft = daysBetween(day, departure)
 
-  if (daysUntilCheckout <= 3) return '#7f1d1d' // red — checkout within 3 days
-  if (daysUntilCheckout <= 7) return '#78350f' // yellow — checkout within 7 days
+  if (daysLeft <= 3) return '#7f1d1d'   // red — checkout imminent
+  if (daysLeft <= 7) return '#78350f'   // yellow — checkout soon
   if ((entry.total ?? 0) === 0) return '#374151' // gray — comp
-  return '#065f46' // green — occupied (paying)
+  return '#065f46'                       // green — occupied
 }
 
 const OccupancyGrid: React.FC<OccupancyGridProps> = ({ entries, days }) => {
   const todayStr = formatDate(new Date())
 
-  // Get sorted unique room names
-  const rooms = useMemo(() => {
-    const roomSet = new Set<string>()
-    entries.forEach((e) => {
-      if (e.roomname) roomSet.add(e.roomname)
-    })
-    return Array.from(roomSet).sort()
-  }, [entries])
+  // Each entry = one row (one guest booking)
+  const sortedEntries = useMemo(
+    () => [...entries].sort((a, b) => (a.guestname || '').localeCompare(b.guestname || '')),
+    [entries]
+  )
 
-  // Build a lookup: roomname -> array of entries
-  const roomEntries = useMemo(() => {
-    const map: Record<string, OccupancyEntry[]> = {}
-    entries.forEach((e) => {
-      if (!e.roomname) return
-      if (!map[e.roomname]) map[e.roomname] = []
-      map[e.roomname].push(e)
-    })
-    return map
-  }, [entries])
-
-  // Find the entry covering a specific room on a specific day
-  function findEntry(room: string, day: Date): OccupancyEntry | null {
+  function isOccupied(entry: OccupancyEntry, day: Date): boolean {
     const dayStr = formatDate(day)
-    const candidates = roomEntries[room] || []
-    for (const entry of candidates) {
-      const arrival = entry.arrivaldate || ''
-      const departure = entry.departuredate || ''
-      if (arrival <= dayStr && dayStr < departure) {
-        return entry
-      }
-    }
-    return null
+    const arrival = (entry.arrivaldate || '').split('T')[0]
+    const departure = (entry.departuredate || '').split('T')[0]
+    return arrival <= dayStr && dayStr < departure
   }
 
   return (
@@ -87,11 +66,11 @@ const OccupancyGrid: React.FC<OccupancyGridProps> = ({ entries, days }) => {
                 padding: '6px 12px',
                 textAlign: 'left',
                 borderBottom: '1px solid #333',
-                minWidth: 120,
+                minWidth: 180,
                 color: '#cfff50',
               }}
             >
-              Room
+              Guest
             </th>
             {days.map((day) => {
               const isToday = formatDate(day) === todayStr
@@ -116,8 +95,8 @@ const OccupancyGrid: React.FC<OccupancyGridProps> = ({ entries, days }) => {
           </tr>
         </thead>
         <tbody>
-          {rooms.map((room) => (
-            <tr key={room}>
+          {sortedEntries.map((entry) => (
+            <tr key={entry.id}>
               <td
                 style={{
                   position: 'sticky',
@@ -128,14 +107,18 @@ const OccupancyGrid: React.FC<OccupancyGridProps> = ({ entries, days }) => {
                   borderBottom: '1px solid #222',
                   color: '#ddd',
                   fontWeight: 500,
+                  whiteSpace: 'nowrap',
                 }}
               >
-                {room}
+                {entry.guestname}
+                {entry.total === 0 && (
+                  <span style={{ color: '#666', marginLeft: 6, fontSize: 10 }}>comp</span>
+                )}
               </td>
               {days.map((day) => {
-                const entry = findEntry(room, day)
+                const occupied = isOccupied(entry, day)
                 const isToday = formatDate(day) === todayStr
-                const bgColor = entry
+                const bgColor = occupied
                   ? getCellColor(entry, day)
                   : isToday
                     ? '#1a2a1a'
@@ -145,21 +128,21 @@ const OccupancyGrid: React.FC<OccupancyGridProps> = ({ entries, days }) => {
                   <td
                     key={formatDate(day)}
                     style={{
-                      padding: '4px 6px',
+                      padding: 0,
                       borderBottom: '1px solid #222',
                       background: bgColor,
-                      cursor: entry ? 'pointer' : 'default',
                       minWidth: 44,
                       height: 28,
                     }}
                   />
                 )
 
-                if (entry) {
+                if (occupied) {
+                  const depDate = entry.departuredate?.split('T')[0] || '?'
                   return (
                     <Tooltip
                       key={formatDate(day)}
-                      title={`${entry.guestname || 'Unknown'} — checkout ${entry.departuredate || '?'}`}
+                      title={`${entry.guestname} — checkout ${depDate}`}
                     >
                       {cell}
                     </Tooltip>
@@ -170,7 +153,7 @@ const OccupancyGrid: React.FC<OccupancyGridProps> = ({ entries, days }) => {
               })}
             </tr>
           ))}
-          {rooms.length === 0 && (
+          {sortedEntries.length === 0 && (
             <tr>
               <td
                 colSpan={days.length + 1}

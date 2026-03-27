@@ -97,7 +97,7 @@ export interface ResidentLead {
 
 export interface ResidentLeadNote {
   id: string
-  resident_lead_id: string
+  lead_id: string
   author: string
   content: string
   created_at: string
@@ -105,10 +105,11 @@ export interface ResidentLeadNote {
 
 export interface ResidentLeadActivity {
   id: string
-  resident_lead_id: string
+  lead_id: string
   action: string
   from_stage: string | null
   to_stage: string | null
-  metadata: Record<string, unknown> | null
+  detail: string | null
+  performed_by: string | null
   created_at: string
 }
