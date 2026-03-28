@@ -91,25 +91,25 @@ export default function HeroSection() {
 
   // Parse
   const airdrops: any[] = airdropsData?.results || airdropsData || []
-  const founderStats = founderStatsData || {}
+  const founderStats: any = founderStatsData || {}
   const founderOwners: any[] = founderOwnersData?.results || founderOwnersData || []
-  const founderMembers: any[] = founderMembersData?.results || founderMembersData || []
+  const founderMembersStats: any = founderMembersData || {} // returns { wallets_count, users_count }
   const poas: any[] = poaData?.results || poaData || []
 
-  // $Zo computed stats
+  // $Zo computed stats — CAS airdrops use humanized string statuses
   const zoStats = useMemo(() => {
-    const success = airdrops.filter((a) => a.status === 2)
+    const success = airdrops.filter((a) => a.status === "success")
     const totalDistributed = success.reduce((s: number, a: any) => s + Number(a.amount || 0), 0)
     const totalTransfers = airdrops.length
     const uniqueRecipients = new Set(success.map((a: any) => a.wallet_address)).size
     return { totalDistributed, totalTransfers, uniqueRecipients }
   }, [airdrops])
 
-  // Founder computed
+  // Founder computed — uses CAS_FOUNDER_TOKENS_STATS response shape
   const founderListings: any[] = founderListingsData?.results || founderListingsData || []
-  const totalMinted = founderStats.total_minted || founderStats.count || founderOwners.length || "—"
-  const uniqueOwners = founderStats.unique_owners || (founderOwners.length > 0 ? new Set(founderOwners.map((o: any) => o.wallet_address || o.owner)).size : "—")
-  const totalFounderMembers = founderMembers.length || founderStats.total_members || "—"
+  const totalMinted = founderStats.total_nfts_minted || founderOwners.length || "—"
+  const uniqueOwners = founderStats.total_holding_wallets || founderStats.total_holders || "—"
+  const totalFounderMembers = founderMembersStats.users_count || "—"
 
   // Floor price from listings (lowest price in ETH)
   const floorPrice = useMemo(() => {
@@ -128,9 +128,9 @@ export default function HeroSection() {
 
   const listedCount = founderListings.length || "—"
 
-  // POA computed
+  // POA computed — CAS_POAS returns { num_holders } per POA
   const totalPoas = poas.length || "—"
-  const totalPoaClaims = poas.reduce((s: number, p: any) => s + (p.attendees_count || 0), 0) || "—"
+  const totalPoaClaims = poas.reduce((s: number, p: any) => s + (p.num_holders || 0), 0) || "—"
 
   return (
     <div className="mb-8">

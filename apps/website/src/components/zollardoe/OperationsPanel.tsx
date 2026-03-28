@@ -20,13 +20,13 @@ interface TokenGrant {
 
 interface TokenAirdrop {
   id: string
-  status: number
+  status: string // humanized: "pending" | "initiated" | "success" | "failed" | "cancelled"
   wallet_address: string
   amount: string
   allocated_at: string
   ref_note: string | null
-  grant: TokenGrant | string
-  transaction: { hash: string } | null
+  grant: string // UUID FK, not nested
+  transaction: string | null // UUID FK, not nested
 }
 
 interface CsvRow {
@@ -132,11 +132,11 @@ function ZoSection() {
   const isLoading = lg || la
 
   const stats = useMemo(() => {
-    const byStatus: Record<number, number> = {}
+    const byStatus: Record<string, number> = {}
     let totalDistributed = 0
     for (const a of airdrops) {
       byStatus[a.status] = (byStatus[a.status] || 0) + 1
-      if (a.status === 2) totalDistributed += Number(a.amount)
+      if (a.status === "success") totalDistributed += Number(a.amount)
     }
     return { byStatus, totalDistributed }
   }, [airdrops])
@@ -163,9 +163,9 @@ function ZoSection() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
         <KpiCard label="Grants" value={String(grants.length)} />
         <KpiCard label="Total Distributed" value={formatZo(stats.totalDistributed)} suffix="$Zo" highlight />
-        <KpiCard label="Success" value={String(stats.byStatus[2] || 0)} color="#52c41a" />
-        <KpiCard label="Pending" value={String(stats.byStatus[0] || 0)} color="#faad14" />
-        <KpiCard label="Failed" value={String(stats.byStatus[3] || 0)} color="#ff4d4f" />
+        <KpiCard label="Success" value={String(stats.byStatus["success"] || 0)} color="#52c41a" />
+        <KpiCard label="Pending" value={String(stats.byStatus["pending"] || 0)} color="#faad14" />
+        <KpiCard label="Failed" value={String(stats.byStatus["failed"] || 0)} color="#ff4d4f" />
       </div>
 
       {/* Sub-tabs */}
@@ -205,7 +205,7 @@ function ZoSection() {
 // ===========================================================================
 
 function FoundersSection() {
-  const { data: allowlistData, isLoading: loadingAl, refetch: refetchAl } = useQueryApi<GeneralObject>(
+  const { data: allowlistData, isLoading: loadingAl } = useQueryApi<GeneralObject>(
     "CAS_FOUNDER_ALLOWLISTS",
     { refetchOnWindowFocus: false, select: (d: GeneralObject) => d.data },
     "", "ordering=-created_at"
@@ -215,9 +215,15 @@ function FoundersSection() {
     { refetchOnWindowFocus: false, select: (d: GeneralObject) => d.data },
     "", ""
   )
+  const { data: founderStatsData } = useQueryApi<GeneralObject>(
+    "CAS_FOUNDER_TOKENS_STATS",
+    { refetchOnWindowFocus: false, select: (d: GeneralObject) => d.data },
+    "", ""
+  )
 
   const allowlists: any[] = allowlistData?.results || allowlistData || []
   const owners: any[] = ownersData?.results || ownersData || []
+  const fStats: any = founderStatsData || {}
   const isLoading = loadingAl || loadingOwners
 
   const [activeTab, setActiveTab] = useState<"holders" | "allowlist">("holders")
@@ -230,9 +236,9 @@ function FoundersSection() {
     <div>
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <KpiCard label="Total Minted" value={String(owners.length || "—")} />
+        <KpiCard label="Total Minted" value={String(fStats.total_nfts_minted || owners.length || "—")} />
         <KpiCard label="Max Supply" value="1,111" />
-        <KpiCard label="Unique Holders" value={String(owners.length > 0 ? new Set(owners.map((o: any) => o.wallet_address || o.owner)).size : "—")} highlight />
+        <KpiCard label="Unique Holders" value={String(fStats.total_holders || fStats.total_holding_wallets || "—")} highlight />
         <KpiCard label="Allowlist Referrals" value={String(allowlists.length || "—")} />
       </div>
 
@@ -260,23 +266,34 @@ function FoundersSection() {
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-[#0a0a0a]">
                 <tr className="text-left text-white/40 text-xs border-b border-white/5">
-                  <th className="pb-2 pr-4">Token ID</th>
-                  <th className="pb-2 pr-4">Owner</th>
-                  <th className="pb-2">Name</th>
+                  <th className="pb-2 pr-4">Name</th>
+                  <th className="pb-2 pr-4">Wallet</th>
+                  <th className="pb-2 pr-4">Token IDs</th>
+                  <th className="pb-2 text-right"># Held</th>
                 </tr>
               </thead>
               <tbody>
-                {owners.map((o: any, i: number) => (
-                  <tr key={o.id || i} className="border-b border-white/5 text-white/70">
-                    <td className="py-2 pr-4 font-mono text-xs">{o.token_ref_id || o.token_id || i + 1}</td>
-                    <td className="py-2 pr-4 font-mono text-xs">
-                      <a href={`${FOUNDER.explorer}/address/${o.wallet_address || o.owner}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
-                        {truncAddr(o.wallet_address || o.owner || "")}
-                      </a>
-                    </td>
-                    <td className="py-2 text-xs">{o.name || o.user?.first_name || "—"}</td>
-                  </tr>
-                ))}
+                {owners.map((o: any, i: number) => {
+                  const wallets = Object.keys(o.tokens || {})
+                  const wallet = wallets[0] || o.user?.wallet_address || ""
+                  const tokenIds = Object.values(o.tokens || {}).flat() as number[]
+                  return (
+                    <tr key={o.user?.id || i} className="border-b border-white/5 text-white/70">
+                      <td className="py-2 pr-4 text-xs">
+                        {o.user ? `${o.user.first_name || ""} ${o.user.last_name || ""}`.trim() || o.user.pid || "—" : "Unregistered"}
+                      </td>
+                      <td className="py-2 pr-4 font-mono text-xs">
+                        <a href={`${FOUNDER.explorer}/address/${wallet}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
+                          {truncAddr(wallet)}
+                        </a>
+                      </td>
+                      <td className="py-2 pr-4 font-mono text-xs text-white/40">
+                        {tokenIds.length <= 3 ? tokenIds.join(", ") : `${tokenIds.slice(0, 3).join(", ")}...`}
+                      </td>
+                      <td className="py-2 text-right font-mono font-bold">{o.num_tokens || tokenIds.length}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -297,26 +314,32 @@ function FoundersSection() {
                 </tr>
               </thead>
               <tbody>
-                {allowlists.map((al: any, i: number) => (
-                  <tr key={al.id || i} className="border-b border-white/5 text-white/70">
-                    <td className="py-2 pr-4 font-mono text-xs">
-                      <a href={`${FOUNDER.explorer}/address/${al.wallet_address || al.address}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
-                        {truncAddr(al.wallet_address || al.address || "")}
-                      </a>
-                    </td>
-                    <td className="py-2 pr-4 text-xs">{al.referred_by?.first_name || al.referrer || "—"}</td>
-                    <td className="py-2 pr-4">
-                      <span className={`text-xs px-2 py-0.5 rounded ${
-                        al.status === "approved" || al.status === 1 ? "bg-green-500/20 text-green-400" :
-                        al.status === "pending" || al.status === 0 ? "bg-yellow-500/20 text-yellow-400" :
-                        "bg-white/5 text-white/40"
-                      }`}>
-                        {typeof al.status === "number" ? (al.status === 0 ? "pending" : al.status === 1 ? "approved" : al.status) : al.status || "—"}
-                      </span>
-                    </td>
-                    <td className="py-2 text-xs">{al.created_at ? formatDate(al.created_at) : "—"}</td>
-                  </tr>
-                ))}
+                {allowlists.map((al: any, i: number) => {
+                  const referredName = al.referred ? `${al.referred.first_name || ""} ${al.referred.last_name || ""}`.trim() : "—"
+                  const referrerName = al.user ? `${al.user.first_name || ""} ${al.user.last_name || ""}`.trim() : "—"
+                  return (
+                    <tr key={al.id || i} className="border-b border-white/5 text-white/70">
+                      <td className="py-2 pr-4 font-mono text-xs">
+                        <a href={`${FOUNDER.explorer}/address/${al.wallet_address || ""}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
+                          {truncAddr(al.wallet_address || "")}
+                        </a>
+                        {referredName !== "—" && <span className="text-white/40 ml-2">{referredName}</span>}
+                      </td>
+                      <td className="py-2 pr-4 text-xs">{referrerName}</td>
+                      <td className="py-2 pr-4">
+                        <span className={`text-xs px-2 py-0.5 rounded ${
+                          al.status === "approved" ? "bg-green-500/20 text-green-400" :
+                          al.status === "pending" ? "bg-yellow-500/20 text-yellow-400" :
+                          al.status === "rejected" ? "bg-red-500/20 text-red-400" :
+                          "bg-white/5 text-white/40"
+                        }`}>
+                          {al.status || "—"}
+                        </span>
+                      </td>
+                      <td className="py-2 text-xs">{al.created_at ? formatDate(al.created_at) : "—"}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -339,12 +362,13 @@ function CitizensSection() {
 
   const nftAirdrops: any[] = nftAirdropsData?.results || nftAirdropsData || []
 
+  // NFT airdrop status is numeric: 0=pending, 1=initiated, 2=success, 3=failed
   const stats = useMemo(() => {
     let pending = 0, success = 0, failed = 0
     for (const a of nftAirdrops) {
-      if (a.status === 0 || a.status === "pending") pending++
-      else if (a.status === 2 || a.status === "success") success++
-      else if (a.status === 3 || a.status === "failed") failed++
+      if (a.status === 0) pending++
+      else if (a.status === 2) success++
+      else if (a.status === 3) failed++
     }
     return { pending, success, failed, total: nftAirdrops.length }
   }, [nftAirdrops])
@@ -382,24 +406,29 @@ function CitizensSection() {
               </thead>
               <tbody>
                 {nftAirdrops.map((a: any, i: number) => {
-                  const statusLabel = a.status === 0 || a.status === "pending" ? "Pending"
-                    : a.status === 1 || a.status === "initiated" ? "Initiated"
-                    : a.status === 2 || a.status === "success" ? "Minted"
-                    : a.status === 3 || a.status === "failed" ? "Failed"
+                  const statusLabel = a.status === 0 ? "Pending"
+                    : a.status === 1 ? "Initiated"
+                    : a.status === 2 ? "Minted"
+                    : a.status === 3 ? "Failed"
                     : String(a.status)
                   const statusColor = statusLabel === "Minted" ? "#52c41a"
                     : statusLabel === "Pending" ? "#faad14"
                     : statusLabel === "Initiated" ? "#1890ff"
                     : "#ff4d4f"
+                  const walletAddr = a.web3_wallet?.wallet_address || ""
+                  const userName = a.user ? `${a.user.first_name || ""} ${a.user.last_name || ""}`.trim() : ""
                   return (
                     <tr key={a.id || i} className="border-b border-white/5 text-white/70">
                       <td className="py-2 pr-4 text-xs">{a.created_at ? formatDate(a.created_at) : "—"}</td>
                       <td className="py-2 pr-4 font-mono text-xs">
-                        <a href={`${ZO_TOKEN.explorer}/address/${a.wallet_address}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
-                          {truncAddr(a.wallet_address || "")}
-                        </a>
+                        {walletAddr ? (
+                          <a href={`${ZO_TOKEN.explorer}/address/${walletAddr}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
+                            {truncAddr(walletAddr)}
+                          </a>
+                        ) : "—"}
+                        {userName && <span className="text-white/40 ml-2">{userName}</span>}
                       </td>
-                      <td className="py-2 pr-4 font-mono text-xs">{a.ref_id || a.token_id || "—"}</td>
+                      <td className="py-2 pr-4 font-mono text-xs">{a.founder_token_ref_id || "—"}</td>
                       <td className="py-2 pr-4">
                         <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: statusColor + "20", color: statusColor }}>
                           {statusLabel}
@@ -597,11 +626,7 @@ function DistributeTab({ grants, airdrops, refetchAirdrops }: {
                       </span>
                     </td>
                     <td className="py-2 font-mono text-xs">
-                      {a.status === 2 && a.transaction?.hash ? (
-                        <a href={`${ZO_TOKEN.explorer}/tx/${a.transaction.hash}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
-                          {a.transaction.hash.slice(0, 8)}...
-                        </a>
-                      ) : "—"}
+                      {a.status === "success" ? "✓" : "—"}
                     </td>
                   </tr>
                 )
@@ -886,11 +911,7 @@ function ClaimsTab({ airdrops }: { airdrops: TokenAirdrop[] }) {
                       </span>
                     </td>
                     <td className="py-2 font-mono text-xs">
-                      {a.status === 2 && a.transaction?.hash ? (
-                        <a href={`${ZO_TOKEN.explorer}/tx/${a.transaction.hash}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
-                          {a.transaction.hash.slice(0, 8)}...
-                        </a>
-                      ) : "—"}
+                      {a.status === "success" ? "✓" : "—"}
                     </td>
                   </tr>
                 )

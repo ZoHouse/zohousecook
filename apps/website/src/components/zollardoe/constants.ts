@@ -178,10 +178,11 @@ Metadata: served by Django at /webthree/poa/metadata/{token_ref_id}.json`,
   },
 }
 
-export const AIRDROP_STATUS: Record<number, { label: string; color: string }> = {
-  0: { label: "Pending", color: "#faad14" },
-  1: { label: "Initiated", color: "#1890ff" },
-  2: { label: "Success", color: "#52c41a" },
-  3: { label: "Failed", color: "#ff4d4f" },
-  4: { label: "Cancelled", color: "#666" },
+// CAS endpoints return humanized string statuses, not numbers
+export const AIRDROP_STATUS: Record<string, { label: string; color: string }> = {
+  pending: { label: "Pending", color: "#faad14" },
+  initiated: { label: "Initiated", color: "#1890ff" },
+  success: { label: "Success", color: "#52c41a" },
+  failed: { label: "Failed", color: "#ff4d4f" },
+  cancelled: { label: "Cancelled", color: "#666" },
 }
