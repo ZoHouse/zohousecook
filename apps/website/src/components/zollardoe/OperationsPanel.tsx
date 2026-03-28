@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback, useRef } from "react"
 import { useQueryApi, useMutationApi } from "@zo/auth"
 import { GeneralObject } from "@zo/definitions/general"
 import { toast } from "sonner"
-import { AIRDROP_STATUS, ZO_TOKEN } from "./constants"
+import { AIRDROP_STATUS, ZO_TOKEN, CONTRACTS } from "./constants"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -60,14 +60,55 @@ function formatDate(d: string): string {
   return new Date(d).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
 }
 
+const FOUNDER = CONTRACTS.find((c) => c.name === "Founder NFT")!
+
 // ---------------------------------------------------------------------------
-// Component
+// Main Component
 // ---------------------------------------------------------------------------
 
-type Tab = "grants" | "distribute" | "bulk"
+type Section = "zo" | "founders" | "citizens"
 
 export default function OperationsPanel() {
-  const [activeTab, setActiveTab] = useState<Tab>("grants")
+  const [activeSection, setActiveSection] = useState<Section>("zo")
+
+  return (
+    <section className="mb-8">
+      <h2 className="text-xl font-bold text-white mb-4">Operations</h2>
+
+      {/* Section tabs */}
+      <div className="flex gap-1 mb-4 bg-white/[0.03] rounded-lg p-1 w-fit">
+        {([
+          { key: "zo" as Section, label: "$Zo" },
+          { key: "founders" as Section, label: "Founder NFTs" },
+          { key: "citizens" as Section, label: "Citizen NFTs" },
+        ]).map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setActiveSection(key)}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeSection === key
+                ? "bg-[#cfff50] text-black"
+                : "text-white/60 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {activeSection === "zo" && <ZoSection />}
+      {activeSection === "founders" && <FoundersSection />}
+      {activeSection === "citizens" && <CitizensSection />}
+    </section>
+  )
+}
+
+// ===========================================================================
+// $Zo Section
+// ===========================================================================
+
+function ZoSection() {
+  const [activeTab, setActiveTab] = useState<"grants" | "distribute" | "bulk" | "ledger" | "claims">("grants")
 
   const { data: grantsData, isLoading: lg, refetch: refetchGrants } = useQueryApi<GeneralObject>(
     "CAS_TOKEN_GRANTS",
@@ -79,9 +120,15 @@ export default function OperationsPanel() {
     { refetchOnWindowFocus: false, select: (d: GeneralObject) => d.data },
     "", "ordering=-allocated_at&page_size=50"
   )
+  const { data: ledgerData, isLoading: ll } = useQueryApi<GeneralObject>(
+    "CAS_LEDGER",
+    { refetchOnWindowFocus: false, select: (d: GeneralObject) => d.data },
+    "", "ordering=-id&page_size=50"
+  )
 
   const grants: TokenGrant[] = grantsData?.results || grantsData || []
   const airdrops: TokenAirdrop[] = airdropsData?.results || airdropsData || []
+  const ledgerEntries: any[] = ledgerData?.results || ledgerData || []
   const isLoading = lg || la
 
   const stats = useMemo(() => {
@@ -96,19 +143,23 @@ export default function OperationsPanel() {
 
   if (!isLoading && grants.length === 0 && airdrops.length === 0) {
     return (
-      <section className="mb-8">
-        <h2 className="text-xl font-bold text-white mb-4">Operations</h2>
-        <div className="bg-white/[0.02] border border-white/10 rounded-xl p-6 text-white/40 text-sm">
-          No data — login as CAS admin to access distribution operations.
-        </div>
-      </section>
+      <div className="bg-white/[0.02] border border-white/10 rounded-xl p-6 text-white/40 text-sm">
+        No data — login as CAS admin to access $Zo distribution operations.
+      </div>
     )
   }
 
-  return (
-    <section className="mb-8">
-      <h2 className="text-xl font-bold text-white mb-4">Operations</h2>
+  const TAB_LABELS: Record<string, string> = {
+    grants: "Grants",
+    distribute: "Distribute",
+    bulk: "Bulk Distribute",
+    ledger: "Ledger",
+    claims: "Claim History",
+  }
 
+  return (
+    <div>
+      {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
         <KpiCard label="Grants" value={String(grants.length)} />
         <KpiCard label="Total Distributed" value={formatZo(stats.totalDistributed)} suffix="$Zo" highlight />
@@ -117,18 +168,19 @@ export default function OperationsPanel() {
         <KpiCard label="Failed" value={String(stats.byStatus[3] || 0)} color="#ff4d4f" />
       </div>
 
-      <div className="flex gap-1 mb-4 bg-white/[0.03] rounded-lg p-1 w-fit">
-        {(["grants", "distribute", "bulk"] as Tab[]).map((tab) => (
+      {/* Sub-tabs */}
+      <div className="flex gap-1 mb-4 bg-white/[0.02] rounded-lg p-1 w-fit flex-wrap">
+        {(["grants", "distribute", "bulk", "ledger", "claims"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               activeTab === tab
-                ? "bg-[#cfff50] text-black"
-                : "text-white/60 hover:text-white hover:bg-white/5"
+                ? "bg-white/10 text-white"
+                : "text-white/40 hover:text-white/60"
             }`}
           >
-            {tab === "grants" ? "Grants" : tab === "distribute" ? "Distribute" : "Bulk Distribute"}
+            {TAB_LABELS[tab]}
           </button>
         ))}
       </div>
@@ -140,15 +192,241 @@ export default function OperationsPanel() {
           {activeTab === "grants" && <GrantsTab grants={grants} refetchGrants={refetchGrants} />}
           {activeTab === "distribute" && <DistributeTab grants={grants} airdrops={airdrops} refetchAirdrops={refetchAirdrops} />}
           {activeTab === "bulk" && <BulkDistributeTab />}
+          {activeTab === "ledger" && <LedgerTab entries={ledgerEntries} isLoading={ll} />}
+          {activeTab === "claims" && <ClaimsTab airdrops={airdrops} />}
         </>
       )}
-    </section>
+    </div>
   )
 }
 
-// ---------------------------------------------------------------------------
-// Grants Tab
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// Founders Section
+// ===========================================================================
+
+function FoundersSection() {
+  const { data: allowlistData, isLoading: loadingAl, refetch: refetchAl } = useQueryApi<GeneralObject>(
+    "CAS_FOUNDER_ALLOWLISTS",
+    { refetchOnWindowFocus: false, select: (d: GeneralObject) => d.data },
+    "", "ordering=-created_at"
+  )
+  const { data: ownersData, isLoading: loadingOwners } = useQueryApi<GeneralObject>(
+    "CAS_FOUNDER_TOKENS_OWNERS",
+    { refetchOnWindowFocus: false, select: (d: GeneralObject) => d.data },
+    "", ""
+  )
+
+  const allowlists: any[] = allowlistData?.results || allowlistData || []
+  const owners: any[] = ownersData?.results || ownersData || []
+  const isLoading = loadingAl || loadingOwners
+
+  const [activeTab, setActiveTab] = useState<"holders" | "allowlist">("holders")
+
+  if (isLoading) {
+    return <div className="text-white/40 text-sm py-8">Loading founder data...</div>
+  }
+
+  return (
+    <div>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <KpiCard label="Total Minted" value={String(owners.length || "—")} />
+        <KpiCard label="Max Supply" value="1,111" />
+        <KpiCard label="Unique Holders" value={String(owners.length > 0 ? new Set(owners.map((o: any) => o.wallet_address || o.owner)).size : "—")} highlight />
+        <KpiCard label="Allowlist Referrals" value={String(allowlists.length || "—")} />
+      </div>
+
+      {/* Sub-tabs */}
+      <div className="flex gap-1 mb-4 bg-white/[0.02] rounded-lg p-1 w-fit">
+        {(["holders", "allowlist"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              activeTab === tab
+                ? "bg-white/10 text-white"
+                : "text-white/40 hover:text-white/60"
+            }`}
+          >
+            {tab === "holders" ? "Holders" : "Allowlist"}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "holders" && (
+        <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4">
+          <h3 className="text-sm font-bold text-white/70 mb-3">Founder NFT Holders ({owners.length})</h3>
+          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-[#0a0a0a]">
+                <tr className="text-left text-white/40 text-xs border-b border-white/5">
+                  <th className="pb-2 pr-4">Token ID</th>
+                  <th className="pb-2 pr-4">Owner</th>
+                  <th className="pb-2">Name</th>
+                </tr>
+              </thead>
+              <tbody>
+                {owners.map((o: any, i: number) => (
+                  <tr key={o.id || i} className="border-b border-white/5 text-white/70">
+                    <td className="py-2 pr-4 font-mono text-xs">{o.token_ref_id || o.token_id || i + 1}</td>
+                    <td className="py-2 pr-4 font-mono text-xs">
+                      <a href={`${FOUNDER.explorer}/address/${o.wallet_address || o.owner}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
+                        {truncAddr(o.wallet_address || o.owner || "")}
+                      </a>
+                    </td>
+                    <td className="py-2 text-xs">{o.name || o.user?.first_name || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "allowlist" && (
+        <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4">
+          <h3 className="text-sm font-bold text-white/70 mb-3">Allowlist Referrals ({allowlists.length})</h3>
+          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-[#0a0a0a]">
+                <tr className="text-left text-white/40 text-xs border-b border-white/5">
+                  <th className="pb-2 pr-4">Referred Wallet</th>
+                  <th className="pb-2 pr-4">Referred By</th>
+                  <th className="pb-2 pr-4">Status</th>
+                  <th className="pb-2">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allowlists.map((al: any, i: number) => (
+                  <tr key={al.id || i} className="border-b border-white/5 text-white/70">
+                    <td className="py-2 pr-4 font-mono text-xs">
+                      <a href={`${FOUNDER.explorer}/address/${al.wallet_address || al.address}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
+                        {truncAddr(al.wallet_address || al.address || "")}
+                      </a>
+                    </td>
+                    <td className="py-2 pr-4 text-xs">{al.referred_by?.first_name || al.referrer || "—"}</td>
+                    <td className="py-2 pr-4">
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        al.status === "approved" || al.status === 1 ? "bg-green-500/20 text-green-400" :
+                        al.status === "pending" || al.status === 0 ? "bg-yellow-500/20 text-yellow-400" :
+                        "bg-white/5 text-white/40"
+                      }`}>
+                        {typeof al.status === "number" ? (al.status === 0 ? "pending" : al.status === 1 ? "approved" : al.status) : al.status || "—"}
+                      </span>
+                    </td>
+                    <td className="py-2 text-xs">{al.created_at ? formatDate(al.created_at) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ===========================================================================
+// Citizens Section
+// ===========================================================================
+
+function CitizensSection() {
+  const { data: nftAirdropsData, isLoading } = useQueryApi<GeneralObject>(
+    "CAS_NFTAIRDROPS",
+    { refetchOnWindowFocus: false, select: (d: GeneralObject) => d.data },
+    "", "ordering=-created_at&page_size=50"
+  )
+
+  const nftAirdrops: any[] = nftAirdropsData?.results || nftAirdropsData || []
+
+  const stats = useMemo(() => {
+    let pending = 0, success = 0, failed = 0
+    for (const a of nftAirdrops) {
+      if (a.status === 0 || a.status === "pending") pending++
+      else if (a.status === 2 || a.status === "success") success++
+      else if (a.status === 3 || a.status === "failed") failed++
+    }
+    return { pending, success, failed, total: nftAirdrops.length }
+  }, [nftAirdrops])
+
+  if (isLoading) {
+    return <div className="text-white/40 text-sm py-8">Loading citizen data...</div>
+  }
+
+  return (
+    <div>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <KpiCard label="Total Citizenships" value={String(stats.total)} />
+        <KpiCard label="Minted" value={String(stats.success)} color="#52c41a" />
+        <KpiCard label="Pending Mint" value={String(stats.pending)} color="#faad14" />
+        <KpiCard label="Failed" value={String(stats.failed)} color="#ff4d4f" />
+      </div>
+
+      {/* Recent citizenships table */}
+      <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4">
+        <h3 className="text-sm font-bold text-white/70 mb-3">Recent Citizenships</h3>
+        {nftAirdrops.length === 0 ? (
+          <div className="text-white/40 text-sm">No citizenship data available.</div>
+        ) : (
+          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-[#0a0a0a]">
+                <tr className="text-left text-white/40 text-xs border-b border-white/5">
+                  <th className="pb-2 pr-4">Date</th>
+                  <th className="pb-2 pr-4">Wallet</th>
+                  <th className="pb-2 pr-4">Token ID</th>
+                  <th className="pb-2 pr-4">Status</th>
+                  <th className="pb-2">Tx</th>
+                </tr>
+              </thead>
+              <tbody>
+                {nftAirdrops.map((a: any, i: number) => {
+                  const statusLabel = a.status === 0 || a.status === "pending" ? "Pending"
+                    : a.status === 1 || a.status === "initiated" ? "Initiated"
+                    : a.status === 2 || a.status === "success" ? "Minted"
+                    : a.status === 3 || a.status === "failed" ? "Failed"
+                    : String(a.status)
+                  const statusColor = statusLabel === "Minted" ? "#52c41a"
+                    : statusLabel === "Pending" ? "#faad14"
+                    : statusLabel === "Initiated" ? "#1890ff"
+                    : "#ff4d4f"
+                  return (
+                    <tr key={a.id || i} className="border-b border-white/5 text-white/70">
+                      <td className="py-2 pr-4 text-xs">{a.created_at ? formatDate(a.created_at) : "—"}</td>
+                      <td className="py-2 pr-4 font-mono text-xs">
+                        <a href={`${ZO_TOKEN.explorer}/address/${a.wallet_address}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
+                          {truncAddr(a.wallet_address || "")}
+                        </a>
+                      </td>
+                      <td className="py-2 pr-4 font-mono text-xs">{a.ref_id || a.token_id || "—"}</td>
+                      <td className="py-2 pr-4">
+                        <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: statusColor + "20", color: statusColor }}>
+                          {statusLabel}
+                        </span>
+                      </td>
+                      <td className="py-2 font-mono text-xs">
+                        {a.transaction_hash ? (
+                          <a href={`${ZO_TOKEN.explorer}/tx/${a.transaction_hash}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
+                            {a.transaction_hash.slice(0, 8)}...
+                          </a>
+                        ) : "—"}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ===========================================================================
+// $Zo Sub-tabs (Grants, Distribute, Bulk)
+// ===========================================================================
 
 function GrantsTab({ grants, refetchGrants }: { grants: TokenGrant[]; refetchGrants: () => void }) {
   const [showForm, setShowForm] = useState(false)
@@ -233,10 +511,6 @@ function GrantsTab({ grants, refetchGrants }: { grants: TokenGrant[]; refetchGra
     </div>
   )
 }
-
-// ---------------------------------------------------------------------------
-// Distribute Tab
-// ---------------------------------------------------------------------------
 
 function DistributeTab({ grants, airdrops, refetchAirdrops }: {
   grants: TokenGrant[]; airdrops: TokenAirdrop[]; refetchAirdrops: () => void
@@ -340,10 +614,6 @@ function DistributeTab({ grants, airdrops, refetchAirdrops }: {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Bulk Distribute Tab
-// ---------------------------------------------------------------------------
-
 function BulkDistributeTab() {
   const [rows, setRows] = useState<CsvRow[]>([])
   const [processing, setProcessing] = useState(false)
@@ -442,9 +712,7 @@ function BulkDistributeTab() {
       >
         <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} className="hidden" />
         <div className="text-white/40 text-sm">
-          {rows.length > 0
-            ? `${rows.length} rows loaded — click to replace`
-            : "Click to upload CSV or drag & drop"}
+          {rows.length > 0 ? `${rows.length} rows loaded — click to replace` : "Click to upload CSV or drag & drop"}
         </div>
       </div>
 
@@ -453,9 +721,7 @@ function BulkDistributeTab() {
           <div className="flex items-center gap-4 mb-3 text-xs">
             <span className="text-white/40">{validCount} valid / {rows.length} total</span>
             <span className="text-[#cfff50] font-mono font-bold">{totalAmount.toLocaleString()} $Zo</span>
-            {rows.length - validCount > 0 && (
-              <span className="text-[#ff4d4f]">{rows.length - validCount} errors</span>
-            )}
+            {rows.length - validCount > 0 && <span className="text-[#ff4d4f]">{rows.length - validCount} errors</span>}
           </div>
 
           <div className="overflow-x-auto max-h-[300px] overflow-y-auto mb-4">
@@ -477,9 +743,7 @@ function BulkDistributeTab() {
                     <td className="py-1.5 pr-4 text-right font-mono">{r.amount}</td>
                     <td className="py-1.5 pr-4 text-xs max-w-[200px] truncate">{r.note || "—"}</td>
                     <td className="py-1.5 text-xs">
-                      {r.valid
-                        ? <span className="text-green-400">ready</span>
-                        : <span className="text-red-400">{r.error}</span>}
+                      {r.valid ? <span className="text-green-400">ready</span> : <span className="text-red-400">{r.error}</span>}
                     </td>
                   </tr>
                 ))}
@@ -490,10 +754,7 @@ function BulkDistributeTab() {
           {processing && (
             <div className="mb-4">
               <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[#cfff50] transition-all duration-300"
-                  style={{ width: `${(progress.done / progress.total) * 100}%` }}
-                />
+                <div className="h-full bg-[#cfff50] transition-all duration-300" style={{ width: `${(progress.done / progress.total) * 100}%` }} />
               </div>
               <div className="text-xs text-white/40 mt-1">
                 {progress.done} / {progress.total} processed{progress.errors > 0 ? ` — ${progress.errors} errors` : ""}
@@ -514,9 +775,137 @@ function BulkDistributeTab() {
   )
 }
 
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// Ledger Tab
+// ===========================================================================
+
+function LedgerTab({ entries, isLoading }: { entries: any[]; isLoading: boolean }) {
+  if (isLoading) return <div className="text-white/40 text-sm py-8">Loading ledger...</div>
+
+  return (
+    <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4">
+      <h3 className="text-sm font-bold text-white/70 mb-3">On-Chain Ledger (recent transfers)</h3>
+      {entries.length === 0 ? (
+        <div className="text-white/40 text-sm">No ledger entries found.</div>
+      ) : (
+        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-[#0a0a0a]">
+              <tr className="text-left text-white/40 text-xs border-b border-white/5">
+                <th className="pb-2 pr-4">Block</th>
+                <th className="pb-2 pr-4">From</th>
+                <th className="pb-2 pr-4">To</th>
+                <th className="pb-2 pr-4 text-right">Amount</th>
+                <th className="pb-2">Tx Hash</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((e: any, i: number) => (
+                <tr key={e.id || i} className="border-b border-white/5 text-white/70">
+                  <td className="py-2 pr-4 font-mono text-xs">{e.block_number || "—"}</td>
+                  <td className="py-2 pr-4 font-mono text-xs">
+                    <a href={`${ZO_TOKEN.explorer}/address/${e.from_address}`} target="_blank" rel="noopener noreferrer" className="hover:text-[#cfff50]">
+                      {truncAddr(e.from_address || "")}
+                    </a>
+                  </td>
+                  <td className="py-2 pr-4 font-mono text-xs">
+                    <a href={`${ZO_TOKEN.explorer}/address/${e.wallet_address}`} target="_blank" rel="noopener noreferrer" className="hover:text-[#cfff50]">
+                      {truncAddr(e.wallet_address || "")}
+                    </a>
+                  </td>
+                  <td className="py-2 pr-4 text-right font-mono font-bold">{formatZo(e.amount || 0)} $Zo</td>
+                  <td className="py-2 font-mono text-xs">
+                    {e.transaction_hash ? (
+                      <a href={`${ZO_TOKEN.explorer}/tx/${e.transaction_hash}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
+                        {e.transaction_hash.slice(0, 10)}...
+                      </a>
+                    ) : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ===========================================================================
+// Claims Tab
+// ===========================================================================
+
+function ClaimsTab({ airdrops }: { airdrops: TokenAirdrop[] }) {
+  // Filter to only profile completion / onboarding claims
+  const claims = airdrops.filter((a) => {
+    const note = (a.ref_note || "").toLowerCase()
+    return note.includes("profilecompletion") || note.includes("profile") || note.includes("onboarding") || note.includes("claim")
+  })
+
+  const allAirdrops = claims.length > 0 ? claims : airdrops
+
+  return (
+    <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4">
+      <h3 className="text-sm font-bold text-white/70 mb-1">
+        {claims.length > 0 ? `Profile Completion Claims (${claims.length})` : `All Airdrop Claims (${airdrops.length})`}
+      </h3>
+      <p className="text-white/30 text-xs mb-3">
+        {claims.length > 0 ? "Filtered to profile completion and onboarding claims" : "Showing all airdrops — no profile claims found in current data"}
+      </p>
+      {allAirdrops.length === 0 ? (
+        <div className="text-white/40 text-sm">No claims found.</div>
+      ) : (
+        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-[#0a0a0a]">
+              <tr className="text-left text-white/40 text-xs border-b border-white/5">
+                <th className="pb-2 pr-4">Date</th>
+                <th className="pb-2 pr-4">Wallet</th>
+                <th className="pb-2 pr-4 text-right">Amount</th>
+                <th className="pb-2 pr-4">Claim Ref</th>
+                <th className="pb-2 pr-4">Status</th>
+                <th className="pb-2">Tx</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allAirdrops.map((a) => {
+                const st = AIRDROP_STATUS[a.status] || { label: `${a.status}`, color: "#666" }
+                return (
+                  <tr key={a.id} className="border-b border-white/5 text-white/70">
+                    <td className="py-2 pr-4 text-xs">{a.allocated_at ? formatDate(a.allocated_at) : "—"}</td>
+                    <td className="py-2 pr-4 font-mono text-xs">
+                      <a href={`${ZO_TOKEN.explorer}/address/${a.wallet_address}`} target="_blank" rel="noopener noreferrer" className="hover:text-[#cfff50]">
+                        {truncAddr(a.wallet_address)}
+                      </a>
+                    </td>
+                    <td className="py-2 pr-4 text-right font-mono font-bold">{formatZo(a.amount)} $Zo</td>
+                    <td className="py-2 pr-4 text-xs text-white/40 max-w-[200px] truncate">{a.ref_note || "—"}</td>
+                    <td className="py-2 pr-4">
+                      <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: st.color + "20", color: st.color }}>
+                        {st.label}
+                      </span>
+                    </td>
+                    <td className="py-2 font-mono text-xs">
+                      {a.status === 2 && a.transaction?.hash ? (
+                        <a href={`${ZO_TOKEN.explorer}/tx/${a.transaction.hash}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
+                          {a.transaction.hash.slice(0, 8)}...
+                        </a>
+                      ) : "—"}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ===========================================================================
 // Shared UI
-// ---------------------------------------------------------------------------
+// ===========================================================================
 
 function FormInput({ label, value, onChange, placeholder, type, mono }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; mono?: boolean
