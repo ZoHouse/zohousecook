@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useRef } from "react"
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react"
 import { useQueryApi, useMutationApi } from "@zo/auth"
 import { GeneralObject } from "@zo/definitions/general"
 import { toast } from "sonner"
@@ -66,14 +66,14 @@ const FOUNDER = CONTRACTS.find((c) => c.name === "Founder NFT")!
 // Main Component
 // ---------------------------------------------------------------------------
 
-type Section = "zo" | "founders" | "citizens"
+type Section = "zo" | "founders" | "citizens" | "poa"
 
 export default function OperationsPanel() {
   const [activeSection, setActiveSection] = useState<Section>("zo")
 
   return (
     <section className="mb-8">
-      <h2 className="text-xl font-bold text-white mb-4">Operations</h2>
+      <h2 className="text-xl font-bold text-white mb-4">Management</h2>
 
       {/* Section tabs */}
       <div className="flex gap-1 mb-4 bg-white/[0.03] rounded-lg p-1 w-fit">
@@ -81,6 +81,7 @@ export default function OperationsPanel() {
           { key: "zo" as Section, label: "$Zo" },
           { key: "founders" as Section, label: "Founder NFTs" },
           { key: "citizens" as Section, label: "Citizen NFTs" },
+          { key: "poa" as Section, label: "POA" },
         ]).map(({ key, label }) => (
           <button
             key={key}
@@ -99,6 +100,7 @@ export default function OperationsPanel() {
       {activeSection === "zo" && <ZoSection />}
       {activeSection === "founders" && <FoundersSection />}
       {activeSection === "citizens" && <CitizensSection />}
+      {activeSection === "poa" && <PoaSection />}
     </section>
   )
 }
@@ -204,6 +206,12 @@ function ZoSection() {
 // Founders Section
 // ===========================================================================
 
+// Known treasury wallets
+const TREASURY_WALLETS: Record<string, string> = {
+  "0xeef680d493640228797d75dd3dff2b49609ed306": "JoinZo Contract",
+  "0x19afb0c4f63983d619a3f983d065a68780734336": "Treasury Wallet",
+}
+
 function FoundersSection() {
   const { data: allowlistData, isLoading: loadingAl } = useQueryApi<GeneralObject>(
     "CAS_FOUNDER_ALLOWLISTS",
@@ -221,12 +229,85 @@ function FoundersSection() {
     "", ""
   )
 
+  // Alchemy: floor price + recent sales
+  const [marketData, setMarketData] = useState<{
+    osFloor: string; lrFloor: string; recentSales: any[]
+  }>({ osFloor: "—", lrFloor: "—", recentSales: [] })
+
+  // Alchemy: on-chain holders
+  const [onChainHolders, setOnChainHolders] = useState<{ address: string; count: number; label: string }[]>([])
+
+  useEffect(() => {
+    async function fetchMarket() {
+      try {
+        const [floorRes, salesRes, holdersRes] = await Promise.allSettled([
+          window.fetch(`https://eth-mainnet.g.alchemy.com/nft/v3/demo/getFloorPrice?contractAddress=${FOUNDER.address}`).then(r => r.json()),
+          window.fetch(`https://eth-mainnet.g.alchemy.com/nft/v3/demo/getNFTSales?contractAddress=${FOUNDER.address}&order=desc&limit=10`).then(r => r.json()),
+          window.fetch(`https://eth-mainnet.g.alchemy.com/nft/v3/demo/getOwnersForContract?contractAddress=${FOUNDER.address}&withTokenBalances=true`).then(r => r.json()),
+        ])
+
+        if (floorRes.status === "fulfilled") {
+          const os = floorRes.value?.openSea
+          const lr = floorRes.value?.looksRare
+          setMarketData(prev => ({
+            ...prev,
+            osFloor: os?.floorPrice ? `${os.floorPrice.toFixed(3)} ETH` : "—",
+            lrFloor: lr?.floorPrice ? `${lr.floorPrice.toFixed(3)} ETH` : "—",
+          }))
+        }
+
+        if (salesRes.status === "fulfilled") {
+          setMarketData(prev => ({ ...prev, recentSales: salesRes.value?.nftSales || [] }))
+        }
+
+        if (holdersRes.status === "fulfilled") {
+          const rawOwners = holdersRes.value?.owners || []
+          const sorted = rawOwners
+            .map((o: any) => ({
+              address: o.ownerAddress,
+              count: (o.tokenBalances || []).length,
+              label: TREASURY_WALLETS[o.ownerAddress?.toLowerCase()] || "",
+            }))
+            .sort((a: any, b: any) => b.count - a.count)
+          setOnChainHolders(sorted)
+        }
+      } catch (e) {
+        console.error("[zollardoe] market fetch error:", e)
+      }
+    }
+    fetchMarket()
+  }, [])
+
   const allowlists: any[] = allowlistData?.results || allowlistData || []
   const owners: any[] = ownersData?.results || ownersData || []
   const fStats: any = founderStatsData || {}
   const isLoading = loadingAl || loadingOwners
 
-  const [activeTab, setActiveTab] = useState<"holders" | "allowlist">("holders")
+  // Build wallet → name lookup from Django data
+  const walletNames = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const o of owners) {
+      if (!o.user) continue
+      const name = `${o.user.first_name || ""} ${o.user.last_name || ""}`.trim()
+      if (!name) continue
+      // Map all wallets this user owns
+      for (const w of Object.keys(o.tokens || {})) {
+        map[w.toLowerCase()] = name
+      }
+      if (o.user.wallet_address) map[o.user.wallet_address.toLowerCase()] = name
+    }
+    // Add treasury labels
+    for (const [addr, label] of Object.entries(TREASURY_WALLETS)) {
+      map[addr] = label
+    }
+    return map
+  }, [owners])
+
+  const [activeTab, setActiveTab] = useState<"market" | "holders" | "allowlist">("market")
+
+  const treasuryTotal = onChainHolders
+    .filter(h => TREASURY_WALLETS[h.address?.toLowerCase()])
+    .reduce((s, h) => s + h.count, 0)
 
   if (isLoading) {
     return <div className="text-white/40 text-sm py-8">Loading founder data...</div>
@@ -235,16 +316,18 @@ function FoundersSection() {
   return (
     <div>
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <KpiCard label="Total Minted" value={String(fStats.total_nfts_minted || owners.length || "—")} />
-        <KpiCard label="Max Supply" value="1,111" />
-        <KpiCard label="Unique Holders" value={String(fStats.total_holders || fStats.total_holding_wallets || "—")} highlight />
-        <KpiCard label="Allowlist Referrals" value={String(allowlists.length || "—")} />
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
+        <KpiCard label="Minted" value="1,111 / 1,111" />
+        <KpiCard label="Unique Holders" value={String(onChainHolders.length || fStats.total_holders || "—")} highlight />
+        <KpiCard label="OpenSea Floor" value={marketData.osFloor} highlight />
+        <KpiCard label="LooksRare Floor" value={marketData.lrFloor} />
+        <KpiCard label="Treasury Held" value={String(treasuryTotal)} color="#faad14" />
+        <KpiCard label="Allowlist Refs" value={String(allowlists.length || "—")} />
       </div>
 
       {/* Sub-tabs */}
       <div className="flex gap-1 mb-4 bg-white/[0.02] rounded-lg p-1 w-fit">
-        {(["holders", "allowlist"] as const).map((tab) => (
+        {(["market", "holders", "allowlist"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -254,14 +337,129 @@ function FoundersSection() {
                 : "text-white/40 hover:text-white/60"
             }`}
           >
-            {tab === "holders" ? "Holders" : "Allowlist"}
+            {tab === "market" ? "Floor & Sales" : tab === "holders" ? "Holders" : "Allowlist"}
           </button>
         ))}
       </div>
 
+      {activeTab === "market" && (
+        <div className="space-y-4">
+          {/* Treasury wallets */}
+          <div className="bg-white/[0.02] border border-yellow-500/20 rounded-xl p-4">
+            <h3 className="text-sm font-bold text-yellow-400 mb-3">Treasury Wallets</h3>
+            <div className="space-y-2">
+              {onChainHolders.filter(h => TREASURY_WALLETS[h.address?.toLowerCase()]).map((h) => (
+                <div key={h.address} className="flex items-center justify-between bg-white/[0.03] rounded-lg p-3">
+                  <div>
+                    <div className="text-xs font-bold text-white">{TREASURY_WALLETS[h.address.toLowerCase()]}</div>
+                    <a href={`${FOUNDER.explorer}/address/${h.address}`} target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-[#cfff50] hover:underline">
+                      {truncAddr(h.address)}
+                    </a>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-mono text-lg font-bold text-yellow-400">{h.count}</div>
+                    <div className="text-[10px] text-white/40">NFTs held</div>
+                  </div>
+                </div>
+              ))}
+              {treasuryTotal > 0 && (
+                <div className="text-xs text-white/40 mt-2">
+                  {treasuryTotal} NFTs available for resale at floor ({marketData.osFloor})
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Recent sales */}
+          <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4">
+            <h3 className="text-sm font-bold text-white/70 mb-3">Recent Sales</h3>
+            {marketData.recentSales.length === 0 ? (
+              <div className="text-white/40 text-sm">No recent sales data.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-white/40 text-xs border-b border-white/5">
+                      <th className="pb-2 pr-4">Token ID</th>
+                      <th className="pb-2 pr-4">Marketplace</th>
+                      <th className="pb-2 pr-4 text-right">Price</th>
+                      <th className="pb-2 pr-4">Buyer</th>
+                      <th className="pb-2 pr-4">Seller</th>
+                      <th className="pb-2">Block</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {marketData.recentSales.map((s: any, i: number) => {
+                      const price = Number(s.sellerFee?.amount || 0) / 1e18
+                      const buyerName = walletNames[s.buyerAddress?.toLowerCase()] || ""
+                      const sellerName = walletNames[s.sellerAddress?.toLowerCase()] || ""
+                      return (
+                        <tr key={i} className="border-b border-white/5 text-white/70">
+                          <td className="py-2 pr-4 font-mono text-xs">#{s.tokenId}</td>
+                          <td className="py-2 pr-4 text-xs">{s.marketplace || "—"}</td>
+                          <td className="py-2 pr-4 text-right font-mono font-bold text-[#cfff50]">{price.toFixed(4)} ETH</td>
+                          <td className="py-2 pr-4 font-mono text-xs">
+                            <a href={`${FOUNDER.explorer}/address/${s.buyerAddress}`} target="_blank" rel="noopener noreferrer" className="hover:text-[#cfff50]">
+                              {truncAddr(s.buyerAddress || "")}
+                            </a>
+                            {buyerName && <span className="text-white/40 ml-1">({buyerName})</span>}
+                          </td>
+                          <td className="py-2 font-mono text-xs">
+                            <a href={`${FOUNDER.explorer}/address/${s.sellerAddress}`} target="_blank" rel="noopener noreferrer" className="hover:text-[#cfff50]">
+                              {truncAddr(s.sellerAddress || "")}
+                            </a>
+                            {sellerName && <span className="text-white/40 ml-1">({sellerName})</span>}
+                          </td>
+                          <td className="py-2 text-xs text-white/30 font-mono">{s.blockNumber ? `#${s.blockNumber}` : "—"}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Top holders */}
+          <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4">
+            <h3 className="text-sm font-bold text-white/70 mb-3">Top Holders (on-chain)</h3>
+            <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-[#0a0a0a]">
+                  <tr className="text-left text-white/40 text-xs border-b border-white/5">
+                    <th className="pb-2 pr-4">#</th>
+                    <th className="pb-2 pr-4">Wallet</th>
+                    <th className="pb-2 pr-4">Label</th>
+                    <th className="pb-2 text-right">NFTs</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {onChainHolders.slice(0, 20).map((h, i) => {
+                    const name = walletNames[h.address?.toLowerCase()] || ""
+                    const isTreasury = !!TREASURY_WALLETS[h.address?.toLowerCase()]
+                    return (
+                      <tr key={h.address} className={`border-b border-white/5 ${isTreasury ? "text-yellow-400/80" : "text-white/70"}`}>
+                        <td className="py-2 pr-4 text-xs text-white/30">{i + 1}</td>
+                        <td className="py-2 pr-4 font-mono text-xs">
+                          <a href={`${FOUNDER.explorer}/address/${h.address}`} target="_blank" rel="noopener noreferrer" className="hover:text-[#cfff50]">
+                            {truncAddr(h.address)}
+                          </a>
+                        </td>
+                        <td className="py-2 pr-4 text-xs">{name || "—"}</td>
+                        <td className="py-2 text-right font-mono font-bold">{h.count}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === "holders" && (
         <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4">
-          <h3 className="text-sm font-bold text-white/70 mb-3">Founder NFT Holders ({owners.length})</h3>
+          <h3 className="text-sm font-bold text-white/70 mb-3">Founder Members (Django) ({owners.length})</h3>
           <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-[#0a0a0a]">
@@ -796,6 +994,90 @@ function BulkDistributeTab() {
           </button>
         </>
       )}
+    </div>
+  )
+}
+
+// ===========================================================================
+// POA Section
+// ===========================================================================
+
+function PoaSection() {
+  const { data: poaData, isLoading } = useQueryApi<GeneralObject>(
+    "CAS_POAS",
+    { refetchOnWindowFocus: false, select: (d: GeneralObject) => d.data },
+    "", "ordering=-created_at"
+  )
+
+  const poas: any[] = poaData?.results || poaData || []
+
+  const stats = React.useMemo(() => {
+    let totalClaims = 0, activePoas = 0
+    for (const p of poas) {
+      totalClaims += p.num_holders || 0
+      if (p.status === "active") activePoas++
+    }
+    return { totalClaims, activePoas, total: poas.length }
+  }, [poas])
+
+  if (isLoading) return <div className="text-white/40 text-sm py-8">Loading POA data...</div>
+
+  return (
+    <div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <KpiCard label="Total POAs" value={String(stats.total)} />
+        <KpiCard label="Active" value={String(stats.activePoas)} color="#52c41a" />
+        <KpiCard label="Total Claims" value={String(stats.totalClaims)} highlight />
+        <KpiCard label="Contract" value="ERC-1155" />
+      </div>
+
+      <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4">
+        <h3 className="text-sm font-bold text-white/70 mb-3">All POAs ({poas.length})</h3>
+        {poas.length === 0 ? (
+          <div className="text-white/40 text-sm">No POAs found.</div>
+        ) : (
+          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-[#0a0a0a]">
+                <tr className="text-left text-white/40 text-xs border-b border-white/5">
+                  <th className="pb-2 pr-4">Title</th>
+                  <th className="pb-2 pr-4">Category</th>
+                  <th className="pb-2 pr-4 text-right">Claims</th>
+                  <th className="pb-2 pr-4">Status</th>
+                  <th className="pb-2 pr-4">Claim Window</th>
+                  <th className="pb-2">Token ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {poas.map((p: any, i: number) => (
+                  <tr key={p.id || i} className="border-b border-white/5 text-white/70">
+                    <td className="py-2 pr-4 font-medium text-xs">{p.title || "—"}</td>
+                    <td className="py-2 pr-4">
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        p.category === "irl" ? "bg-purple-500/20 text-purple-400" : "bg-blue-500/20 text-blue-400"
+                      }`}>
+                        {p.category || "—"}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-4 text-right font-mono font-bold">{p.num_holders || 0}</td>
+                    <td className="py-2 pr-4">
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        p.status === "active" ? "bg-green-500/20 text-green-400" : "bg-white/5 text-white/40"
+                      }`}>
+                        {p.status || "—"}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-4 text-xs text-white/40">
+                      {p.claim_start ? formatDate(p.claim_start) : "—"} → {p.claim_end ? formatDate(p.claim_end) : "—"}
+                    </td>
+                    <td className="py-2 font-mono text-xs">{p.token_ref_id ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

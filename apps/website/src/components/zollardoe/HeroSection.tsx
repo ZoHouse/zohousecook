@@ -209,9 +209,9 @@ export default function HeroSection() {
         </div>
       </div>
 
-      {/* Web3 ecosystem cards */}
-      <div className="grid md:grid-cols-3 gap-4">
-        {/* $Zo Token — on-chain data */}
+      {/* Web3 ecosystem cards — 4 cards in 2x2 grid */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* $Zo Token */}
         <div className="border border-white/10 rounded-xl p-4 bg-white/[0.02]">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-bold text-white text-lg">$Zo Token</h3>
@@ -221,17 +221,17 @@ export default function HeroSection() {
             </div>
           </div>
           <AddrLink address={ZO_TOKEN.address} explorer={ZO_TOKEN.explorer} />
-          <div className="grid grid-cols-2 gap-2 mt-3">
+          <div className="grid grid-cols-3 gap-2 mt-3">
             <StatCard label="Total Supply" value={onChain.zoTotalSupply} live highlight />
             <StatCard label="Quarterly Emission" value="1B" />
-            <StatCard label="Total Transfers" value={String(totalTransfers)} live />
+            <StatCard label="Total Distributed" value={String(totalTransfers)} live />
             <StatCard label="Unique Holders" value={onChain.zoHolders} live highlight />
             <StatCard label="Price" value="$0.00" />
             <StatCard label="Chain" value="Base" />
           </div>
         </div>
 
-        {/* Founder NFT — on-chain + Django */}
+        {/* Founder NFT */}
         <div className="border border-[#627EEA]/20 rounded-xl p-4 bg-white/[0.02]">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-bold text-white text-lg">Founder NFT</h3>
@@ -241,7 +241,7 @@ export default function HeroSection() {
             </div>
           </div>
           <AddrLink address={FOUNDER.address} explorer={FOUNDER.explorer} />
-          <div className="grid grid-cols-2 gap-2 mt-3">
+          <div className="grid grid-cols-3 gap-2 mt-3">
             <StatCard label="Minted / Supply" value="1,111 / 1,111" />
             <StatCard label="Unique Holders" value={String(uniqueHolders)} live highlight />
             <StatCard label="Floor Price" value={onChain.founderFloor} live highlight />
@@ -259,36 +259,37 @@ export default function HeroSection() {
           </div>
         </div>
 
-        {/* Citizen NFT + POA — on-chain + Django */}
+        {/* Citizen NFT */}
         <div className="border border-blue-500/20 rounded-xl p-4 bg-white/[0.02]">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="font-bold text-white text-lg">Citizen & POA</h3>
+            <h3 className="font-bold text-white text-lg">Citizen NFT</h3>
             <div className="flex gap-1.5">
               <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-[10px] font-mono rounded">ERC-721</span>
+              <span className="px-2 py-0.5 bg-[#0052FF]/10 text-[#0052FF] text-[10px] font-mono rounded">Base</span>
+            </div>
+          </div>
+          <AddrLink address={CITIZEN.address} explorer={CITIZEN.explorer} />
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            <StatCard label="Total Minted" value={onChain.citizenMinted} live highlight />
+            <StatCard label="Batch Size" value="100 / 10min" />
+            <StatCard label="Mint Trigger" value="Auto signup" />
+          </div>
+        </div>
+
+        {/* POA */}
+        <div className="border border-orange-500/20 rounded-xl p-4 bg-white/[0.02]">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-bold text-white text-lg">Proof of Attendance</h3>
+            <div className="flex gap-1.5">
               <span className="px-2 py-0.5 bg-orange-500/10 text-orange-400 text-[10px] font-mono rounded">ERC-1155</span>
+              <span className="px-2 py-0.5 bg-[#0052FF]/10 text-[#0052FF] text-[10px] font-mono rounded">Base</span>
             </div>
           </div>
-
-          {/* Citizen */}
-          <div className="mb-3">
-            <div className="text-white/50 text-xs font-bold mb-1">Citizen NFT</div>
-            <AddrLink address={CITIZEN.address} explorer={CITIZEN.explorer} />
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <StatCard label="Total Minted" value={onChain.citizenMinted} live highlight />
-              <StatCard label="Batch Size" value="100 / 10min" />
-            </div>
-          </div>
-
-          <div className="border-t border-white/5 my-3" />
-
-          {/* POA */}
-          <div>
-            <div className="text-white/50 text-xs font-bold mb-1">Proof of Attendance</div>
-            <AddrLink address={POA_CONTRACT.address} explorer={POA_CONTRACT.explorer} />
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <StatCard label="Active POAs" value={String(totalPoas)} live />
-              <StatCard label="Total Claims" value={String(totalPoaClaims)} live />
-            </div>
+          <AddrLink address={POA_CONTRACT.address} explorer={POA_CONTRACT.explorer} />
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            <StatCard label="Active POAs" value={String(totalPoas)} live />
+            <StatCard label="Total Claims" value={String(totalPoaClaims)} live highlight />
+            <StatCard label="Claim" value="User-initiated" />
           </div>
         </div>
       </div>
