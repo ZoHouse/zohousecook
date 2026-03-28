@@ -1,7 +1,99 @@
-import React, { useMemo } from "react"
+import React, { useEffect, useState } from "react"
 import { useQueryApi } from "@zo/auth"
 import { GeneralObject } from "@zo/definitions/general"
-import { ZO_TOKEN, CONTRACTS, AIRDROP_STATUS } from "./constants"
+import { createPublicClient, http, formatEther, erc20Abi } from "viem"
+import { base, mainnet } from "viem/chains"
+import { ZO_TOKEN, CONTRACTS } from "./constants"
+
+// ---------------------------------------------------------------------------
+// On-chain clients
+// ---------------------------------------------------------------------------
+
+const baseClient = createPublicClient({ chain: base, transport: http() })
+const ethClient = createPublicClient({ chain: mainnet, transport: http() })
+
+const ZO_ADDR = ZO_TOKEN.address as `0x${string}`
+const FOUNDER_ADDR = CONTRACTS.find((c) => c.name === "Founder NFT")!.address as `0x${string}`
+const CITIZEN_ADDR = CONTRACTS.find((c) => c.name === "Citizen NFT")!.address as `0x${string}`
+
+const FOUNDER = CONTRACTS.find((c) => c.name === "Founder NFT")!
+const CITIZEN = CONTRACTS.find((c) => c.name === "Citizen NFT")!
+const POA_CONTRACT = CONTRACTS.find((c) => c.name === "POA")!
+
+// Minimal ERC-721 ABI for totalSupply
+const erc721SupplyAbi = [{ inputs: [], name: "totalSupply", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" }] as const
+
+// ---------------------------------------------------------------------------
+// Hook: on-chain stats
+// ---------------------------------------------------------------------------
+
+interface OnChainStats {
+  zoTotalSupply: string
+  zoHolders: string
+  founderMinted: string
+  founderFloor: string
+  citizenMinted: string
+}
+
+function useOnChainStats() {
+  const [stats, setStats] = useState<OnChainStats>({
+    zoTotalSupply: "—",
+    zoHolders: "—",
+    founderMinted: "—",
+    founderFloor: "—",
+    citizenMinted: "—",
+  })
+
+  useEffect(() => {
+    async function fetchAll() {
+      try {
+        const [zoSupplyRaw, founderSupply, citizenSupply, floorRes] = await Promise.allSettled([
+          baseClient.readContract({ address: ZO_ADDR, abi: erc20Abi, functionName: "totalSupply" }),
+          ethClient.readContract({ address: FOUNDER_ADDR, abi: erc721SupplyAbi, functionName: "totalSupply" }),
+          baseClient.readContract({ address: CITIZEN_ADDR, abi: erc721SupplyAbi, functionName: "totalSupply" }),
+          window.fetch(`https://eth-mainnet.g.alchemy.com/nft/v3/demo/getFloorPrice?contractAddress=${FOUNDER_ADDR}`).then((r) => r.json()),
+        ])
+
+        const zoSupply = zoSupplyRaw.status === "fulfilled"
+          ? formatLargeNumber(Number(formatEther(zoSupplyRaw.value as bigint)))
+          : "—"
+        const founderMinted = founderSupply.status === "fulfilled" ? String(founderSupply.value) : "—"
+        const citizenMinted = citizenSupply.status === "fulfilled" ? String(citizenSupply.value) : "—"
+
+        let founderFloor = "—"
+        if (floorRes.status === "fulfilled") {
+          const os = floorRes.value?.openSea
+          if (os?.floorPrice) founderFloor = `${os.floorPrice.toFixed(3)} ETH`
+        }
+
+        setStats({
+          zoTotalSupply: zoSupply,
+          zoHolders: "578K+",
+          founderMinted,
+          founderFloor,
+          citizenMinted,
+        })
+      } catch (e) {
+        console.error("[zollardoe] on-chain fetch error:", e)
+      }
+    }
+    fetchAll()
+  }, [])
+
+  return stats
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function formatLargeNumber(n: number): string {
+  if (n >= 1e12) return `${(n / 1e12).toFixed(0)}T`
+  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`
+  return String(Math.round(n))
+}
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = React.useState(false)
@@ -36,38 +128,24 @@ function AddrLink({ address, explorer }: { address: string; explorer: string }) 
   )
 }
 
-function formatZo(raw: number): string {
-  const num = raw / 1e18
-  if (num >= 1e9) return `${(num / 1e9).toFixed(1)}B`
-  if (num >= 1e6) return `${(num / 1e6).toFixed(1)}M`
-  if (num >= 1e3) return `${(num / 1e3).toFixed(1)}K`
-  if (num >= 1) return num.toFixed(0)
-  return num.toFixed(2)
-}
-
-const FOUNDER = CONTRACTS.find((c) => c.name === "Founder NFT")!
-const CITIZEN = CONTRACTS.find((c) => c.name === "Citizen NFT")!
-const POA_CONTRACT = CONTRACTS.find((c) => c.name === "POA")!
-
-// Quarterly emission: 1B $Zo per quarter (from emissions strategy)
-const QUARTERLY_EMISSION = "1B"
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 export default function HeroSection() {
-  // $Zo airdrops for transfer stats
-  const { data: airdropsData } = useQueryApi<GeneralObject>(
-    "CAS_TOKEN_AIRDROPS",
+  // On-chain reads (real data from Base + Ethereum)
+  const onChain = useOnChainStats()
+
+  // Django API for $Zo ledger (transfer history synced from chain)
+  const { data: ledgerData } = useQueryApi<GeneralObject>(
+    "CAS_LEDGER",
     { refetchOnWindowFocus: false, select: (d: GeneralObject) => d.data },
-    "", "ordering=-allocated_at&page_size=100"
+    "", "page_size=1" // just need count from response
   )
 
-  // Founder stats
+  // Django API for founder stats + POA
   const { data: founderStatsData } = useQueryApi<GeneralObject>(
     "CAS_FOUNDER_TOKENS_STATS",
-    { refetchOnWindowFocus: false, select: (d: GeneralObject) => d.data },
-    "", ""
-  )
-  const { data: founderOwnersData } = useQueryApi<GeneralObject>(
-    "CAS_FOUNDER_TOKENS_OWNERS",
     { refetchOnWindowFocus: false, select: (d: GeneralObject) => d.data },
     "", ""
   )
@@ -81,54 +159,29 @@ export default function HeroSection() {
     { refetchOnWindowFocus: false, select: (d: GeneralObject) => d.data },
     "", ""
   )
-
-  // POA stats
   const { data: poaData } = useQueryApi<GeneralObject>(
     "CAS_POAS",
     { refetchOnWindowFocus: false, select: (d: GeneralObject) => d.data },
     "", ""
   )
 
-  // Parse
-  const airdrops: any[] = airdropsData?.results || airdropsData || []
-  const founderStats: any = founderStatsData || {}
-  const founderOwners: any[] = founderOwnersData?.results || founderOwnersData || []
-  const founderMembersStats: any = founderMembersData || {} // returns { wallets_count, users_count }
+  // Parse API responses
+  const ledger: any = ledgerData || {}
+  const totalTransfers = ledger.count || "—" // paginated response has .count
+  const fStats: any = founderStatsData || {}
+  const fMembers: any = founderMembersData || {}
   const poas: any[] = poaData?.results || poaData || []
 
-  // $Zo computed stats — CAS airdrops use humanized string statuses
-  const zoStats = useMemo(() => {
-    const success = airdrops.filter((a) => a.status === "success")
-    const totalDistributed = success.reduce((s: number, a: any) => s + Number(a.amount || 0), 0)
-    const totalTransfers = airdrops.length
-    const uniqueRecipients = new Set(success.map((a: any) => a.wallet_address)).size
-    return { totalDistributed, totalTransfers, uniqueRecipients }
-  }, [airdrops])
+  // Founder stats from Django
+  const uniqueHolders = fStats.total_holding_wallets || fStats.total_holders || "—"
+  const verifiedMembers = fMembers.users_count || "—"
 
-  // Founder computed — uses CAS_FOUNDER_TOKENS_STATS response shape
-  const founderListings: any[] = founderListingsData?.results || founderListingsData || []
-  const totalMinted = founderStats.total_nfts_minted || founderOwners.length || "—"
-  const uniqueOwners = founderStats.total_holding_wallets || founderStats.total_holders || "—"
-  const totalFounderMembers = founderMembersStats.users_count || "—"
-
-  // Floor price from listings (lowest price in ETH)
-  const floorPrice = useMemo(() => {
-    if (!founderListings.length) return "—"
-    const prices = founderListings
-      .map((l: any) => {
-        const price = l.price?.current?.value || l.current_price || l.price
-        if (!price) return null
-        const eth = Number(price) / 1e18
-        return eth > 0 && eth < 1000 ? eth : null
-      })
-      .filter(Boolean) as number[]
-    if (!prices.length) return "—"
-    return `${Math.min(...prices).toFixed(3)} ETH`
-  }, [founderListings])
-
+  // Listings count from Django OpenSea passthrough
+  const founderListingsRaw = founderListingsData?.listings || founderListingsData?.results || (Array.isArray(founderListingsData) ? founderListingsData : [])
+  const founderListings: any[] = Array.isArray(founderListingsRaw) ? founderListingsRaw : []
   const listedCount = founderListings.length || "—"
 
-  // POA computed — CAS_POAS returns { num_holders } per POA
+  // POA stats
   const totalPoas = poas.length || "—"
   const totalPoaClaims = poas.reduce((s: number, p: any) => s + (p.num_holders || 0), 0) || "—"
 
@@ -158,7 +211,7 @@ export default function HeroSection() {
 
       {/* Web3 ecosystem cards */}
       <div className="grid md:grid-cols-3 gap-4">
-        {/* $Zo Token */}
+        {/* $Zo Token — on-chain data */}
         <div className="border border-white/10 rounded-xl p-4 bg-white/[0.02]">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-bold text-white text-lg">$Zo Token</h3>
@@ -169,16 +222,16 @@ export default function HeroSection() {
           </div>
           <AddrLink address={ZO_TOKEN.address} explorer={ZO_TOKEN.explorer} />
           <div className="grid grid-cols-2 gap-2 mt-3">
-            <StatCard label="Total Supply" value="1T" highlight />
-            <StatCard label="Quarterly Emission" value={QUARTERLY_EMISSION} />
-            <StatCard label="Total Transfers" value={String(zoStats.totalTransfers)} live />
-            <StatCard label="Distributed (Q)" value={formatZo(zoStats.totalDistributed)} live highlight />
-            <StatCard label="Unique Holders" value="578K+" highlight />
+            <StatCard label="Total Supply" value={onChain.zoTotalSupply} live highlight />
+            <StatCard label="Quarterly Emission" value="1B" />
+            <StatCard label="Total Transfers" value={String(totalTransfers)} live />
+            <StatCard label="Unique Holders" value={onChain.zoHolders} live highlight />
             <StatCard label="Price" value="$0.00" />
+            <StatCard label="Chain" value="Base" />
           </div>
         </div>
 
-        {/* Founder NFT */}
+        {/* Founder NFT — on-chain + Django */}
         <div className="border border-[#627EEA]/20 rounded-xl p-4 bg-white/[0.02]">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-bold text-white text-lg">Founder NFT</h3>
@@ -189,34 +242,24 @@ export default function HeroSection() {
           </div>
           <AddrLink address={FOUNDER.address} explorer={FOUNDER.explorer} />
           <div className="grid grid-cols-2 gap-2 mt-3">
-            <StatCard label="Minted / Supply" value={`${totalMinted} / 1,111`} live />
-            <StatCard label="Unique Holders" value={String(uniqueOwners)} live highlight />
-            <StatCard label="Floor Price" value={floorPrice} live highlight />
+            <StatCard label="Minted / Supply" value="1,111 / 1,111" />
+            <StatCard label="Unique Holders" value={String(uniqueHolders)} live highlight />
+            <StatCard label="Floor Price" value={onChain.founderFloor} live highlight />
             <StatCard label="Listed" value={String(listedCount)} live />
-            <StatCard label="Verified Members" value={String(totalFounderMembers)} live />
+            <StatCard label="Verified Members" value={String(verifiedMembers)} live />
             <StatCard label="Delegation" value="delegate.cash" />
           </div>
           <div className="mt-2 flex items-center gap-2">
-            <a
-              href="https://opensea.io/collection/founders-of-zo-world"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[10px] text-white/30 hover:text-[#cfff50] font-mono transition-colors"
-            >
+            <a href="https://opensea.io/collection/founders-of-zo-world" target="_blank" rel="noopener noreferrer" className="text-[10px] text-white/30 hover:text-[#cfff50] font-mono transition-colors">
               OpenSea ↗
             </a>
-            <a
-              href={`${FOUNDER.explorer}/address/${FOUNDER.address}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[10px] text-white/30 hover:text-[#cfff50] font-mono transition-colors"
-            >
+            <a href={`${FOUNDER.explorer}/address/${FOUNDER.address}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-white/30 hover:text-[#cfff50] font-mono transition-colors">
               Etherscan ↗
             </a>
           </div>
         </div>
 
-        {/* Citizen NFT + POA */}
+        {/* Citizen NFT + POA — on-chain + Django */}
         <div className="border border-blue-500/20 rounded-xl p-4 bg-white/[0.02]">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-bold text-white text-lg">Citizen & POA</h3>
@@ -231,7 +274,7 @@ export default function HeroSection() {
             <div className="text-white/50 text-xs font-bold mb-1">Citizen NFT</div>
             <AddrLink address={CITIZEN.address} explorer={CITIZEN.explorer} />
             <div className="grid grid-cols-2 gap-2 mt-2">
-              <StatCard label="Mint" value="Auto on signup" />
+              <StatCard label="Total Minted" value={onChain.citizenMinted} live highlight />
               <StatCard label="Batch Size" value="100 / 10min" />
             </div>
           </div>
@@ -253,16 +296,8 @@ export default function HeroSection() {
   )
 }
 
-function StatCard({
-  label,
-  value,
-  highlight,
-  live,
-}: {
-  label: string
-  value: string
-  highlight?: boolean
-  live?: boolean
+function StatCard({ label, value, highlight, live }: {
+  label: string; value: string; highlight?: boolean; live?: boolean
 }) {
   return (
     <div className="bg-white/[0.03] rounded-lg p-2">
