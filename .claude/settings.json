@@ -1,0 +1,98 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$TOOL_INPUT\" | grep -q 'git push --force'; then echo '❌ RED LINE 4: Force push is forbidden. Use git revert instead.' && exit 1; fi",
+            "blocking": true
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$TOOL_INPUT\" | grep -q 'git push'; then echo '⚠️  Pre-push: Run /ship checklist. Build must pass (RED LINE 5).'; fi",
+            "blocking": false
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$TOOL_INPUT\" | grep -q 'git reset --hard'; then echo '⚠️  YELLOW: git reset --hard is destructive. Consider git stash or git revert instead.'; fi",
+            "blocking": false
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$TOOL_INPUT\" | grep -qE 'npm install |yarn add |pnpm add '; then echo '⚠️  GUARDRAIL: New dependency. Check: can antd, MUI, or existing deps do this? Add to transpilePackages if needed.'; fi",
+            "blocking": false
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=\"$TOOL_INPUT\"; if echo \"$FILE\" | grep -qE 'order-calculator|payments'; then echo '⚠️  YELLOW LINE 8: Payment code modified — verify price math (paise!) and signature validation.'; fi",
+            "blocking": false
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=\"$TOOL_INPUT\"; if echo \"$FILE\" | grep -q 'libs/auth'; then echo '⚠️  YELLOW LINE 7: Shared auth lib modified — this affects ALL 11 apps. Verify auth still works.'; fi",
+            "blocking": false
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=\"$TOOL_INPUT\"; if echo \"$FILE\" | grep -q 'libs/'; then echo '⚠️  YELLOW LINE 7: Shared library modified — changes ripple to all apps. Test broadly.'; fi",
+            "blocking": false
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=\"$TOOL_INPUT\"; if echo \"$FILE\" | grep -q 'vercel.json'; then echo '⚠️  Vercel routing config modified — verify subdomain routing still works for all apps.'; fi",
+            "blocking": false
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=\"$TOOL_INPUT\"; if echo \"$FILE\" | grep -q 'next.config'; then echo '⚠️  App config modified — check basePath, transpilePackages, and env vars.'; fi",
+            "blocking": false
+          }
+        ]
+      }
+    ]
+  }
+}
