@@ -363,8 +363,18 @@ function FoundersSection() {
                 </div>
               ))}
               {treasuryTotal > 0 && (
-                <div className="text-xs text-white/40 mt-2">
-                  {treasuryTotal} NFTs available for resale at floor ({marketData.osFloor})
+                <div className="flex items-center justify-between mt-3 bg-white/[0.03] rounded-lg p-3">
+                  <div className="text-xs text-white/40">
+                    {treasuryTotal} NFTs available for OTC / resale at floor ({marketData.osFloor})
+                  </div>
+                  <a
+                    href="https://etherscan.io/address/0xeEf680d493640228797d75Dd3dFF2B49609eD306#writeContract"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 bg-yellow-500/20 text-yellow-400 text-xs font-bold rounded-md hover:bg-yellow-500/30 transition-colors"
+                  >
+                    Transfer via Etherscan ↗
+                  </a>
                 </div>
               )}
             </div>
@@ -420,38 +430,13 @@ function FoundersSection() {
             )}
           </div>
 
-          {/* Top holders */}
-          <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4">
-            <h3 className="text-sm font-bold text-white/70 mb-3">Top Holders (on-chain)</h3>
-            <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-[#0a0a0a]">
-                  <tr className="text-left text-white/40 text-xs border-b border-white/5">
-                    <th className="pb-2 pr-4">#</th>
-                    <th className="pb-2 pr-4">Wallet</th>
-                    <th className="pb-2 pr-4">Label</th>
-                    <th className="pb-2 text-right">NFTs</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {onChainHolders.slice(0, 20).map((h, i) => {
-                    const name = walletNames[h.address?.toLowerCase()] || ""
-                    const isTreasury = !!TREASURY_WALLETS[h.address?.toLowerCase()]
-                    return (
-                      <tr key={h.address} className={`border-b border-white/5 ${isTreasury ? "text-yellow-400/80" : "text-white/70"}`}>
-                        <td className="py-2 pr-4 text-xs text-white/30">{i + 1}</td>
-                        <td className="py-2 pr-4 font-mono text-xs">
-                          <a href={`${FOUNDER.explorer}/address/${h.address}`} target="_blank" rel="noopener noreferrer" className="hover:text-[#cfff50]">
-                            {truncAddr(h.address)}
-                          </a>
-                        </td>
-                        <td className="py-2 pr-4 text-xs">{name || "—"}</td>
-                        <td className="py-2 text-right font-mono font-bold">{h.count}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+          {/* Recent sales note */}
+          <div className="bg-white/[0.02] border border-white/10 rounded-xl p-3">
+            <div className="text-[10px] text-white/30">
+              Sales data from Alchemy (historical). For live activity check{" "}
+              <a href="https://opensea.io/collection/founders-of-zo-world/activity" target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">OpenSea Activity ↗</a>
+              {" "}or{" "}
+              <a href="https://blur.io/eth/collection/founders-of-zo-world" target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">Blur ↗</a>
             </div>
           </div>
         </div>
@@ -552,23 +537,71 @@ function FoundersSection() {
 // ===========================================================================
 
 function CitizensSection() {
-  const { data: nftAirdropsData, isLoading } = useQueryApi<GeneralObject>(
+  const { data: nftAirdropsData, isLoading: loadingAirdrops } = useQueryApi<GeneralObject>(
     "CAS_NFTAIRDROPS",
     { refetchOnWindowFocus: false, select: (d: GeneralObject) => d.data },
-    "", "ordering=-created_at&page_size=50"
+    "", "ordering=-created_at&page_size=100"
+  )
+  const { data: collectionsData, isLoading: loadingCollections } = useQueryApi<GeneralObject>(
+    "CAS_NFTAIRDROPCOLLECTIONS",
+    { refetchOnWindowFocus: false, select: (d: GeneralObject) => d.data },
+    "", ""
   )
 
   const nftAirdrops: any[] = nftAirdropsData?.results || nftAirdropsData || []
+  const collections: any[] = collectionsData?.results || collectionsData || []
+  const isLoading = loadingAirdrops || loadingCollections
 
-  // NFT airdrop status is numeric: 0=pending, 1=initiated, 2=success, 3=failed
+  const [activeTab, setActiveTab] = useState<"overview" | "collections" | "recent">("overview")
+
+  // Stats
   const stats = useMemo(() => {
-    let pending = 0, success = 0, failed = 0
+    let pending = 0, success = 0, failed = 0, initiated = 0
     for (const a of nftAirdrops) {
       if (a.status === 0) pending++
+      else if (a.status === 1) initiated++
       else if (a.status === 2) success++
       else if (a.status === 3) failed++
     }
-    return { pending, success, failed, total: nftAirdrops.length }
+    const successRate = nftAirdrops.length > 0 ? ((success / nftAirdrops.length) * 100).toFixed(1) : "0"
+    return { pending, initiated, success, failed, total: nftAirdrops.length, successRate }
+  }, [nftAirdrops])
+
+  // Growth: group by date
+  const growth = useMemo(() => {
+    const byDate: Record<string, { total: number; success: number }> = {}
+    for (const a of nftAirdrops) {
+      if (!a.created_at) continue
+      const date = new Date(a.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })
+      if (!byDate[date]) byDate[date] = { total: 0, success: 0 }
+      byDate[date].total++
+      if (a.status === 2) byDate[date].success++
+    }
+    return Object.entries(byDate).slice(0, 14).reverse()
+  }, [nftAirdrops])
+
+  // Per-collection stats
+  const collectionStats = useMemo(() => {
+    const byCollection: Record<string, { name: string; slug: string; total: number; success: number; pending: number; contract: string }> = {}
+    for (const a of nftAirdrops) {
+      const col = a.collection
+      if (!col) continue
+      const id = col.id || col.slug || "unknown"
+      if (!byCollection[id]) {
+        byCollection[id] = {
+          name: col.name || col.slug || "Unknown",
+          slug: col.slug || "",
+          total: 0,
+          success: 0,
+          pending: 0,
+          contract: col.contract?.address || "",
+        }
+      }
+      byCollection[id].total++
+      if (a.status === 2) byCollection[id].success++
+      if (a.status === 0 || a.status === 1) byCollection[id].pending++
+    }
+    return Object.values(byCollection).sort((a, b) => b.total - a.total)
   }, [nftAirdrops])
 
   if (isLoading) {
@@ -578,75 +611,220 @@ function CitizensSection() {
   return (
     <div>
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <KpiCard label="Total Citizenships" value={String(stats.total)} />
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
+        <KpiCard label="Total Airdrops" value={String(stats.total)} />
         <KpiCard label="Minted" value={String(stats.success)} color="#52c41a" />
-        <KpiCard label="Pending Mint" value={String(stats.pending)} color="#faad14" />
+        <KpiCard label="Pending" value={String(stats.pending)} color="#faad14" />
+        <KpiCard label="In Progress" value={String(stats.initiated)} color="#1890ff" />
         <KpiCard label="Failed" value={String(stats.failed)} color="#ff4d4f" />
+        <KpiCard label="Success Rate" value={`${stats.successRate}%`} highlight />
       </div>
 
-      {/* Recent citizenships table */}
-      <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4">
-        <h3 className="text-sm font-bold text-white/70 mb-3">Recent Citizenships</h3>
-        {nftAirdrops.length === 0 ? (
-          <div className="text-white/40 text-sm">No citizenship data available.</div>
-        ) : (
-          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-[#0a0a0a]">
-                <tr className="text-left text-white/40 text-xs border-b border-white/5">
-                  <th className="pb-2 pr-4">Date</th>
-                  <th className="pb-2 pr-4">Wallet</th>
-                  <th className="pb-2 pr-4">Token ID</th>
-                  <th className="pb-2 pr-4">Status</th>
-                  <th className="pb-2">Tx</th>
-                </tr>
-              </thead>
-              <tbody>
-                {nftAirdrops.map((a: any, i: number) => {
-                  const statusLabel = a.status === 0 ? "Pending"
-                    : a.status === 1 ? "Initiated"
-                    : a.status === 2 ? "Minted"
-                    : a.status === 3 ? "Failed"
-                    : String(a.status)
-                  const statusColor = statusLabel === "Minted" ? "#52c41a"
-                    : statusLabel === "Pending" ? "#faad14"
-                    : statusLabel === "Initiated" ? "#1890ff"
-                    : "#ff4d4f"
-                  const walletAddr = a.web3_wallet?.wallet_address || ""
-                  const userName = a.user ? `${a.user.first_name || ""} ${a.user.last_name || ""}`.trim() : ""
+      {/* Sub-tabs */}
+      <div className="flex gap-1 mb-4 bg-white/[0.02] rounded-lg p-1 w-fit">
+        {(["overview", "collections", "recent"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              activeTab === tab ? "bg-white/10 text-white" : "text-white/40 hover:text-white/60"
+            }`}
+          >
+            {tab === "overview" ? "Growth & Stats" : tab === "collections" ? "Collections" : "Recent Mints"}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "overview" && (
+        <div className="space-y-4">
+          {/* Daily minting velocity */}
+          <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4">
+            <h3 className="text-sm font-bold text-white/70 mb-3">Minting Velocity (daily)</h3>
+            {growth.length === 0 ? (
+              <div className="text-white/40 text-sm">No data yet.</div>
+            ) : (
+              <div className="space-y-1.5">
+                {growth.map(([date, data]) => {
+                  const maxTotal = Math.max(...growth.map(([, d]) => d.total), 1)
+                  const barWidth = (data.total / maxTotal) * 100
+                  const successWidth = (data.success / maxTotal) * 100
                   return (
-                    <tr key={a.id || i} className="border-b border-white/5 text-white/70">
-                      <td className="py-2 pr-4 text-xs">{a.created_at ? formatDate(a.created_at) : "—"}</td>
-                      <td className="py-2 pr-4 font-mono text-xs">
-                        {walletAddr ? (
-                          <a href={`${ZO_TOKEN.explorer}/address/${walletAddr}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
-                            {truncAddr(walletAddr)}
-                          </a>
-                        ) : "—"}
-                        {userName && <span className="text-white/40 ml-2">{userName}</span>}
-                      </td>
-                      <td className="py-2 pr-4 font-mono text-xs">{a.founder_token_ref_id || "—"}</td>
-                      <td className="py-2 pr-4">
-                        <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: statusColor + "20", color: statusColor }}>
-                          {statusLabel}
-                        </span>
-                      </td>
-                      <td className="py-2 font-mono text-xs">
-                        {a.transaction_hash ? (
-                          <a href={`${ZO_TOKEN.explorer}/tx/${a.transaction_hash}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
-                            {a.transaction_hash.slice(0, 8)}...
-                          </a>
-                        ) : "—"}
-                      </td>
-                    </tr>
+                    <div key={date} className="flex items-center gap-3">
+                      <div className="w-16 text-xs text-white/40 text-right font-mono">{date}</div>
+                      <div className="flex-1 h-5 bg-white/[0.03] rounded relative overflow-hidden">
+                        <div className="absolute inset-y-0 left-0 bg-white/10 rounded" style={{ width: `${barWidth}%` }} />
+                        <div className="absolute inset-y-0 left-0 bg-[#cfff50]/30 rounded" style={{ width: `${successWidth}%` }} />
+                      </div>
+                      <div className="w-16 text-xs font-mono text-right">
+                        <span className="text-[#cfff50]">{data.success}</span>
+                        <span className="text-white/30">/{data.total}</span>
+                      </div>
+                    </div>
                   )
                 })}
-              </tbody>
-            </table>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+
+          {/* Per-collection breakdown */}
+          {collectionStats.length > 0 && (
+            <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4">
+              <h3 className="text-sm font-bold text-white/70 mb-3">By Collection</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-white/40 text-xs border-b border-white/5">
+                      <th className="pb-2 pr-4">Collection</th>
+                      <th className="pb-2 pr-4">Contract</th>
+                      <th className="pb-2 pr-4 text-right">Total</th>
+                      <th className="pb-2 pr-4 text-right">Minted</th>
+                      <th className="pb-2 text-right">Pending</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {collectionStats.map((c, i) => (
+                      <tr key={i} className="border-b border-white/5 text-white/70">
+                        <td className="py-2 pr-4 font-medium text-xs">{c.name}</td>
+                        <td className="py-2 pr-4 font-mono text-xs">
+                          {c.contract ? (
+                            <a href={`${ZO_TOKEN.explorer}/address/${c.contract}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
+                              {truncAddr(c.contract)}
+                            </a>
+                          ) : "—"}
+                        </td>
+                        <td className="py-2 pr-4 text-right font-mono">{c.total}</td>
+                        <td className="py-2 pr-4 text-right font-mono text-green-400">{c.success}</td>
+                        <td className="py-2 text-right font-mono text-yellow-400">{c.pending}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "collections" && (
+        <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4">
+          <h3 className="text-sm font-bold text-white/70 mb-3">NFT Airdrop Collections ({collections.length})</h3>
+          {collections.length === 0 ? (
+            <div className="text-white/40 text-sm">No collections found.</div>
+          ) : (
+            <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-[#0a0a0a]">
+                  <tr className="text-left text-white/40 text-xs border-b border-white/5">
+                    <th className="pb-2 pr-4">Name</th>
+                    <th className="pb-2 pr-4">Slug</th>
+                    <th className="pb-2 pr-4">Contract</th>
+                    <th className="pb-2 pr-4">Standard</th>
+                    <th className="pb-2 pr-4">Status</th>
+                    <th className="pb-2 pr-4 text-right">Supply</th>
+                    <th className="pb-2">Schedule</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {collections.map((c: any, i: number) => (
+                    <tr key={c.id || i} className="border-b border-white/5 text-white/70">
+                      <td className="py-2 pr-4 font-medium text-xs">{c.name || "—"}</td>
+                      <td className="py-2 pr-4 font-mono text-xs text-white/40">{c.slug || "—"}</td>
+                      <td className="py-2 pr-4 font-mono text-xs">
+                        {c.contract?.address ? (
+                          <a href={`${ZO_TOKEN.explorer}/address/${c.contract.address}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
+                            {truncAddr(c.contract.address)}
+                          </a>
+                        ) : "—"}
+                      </td>
+                      <td className="py-2 pr-4 text-xs">
+                        <span className="px-2 py-0.5 bg-white/5 text-white/50 rounded text-[10px] font-mono">
+                          {c.contract?.standard || "—"}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-4">
+                        <span className={`text-xs px-2 py-0.5 rounded ${
+                          c.status === "active" ? "bg-green-500/20 text-green-400" : "bg-white/5 text-white/40"
+                        }`}>
+                          {c.status || "—"}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-4 text-right font-mono">{c.total_supply || "—"}</td>
+                      <td className="py-2 text-xs text-white/40">
+                        {c.scheduled_start ? formatDate(c.scheduled_start) : "—"} → {c.scheduled_end ? formatDate(c.scheduled_end) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "recent" && (
+        <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4">
+          <h3 className="text-sm font-bold text-white/70 mb-3">Recent Mints ({nftAirdrops.length})</h3>
+          {nftAirdrops.length === 0 ? (
+            <div className="text-white/40 text-sm">No mint data available.</div>
+          ) : (
+            <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-[#0a0a0a]">
+                  <tr className="text-left text-white/40 text-xs border-b border-white/5">
+                    <th className="pb-2 pr-4">Date</th>
+                    <th className="pb-2 pr-4">User</th>
+                    <th className="pb-2 pr-4">Wallet</th>
+                    <th className="pb-2 pr-4">Collection</th>
+                    <th className="pb-2 pr-4">Status</th>
+                    <th className="pb-2">Tx</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {nftAirdrops.map((a: any, i: number) => {
+                    const statusLabel = a.status === 0 ? "Pending"
+                      : a.status === 1 ? "Initiated"
+                      : a.status === 2 ? "Minted"
+                      : a.status === 3 ? "Failed"
+                      : String(a.status)
+                    const statusColor = statusLabel === "Minted" ? "#52c41a"
+                      : statusLabel === "Pending" ? "#faad14"
+                      : statusLabel === "Initiated" ? "#1890ff"
+                      : "#ff4d4f"
+                    const walletAddr = a.web3_wallet?.wallet_address || ""
+                    const userName = a.user ? `${a.user.first_name || ""} ${a.user.last_name || ""}`.trim() : ""
+                    return (
+                      <tr key={a.id || i} className="border-b border-white/5 text-white/70">
+                        <td className="py-2 pr-4 text-xs">{a.created_at ? formatDate(a.created_at) : "—"}</td>
+                        <td className="py-2 pr-4 text-xs">{userName || "—"}</td>
+                        <td className="py-2 pr-4 font-mono text-xs">
+                          {walletAddr ? (
+                            <a href={`${ZO_TOKEN.explorer}/address/${walletAddr}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
+                              {truncAddr(walletAddr)}
+                            </a>
+                          ) : "—"}
+                        </td>
+                        <td className="py-2 pr-4 text-xs text-white/40">{a.collection?.name || a.collection?.slug || "—"}</td>
+                        <td className="py-2 pr-4">
+                          <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: statusColor + "20", color: statusColor }}>
+                            {statusLabel}
+                          </span>
+                        </td>
+                        <td className="py-2 font-mono text-xs">
+                          {a.transaction_hash ? (
+                            <a href={`${ZO_TOKEN.explorer}/tx/${a.transaction_hash}`} target="_blank" rel="noopener noreferrer" className="text-[#cfff50] hover:underline">
+                              {a.transaction_hash.slice(0, 8)}...
+                            </a>
+                          ) : "—"}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
