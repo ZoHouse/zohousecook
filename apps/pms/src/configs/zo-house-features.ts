@@ -104,6 +104,17 @@ export const ZO_FEATURES: Record<string, ZoFeature> = {
       { id: "residents-applications", name: "Applications", path: "/residents/applications", icon: "Doc" },
     ],
   },
+  zo_distribution: {
+    id: "zo_distribution",
+    label: "$Zo Distribution",
+    backend: "django",
+    status: "testing",
+    minAccess: "front-desk-manager",
+    icon: "Vibe",
+    navLinks: [
+      { id: "zo-dist-dashboard", name: "Dashboard", path: "/zo-distribution", icon: "Vibe" },
+    ],
+  },
 };
 
 /**

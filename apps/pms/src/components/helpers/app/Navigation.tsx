@@ -357,6 +357,40 @@ const Navigation: React.FC<Navigation> = () => {
                           isActiveLink(nl.path)
                         );
                         const isExpanded = isAnySubLinkActive || (expandedFeatures[feature.id] || false);
+                        const isSinglePage = feature.navLinks.length === 1;
+
+                        // Single-page features render as a direct link (no expand/collapse)
+                        if (isSinglePage) {
+                          const singleLink = feature.navLinks[0];
+                          const isActive = isActiveLink(singleLink.path);
+                          return (
+                            <li key={feature.id} className="w-fit">
+                              <Link
+                                onClick={() => {
+                                  if (isMobile) setHamburgerVisible(false);
+                                }}
+                                href={singleLink.path}
+                                className="flex items-center h-12 space-x-3"
+                              >
+                                <Icon
+                                  name={feature.icon}
+                                  size={24}
+                                  fill={isActive ? "#CFFF50" : "#5A5A5A"}
+                                />
+                                {isHamburgerMenuVisible && (
+                                  <span
+                                    className={`text-sm whitespace-nowrap ${
+                                      isActive ? "text-zui-neon" : "text-zui-white"
+                                    }`}
+                                  >
+                                    {feature.label}
+                                  </span>
+                                )}
+                              </Link>
+                            </li>
+                          );
+                        }
+
                         return (
                           <li key={feature.id} className="w-fit">
                             <button
