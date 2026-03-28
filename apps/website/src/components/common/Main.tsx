@@ -18,12 +18,14 @@ const excludeFooterIn = [
   "/san-francisco",
   "/events/cryptoevents",
   "/cafezomad",
+  "/zollardoe",
 ];
 const excludeHeaderIn = [
   "/events/token2049",
   "/san-francisco",
   "/events/cryptoevents",
   "/cafezomad",
+  "/zollardoe",
 ];
 
 const hasBlackBackground = ["/membership"];
