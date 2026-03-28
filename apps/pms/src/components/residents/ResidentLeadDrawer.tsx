@@ -167,11 +167,23 @@ const ResidentLeadDrawer: React.FC<ResidentLeadDrawerProps> = ({
             </a>
           </Descriptions.Item>
         )}
-        {lead.property && (
-          <Descriptions.Item label="Property">
-            <Tag color={lead.property === 'BLRxZo' ? 'blue' : 'green'}>{lead.property}</Tag>
-          </Descriptions.Item>
-        )}
+        <Descriptions.Item label="Property">
+          <Select
+            value={lead.property || undefined}
+            onChange={(v) => {
+              onUpdateLead(lead.id, { property: v || null })
+              message.success(`Tagged as ${v}`)
+            }}
+            placeholder="Assign property"
+            allowClear
+            style={{ width: 140 }}
+            size="small"
+            options={[
+              { value: 'BLRxZo', label: 'BLRxZo' },
+              { value: 'WTFxZo', label: 'WTFxZo' },
+            ]}
+          />
+        </Descriptions.Item>
         {lead.preferred_duration && (
           <Descriptions.Item label="Duration">{lead.preferred_duration}</Descriptions.Item>
         )}

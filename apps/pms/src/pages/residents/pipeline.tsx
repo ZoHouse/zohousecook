@@ -1,13 +1,11 @@
 import React, { useState } from 'react'
-import { Spin, Modal, Form, Input, Select, message } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
+import { Spin, Modal, Form, Input, Select, message, Radio } from 'antd'
 import ZoHouseGuard from '../../components/helpers/app/ZoHouseGuard'
 import { Page, PageContent, PageHeader } from '../../components/ui'
-import { useAssociation } from '../../hooks'
 import { useResidentLeads } from '../../hooks/residents'
 import ResidentLeadCard from '../../components/residents/ResidentLeadCard'
 import ResidentLeadDrawer from '../../components/residents/ResidentLeadDrawer'
-import type { ResidentLead, LeadSource, LeadPriority } from '../../types/residents'
+import type { ResidentLead } from '../../types/residents'
 import {
   RESIDENT_STAGES,
   RESIDENT_STAGE_LABELS,
@@ -15,15 +13,9 @@ import {
   SOURCE_LABELS,
 } from '../../types/residents'
 
-function operatorToProperty(code: string | undefined): string | null {
-  if (code === 'BNGHO812') return 'BLRxZo'
-  if (code === 'BNGS531') return 'WTFxZo'
-  return null
-}
-
 function PipelineBoard() {
-  const { selectedOperator } = useAssociation()
-  const property = operatorToProperty(selectedOperator?.code)
+  // One unified pipeline — property is a filter, not a scope
+  const [propertyFilter, setPropertyFilter] = useState<string | null>(null)
 
   const {
     leadsByStage,
@@ -34,7 +26,7 @@ function PipelineBoard() {
     addNote,
     getActivity,
     getNotes,
-  } = useResidentLeads({ property })
+  } = useResidentLeads({ property: propertyFilter })
 
   const [selectedLead, setSelectedLead] = useState<ResidentLead | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -56,9 +48,9 @@ function PipelineBoard() {
     try {
       const values = await form.validateFields()
       setAddLoading(true)
+      // No property assigned on creation — Boldrin tags it later
       const created = await createLead({
         ...values,
-        property,
         stage: 'inquiry',
       })
       if (created) {
@@ -90,6 +82,23 @@ function PipelineBoard() {
         ]}
       />
       <PageContent>
+        {/* Property filter */}
+        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Radio.Group
+            value={propertyFilter || 'all'}
+            onChange={(e) => setPropertyFilter(e.target.value === 'all' ? null : e.target.value)}
+            buttonStyle="solid"
+            size="small"
+          >
+            <Radio.Button value="all">All</Radio.Button>
+            <Radio.Button value="BLRxZo">BLRxZo</Radio.Button>
+            <Radio.Button value="WTFxZo">WTFxZo</Radio.Button>
+          </Radio.Group>
+          <span style={{ color: '#666', fontSize: 12 }}>
+            {propertyFilter ? `Showing ${propertyFilter} leads` : 'Showing all leads (untagged + tagged)'}
+          </span>
+        </div>
+
         {isLoading ? (
           <div className="flex justify-center py-20">
             <Spin size="large" />
