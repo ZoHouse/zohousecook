@@ -52,6 +52,14 @@ export const SOURCE_LABELS: Record<LeadSource, string> = {
   meta_ads: 'Meta Ads',
 }
 
+export type LeadType = 'resident' | 'membership' | 'unknown'
+
+export const LEAD_TYPE_LABELS: Record<LeadType, string> = {
+  resident: 'Resident',
+  membership: 'Membership',
+  unknown: 'Unknown',
+}
+
 export type LeadPriority = 'hot' | 'normal' | 'cold'
 
 export interface ResidentLead {
@@ -90,6 +98,7 @@ export interface ResidentLead {
   vibe_score: number | null
   luma_guest_id: string | null
   pms_booking_id: string | null
+  lead_type: LeadType
   is_dead: boolean
   is_renewed: boolean
   deleted_at: string | null

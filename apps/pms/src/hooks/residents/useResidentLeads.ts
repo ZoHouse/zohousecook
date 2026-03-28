@@ -13,6 +13,7 @@ interface UseResidentLeadsParams {
   source?: LeadSource | null
   assignedTo?: string | null
   stage?: ResidentStage | null
+  leadType?: string | null // "resident" | "membership" | null (all)
 }
 
 interface UseResidentLeadsResult {
@@ -33,6 +34,7 @@ export function useResidentLeads({
   source,
   assignedTo,
   stage,
+  leadType,
 }: UseResidentLeadsParams): UseResidentLeadsResult {
   const [leads, setLeads] = useState<ResidentLead[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -60,6 +62,9 @@ export function useResidentLeads({
       if (stage) {
         query = query.eq('stage', stage)
       }
+      if (leadType) {
+        query = query.eq('lead_type', leadType)
+      }
 
       const { data, error } = await query
 
@@ -70,7 +75,7 @@ export function useResidentLeads({
     } finally {
       setIsLoading(false)
     }
-  }, [property, source, assignedTo, stage])
+  }, [property, source, assignedTo, stage, leadType])
 
   useEffect(() => {
     fetchLeads()

@@ -5,17 +5,19 @@ import { Page, PageContent, PageHeader } from '../../components/ui'
 import { useResidentLeads } from '../../hooks/residents'
 import ResidentLeadCard from '../../components/residents/ResidentLeadCard'
 import ResidentLeadDrawer from '../../components/residents/ResidentLeadDrawer'
-import type { ResidentLead } from '../../types/residents'
+import type { ResidentLead, LeadType } from '../../types/residents'
 import {
   RESIDENT_STAGES,
   RESIDENT_STAGE_LABELS,
   RESIDENT_STAGE_COLORS,
   SOURCE_LABELS,
+  LEAD_TYPE_LABELS,
 } from '../../types/residents'
 
 function PipelineBoard() {
-  // One unified pipeline — property is a filter, not a scope
+  // One unified pipeline — property and type are filters, not scopes
   const [propertyFilter, setPropertyFilter] = useState<string | null>(null)
+  const [typeFilter, setTypeFilter] = useState<string | null>(null)
 
   const {
     leadsByStage,
@@ -26,7 +28,7 @@ function PipelineBoard() {
     addNote,
     getActivity,
     getNotes,
-  } = useResidentLeads({ property: propertyFilter })
+  } = useResidentLeads({ property: propertyFilter, leadType: typeFilter })
 
   const [selectedLead, setSelectedLead] = useState<ResidentLead | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -94,9 +96,17 @@ function PipelineBoard() {
             <Radio.Button value="BLRxZo">BLRxZo</Radio.Button>
             <Radio.Button value="WTFxZo">WTFxZo</Radio.Button>
           </Radio.Group>
-          <span style={{ color: '#666', fontSize: 12 }}>
-            {propertyFilter ? `Showing ${propertyFilter} leads` : 'Showing all leads (untagged + tagged)'}
-          </span>
+          <span style={{ color: '#444', fontSize: 11 }}>|</span>
+          <Radio.Group
+            value={typeFilter || 'all'}
+            onChange={(e) => setTypeFilter(e.target.value === 'all' ? null : e.target.value)}
+            buttonStyle="solid"
+            size="small"
+          >
+            <Radio.Button value="all">All Types</Radio.Button>
+            <Radio.Button value="resident">Residents</Radio.Button>
+            <Radio.Button value="membership">Membership</Radio.Button>
+          </Radio.Group>
         </div>
 
         {isLoading ? (
@@ -245,6 +255,14 @@ function PipelineBoard() {
                   { value: 'hot', label: 'Hot' },
                   { value: 'normal', label: 'Normal' },
                   { value: 'cold', label: 'Cold' },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item name="lead_type" label="Type" initialValue="resident">
+              <Select
+                options={[
+                  { value: 'resident', label: 'Resident (wants a bed)' },
+                  { value: 'membership', label: 'Membership (access only)' },
                 ]}
               />
             </Form.Item>

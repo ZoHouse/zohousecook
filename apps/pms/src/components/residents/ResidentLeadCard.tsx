@@ -71,6 +71,14 @@ const ResidentLeadCard: React.FC<ResidentLeadCardProps> = ({ lead, onClick }) =>
         {lead.source && (
           <Tag style={{ fontSize: 11, margin: 0 }}>{SOURCE_LABELS[lead.source] || lead.source}</Tag>
         )}
+        {lead.lead_type && lead.lead_type !== 'unknown' && (
+          <Tag
+            color={lead.lead_type === 'resident' ? '#cfff50' : '#8b5cf6'}
+            style={{ fontSize: 10, margin: 0, color: lead.lead_type === 'resident' ? '#000' : '#fff' }}
+          >
+            {lead.lead_type === 'resident' ? 'BED' : 'ACCESS'}
+          </Tag>
+        )}
         {lead.property && (
           <Tag color={propertyColor} style={{ fontSize: 11, margin: 0 }}>{lead.property}</Tag>
         )}
