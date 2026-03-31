@@ -37,7 +37,8 @@
       "@zo/utils/sentry/server": ["libs/utils/sentry/src/server.ts"],
       "@zo/utils/string": ["libs/utils/string/src/index.ts"],
       "@zo/utils/web3": ["libs/utils/web3/src/index.ts"],
-      "@zo/zud": ["libs/zud/src/index.ts"]
+      "@zo/zud": ["libs/zud/src/index.ts"],
+      "@zo/avatar-renderer": ["libs/avatar-renderer/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
