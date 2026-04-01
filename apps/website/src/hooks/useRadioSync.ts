@@ -88,11 +88,15 @@ export function useRadioSync() {
   const crossfadeCompletedAtRef = useRef<number>(0);
   const durationReportedForRef = useRef<Set<string>>(new Set());
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const djInProgressRef = useRef(false);
 
   const fetchNowPlaying = useCallback(
-    async (): Promise<NowPlayingData | null> => {
+    async (playingSongId?: string): Promise<NowPlayingData | null> => {
       try {
-        const res = await fetch(`${RADIO_API}/api/radio/now-playing`);
+        const params = playingSongId ? `?playing=${playingSongId}` : "";
+        const res = await fetch(
+          `${RADIO_API}/api/radio/now-playing${params}`
+        );
         if (!res.ok) throw new Error(`API error: ${res.status}`);
         return await res.json();
       } catch (err) {
@@ -156,10 +160,23 @@ export function useRadioSync() {
     []
   );
 
+  const stopDJAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+      audioRef.current = null;
+    }
+    djInProgressRef.current = false;
+  }, []);
+
   const createDJAudio = useCallback(
     async (
       blob: Blob
     ): Promise<{ audio: HTMLAudioElement; done: Promise<void> }> => {
+      // Stop any existing DJ audio first
+      stopDJAudio();
+
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
       audioRef.current = audio;
@@ -168,21 +185,24 @@ export function useRadioSync() {
       const done = new Promise<void>((resolve) => {
         audio.onended = () => {
           URL.revokeObjectURL(url);
+          djInProgressRef.current = false;
           resolve();
         };
         audio.onerror = () => {
           URL.revokeObjectURL(url);
+          djInProgressRef.current = false;
           resolve();
         };
         audio.play().catch(() => {
           URL.revokeObjectURL(url);
+          djInProgressRef.current = false;
           resolve();
         });
       });
 
       return { audio, done };
     },
-    []
+    [stopDJAudio]
   );
 
   const generateDJClipOnce = useCallback(
@@ -290,6 +310,9 @@ export function useRadioSync() {
     if (!isActiveRef.current || transitionInProgressRef.current) return;
     transitionInProgressRef.current = true;
 
+    // Stop any existing DJ audio before crossfade
+    stopDJAudio();
+
     const data = latestDataRef.current;
     if (!data) {
       transitionInProgressRef.current = false;
@@ -297,6 +320,7 @@ export function useRadioSync() {
     }
 
     djPlayedForRef.current = data.nextSong.id;
+    djInProgressRef.current = true;
 
     try {
       let djBlob: Blob | null = null;
@@ -352,21 +376,9 @@ export function useRadioSync() {
                     genre: prev.currentSong?.genre || "",
                   },
                 }));
-                fetchNowPlaying().then((fresh) => {
+                fetchNowPlaying(nextSong.id).then((fresh) => {
                   if (fresh) {
-                    latestDataRef.current =
-                      fresh.song.id === nextSong.id
-                        ? fresh
-                        : {
-                            ...fresh,
-                            song: {
-                              id: nextSong.id,
-                              title: nextSong.title,
-                              artist: nextSong.artist,
-                              mood: data.slot.mood,
-                              genre: "",
-                            },
-                          };
+                    latestDataRef.current = fresh;
                   }
                 });
               }
@@ -400,21 +412,9 @@ export function useRadioSync() {
             },
             slot: data.slot,
           }));
-          fetchNowPlaying().then((fresh) => {
+          fetchNowPlaying(nextSong.id).then((fresh) => {
             if (fresh) {
-              latestDataRef.current =
-                fresh.song.id === nextSong.id
-                  ? fresh
-                  : {
-                      ...fresh,
-                      song: {
-                        id: nextSong.id,
-                        title: nextSong.title,
-                        artist: nextSong.artist,
-                        mood: data.slot.mood,
-                        genre: "",
-                      },
-                    };
+              latestDataRef.current = fresh;
             }
           });
         }
@@ -566,7 +566,8 @@ export function useRadioSync() {
   const syncToServerFn = useCallback(async () => {
     if (!isActiveRef.current) return;
 
-    const data = await fetchNowPlaying();
+    // Tell server what we're playing so it returns correct nextSong
+    const data = await fetchNowPlaying(currentSongIdRef.current || undefined);
     if (!data || !isActiveRef.current) return;
 
     latestDataRef.current = data;
@@ -579,11 +580,11 @@ export function useRadioSync() {
 
     if (currentSongIdRef.current !== data.song.id) {
       if (transitionInProgressRef.current || inGracePeriod) {
+        // Server disagrees but we just transitioned — re-fetch anchored to our song
         if (inGracePeriod && currentSongIdRef.current) {
-          latestDataRef.current = {
-            ...data,
-            song: { ...data.song, id: currentSongIdRef.current },
-          };
+          fetchNowPlaying(currentSongIdRef.current).then((anchored) => {
+            if (anchored) latestDataRef.current = anchored;
+          });
         }
         return;
       }
@@ -611,30 +612,36 @@ export function useRadioSync() {
         }));
 
         djPlayedForRef.current = data.song.id;
-        generateDJClip(
-          data.slot,
-          null as unknown as { title: string; artist: string },
-          data.song
-        ).then(async (result) => {
-          if (!result || !isActiveRef.current) return;
-          setState((prev) => ({
-            ...prev,
-            djScript: result.script,
-            status: "dj-speaking",
-          }));
-          await fadeVolume(12, 600);
-          const { done } = await createDJAudio(result.blob);
-          await done;
-          await new Promise((r) => setTimeout(r, 400));
-          await fadeVolume(80, 1000);
-          if (isActiveRef.current) {
+        if (!djInProgressRef.current) {
+          djInProgressRef.current = true;
+          generateDJClip(
+            data.slot,
+            null as unknown as { title: string; artist: string },
+            data.song
+          ).then(async (result) => {
+            if (!result || !isActiveRef.current) {
+              djInProgressRef.current = false;
+              return;
+            }
             setState((prev) => ({
               ...prev,
-              status: "playing",
-              djScript: "",
+              djScript: result.script,
+              status: "dj-speaking",
             }));
-          }
-        });
+            await fadeVolume(12, 600);
+            const { done } = await createDJAudio(result.blob);
+            await done;
+            await new Promise((r) => setTimeout(r, 400));
+            await fadeVolume(80, 1000);
+            if (isActiveRef.current) {
+              setState((prev) => ({
+                ...prev,
+                status: "playing",
+                djScript: "",
+              }));
+            }
+          });
+        }
 
         const firstRemaining = data.duration - data.seekTo;
         scheduleServerFallback(firstRemaining);
@@ -648,7 +655,20 @@ export function useRadioSync() {
       }));
     }
 
-    const remainingSeconds = data.duration - data.seekTo;
+    // Use YouTube's actual remaining time when available (anchored mode returns seekTo:0)
+    let remainingSeconds = data.duration - data.seekTo;
+    try {
+      const player = playerRef.current;
+      if (player) {
+        const ytDuration = player.getDuration();
+        const ytCurrent = player.getCurrentTime();
+        if (ytDuration > 0 && ytCurrent > 0) {
+          remainingSeconds = ytDuration - ytCurrent;
+        }
+      }
+    } catch {
+      /* use server estimate */
+    }
     const nextCheckMs = Math.min(remainingSeconds * 1000 + 2000, 30000);
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     pollTimerRef.current = setTimeout(syncToServerFn, nextCheckMs);
@@ -696,26 +716,32 @@ export function useRadioSync() {
     startMonitor();
 
     djPlayedForRef.current = data.song.id;
-    generateDJClip(
-      data.slot,
-      null as unknown as { title: string; artist: string },
-      data.song
-    ).then(async (result) => {
-      if (!result || !isActiveRef.current) return;
-      setState((prev) => ({
-        ...prev,
-        djScript: result.script,
-        status: "dj-speaking",
-      }));
-      await fadeVolume(12, 600);
-      const { done } = await createDJAudio(result.blob);
-      await done;
-      await new Promise((r) => setTimeout(r, 400));
-      await fadeVolume(80, 1000);
-      if (isActiveRef.current) {
-        setState((prev) => ({ ...prev, status: "playing", djScript: "" }));
-      }
-    });
+    if (!djInProgressRef.current) {
+      djInProgressRef.current = true;
+      generateDJClip(
+        data.slot,
+        null as unknown as { title: string; artist: string },
+        data.song
+      ).then(async (result) => {
+        if (!result || !isActiveRef.current) {
+          djInProgressRef.current = false;
+          return;
+        }
+        setState((prev) => ({
+          ...prev,
+          djScript: result.script,
+          status: "dj-speaking",
+        }));
+        await fadeVolume(12, 600);
+        const { done } = await createDJAudio(result.blob);
+        await done;
+        await new Promise((r) => setTimeout(r, 400));
+        await fadeVolume(80, 1000);
+        if (isActiveRef.current) {
+          setState((prev) => ({ ...prev, status: "playing", djScript: "" }));
+        }
+      });
+    }
 
     const remaining = data.duration - adjustedSeek;
     pollTimerRef.current = setTimeout(
@@ -724,23 +750,9 @@ export function useRadioSync() {
     );
     scheduleServerFallback(remaining);
 
-    fetchNowPlaying().then((fresh) => {
+    fetchNowPlaying(data.song.id).then((fresh) => {
       if (!fresh || !isActiveRef.current) return;
       latestDataRef.current = fresh;
-      if (fresh.song.id !== currentSongIdRef.current) {
-        currentSongIdRef.current = fresh.song.id;
-        if (playerRef.current) {
-          playerRef.current.loadVideoById({
-            videoId: fresh.song.id,
-            startSeconds: fresh.seekTo,
-          });
-        }
-        setState((prev) => ({
-          ...prev,
-          currentSong: fresh.song,
-          slot: fresh.slot,
-        }));
-      }
     });
   }, [
     fetchNowPlaying,
@@ -767,18 +779,16 @@ export function useRadioSync() {
   useEffect(() => {
     return () => {
       isActiveRef.current = false;
+      djInProgressRef.current = false;
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
       if (monitorRef.current) clearInterval(monitorRef.current);
       if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
       if (serverFallbackTimerRef.current)
         clearTimeout(serverFallbackTimerRef.current);
       if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
+      stopDJAudio();
     };
-  }, []);
+  }, [stopDJAudio]);
 
   return {
     ...state,

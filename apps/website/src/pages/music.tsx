@@ -49,7 +49,7 @@ const Music: React.FC<
   useEffect(() => {
     if (isLoggedIn) {
       createInquiry(
-        { data: { subject: "SHOWN_INTEREST_IN_$MUSIC" }, route: "music/" },
+        { data: { subject: "SHOWN_INTEREST_IN_MUSIC" }, route: "music/" },
         { onSuccess: console.log.bind(null, "Lead Generated") }
       );
     }
