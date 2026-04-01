@@ -1,8 +1,9 @@
 import React, { ReactElement, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import { useAuth, useProfile, useMutationApi, useQueryApi } from "@zo/auth";
-import { GlassCard, DashboardHeader } from "../components/dashboard";
+import { GlassCard, ComingSoon, DashboardHeader } from "../components/dashboard";
 import { useMyNfts } from "../hooks/useMyNfts";
+import useInstagramConnect from "../hooks/useInstagramConnect";
 import type { NextPageWithLayout } from "./_app";
 
 function fixAvatarUrl(url?: string): string | undefined {
@@ -540,22 +541,23 @@ function FounderNftsSection() {
 
 function SocialsSection() {
   const { profile } = useProfile();
+  const { isConnected: igConnected, account: igAccount, connect: connectIg, disconnect: disconnectIg } = useInstagramConnect();
 
   const socials = useMemo(() => {
     if (!profile?.socials) return [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (profile.socials as any[]).map((s) => ({
-      category: s.category as string, link: s.link as string, verified: s.verified as boolean,
-      handle: s.category === "twitter" ? s.link?.split(".com/")[1]
-        : s.category === "telegram" ? s.link?.split(".me/")[1]
-        : s.category === "discord" ? "Connected" : s.link,
-    }));
+    return (profile.socials as any[])
+      .filter((s) => s.category !== "instagram") // IG handled separately via Supabase
+      .map((s) => ({
+        category: s.category as string, link: s.link as string, verified: s.verified as boolean,
+        handle: s.category === "twitter" ? s.link?.split(".com/")[1]
+          : s.category === "telegram" ? s.link?.split(".me/")[1]
+          : s.category === "discord" ? "Connected" : s.link,
+      }));
   }, [profile?.socials]);
 
   const ens = profile?.ens_nickname;
-  if (socials.length === 0 && !ens) return null;
-
-  const iconMap: Record<string, string> = { twitter: "X", telegram: "TG", discord: "DC", instagram: "IG" };
+  const iconMap: Record<string, string> = { twitter: "X", telegram: "TG", discord: "DC" };
 
   return (
     <GlassCard className="p-dash-xl">
@@ -583,6 +585,61 @@ function SocialsSection() {
             {s.verified && <span className={badgeVerified}>Verified</span>}
           </div>
         ))}
+
+        {/* Instagram — from Supabase via useInstagramConnect */}
+        {igConnected && igAccount ? (
+          <div className={rowCls}>
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+                style={{
+                  background: "linear-gradient(135deg, #833AB4, #E1306C, #F77737)",
+                }}
+              >
+                IG
+              </div>
+              <div>
+                <p className="text-[10px] text-dash-text-40">Instagram</p>
+                <p className="text-sm text-dash-text">@{igAccount.ig_username}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={badgeVerified}>Verified</span>
+              <button
+                onClick={disconnectIg}
+                className="px-2 py-1 text-[10px] text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-dash-sm transition-colors"
+              >
+                Disconnect
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className={rowCls}>
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+                style={{
+                  background: "linear-gradient(135deg, #833AB4, #E1306C, #F77737)",
+                }}
+              >
+                IG
+              </div>
+              <div>
+                <p className="text-[10px] text-dash-text-40">Instagram</p>
+                <p className="text-sm text-dash-text-50">Not connected</p>
+              </div>
+            </div>
+            <button
+              onClick={connectIg}
+              className="px-3 py-1 text-[10px] font-semibold text-white rounded-dash-sm transition-opacity hover:opacity-90"
+              style={{
+                background: "linear-gradient(135deg, #833AB4, #E1306C, #F77737)",
+              }}
+            >
+              Connect
+            </button>
+          </div>
+        )}
       </div>
     </GlassCard>
   );
@@ -591,19 +648,35 @@ function SocialsSection() {
 // --- Cultures ---
 
 function CulturesSection() {
-  const { profile } = useProfile();
+  const { profile, updateProfile, refetchProfile } = useProfile();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cultures: any[] = profile?.cultures || [];
   if (cultures.length === 0) return null;
+
+  const handleRemove = (key: string) => {
+    const remaining = cultures.filter((c) => c.key !== key).map((c) => c.key);
+    updateProfile(
+      { data: { cultures: remaining } },
+      { onSuccess: () => refetchProfile() }
+    );
+  };
 
   return (
     <GlassCard className="p-dash-xl">
       <h3 className="text-sm font-medium text-dash-text-50 uppercase tracking-wider mb-dash-lg">Cultures</h3>
       <div className="flex flex-wrap gap-2">
         {cultures.map((c) => (
-          <div key={c.key} className="flex items-center gap-2 px-3 py-1.5 rounded-dash-pill bg-white/5 border border-dash-border">
+          <div key={c.key} className="group flex items-center gap-2 px-3 py-1.5 rounded-dash-pill bg-white/5 border border-dash-border hover:border-dash-border-hover transition-colors">
             {c.icon && <img src={c.icon} alt={c.name} className="w-4 h-4" />}
             <span className="text-xs text-dash-text-80">{c.name}</span>
+            <button
+              onClick={() => handleRemove(c.key)}
+              className="w-4 h-4 flex items-center justify-center rounded-full text-dash-text-40 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+            >
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
+                <path d="M6.5 1.5L1.5 6.5M1.5 1.5L6.5 6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+              </svg>
+            </button>
           </div>
         ))}
       </div>
@@ -625,23 +698,16 @@ const PassportPage: NextPageWithLayout = () => {
           className="mb-dash-lg text-sm text-dash-text-50 hover:text-dash-text transition-colors">
           &larr; Back to Dashboard
         </button>
-        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-dash-xl items-start">
-          {/* Left column — Profile, NFTs, Cultures, Socials */}
-          <div className="flex flex-col gap-dash-xl lg:sticky lg:top-24">
-            <ProfileHeader />
-            <FounderNftsSection />
-            <CulturesSection />
-            <SocialsSection />
-          </div>
-
-          {/* Right column — Connections first, then personal details */}
-          <div className="flex flex-col gap-dash-xl">
-            <ConnectedWalletsSection />
-            <ConnectedEmailsSection />
-            <ConnectedPhonesSection />
-            <PersonalDetails />
-            <LocationDetails />
-          </div>
+        <div className="max-w-4xl mx-auto flex flex-col gap-dash-xl">
+          <ProfileHeader />
+          <ConnectedWalletsSection />
+          <ConnectedEmailsSection />
+          <ConnectedPhonesSection />
+          <SocialsSection />
+          <FounderNftsSection />
+          <PersonalDetails />
+          <LocationDetails />
+          <ComingSoon />
         </div>
       </div>
     </div>

@@ -4,33 +4,55 @@ import {
   Achievements,
   DashboardHeader,
   LiveUpdatesPill,
+  PassportCard,
   QuestContainer,
   ZoBalance,
-  CultureLeaderboard,
+  MyCulturesCompact,
+  SeasonLeaderboard,
 } from "../components/dashboard";
 import { LobbyScene } from "../components/lobby/LobbyScene";
+import { RoomMembers } from "../components/lobby/RoomMembers";
+import { VoiceControls } from "../components/lobby/VoiceControls";
+import { useRoom } from "../hooks/useRoom";
+import { useAudioBridge } from "../hooks/useAudioBridge";
 import type { NextPageWithLayout } from "./_app";
 
 const DashboardPage: NextPageWithLayout = () => {
   const { basePath } = useRouter();
+  const { members, roomData, roomCode, isConnected, profile } = useRoom();
+  const {
+    isActive: voiceActive, isMuted, speakingMap,
+    joinRoom: joinVoice, leaveRoom: leaveVoice, toggleMute,
+    connect: connectJanus,
+  } = useAudioBridge({
+    roomId: roomCode ? `cr-${roomCode}` : null,
+    userCode: profile?.code || null,
+    displayName: profile?.nickname || null,
+  });
   return (
-    <div
-      className="flex-1 min-h-screen bg-dash-bg-solid relative overflow-hidden"
-      style={{
-        backgroundImage: `url(${basePath}/dashboard-assets/dashboard-bg.jpg)`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundAttachment: "fixed",
-      }}
-    >
-      {/* Lobby layout: character center stage, panels floating at edges */}
-      <div className="relative w-full h-screen">
-        {/* Vignette overlay for depth */}
+    <div className="flex-1 min-h-screen bg-dash-bg-solid relative">
+      {/* ═══ DESKTOP: original absolute-positioned layout ═══ */}
+      <div className="hidden xl:block relative w-full h-screen overflow-hidden">
+        {/* Room background */}
+        <div
+          className="absolute inset-0 z-0"
+          style={{
+            backgroundImage: `url(${basePath}/dashboard-assets/bg-lobby.svg)`,
+            backgroundSize: "cover",
+            backgroundPosition: "center bottom",
+          }}
+        />
+        <div
+          className="absolute inset-0 pointer-events-none z-0"
+          style={{
+            background: "linear-gradient(180deg, rgba(10,10,15,0.7) 0%, rgba(10,10,15,0.4) 50%, rgba(10,10,15,0.6) 100%)",
+          }}
+        />
         <div
           className="absolute inset-0 pointer-events-none z-0"
           style={{
             background:
-              "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%)",
+              "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.5) 100%)",
           }}
         />
 
@@ -39,40 +61,133 @@ const DashboardPage: NextPageWithLayout = () => {
           <LiveUpdatesPill />
         </div>
 
-        {/* CENTER: Lobby Scene — Zobu avatar with editor */}
-        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-          {/* Ground shadow / platform under the avatar */}
+        {/* CENTER: Lobby Scene */}
+        <div className="absolute inset-0 flex items-end justify-center z-10 pointer-events-none pb-[14vh]">
           <div
-            className="absolute bottom-[22%] left-1/2 -translate-x-1/2"
+            className="absolute bottom-[6vh] left-1/2 -translate-x-1/2"
             style={{
-              width: "280px",
-              height: "24px",
-              background:
-                "radial-gradient(ellipse, rgba(0,0,0,0.3) 0%, transparent 70%)",
+              width: "25vh",
+              height: "4vh",
+              background: "radial-gradient(ellipse, rgba(0,0,0,0.35) 0%, transparent 70%)",
               borderRadius: "50%",
             }}
           />
-          <LobbyScene />
+          <LobbyScene members={members} selfCode={profile?.code} speakingMap={speakingMap} />
         </div>
 
-        {/* LEFT PANEL: Balance + Achievements — anchored bottom-left, above footer */}
-        <div className="absolute left-4 bottom-20 z-20 flex flex-col gap-2 w-[200px] hidden xl:flex">
+        {/* LEFT PANEL */}
+        <div className="absolute left-4 top-16 bottom-20 z-20 flex flex-col gap-2 w-[270px] overflow-y-auto scrollbar-hide">
+          <PassportCard />
+          <QuestContainer />
           <ZoBalance />
           <Achievements />
         </div>
 
-        {/* RIGHT PANEL: Culture Leaderboard — anchored right, vertically centered */}
-        <div className="absolute right-4 top-14 bottom-20 z-20 w-[240px] overflow-y-auto hidden xl:flex flex-col scrollbar-hide">
-          <CultureLeaderboard />
+        {/* RIGHT PANEL */}
+        <div className="absolute right-4 top-14 bottom-20 z-20 w-[240px] overflow-y-auto flex flex-col gap-2 scrollbar-hide">
+          <RoomMembers
+            members={members}
+            hostCodes={roomData?.hosts || []}
+            isConnected={isConnected}
+            speakingMap={speakingMap}
+          />
+          <MyCulturesCompact />
+          <SeasonLeaderboard />
         </div>
 
-        {/* BOTTOM CENTER: Quests — between passport and footer */}
-        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 w-[320px] hidden md:block">
-          <QuestContainer />
+        {/* BOTTOM CENTER: Voice Controls */}
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20">
+          <VoiceControls
+            isActive={voiceActive}
+            isMuted={isMuted}
+            onJoin={() => { connectJanus(); setTimeout(joinVoice, 2000); }}
+            onLeave={leaveVoice}
+            onToggleMute={toggleMute}
+          />
         </div>
       </div>
 
-      {/* Fixed bottom nav */}
+      {/* ═══ MOBILE: scrollable layout ═══ */}
+      <div className="xl:hidden flex flex-col pb-20">
+        {/* Hero section: avatar viewport (full screen height) */}
+        <div className="relative w-full h-screen flex-shrink-0">
+          {/* Room background */}
+          <div
+            className="absolute inset-0 z-0"
+            style={{
+              backgroundImage: `url(${basePath}/dashboard-assets/bg-lobby.svg)`,
+              backgroundSize: "cover",
+              backgroundPosition: "center bottom",
+            }}
+          />
+          <div
+            className="absolute inset-0 pointer-events-none z-0"
+            style={{
+              background: "linear-gradient(180deg, rgba(10,10,15,0.7) 0%, rgba(10,10,15,0.4) 50%, rgba(10,10,15,0.6) 100%)",
+            }}
+          />
+          <div
+            className="absolute inset-0 pointer-events-none z-0"
+            style={{
+              background:
+                "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.5) 100%)",
+            }}
+          />
+
+          {/* Live Updates pill */}
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20">
+            <LiveUpdatesPill />
+          </div>
+
+          {/* Avatar center stage */}
+          <div className="absolute inset-0 flex items-end justify-center z-10 pointer-events-none pb-[18vh]">
+            <div
+              className="absolute bottom-[10vh] left-1/2 -translate-x-1/2"
+              style={{
+                width: "25vh",
+                height: "4vh",
+                background: "radial-gradient(ellipse, rgba(0,0,0,0.35) 0%, transparent 70%)",
+                borderRadius: "50%",
+              }}
+            />
+            <LobbyScene members={members} selfCode={profile?.code} speakingMap={speakingMap} />
+          </div>
+
+          {/* Voice Controls */}
+          <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20">
+            <VoiceControls
+              isActive={voiceActive}
+              isMuted={isMuted}
+              onJoin={() => { connectJanus(); setTimeout(joinVoice, 2000); }}
+              onLeave={leaveVoice}
+              onToggleMute={toggleMute}
+            />
+          </div>
+
+          {/* Scroll hint */}
+          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 animate-bounce">
+            <span className="text-dash-text-40 text-xs">↓</span>
+          </div>
+        </div>
+
+        {/* Scrollable cards below the fold */}
+        <div className="flex flex-col gap-3 px-4 py-6">
+          <PassportCard />
+          <QuestContainer />
+          <ZoBalance />
+          <MyCulturesCompact />
+          <SeasonLeaderboard />
+          <RoomMembers
+            members={members}
+            hostCodes={roomData?.hosts || []}
+            isConnected={isConnected}
+            speakingMap={speakingMap}
+          />
+          <Achievements />
+        </div>
+      </div>
+
+      {/* Fixed bottom nav — always visible */}
       <DashboardHeader />
     </div>
   );
