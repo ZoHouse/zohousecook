@@ -134,7 +134,7 @@ export function SeasonLeaderboard() {
   ];
 
   const leaderboard = data?.leaderboard || [];
-  const displayCount = expanded ? 25 : 10;
+  const displayCount = expanded ? 25 : 5;
   const topEntries = leaderboard.slice(0, displayCount);
 
   // Find current user
@@ -207,12 +207,12 @@ export function SeasonLeaderboard() {
 
           {/* Footer: count + expand toggle */}
           <div className="flex items-center justify-between mt-2">
-            {data && data.count > 10 && (
+            {data && data.count > 5 && (
               <button
                 onClick={() => setExpanded(!expanded)}
                 className="text-[9px] text-dash-accent hover:text-dash-accent/80 transition-colors"
               >
-                {expanded ? "Show less" : `Show top 25`}
+                {expanded ? "Show top 5" : `Show top 25`}
               </button>
             )}
             {data && (
