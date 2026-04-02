@@ -235,7 +235,7 @@ function ProfileHeader() {
             </div>
             <div className="flex flex-col items-center py-2 rounded-dash-sm bg-white/[0.03]">
               <span className="text-sm font-bold text-dash-text tabular-nums">{myXp.stats.tribe}</span>
-              <span className="text-[9px] text-dash-text-40">Tribe</span>
+              <span className="text-[9px] text-dash-text-40">Frens</span>
             </div>
           </div>
         </div>

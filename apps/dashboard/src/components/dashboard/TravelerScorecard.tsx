@@ -123,7 +123,7 @@ export function TravelerScorecard() {
         />
 
         <DrawerRow
-          label="Tribe"
+          label="Frens"
           value={String(myXp.stats.tribe)}
           sub="members"
           items={myXp.tribeMembers || []}

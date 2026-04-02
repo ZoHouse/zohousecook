@@ -82,7 +82,7 @@ function YourXpCard({ entry }: { entry: LeaderboardEntry }) {
         <Stat label="Nights" value={entry.stats.nights} />
         <Stat label="Destinations" value={entry.stats.destinations} />
         <Stat label="Properties" value={entry.stats.properties} />
-        <Stat label="Tribe" value={entry.stats.tribe} />
+        <Stat label="Frens" value={entry.stats.tribe} />
       </div>
     </div>
   );

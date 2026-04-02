@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/router";
 import { GlassCard } from "../components/dashboard/GlassCard";
 import { useLeaderboard, LeaderboardEntry, LeaderboardScope, LeaderboardTime } from "../hooks/useLeaderboard";
+import { useMyXp } from "../hooks/useMyXp";
 import { useProfile } from "@zo/auth";
 
 type Tab = "global" | "city" | "country";
@@ -72,7 +73,7 @@ function LeaderboardRow({ entry, position }: { entry: LeaderboardEntry & { isYou
         <StatBadge label="Nights" value={entry.stats.nights} />
         <StatBadge label="Dest." value={entry.stats.destinations} />
         <StatBadge label="Props" value={entry.stats.properties} />
-        <StatBadge label="Tribe" value={entry.stats.tribe} />
+        <StatBadge label="Frens" value={entry.stats.tribe} />
       </div>
 
       {/* XP */}
@@ -115,7 +116,7 @@ function YourSummary({ entry }: { entry: LeaderboardEntry }) {
           <StatBadge label="Nights" value={entry.stats.nights} />
           <StatBadge label="Destinations" value={entry.stats.destinations} />
           <StatBadge label="Properties" value={entry.stats.properties} />
-          <StatBadge label="Tribe" value={entry.stats.tribe} />
+          <StatBadge label="Frens" value={entry.stats.tribe} />
         </div>
       </div>
     </GlassCard>
@@ -158,9 +159,24 @@ export default function LeaderboardPage() {
 
   const leaderboard = data?.leaderboard || [];
   const currentUserId = profile?.code;
-  const yourEntry = currentUserId
+  const leaderboardEntry = currentUserId
     ? leaderboard.find((e) => e.userId === currentUserId)
     : null;
+
+  // Fallback: if not in leaderboard top 500, use dedicated my-stats
+  const { myXp } = useMyXp();
+  const yourEntry: LeaderboardEntry | null = leaderboardEntry || (myXp ? {
+    rank: myXp.rank || 0,
+    userId: currentUserId || '',
+    name: profile?.first_name || 'You',
+    handle: profile?.nickname || profile?.custom_nickname || null,
+    xp: myXp.xp,
+    rankTitle: myXp.rankTitle,
+    city: myXp.city,
+    nationality: null,
+    stats: myXp.stats,
+    isYou: true,
+  } : null);
 
   return (
     <div className="min-h-screen bg-dash-bg-solid">
@@ -197,7 +213,7 @@ export default function LeaderboardPage() {
               <XpRule action="Night stayed" xp={50} />
               <XpRule action="Destination unlocked" xp={150} />
               <XpRule action="Property unlocked" xp={100} />
-              <XpRule action="Tribe member" xp={10} />
+              <XpRule action="Fren (co-traveler)" xp={10} />
               <XpRule action="Profile field completed" xp={10} />
               <XpRule action="Verification (mobile/email/ID)" xp={15} />
             </div>

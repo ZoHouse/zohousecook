@@ -126,7 +126,7 @@ export default function PublicPassportPage() {
               <div className="grid grid-cols-3 gap-3">
                 <StatCard label="Destinations" value={profile.stats.destinations} />
                 <StatCard label="Stays" value={profile.stats.nights} />
-                <StatCard label="Tribe" value={profile.stats.tribe} />
+                <StatCard label="Frens" value={profile.stats.tribe} />
               </div>
             </GlassCard>
 
