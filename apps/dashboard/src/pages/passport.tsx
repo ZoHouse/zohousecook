@@ -692,7 +692,7 @@ const PassportPage: NextPageWithLayout = () => {
 
   return (
     <div className="flex-1 min-h-screen bg-dash-bg-solid"
-      style={{ backgroundImage: `url(${router.basePath}/dashboard-assets/dashboard-bg.jpg)`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
+      style={{ backgroundImage: `url(${router.basePath}/dashboard-assets/dashboard-bg.png)`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
       <DashboardHeader />
       <div className="max-w-6xl mx-auto px-dash-xl py-dash-xl pb-32">
         <button onClick={() => router.push("/")}

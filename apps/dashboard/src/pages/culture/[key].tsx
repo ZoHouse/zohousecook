@@ -31,7 +31,7 @@ const CulturePage: NextPageWithLayout = () => {
     <div
       className="flex-1 min-h-screen bg-dash-bg-solid"
       style={{
-        backgroundImage: `url(${router.basePath}/dashboard-assets/dashboard-bg.jpg)`,
+        backgroundImage: `url(${router.basePath}/dashboard-assets/dashboard-bg.png)`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
