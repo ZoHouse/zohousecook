@@ -9,6 +9,7 @@ import {
   ZoBalance,
   MyCulturesCompact,
   SeasonLeaderboard,
+  TravelerScorecard,
 } from "../components/dashboard";
 import { LobbyScene } from "../components/lobby/LobbyScene";
 import { RoomMembers } from "../components/lobby/RoomMembers";
@@ -79,6 +80,7 @@ const DashboardPage: NextPageWithLayout = () => {
         {/* LEFT PANEL */}
         <div className="absolute left-4 top-16 bottom-20 z-20 flex flex-col gap-2 w-[270px] overflow-y-auto scrollbar-hide">
           <PassportCard />
+          <TravelerScorecard />
           <QuestContainer />
           <ZoBalance />
           <Achievements />
@@ -92,8 +94,8 @@ const DashboardPage: NextPageWithLayout = () => {
             isConnected={isConnected}
             speakingMap={speakingMap}
           />
-          <MyCulturesCompact />
           <SeasonLeaderboard />
+          <MyCulturesCompact />
         </div>
 
         {/* BOTTOM CENTER: Voice Controls */}
@@ -174,9 +176,9 @@ const DashboardPage: NextPageWithLayout = () => {
         {/* Scrollable cards below the fold */}
         <div className="flex flex-col gap-3 px-4 py-6">
           <PassportCard />
+          <TravelerScorecard />
           <QuestContainer />
           <ZoBalance />
-          <MyCulturesCompact />
           <SeasonLeaderboard />
           <RoomMembers
             members={members}
@@ -184,6 +186,7 @@ const DashboardPage: NextPageWithLayout = () => {
             isConnected={isConnected}
             speakingMap={speakingMap}
           />
+          <MyCulturesCompact />
           <Achievements />
         </div>
       </div>

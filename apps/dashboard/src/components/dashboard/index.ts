@@ -14,3 +14,4 @@ export { BentoGrid } from "./BentoGrid";
 export { CultureLeaderboard } from "./CultureLeaderboard";
 export { MyCulturesCompact } from "./MyCulturesCompact";
 export { SeasonLeaderboard } from "./SeasonLeaderboard";
+export { TravelerScorecard } from "./TravelerScorecard";
