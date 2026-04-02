@@ -25,9 +25,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(profileRes.status).json({ error: 'Failed to fetch profile' });
     }
     const profileData = await profileRes.json();
-    const userId = profileData?.data?.code || profileData?.code;
-    if (!userId) {
-      return res.status(400).json({ error: 'No user code found' });
+    const prof = profileData?.data || profileData;
+    const userId = prof?.code;
+    const pid = prof?.pid;
+    const phone = prof?.mobile_number;
+    const nickname = prof?.nickname || prof?.custom_nickname;
+
+    // Build lookup — try user_id first, then PID, then phone, then nickname
+    let whereClause = '';
+    if (userId) {
+      whereClause = `user_id = '${userId.replace(/'/g, "''")}'`;
+    } else if (pid) {
+      // PID is not in proc_user_data_plus, skip
+      whereClause = '';
+    }
+
+    // Phone fallback — strip country code prefix if present
+    if (!whereClause && phone) {
+      const cleanPhone = phone.replace(/^\+?91/, '');
+      whereClause = `mobile_number = '${cleanPhone.replace(/'/g, "''")}'`;
+    }
+
+    // Nickname fallback
+    if (!whereClause && nickname) {
+      const cleanNick = nickname.replace('.zo', '');
+      whereClause = `nick_name = '${cleanNick.replace(/'/g, "''")}'`;
+    }
+
+    if (!whereClause) {
+      return res.status(200).json({
+        xp: 0, rankTitle: 'Citizen', rank: null,
+        city: prof?.place_name || null, createdAt: prof?.created_at || null,
+        stats: { nights: 0, destinations: 0, properties: 0, tribe: 0 },
+      });
     }
 
     // Query user's stats from analytics DB
@@ -38,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       gender, birthday, phone_number, email, cultures, identity_type, passport_number,
       created_at
       FROM proc_user_data_plus
-      WHERE user_id = '${userId.replace(/'/g, "''")}'
+      WHERE ${whereClause}
       LIMIT 1`;
 
     const upstream = await fetch(OPS_BACKEND_URL, {
@@ -59,8 +89,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         xp: 0,
         rankTitle: 'Citizen',
         rank: null,
-        city: profileData?.data?.place_name || null,
-        createdAt: profileData?.data?.created_at || null,
+        city: prof?.place_name || null,
+        createdAt: prof?.created_at || null,
         stats: { nights: 0, destinations: 0, properties: 0, tribe: 0 },
       });
     }
