@@ -1,0 +1,208 @@
+{
+"background": [
+  {"id": 0, "name": "Day", "weight": 0},
+  {"id": 1, "name": "Wonka", "weight": 0},
+  {"id": 2, "name": "Dew", "weight": 0},
+  {"id": 3, "name": "Cyan", "weight": 0},
+  {"id": 4, "name": "Superman", "weight": 0},
+  {"id": 6, "name": "Lego", "weight": 0},
+  {"id": 7, "name": "Lyft", "weight": 0},
+  {"id": 8, "name": "Twitch", "weight": 0},
+  {"id": 9, "name": "Sprite", "weight": 0},
+  {"id": 10, "name": "Sky", "weight": 0},
+  {"id": 11, "name": "Cherry", "weight": 0},
+  {"id": 12, "name": "Marine", "weight": 0},
+  {"id": 13, "name": "Thar", "weight": 0},
+  {"id": 14, "name": "Peach", "weight": 0},
+  {"id": 16, "name": "Ceramic", "weight": 0},
+  {"id": 17, "name": "Stick", "weight": 0},
+  {"id": 18, "name": "Swamp", "weight": 0},
+  {"id": 19, "name": "Woods", "weight": 0}
+],
+"skin": [
+],
+"eyewear": [
+  {"id": 0, "name": "Miami", "weight": 0},
+  {"id": 1, "name": "Office", "weight": 0},
+  {"id": 2, "name": "Matrix", "weight": 0},
+  {"id": 3, "name": "3D", "weight": 0},
+  {"id": 4, "name": "Pirate", "weight": 0},
+  {"id": 5, "name": "Potter", "weight": 0},
+  {"id": 6, "name": "Vegas", "weight": 0},
+  {"id": 7, "name": "Gandhi", "weight": 0},
+  {"id": 8, "name": "Vision", "weight": 0},
+  {"id": 9, "name": "X-Men", "weight": 0},
+  {"id": 10, "name": "Pimp", "weight": 0},
+  {"id": 12, "name": "Love", "weight": 0},
+  {"id": 13, "name": "DJ", "weight": 0},
+  {"id": 14, "name": "Tech", "weight": 0},
+  {"id": 15, "name": "Thug", "weight": 0},
+  {"id": 16, "name": "Zorro", "weight": 0},
+  {"id": 17, "name": "Android", "weight": 0},
+  {"id": 18, "name": "Noun", "weight": 0},
+  {"id": 19, "name": "Woke", "weight": 0},
+  {"id": 20, "name": "Starboy", "weight": 0}
+],
+"dress": [
+  {"id": 0, "name": "Amsterdam", "weight": 0},
+  {"id": 1, "name": "Jobs", "weight": 0},
+  {"id": 2, "name": "Kobe", "weight": 0},
+  {"id": 3, "name": "Jordan", "weight": 0},
+  {"id": 4, "name": "Lacoste", "weight": 0},
+  {"id": 5, "name": "Lahore", "weight": 0},
+  {"id": 6, "name": "Uber", "weight": 0},
+  {"id": 7, "name": "Party", "weight": 0},
+  {"id": 8, "name": "Sailor", "weight": 0},
+  {"id": 9, "name": "MIB", "weight": 0},
+  {"id": 10, "name": "Gala", "weight": 0},
+  {"id": 11, "name": "Saul", "weight": 0},
+  {"id": 12, "name": "Hack", "weight": 0},
+  {"id": 13, "name": "Eminem", "weight": 0},
+  {"id": 14, "name": "Puffer", "weight": 0},
+  {"id": 15, "name": "Fairbanks", "weight": 0},
+  {"id": 16, "name": "Poker", "weight": 0},
+  {"id": 17, "name": "LA", "weight": 0},
+  {"id": 18, "name": "Track", "weight": 0},
+  {"id": 19, "name": "Malibu", "weight": 0},
+  {"id": 20, "name": "Night", "weight": 0},
+  {"id": 21, "name": "Virginia", "weight": 0},
+  {"id": 22, "name": "Rio", "weight": 0},
+  {"id": 23, "name": "Malaga", "weight": 0},
+  {"id": 24, "name": "Bavaria", "weight": 0},
+  {"id": 25, "name": "Night", "weight": 0},
+  {"id": 26, "name": "Sky", "weight": 0},
+  {"id": 27, "name": "Amazon", "weight": 0},
+  {"id": 28, "name": "Army", "weight": 0},
+  {"id": 29, "name": "Navy", "weight": 0},
+  {"id": 30, "name": "Air Force", "weight": 0},
+  {"id": 31, "name": "Popeye", "weight": 0},
+  {"id": 32, "name": "Space", "weight": 0},
+  {"id": 33, "name": "Rich", "weight": 0},
+  {"id": 34, "name": "Guantanamo", "weight": 0},
+  {"id": 35, "name": "Ride", "weight": 0},
+  {"id": 36, "name": "Farming", "weight": 0},
+  {"id": 37, "name": "Space", "weight": 0},
+  {"id": 38, "name": "Knight", "weight": 0},
+  {"id": 39, "name": "Bull", "weight": 0},
+  {"id": 40, "name": "Wall Street", "weight": 0},
+  {"id": 41, "name": "King", "weight": 0},
+  {"id": 42, "name": "Jodhpur", "weight": 0},
+  {"id": 43, "name": "Agra", "weight": 0},
+  {"id": 44, "name": "Smart", "weight": 0},
+  {"id": 45, "name": "Boston", "weight": 0},
+  {"id": 46, "name": "Cold", "weight": 0},
+  {"id": 47, "name": "NYC", "weight": 0},
+  {"id": 49, "name": "Tendulkar", "weight": 0},
+  {"id": 50, "name": "Fufa", "weight": 0},
+  {"id": 51, "name": "Cupid", "weight": 0},
+  {"id": 52, "name": "Gold", "weight": 0},
+  {"id": 53, "name": "Samurai", "weight": 0},
+  {"id": 54, "name": "Venice", "weight": 0},
+  {"id": 55, "name": "Zion", "weight": 0},
+  {"id": 56, "name": "Sicily", "weight": 0},
+  {"id": 57, "name": "Lol", "weight": 0},
+  {"id": 58, "name": "Naruto", "weight": 0},
+  {"id": 59, "name": "Luffy", "weight": 0},
+  {"id": 60, "name": "Monaco", "weight": 0},
+  {"id": 61, "name": "Shinobi", "weight": 0},
+  {"id": 62, "name": "Ninja", "weight": 0},
+  {"id": 63, "name": "Kill", "weight": 0},
+  {"id": 64, "name": "Dead", "weight": 0},
+  {"id": 65, "name": "Law", "weight": 0},
+  {"id": 66, "name": "Hawaii", "weight": 0},
+  {"id": 67, "name": "Bro", "weight": 0}
+],
+"mouth": [
+  {"id": 0, "name": "Sherlock", "weight": 0},
+  {"id": 1, "name": "Gurgaon", "weight": 0},
+  {"id": 2, "name": "420", "weight": 0},
+  {"id": 3, "name": "Bleb", "weight": 0},
+  {"id": 4, "name": "Vape", "weight": 0},
+  {"id": 5, "name": "Cigar", "weight": 0},
+  {"id": 6, "name": "Tobacco", "weight": 0},
+  {"id": 7, "name": "NYC", "weight": 0},
+  {"id": 8, "name": "Party", "weight": 0},
+  {"id": 9, "name": "Mexico", "weight": 0},
+  {"id": 10, "name": "Seville", "weight": 0},
+  {"id": 11, "name": "Pizza", "weight": 0},
+  {"id": 12, "name": "Lollypop", "weight": 0},
+  {"id": 13, "name": "Smirk", "weight": 0},
+  {"id": 14, "name": "Smile", "weight": 0},
+  {"id": 15, "name": "Wow", "weight": 0},
+  {"id": 16, "name": "Love", "weight": 0},
+  {"id": 17, "name": "Lol", "weight": 0}
+],
+"beard": [
+  {"id": 0, "name": "Washington", "weight": 0},
+  {"id": 1, "name": "Austin", "weight": 0},
+  {"id": 2, "name": "Tehran", "weight": 0},
+  {"id": 3, "name": "Hulk", "weight": 0},
+  {"id": 4, "name": "Lebanon", "weight": 0},
+  {"id": 5, "name": "Seedphrase", "weight": 0},
+  {"id": 6, "name": "Rhodes", "weight": 0},
+  {"id": 7, "name": "Moscow", "weight": 0},
+  {"id": 8, "name": "Dil Chahta Hai", "weight": 0},
+  {"id": 9, "name": "Muscat", "weight": 0}
+],
+"head": [
+  {"id": 0, "name": "Minnesota", "weight": 0},
+  {"id": 1, "name": "Noogle", "weight": 0},
+  {"id": 2, "name": "Fireman", "weight": 0},
+  {"id": 3, "name": "Dictator", "weight": 0},
+  {"id": 4, "name": "Popeye", "weight": 0},
+  {"id": 5, "name": "Samurai", "weight": 0},
+  {"id": 6, "name": "Zorro", "weight": 0},
+  {"id": 8, "name": "King", "weight": 0},
+  {"id": 9, "name": "Guevara", "weight": 0},
+  {"id": 10, "name": "Dadosa", "weight": 0},
+  {"id": 11, "name": "Vegas", "weight": 0},
+  {"id": 12, "name": "Kazan", "weight": 0},
+  {"id": 13, "name": "NYC", "weight": 0},
+  {"id": 14, "name": "Oregon", "weight": 0},
+  {"id": 15, "name": "London", "weight": 0},
+  {"id": 16, "name": "Sparta", "weight": 0},
+  {"id": 17, "name": "Alabama", "weight": 0},
+  {"id": 18, "name": "Scotland", "weight": 0},
+  {"id": 19, "name": "Dream", "weight": 0},
+  {"id": 20, "name": "Bingham", "weight": 0},
+  {"id": 21, "name": "Pirate", "weight": 0},
+  {"id": 22, "name": "Mexico", "weight": 0},
+  {"id": 23, "name": "NJ", "weight": 0},
+  {"id": 24, "name": "Wizard", "weight": 0},
+  {"id": 25, "name": "Food", "weight": 0},
+  {"id": 26, "name": "Panama", "weight": 0},
+  {"id": 27, "name": "Cairo", "weight": 0},
+  {"id": 28, "name": "Monk", "weight": 0},
+  {"id": 29, "name": "Travolta", "weight": 0},
+  {"id": 30, "name": "Bravo", "weight": 0},
+  {"id": 31, "name": "Messi", "weight": 0},
+  {"id": 32, "name": "Sumo", "weight": 0},
+  {"id": 33, "name": "Military", "weight": 0},
+  {"id": 34, "name": "Rico", "weight": 0},
+  {"id": 35, "name": "Belair", "weight": 0},
+  {"id": 36, "name": "Punk", "weight": 0},
+  {"id": 37, "name": "Ride", "weight": 0},
+  {"id": 38, "name": "Ronin", "weight": 0},
+  {"id": 39, "name": "Pop", "weight": 0},
+  {"id": 40, "name": "Aantonop", "weight": 0},
+  {"id": 41, "name": "Music", "weight": 0},
+  {"id": 42, "name": "AirPods", "weight": 0},
+  {"id": 43, "name": "Angel", "weight": 0},
+  {"id": 44, "name": "Hell", "weight": 0},
+  {"id": 45, "name": "Altman", "weight": 0},
+  {"id": 46, "name": "Rastafari", "weight": 0},
+  {"id": 47, "name": "Ace Ventura", "weight": 0},
+  {"id": 48, "name": "Lenon", "weight": 0}
+],
+"eyes": [
+  {"id": 0, "name": "Angry", "weight": 0},
+  {"id": 1, "name": "Happy", "weight": 0},
+  {"id": 2, "name": "Sic", "weight": 0},
+  {"id": 3, "name": "Dead", "weight": 0},
+  {"id": 4, "name": "Hypnotised", "weight": 0},
+  {"id": 7, "name": "Love", "weight": 0},
+  {"id": 8, "name": "Sus", "weight": 0},
+  {"id": 9, "name": "Wut", "weight": 0},
+  {"id": 10, "name": "Gotcha", "weight": 0}
+]
+}

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { ZoSpinner } from "../ui/ZoSpinner";
 import { useMutationApi, useProfile, useQueryApi } from "@zo/auth";
 import React, { useEffect, useState } from "react";
 import { Button } from "../common";
@@ -71,7 +72,7 @@ const EnsModal: React.FC<EnsModalProps> = ({ close, showWallets }) => {
         </button>
         {isFetchingENSOwnedData ? (
           <div className="flex flex-col items-center justify-center my-24">
-            <i className="uil uil-spinner text-zui-white text-4xl animate-spin" />
+            <ZoSpinner size={40} />
             <span className="text-xl mt-4 portrait:text-lg text-zui-white uppercase font-bold">
               Please Wait...
             </span>

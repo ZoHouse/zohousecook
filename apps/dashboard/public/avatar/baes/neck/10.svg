@@ -1,0 +1,25 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_1772_2417)">
+<circle cx="8" cy="8" r="11" transform="matrix(-1 0 0 1 176 387)" fill="#801DFF" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="344" cy="395" r="11" fill="#801DFF" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="8" cy="8" r="11" transform="matrix(-1 0 0 1 176 404)" fill="#FFD600" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="344" cy="412" r="11" fill="#FFD600" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="8" cy="8" r="11" transform="matrix(-1 0 0 1 180 422)" fill="#FF00B1" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="340" cy="430" r="11" fill="#FF00B1" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="8" cy="8" r="11" transform="matrix(-1 0 0 1 185 440)" fill="#801DFF" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="335" cy="448" r="11" fill="#801DFF" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="8" cy="8" r="11" transform="matrix(-1 0 0 1 190 458)" fill="#FFD600" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="330" cy="466" r="11" fill="#FFD600" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="8" cy="8" r="11" transform="matrix(-1 0 0 1 199 474)" fill="#FF00B1" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="321" cy="482" r="11" fill="#FF00B1" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="8" cy="8" r="11" transform="matrix(-1 0 0 1 209 488)" fill="#801DFF" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="311" cy="496" r="11" fill="#801DFF" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="8" cy="8" r="11" transform="matrix(-1 0 0 1 221 501)" fill="#FFD600" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="299" cy="509" r="11" fill="#FFD600" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<clipPath id="clip0_1772_2417">
+<rect width="512" height="512" fill="white"/>
+</clipPath>
+</defs>
+</svg>

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-empty-interface */
 /* eslint-disable @next/next/no-img-element */
+import { ZoSpinner } from "../ui/ZoSpinner";
 import { useProfile } from "@zo/auth";
 import { GeneralObject } from "@zo/definitions/general";
 import { FC, useEffect, useState } from "react";
@@ -54,7 +55,7 @@ const FounderNFTsModal: FC<FounderNFTsModalProps> = ({ close }) => {
         </button>
         {isFetchingNFTs ? (
           <div className="flex flex-col items-center text-zui-white justify-center my-24">
-            <i className="uil uil-spinner text-4xl animate-spin" />
+            <ZoSpinner size={40} />
             <span className="text-2xl mt-4 portrait:text-lg uppercase font-bold">
               Please Wait...
             </span>

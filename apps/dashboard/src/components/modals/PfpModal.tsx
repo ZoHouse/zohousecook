@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-empty-interface */
 /* eslint-disable @next/next/no-img-element */
+import { ZoSpinner } from "../ui/ZoSpinner";
 import { useMutationApi, useProfile, useQueryApi } from "@zo/auth";
 import { GeneralObject } from "@zo/definitions/general";
 import { isValidObject } from "@zo/utils/object";
@@ -125,7 +126,7 @@ const PFPModal: FC<PFPModalProps> = ({ close, showWallets }) => {
         </button>
         {isFetchingPFPOwnedData ? (
           <div className="flex flex-col items-center justify-center my-12">
-            <i className="uil uil-spinner text-zui-white text-4xl animate-spin" />
+            <ZoSpinner size={40} />
             <span className="text-xl mt-4 portrait:text-lg text-zui-white uppercase font-bold">
               Please Wait...
             </span>

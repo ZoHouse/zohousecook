@@ -1,0 +1,14 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_1662_3960)">
+<rect x="181" y="349" width="150" height="54" rx="19" fill="#202020" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M442.442 397H67.5575C59.1457 397 51.7351 402.531 49.3424 410.596L42.2215 434.596C38.6081 446.774 47.7333 459 60.4367 459H449.563C462.267 459 471.392 446.774 467.778 434.596L460.658 410.596C458.265 402.531 450.854 397 442.442 397Z" fill="#202020" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M16.1273 511.135C15.8538 512.044 16.0263 513.028 16.5923 513.79C17.1583 514.551 18.0512 515 19 515H491C491.949 515 492.842 514.551 493.408 513.79C493.974 513.028 494.146 512.044 493.873 511.135L480.444 466.523C478.027 458.495 470.634 453 462.25 453H47.75C39.366 453 31.9731 458.495 29.5564 466.523L16.1273 511.135Z" fill="#202020" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M247 349H263V368C263 372.418 259.418 376 255 376V376V376C250.582 376 247 372.418 247 368V349Z" fill="white"/>
+<path d="M255 376V376C259.418 376 263 372.418 263 368V349H247V368C247 372.418 250.582 376 255 376V376ZM255 376V523.5" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<clipPath id="clip0_1662_3960">
+<rect width="512" height="512" fill="white"/>
+</clipPath>
+</defs>
+</svg>

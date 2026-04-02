@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Icon from "@zo/assets/icons";
-import { Loader } from "@zo/assets/lotties";
+import { ZoSpinner } from "../ui/ZoSpinner";
 import { useMutationApi, useProfile } from "@zo/auth";
 import { Avatar, Button } from "@zo/moal";
 import { GeneralObject } from "@zo/definitions/general";
@@ -205,7 +205,7 @@ const MergeAccountModal: React.FC<MergeAccountModalProps> = ({
 
           {isLoading ? (
             <div className="">
-              <Loader className="w-10 h-10 mx-auto" />
+              <ZoSpinner size={40} className="mx-auto" />
             </div>
           ) : (
             <Button

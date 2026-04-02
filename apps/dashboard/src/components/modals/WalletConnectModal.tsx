@@ -1,3 +1,4 @@
+import { ZoSpinner } from "../ui/ZoSpinner";
 import { useMutationApi, useProfile } from "@zo/auth";
 import { GeneralObject } from "@zo/definitions/general";
 import { useInitialTimeout, useVisibilityState } from "@zo/utils/hooks";
@@ -138,7 +139,7 @@ const WalletConnectModal: FC<WalletConnectModalProps> = ({
             <div className="flex flex-col space-y-4 mt-8">
               {!isConnected ? (
                 <div className="flex items-center space-x-4">
-                  <i className="uil uil-spinner-alt animate-spin" />
+                  <ZoSpinner size={20} />
                   <span className="">Connecting to the wallet</span>
                 </div>
               ) : (
@@ -152,7 +153,7 @@ const WalletConnectModal: FC<WalletConnectModalProps> = ({
               )}
               {!isSigned ? (
                 <div className="flex items-center space-x-4">
-                  <i className="uil uil-spinner-alt animate-spin" />
+                  <ZoSpinner size={20} />
                   <span className="">Waiting for sign</span>
                 </div>
               ) : (
@@ -163,7 +164,7 @@ const WalletConnectModal: FC<WalletConnectModalProps> = ({
               )}
               {!isSuccess ? (
                 <div className="flex items-center space-x-4">
-                  <i className="uil uil-spinner-alt animate-spin" />
+                  <ZoSpinner size={20} />
                   <span className="">Waiting to verify</span>
                 </div>
               ) : (

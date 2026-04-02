@@ -1,0 +1,28 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_1672_5285)">
+<rect x="204" y="369" width="42" height="34" fill="#121212" stroke="#121212" stroke-width="6" stroke-linejoin="round"/>
+<rect x="235" y="372" width="8" height="28" fill="white"/>
+<rect x="266" y="369" width="42" height="34" fill="#121212" stroke="#121212" stroke-width="6" stroke-linejoin="round"/>
+<path d="M64 400H448L480 512H32L64 400Z" fill="#F15824"/>
+<path d="M64 400H448L480 512H32L64 400Z" fill="#121212"/>
+<path d="M203 400L203 512" stroke="#42B06C" stroke-width="6"/>
+<path d="M309 400L309 512" stroke="#42B06C" stroke-width="6"/>
+<path d="M210 400C210 398.343 208.657 397 207 397H100.206L100.012 397C91.4635 397 84.7834 397 79.4501 397.625C73.9978 398.265 69.6332 399.586 65.844 402.445C62.0547 405.303 59.5849 409.136 57.4723 414.203C55.4057 419.16 53.5706 425.583 51.2221 433.803L51.1687 433.989L29.1154 511.176C28.8568 512.081 29.0381 513.055 29.605 513.807C30.1718 514.558 31.0586 515 32 515H207C208.657 515 210 513.657 210 512V400Z" fill="#42B06C" stroke="#121212" stroke-width="6" stroke-linejoin="round"/>
+<path d="M302 400C302 398.343 303.343 397 305 397H411.794L411.988 397C420.537 397 427.217 397 432.55 397.625C438.002 398.265 442.367 399.586 446.156 402.445C449.945 405.303 452.415 409.136 454.528 414.203C456.594 419.16 458.429 425.583 460.778 433.803L460.831 433.989L482.885 511.176C483.143 512.081 482.962 513.055 482.395 513.807C481.828 514.558 480.941 515 480 515H305C303.343 515 302 513.657 302 512V400Z" fill="#42B06C" stroke="#121212" stroke-width="6" stroke-linejoin="round"/>
+<path d="M103 400H151V456H103V400Z" fill="#121212"/>
+<path d="M409 400H361V456H409V400Z" fill="#121212"/>
+<path d="M55 456H103V512H55V456Z" fill="#121212"/>
+<path d="M457 456H409V512H457V456Z" fill="#121212"/>
+<path d="M151 456H199V512H151V456Z" fill="#121212"/>
+<path d="M361 456H313V512H361V456Z" fill="#121212"/>
+<circle cx="256" cy="430" r="6" fill="#FFD600"/>
+<circle cx="256" cy="466" r="6" fill="#FFD600"/>
+<circle cx="256" cy="502" r="6" fill="#FFD600"/>
+<rect x="269" y="372" width="8" height="28" fill="white"/>
+</g>
+<defs>
+<clipPath id="clip0_1672_5285">
+<rect width="512" height="512" fill="white"/>
+</clipPath>
+</defs>
+</svg>

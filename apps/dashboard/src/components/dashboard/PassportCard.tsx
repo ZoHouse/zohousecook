@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useProfile } from "@zo/auth";
 import { useRouter } from "next/router";
+import { ZoSpinner } from "../ui/ZoSpinner";
 import { GlassCard } from "./GlassCard";
 import { DashboardTokens } from "../../styles/dashboard-tokens";
 
@@ -142,7 +143,7 @@ export function PassportCard() {
   if (isLoading) {
     return (
       <GlassCard className="p-dash-xl flex items-center justify-center min-h-[340px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-dash-text-50" />
+        <ZoSpinner size={32} />
       </GlassCard>
     );
   }

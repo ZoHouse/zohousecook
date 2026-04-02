@@ -1,6 +1,7 @@
 import React, { ReactElement, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import { useAuth, useProfile, useMutationApi, useQueryApi } from "@zo/auth";
+import { ZoSpinner } from "../components/ui/ZoSpinner";
 import { GlassCard, ComingSoon, DashboardHeader } from "../components/dashboard";
 import { useMyNfts } from "../hooks/useMyNfts";
 import useInstagramConnect from "../hooks/useInstagramConnect";
@@ -289,7 +290,7 @@ function ConnectedWalletsSection() {
       <h3 className="text-sm font-medium text-dash-text-50 uppercase tracking-wider mb-dash-lg">Connected Wallets</h3>
       {isLoading ? (
         <div className="flex items-center justify-center py-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-dash-text-50" />
+          <ZoSpinner size={24} />
         </div>
       ) : wallets.length === 0 ? (
         <p className="text-sm text-dash-text-40">No wallets connected</p>
@@ -392,7 +393,7 @@ function ConnectedEmailsSection() {
       <h3 className="text-sm font-medium text-dash-text-50 uppercase tracking-wider mb-dash-lg">Connected Emails</h3>
       {isLoading ? (
         <div className="flex items-center justify-center py-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-dash-text-50" />
+          <ZoSpinner size={24} />
         </div>
       ) : emails.length === 0 ? (
         <p className="text-sm text-dash-text-40">No emails connected</p>
@@ -474,7 +475,7 @@ function ConnectedPhonesSection() {
       <h3 className="text-sm font-medium text-dash-text-50 uppercase tracking-wider mb-dash-lg">Connected Phone Numbers</h3>
       {isLoading ? (
         <div className="flex items-center justify-center py-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-dash-text-50" />
+          <ZoSpinner size={24} />
         </div>
       ) : mobiles.length === 0 ? (
         <p className="text-sm text-dash-text-40">No phone numbers connected</p>
@@ -511,7 +512,7 @@ function FounderNftsSection() {
     <GlassCard className="p-dash-xl">
       <h3 className="text-sm font-medium text-dash-text-50 uppercase tracking-wider mb-dash-lg">Founder NFTs</h3>
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-dash-text-50" />
+        <ZoSpinner size={32} />
       </div>
     </GlassCard>
   );

@@ -1,0 +1,14 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M133 267C133 262.962 134.691 257.243 137.545 252.534C140.501 247.657 143.971 245 147 245C150.029 245 153.499 247.657 156.455 252.534C159.309 257.243 161 262.962 161 267C161 274.732 154.732 281 147 281C139.268 281 133 274.732 133 267ZM147 239C139.173 239 132.635 244.566 128.251 251.057C123.811 257.63 121 265.954 121 273C121 287.359 132.641 299 147 299C161.359 299 173 287.359 173 273C173 265.954 170.189 257.63 165.749 251.057C161.365 244.566 154.827 239 147 239Z" fill="#FF0900" stroke="#121212" stroke-width="6"/>
+<path d="M147 281.5V297.5" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M133 266H122" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M172 266H161" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M157 278L167.5 288.5" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M137.5 278L127 288.5" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M351 267C351 262.962 352.691 257.243 355.545 252.534C358.501 247.657 361.971 245 365 245C368.029 245 371.499 247.657 374.455 252.534C377.309 257.243 379 262.962 379 267C379 274.732 372.732 281 365 281C357.268 281 351 274.732 351 267ZM365 239C357.173 239 350.635 244.566 346.251 251.057C341.811 257.63 339 265.954 339 273C339 287.359 350.641 299 365 299C379.359 299 391 287.359 391 273C391 265.954 388.189 257.63 383.749 251.057C379.365 244.566 372.827 239 365 239Z" fill="#FF0900" stroke="#121212" stroke-width="6"/>
+<path d="M365 281.5V297.5" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M351 266H340" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M390 266H379" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M375 278L385.5 288.5" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M355.5 278L345 288.5" stroke="#121212" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,14 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_1662_3879)">
+<path d="M205.778 397.584L204.985 397H204H100.206L100.012 397C91.4635 397 84.7834 397 79.4501 397.625C73.9978 398.265 69.6332 399.586 65.844 402.445C62.0547 405.303 59.5849 409.136 57.4723 414.203C55.4057 419.16 53.5706 425.583 51.2221 433.803L51.1687 433.989L29.1154 511.176L28.0228 515H32H480H483.977L482.885 511.176L460.831 433.989L460.778 433.801C458.429 425.582 456.594 419.159 454.528 414.203C452.415 409.136 449.945 405.303 446.156 402.445C442.367 399.586 438.002 398.265 432.55 397.625C427.217 397 420.537 397 411.988 397L411.794 397H308H306.984L306.178 397.617L256.965 435.25L205.778 397.584Z" fill="#202020" stroke="#121212" stroke-width="6"/>
+<path d="M260.5 439L215 466.5L187 398L202.5 380L260.5 439Z" fill="#121212" stroke="#121212" stroke-width="6" stroke-linejoin="round"/>
+<path d="M250 439L295.5 466.5L323.5 398L308 380L250 439Z" fill="#121212" stroke="#121212" stroke-width="6" stroke-linejoin="round"/>
+<circle cx="6" cy="6" r="6" transform="matrix(1 0 0 -1 250 475)" fill="#121212" stroke="#121212" stroke-width="6" stroke-linejoin="round"/>
+<circle cx="6" cy="6" r="6" transform="matrix(1 0 0 -1 250 503)" fill="#121212" stroke="#121212" stroke-width="6" stroke-linejoin="round"/>
+</g>
+<defs>
+<clipPath id="clip0_1662_3879">
+<rect width="512" height="512" fill="white"/>
+</clipPath>
+</defs>
+</svg>

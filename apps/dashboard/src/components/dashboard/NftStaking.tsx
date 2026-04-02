@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { ZoSpinner } from "../ui/ZoSpinner";
 import { GlassCard } from "./GlassCard";
 import { useMyNfts, MyNft } from "../../hooks/useMyNfts";
 
@@ -183,7 +184,7 @@ export function NftStaking() {
         </div>
         {isLoading ? (
           <div className="flex items-center justify-center min-h-[120px]">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-dash-text-50" />
+            <ZoSpinner size={32} />
           </div>
         ) : nfts.length === 0 ? (
           <div className="flex items-center justify-center min-h-[120px]">

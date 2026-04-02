@@ -1,132 +1,157 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
 import { useProfile } from '@zo/auth';
-import { AvatarConfig } from '@zo/avatar-renderer';
 import { toast } from 'sonner';
 import cn from '../../utils/cn';
-import { useAvatarConfig } from '../../hooks/useAvatarConfig';
-import { AvatarDisplay } from './AvatarDisplay';
+import { useAvatarSeed } from '../../hooks/useAvatarSeed';
+import { AvatarDisplay, ZobuConfig, ZobuLayer, fetchSvgContent } from './AvatarDisplay';
 import { AvatarEditor } from './AvatarEditor';
+import { MemberZobu } from './MemberZobu';
+import type { RoomMember } from '../../hooks/useRoom';
 
-/** Resolve auth token from localStorage. Tries zo-admin first (zozozo.work), then zo-web. */
-function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return (
-    localStorage.getItem('zo-admin-token') ||
-    localStorage.getItem('zo-web-token') ||
-    null
-  );
+
+
+interface LobbySceneProps {
+  members?: RoomMember[];
+  selfCode?: string;
+  speakingMap?: Record<string, boolean>;
 }
 
-export function LobbyScene() {
+export function LobbyScene({ members = [], selfCode, speakingMap = {} }: LobbySceneProps) {
+  const router = useRouter();
   const { profile } = useProfile();
-  const { config, setConfig, saveConfig, hasCustomAvatar, isLoading } =
-    useAvatarConfig();
+  const { seed, loading: seedLoading } = useAvatarSeed();
   const [editorOpen, setEditorOpen] = useState(false);
+  const [zobuConfig, setZobuConfig] = useState<ZobuConfig | null>(null);
 
-  const name =
-    profile?.nickname || profile?.custom_nickname || 'New Citizen';
+  const name = profile?.nickname || profile?.custom_nickname || 'New Citizen';
   const culture = profile?.culture ?? null;
 
-  const handleSave = async (newConfig: AvatarConfig, svgBlob: Blob) => {
-    // 1. Upload SVG blob to profile asset endpoint
-    const token = getAuthToken();
-    const appId = process.env.APP_ID || '';
-    const apiBase = process.env.API_BASE_URL || 'https://api.io.zo.xyz';
+  // Load default Zobu (base only) once seed is available
+  useEffect(() => {
+    if (!seed || zobuConfig) return;
+    const base = seed.bases[0]; // Default to first base (Bro)
+    if (!base) return;
+
+    fetchSvgContent(base.file).then(async (baseSvg) => {
+      const layers: ZobuLayer[] = seed.categories
+        .filter((c) => c.id !== 1)
+        .map((c) => ({
+          categoryId: c.id,
+          order: c.order,
+          assetId: null,
+          svg: null,
+        }));
+
+      // Auto-apply Hand asset (category 9) — always present on every Zobu
+      const handCat = seed.categories.find((c) => c.id === 9);
+      const handAsset = handCat?.assets[0];
+      if (handAsset) {
+        const handSvg = await fetchSvgContent(handAsset.file);
+        const handLayer = layers.find((l) => l.categoryId === 9);
+        if (handLayer) {
+          handLayer.assetId = handAsset.id;
+          handLayer.svg = handSvg;
+        }
+      }
+
+      setZobuConfig({ baseId: base.id, baseSvg, layers });
+    });
+  }, [seed, zobuConfig]);
+
+  const handleSave = async (svgBlob: Blob) => {
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('zo-admin-token') || localStorage.getItem('zo-web-token')
+        : null;
 
     const formData = new FormData();
     formData.append('file', svgBlob, 'zobu.svg');
 
     try {
-      const res = await fetch(
-        `${apiBase}/profile/api/v1/me/assets/1/upload/`,
-        {
-          method: 'POST',
-          headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            ...(appId ? { 'Client-App-Id': appId } : {}),
-          },
-          body: formData,
-        }
-      );
+      const { basePath } = router;
+      const prefix = localStorage.getItem('zo-admin-token') ? 'zo-admin' : 'zo-web';
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      // Pass user/device info via x- prefixed headers (same-origin, no CORS)
+      const deviceId = localStorage.getItem(`${prefix}-device-id`);
+      const deviceSecret = localStorage.getItem(`${prefix}-device-secret`);
+      if (deviceId) headers['x-client-device-id'] = deviceId;
+      if (deviceSecret) headers['x-client-device-secret'] = deviceSecret;
+      try {
+        const userStr = localStorage.getItem(`${prefix}-user`);
+        if (userStr) { const u = JSON.parse(userStr); if (u?.id) headers['x-client-user-id'] = String(u.id); }
+      } catch { /* ignore */ }
 
-      if (!res.ok) {
-        toast.error('Avatar upload failed — please try again.');
-        return;
-      }
-    } catch {
-      toast.error('Avatar upload failed — please check your connection.');
-      return;
-    }
-
-    // 2. Save config to profile
-    try {
-      await saveConfig(newConfig);
-      setConfig(newConfig);
-      setEditorOpen(false);
+      const res = await fetch(`${basePath}/api/avatar-upload`, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+      if (!res.ok) { toast.error('Avatar upload failed'); return; }
       toast.success('Zobu saved!');
+      setEditorOpen(false);
     } catch {
-      toast.error('Failed to save avatar config.');
+      toast.error('Upload failed — check your connection');
     }
   };
 
-  // Loading skeleton
-  if (isLoading || !config) {
+  if (seedLoading) {
     return (
       <div className="pointer-events-auto flex flex-col items-center gap-3">
-        <div
-          className="animate-pulse bg-white/5 rounded-dash-lg"
-          style={{ width: 300, height: 300 }}
-        />
-        <div className="animate-pulse bg-white/5 rounded-dash-pill h-8 w-40" />
+        <div className="animate-pulse bg-white/5 rounded-dash-lg" style={{ width: 200, height: 400 }} />
       </div>
     );
   }
 
+  // Responsive avatar size — smaller on mobile to match background proportions
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  useEffect(() => {
+    const onResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const avatarSize = useMemo(() => (windowWidth < 640 ? 360 : windowWidth < 1024 ? 280 : 400), [windowWidth]);
+
+  // Other members in the room (exclude self)
+  const otherMembers = members.filter((m) => m.code !== selfCode).slice(0, 4);
+
   return (
-    <div className="pointer-events-auto flex flex-col items-center gap-3">
-      {/* Avatar */}
+    <div className="pointer-events-auto flex flex-col items-center gap-3 relative">
+      {/* Room members behind the main avatar */}
+      {otherMembers.length > 0 && (
+        <div className="absolute -top-4 flex items-end gap-2 opacity-90" style={{ zIndex: -1 }}>
+          {otherMembers.map((m, i) => (
+            <div
+              key={m.code}
+              style={{
+                transform: `translateX(${(i - (otherMembers.length - 1) / 2) * 90}px) scale(0.85)`,
+              }}
+            >
+              <MemberZobu
+                avatarUrl={m.avatar_url}
+                nickname={m.nickname}
+                size={100}
+                speaking={speakingMap[m.code]}
+              />
+            </div>
+          ))}
+          {members.filter((m) => m.code !== selfCode).length > 4 && (
+            <span className="text-[10px] text-dash-text-50 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-dash-pill">
+              +{members.filter((m) => m.code !== selfCode).length - 4} more
+            </span>
+          )}
+        </div>
+      )}
       <AvatarDisplay
-        config={config}
-        size={300}
+        zobuConfig={zobuConfig}
+        size={avatarSize}
         onClick={() => setEditorOpen(true)}
       />
 
-      {/* Name pill */}
-      <div
-        className={cn(
-          'flex items-center gap-2 px-dash-lg py-dash-sm',
-          'bg-dash-bg backdrop-blur-dash-md border border-dash-border',
-          'rounded-dash-pill shadow-dash-card'
-        )}
-      >
-        <span className="text-dash-text font-semibold text-sm">{name}</span>
-        {culture && (
-          <>
-            <span className="text-dash-text-40 text-xs">·</span>
-            <span className="text-dash-text-50 text-xs capitalize">
-              {culture}
-            </span>
-          </>
-        )}
-      </div>
-
-      {/* CTA for first-time users */}
-      {!hasCustomAvatar && (
-        <button
-          onClick={() => setEditorOpen(true)}
-          className={cn(
-            'px-dash-lg py-dash-sm text-sm font-medium rounded-dash-pill transition-colors',
-            'bg-dash-accent text-black hover:opacity-90'
-          )}
-        >
-          Customise your Zobu
-        </button>
-      )}
-
-      {/* Editor modal */}
+      {/* Editor */}
       {editorOpen && (
         <AvatarEditor
-          initialConfig={config}
           onSave={handleSave}
           onClose={() => setEditorOpen(false)}
         />

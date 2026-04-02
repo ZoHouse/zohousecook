@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ZoSpinner } from "../ui/ZoSpinner";
 import { GlassCard } from "./GlassCard";
 import { useLiveUpdates, UpdateType, LiveUpdate } from "../../hooks/useLiveUpdates";
 
@@ -182,7 +183,7 @@ export function LiveUpdates() {
       <div className="flex-1 overflow-y-auto scrollbar-hide">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-full">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-dash-text-50" />
+            <ZoSpinner size={24} />
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-dash-text-40 text-sm">

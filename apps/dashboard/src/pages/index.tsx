@@ -20,12 +20,13 @@ import type { NextPageWithLayout } from "./_app";
 const DashboardPage: NextPageWithLayout = () => {
   const { basePath } = useRouter();
   const { members, roomData, roomCode, isConnected, profile } = useRoom();
+  // Room ID for Janus: use room code from lobby API, or fall back to profile code (personal room)
+  const janusRoomId = roomCode ? `cr-${roomCode}` : profile?.code ? `s-${profile.code}` : null;
   const {
     isActive: voiceActive, isMuted, speakingMap,
-    joinRoom: joinVoice, leaveRoom: leaveVoice, toggleMute,
-    connect: connectJanus,
+    startVoice, leaveRoom: leaveVoice, toggleMute,
   } = useAudioBridge({
-    roomId: roomCode ? `cr-${roomCode}` : null,
+    roomId: janusRoomId,
     userCode: profile?.code || null,
     displayName: profile?.nickname || null,
   });
@@ -100,7 +101,7 @@ const DashboardPage: NextPageWithLayout = () => {
           <VoiceControls
             isActive={voiceActive}
             isMuted={isMuted}
-            onJoin={() => { connectJanus(); setTimeout(joinVoice, 2000); }}
+            onJoin={startVoice}
             onLeave={leaveVoice}
             onToggleMute={toggleMute}
           />
@@ -158,7 +159,7 @@ const DashboardPage: NextPageWithLayout = () => {
             <VoiceControls
               isActive={voiceActive}
               isMuted={isMuted}
-              onJoin={() => { connectJanus(); setTimeout(joinVoice, 2000); }}
+              onJoin={startVoice}
               onLeave={leaveVoice}
               onToggleMute={toggleMute}
             />

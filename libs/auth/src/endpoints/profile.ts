@@ -33,6 +33,26 @@ export const profileQueryApis = {
       config,
     };
   }) as QueryObjectFunction,
+  PROFILE_ME_LOBBY: ((additionalRoute, search, config) => {
+    return {
+      queryKey: ["profile", "me", "lobby", additionalRoute, search],
+      queryFn: async () =>
+        await zoServer.get(
+          `/profile/api/v1/me/lobby/${additionalRoute}?${search}`
+        ),
+      config,
+    };
+  }) as QueryObjectFunction,
+  PROFILE_LOBBY: ((additionalRoute, search, config) => {
+    return {
+      queryKey: ["profile", "lobby", additionalRoute, search],
+      queryFn: async () =>
+        await zoServer.get(
+          `/profile/api/v1/profile/lobby/${additionalRoute}?${search}`
+        ),
+      config,
+    };
+  }) as QueryObjectFunction,
   PROFILE_ME_NFTS: ((additionalRoute, search, config) => {
     return {
       queryKey: ["profile", "me", "nfts"],

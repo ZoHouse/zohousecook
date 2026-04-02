@@ -1,0 +1,16 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_3720_233)">
+<path d="M400.5 288C409 251 468.5 46.5001 343.637 99.5237C343.637 99.5237 297.637 121.874 346 115.5C394.363 109.126 365.948 174.12 343.637 245.5C290.5 415.5 427 424.5 427 424.5C427 424.5 386.723 347.97 400.5 288Z" fill="#FFE3AB" stroke="#121212" stroke-width="6" stroke-linejoin="round"/>
+<path d="M111.814 287.848C103.314 250.848 43.8137 46.3482 168.677 99.3718C168.677 99.3718 214.677 121.722 166.314 115.348C117.951 108.974 146.366 173.968 168.677 245.348C221.814 415.348 85.3137 424.348 85.3137 424.348C85.3137 424.348 125.591 347.818 111.814 287.848Z" fill="#FFE3AB" stroke="#121212" stroke-width="6" stroke-linejoin="round"/>
+<path d="M254.002 71.5C185 71.5 161 117.176 154 163.338C147 209.5 148 353 163 233.5C178 114 234.5 117.5 254.002 133C282 108.5 338.5 145.5 344.5 233.5C350.5 321.5 365.502 223.838 358.5 161C351.498 98.1621 309.5 71.5 254.002 71.5Z" fill="#FFE3AB" stroke="#121212" stroke-width="6" stroke-linejoin="round"/>
+<circle cx="344" cy="102" r="12" fill="#1FE4FF" stroke="#121212" stroke-width="6" stroke-linejoin="round"/>
+<circle cx="12" cy="12" r="12" transform="matrix(-1 0 0 1 181 90)" fill="#1FE4FF" stroke="#121212" stroke-width="6" stroke-linejoin="round"/>
+<circle cx="353" cy="121" r="12" fill="#1FE4FF" stroke="#121212" stroke-width="6" stroke-linejoin="round"/>
+<circle cx="12" cy="12" r="12" transform="matrix(-1 0 0 1 172 109)" fill="#1FE4FF" stroke="#121212" stroke-width="6" stroke-linejoin="round"/>
+</g>
+<defs>
+<clipPath id="clip0_3720_233">
+<rect width="512" height="512" fill="white"/>
+</clipPath>
+</defs>
+</svg>

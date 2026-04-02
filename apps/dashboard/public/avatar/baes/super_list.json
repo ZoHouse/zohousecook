@@ -1,0 +1,178 @@
+{
+"background": [
+  {"id": 0, "name": "Day", "weight": 0},
+  {"id": 1, "name": "Wonka", "weight": 0},
+  {"id": 2, "name": "Dew", "weight": 0},
+  {"id": 3, "name": "Cyan", "weight": 0},
+  {"id": 4, "name": "Superman", "weight": 0},
+  {"id": 6, "name": "Lego", "weight": 0},
+  {"id": 7, "name": "Lyft", "weight": 0},
+  {"id": 8, "name": "Twitch", "weight": 0},
+  {"id": 9, "name": "Sprite", "weight": 0},
+  {"id": 10, "name": "Sky", "weight": 0},
+  {"id": 11, "name": "Cherry", "weight": 0},
+  {"id": 12, "name": "Marine", "weight": 0},
+  {"id": 13, "name": "Thar", "weight": 0},
+  {"id": 14, "name": "Peach", "weight": 0},
+  {"id": 16, "name": "Ceramic", "weight": 0},
+  {"id": 17, "name": "Stick", "weight": 0},
+  {"id": 18, "name": "Swamp", "weight": 0},
+  {"id": 19, "name": "Woods", "weight": 0}
+],
+"skin": [
+],
+"eyewear": [
+  {"id": 0, "name": "Miami", "weight": 0},
+  {"id": 1, "name": "Office", "weight": 0},
+  {"id": 2, "name": "Matrix", "weight": 0},
+  {"id": 3, "name": "3D", "weight": 0},
+  {"id": 4, "name": "Pirate", "weight": 0},
+  {"id": 5, "name": "Potter", "weight": 0},
+  {"id": 6, "name": "Vegas", "weight": 0},
+  {"id": 7, "name": "Gandhi", "weight": 0},
+  {"id": 8, "name": "Vision", "weight": 0},
+  {"id": 9, "name": "X-Men", "weight": 0},
+  {"id": 10, "name": "Pimp", "weight": 0},
+  {"id": 12, "name": "Love", "weight": 0},
+  {"id": 13, "name": "DJ", "weight": 0},
+  {"id": 14, "name": "Tech", "weight": 0},
+  {"id": 15, "name": "Thug", "weight": 0},
+  {"id": 16, "name": "Zorro", "weight": 0},
+  {"id": 17, "name": "Android", "weight": 0},
+  {"id": 18, "name": "Noun", "weight": 0},
+  {"id": 19, "name": "Woke", "weight": 0},
+  {"id": 20, "name": "Cat Eye", "weight": 0}
+],
+"dress": [
+  {"id": 0, "name": "Zo", "weight": 0},
+  {"id": 1, "name": "Matrix", "weight": 0},
+  {"id": 2, "name": "Sequin", "weight": 0},
+  {"id": 3, "name": "Pink", "weight": 0},
+  {"id": 4, "name": "Avril", "weight": 0},
+  {"id": 5, "name": "Olive", "weight": 0},
+  {"id": 6, "name": "Sweetheart", "weight": 0},
+  {"id": 7, "name": "Violet", "weight": 0},
+  {"id": 8, "name": "Peach", "weight": 0},
+  {"id": 9, "name": "Diana", "weight": 0},
+  {"id": 10, "name": "Trinity", "weight": 0},
+  {"id": 11, "name": "Kate", "weight": 0},
+  {"id": 12, "name": "Revenge", "weight": 0},
+  {"id": 13, "name": "Little Red Riding Hood", "weight": 0},
+  {"id": 14, "name": "Puffer", "weight": 0},
+  {"id": 15, "name": "Track", "weight": 0},
+  {"id": 16, "name": "Olive Oyl", "weight": 0},
+  {"id": 17, "name": "Army", "weight": 0},
+  {"id": 18, "name": "Navy", "weight": 0},
+  {"id": 19, "name": "Air Force", "weight": 0},
+  {"id": 20, "name": "Space", "weight": 0},
+  {"id": 21, "name": "Chan", "weight": 0},
+  {"id": 22, "name": "Guantanamo", "weight": 0},
+  {"id": 23, "name": "Ride", "weight": 0},
+  {"id": 24, "name": "Farming", "weight": 0},
+  {"id": 25, "name": "Astronaut", "weight": 0},
+  {"id": 26, "name": "Kimono", "weight": 0},
+  {"id": 27, "name": "Kill", "weight": 0},
+  {"id": 28, "name": "Law", "weight": 0},
+  {"id": 29, "name": "Nine-Nine", "weight": 0},
+  {"id": 30, "name": "Mithali", "weight": 0},
+  {"id": 31, "name": "Cold", "weight": 0},
+  {"id": 32, "name": "Eskimo", "weight": 0},
+  {"id": 33, "name": "Margaret", "weight": 0},
+  {"id": 34, "name": "Saree", "weight": 0},
+  {"id": 35, "name": "Summer", "weight": 0},
+  {"id": 36, "name": "Lime", "weight": 0},
+  {"id": 37, "name": "Velma", "weight": 0},
+  {"id": 38, "name": "Lara Croft", "weight": 0},
+  {"id": 39, "name": "Malaga", "weight": 0},
+  {"id": 40, "name": "Wonder Woman", "weight": 0},
+  {"id": 41, "name": "Ana", "weight": 0},
+  {"id": 42, "name": "Alicia", "weight": 0}
+],
+"mouth": [
+  {"id": 0, "name": "Smile", "weight": 0},
+  {"id": 1, "name": "Smile", "weight": 0},
+  {"id": 2, "name": "Ivy", "weight": 0},
+  {"id": 3, "name": "420", "weight": 0},
+  {"id": 4, "name": "Bleb", "weight": 0},
+  {"id": 5, "name": "vape", "weight": 0},
+  {"id": 6, "name": "Havana", "weight": 0},
+  {"id": 7, "name": "Tobacco", "weight": 0},
+  {"id": 8, "name": "NYC", "weight": 0},
+  {"id": 9, "name": "Party", "weight": 0},
+  {"id": 10, "name": "Mexico", "weight": 0},
+  {"id": 11, "name": "Seville", "weight": 0},
+  {"id": 12, "name": "Pizza", "weight": 0},
+  {"id": 13, "name": "Lollypop", "weight": 0},
+  {"id": 14, "name": "Rich", "weight": 0},
+  {"id": 15, "name": "Sic", "weight": 0},
+  {"id": 16, "name": "Wow", "weight": 0},
+  {"id": 17, "name": "Love", "weight": 0},
+  {"id": 18, "name": "Blah", "weight": 0},
+  {"id": 19, "name": "Chandigarh", "weight": 0}
+],
+"earrings": [
+  {"id": 0, "name": "Leaf", "weight": 0},
+  {"id": 1, "name": "Tops", "weight": 0},
+  {"id": 2, "name": "Pearl", "weight": 0},
+  {"id": 3, "name": "Cuffs", "weight": 0},
+  {"id": 4, "name": "Ruby", "weight": 0},
+  {"id": 5, "name": "Violet", "weight": 0},
+  {"id": 6, "name": "Floral", "weight": 0},
+  {"id": 7, "name": "Hearts", "weight": 0},
+  {"id": 8, "name": "Emarald", "weight": 0},
+  {"id": 9, "name": "Sapphire", "weight": 0},
+  {"id": 10, "name": "Hoops", "weight": 0},
+  {"id": 11, "name": "Gold", "weight": 0}
+],
+"head": [
+  {"id": 0, "name": "AirPods", "weight": 0},
+  {"id": 1, "name": "Angel", "weight": 0},
+  {"id": 2, "name": "Hell", "weight": 0},
+  {"id": 3, "name": "Music", "weight": 0},
+  {"id": 4, "name": "Blossom", "weight": 0},
+  {"id": 5, "name": "Frida Kahlo", "weight": 0}
+],
+"neck": [
+  {"id": 0, "name": "Scarf", "weight": 0},
+  {"id": 1, "name": "Pearls", "weight": 0},
+  {"id": 2, "name": "Ruby", "weight": 0},
+  {"id": 3, "name": "Gold", "weight": 0},
+  {"id": 4, "name": "Bow", "weight": 0},
+  {"id": 5, "name": "Floral", "weight": 0},
+  {"id": 6, "name": "Everland", "weight": 0},
+  {"id": 7, "name": "Hearts", "weight": 0},
+  {"id": 8, "name": "Olive", "weight": 0},
+  {"id": 9, "name": "Shay", "weight": 0},
+  {"id": 10, "name": "Candy", "weight": 0},
+  {"id": 11, "name": "Diamonds", "weight": 0},
+  {"id": 12, "name": "Choker", "weight": 0}
+],
+"eyes": [
+  {"id": 0, "name": "Angry", "weight": 0},
+  {"id": 1, "name": "Happy", "weight": 0},
+  {"id": 2, "name": "Sic", "weight": 0},
+  {"id": 3, "name": "Dead", "weight": 0},
+  {"id": 4, "name": "Hypnotised", "weight": 0},
+  {"id": 7, "name": "Love", "weight": 0},
+  {"id": 8, "name": "Sus", "weight": 0},
+  {"id": 9, "name": "Wow", "weight": 0},
+  {"id": 10, "name": "Wut", "weight": 0},
+  {"id": 11, "name": "Gotcha", "weight": 0}
+],
+"hair": [
+  {"id": 0, "name": "Harley Quinn", "weight": 0},
+  {"id": 1, "name": "Velma", "weight": 0},
+  {"id": 2, "name": "Pigtails", "weight": 0},
+  {"id": 3, "name": "Farrah", "weight": 0},
+  {"id": 4, "name": "Ariel", "weight": 0},
+  {"id": 5, "name": "Leia", "weight": 0},
+  {"id": 6, "name": "Cher", "weight": 0},
+  {"id": 7, "name": "Ellen", "weight": 0},
+  {"id": 8, "name": "Half Shaven", "weight": 0},
+  {"id": 9, "name": "Ariana", "weight": 0},
+  {"id": 10, "name": "Shaved", "weight": 0},
+  {"id": 11, "name": "Mohawk", "weight": 0},
+  {"id": 12, "name": "Braids", "weight": 0},
+  {"id": 13, "name": "Platinum Waves", "weight": 0}
+]
+}
