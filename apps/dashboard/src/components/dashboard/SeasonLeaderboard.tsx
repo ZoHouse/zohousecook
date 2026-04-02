@@ -113,13 +113,24 @@ function LoadingSkeleton() {
 export function SeasonLeaderboard() {
   const [activeTab, setActiveTab] = useState<Tab>("global");
   const [expanded, setExpanded] = useState(false);
-  const { data, isLoading, isError } = useLeaderboard(activeTab as LeaderboardScope);
   const { profile } = useProfile();
+
+  // Auto-filter city/country tabs to user's location
+  const scopeFilter = activeTab === "city"
+    ? profile?.place_name || undefined
+    : activeTab === "country"
+    ? profile?.country?.name || undefined
+    : undefined;
+
+  const { data, isLoading, isError } = useLeaderboard(activeTab as LeaderboardScope, scopeFilter);
+
+  const userCity = profile?.place_name;
+  const userCountry = profile?.country?.name;
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "global", label: "Global" },
-    { key: "city", label: "City" },
-    { key: "country", label: "Country" },
+    { key: "city", label: userCity || "City" },
+    { key: "country", label: userCountry || "Country" },
   ];
 
   const leaderboard = data?.leaderboard || [];

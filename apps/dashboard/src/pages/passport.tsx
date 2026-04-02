@@ -5,6 +5,7 @@ import { ZoSpinner } from "../components/ui/ZoSpinner";
 import { GlassCard, ComingSoon, DashboardHeader } from "../components/dashboard";
 import { useMyNfts } from "../hooks/useMyNfts";
 import useInstagramConnect from "../hooks/useInstagramConnect";
+import { useMyXp } from "../hooks/useMyXp";
 import type { NextPageWithLayout } from "./_app";
 
 function fixAvatarUrl(url?: string): string | undefined {
@@ -156,8 +157,15 @@ function ItemMenu({ onSetPrimary, onRemove, isPrimary }: {
 
 // --- Section Components ---
 
+function formatXpCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return String(n);
+}
+
 function ProfileHeader() {
   const { profile } = useProfile();
+  const { myXp } = useMyXp();
   const [imgError, setImgError] = useState(false);
 
   const rawAvatar = profile?.avatar?.image || profile?.pfp_image;
@@ -185,11 +193,45 @@ function ProfileHeader() {
             {isFounder && (
               <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider bg-dash-accent/20 text-dash-accent border border-dash-accent/30 rounded-dash-pill flex-shrink-0">Founder</span>
             )}
+            {myXp?.rankTitle && (
+              <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider bg-white/5 text-dash-text-50 border border-dash-border rounded-dash-pill flex-shrink-0">{myXp.rankTitle}</span>
+            )}
           </div>
           {pid && <p className="text-xs text-dash-text-40">PID: {pid}</p>}
           <p className="text-xs text-dash-text-50 capitalize mt-1">{membership || "Citizen"} of Zo World</p>
         </div>
       </div>
+
+      {/* XP + Travel Stats */}
+      {myXp && (
+        <div className="mt-dash-lg pt-dash-lg border-t border-dash-border">
+          <div className="flex items-center justify-between mb-dash-md">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl font-bold text-dash-accent tabular-nums">{formatXpCompact(myXp.xp)}</span>
+              <span className="text-xs text-dash-text-50">XP</span>
+            </div>
+            <span className="text-[10px] text-dash-text-40">Rank #{myXp.rank}</span>
+          </div>
+          <div className="grid grid-cols-4 gap-3">
+            <div className="flex flex-col items-center py-2 rounded-dash-sm bg-white/[0.03]">
+              <span className="text-sm font-bold text-dash-text tabular-nums">{myXp.stats.nights}</span>
+              <span className="text-[9px] text-dash-text-40">Nights</span>
+            </div>
+            <div className="flex flex-col items-center py-2 rounded-dash-sm bg-white/[0.03]">
+              <span className="text-sm font-bold text-dash-text tabular-nums">{myXp.stats.destinations}</span>
+              <span className="text-[9px] text-dash-text-40">Destinations</span>
+            </div>
+            <div className="flex flex-col items-center py-2 rounded-dash-sm bg-white/[0.03]">
+              <span className="text-sm font-bold text-dash-text tabular-nums">{myXp.stats.properties}</span>
+              <span className="text-[9px] text-dash-text-40">Properties</span>
+            </div>
+            <div className="flex flex-col items-center py-2 rounded-dash-sm bg-white/[0.03]">
+              <span className="text-sm font-bold text-dash-text tabular-nums">{myXp.stats.tribe}</span>
+              <span className="text-[9px] text-dash-text-40">Tribe</span>
+            </div>
+          </div>
+        </div>
+      )}
     </GlassCard>
   );
 }
@@ -218,7 +260,7 @@ function PersonalDetails() {
     <GlassCard className="p-dash-xl">
       <h3 className="text-sm font-medium text-dash-text-50 uppercase tracking-wider mb-dash-lg">Personal Details</h3>
       <EditableField label="Nickname" value={profile?.custom_nickname || ""} field="custom_nickname" onSave={handleSave} />
-      <EditableField label="First Name" value={profile?.first_name || ""} field="first_name" onSave={handleSave} />
+      <EditableField label="Full Name" value={profile?.first_name || ""} field="first_name" onSave={handleSave} />
       <EditableField label="Middle Name" value={profile?.middle_name || ""} field="middle_name" onSave={handleSave} />
       <EditableField label="Last Name" value={profile?.last_name || ""} field="last_name" onSave={handleSave} />
       <EditableField label="Bio" value={profile?.bio || ""} field="bio" onSave={handleSave} />
@@ -244,8 +286,8 @@ function LocationDetails() {
   return (
     <GlassCard className="p-dash-xl">
       <h3 className="text-sm font-medium text-dash-text-50 uppercase tracking-wider mb-dash-lg">Location</h3>
-      <EditableField label="City" value={profile?.place_name || ""} field="place_name" onSave={handleSave} />
-      <EditableField label="Country" value={profile?.country?.name || ""} field="country" onSave={handleSave} disabled />
+      <EditableField label="Hometown" value={profile?.place_name || ""} field="place_name" onSave={handleSave} />
+      <EditableField label="Nationality" value={profile?.country?.name || ""} field="country" onSave={handleSave} disabled />
       <EditableField label="Address" value={profile?.address || ""} field="address" onSave={handleSave} />
       <EditableField label="Pincode" value={profile?.pincode || ""} field="pincode" onSave={handleSave} />
     </GlassCard>
