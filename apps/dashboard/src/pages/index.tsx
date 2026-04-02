@@ -86,7 +86,7 @@ const DashboardPage: NextPageWithLayout = () => {
         </div>
 
         {/* RIGHT PANEL */}
-        <div className="absolute right-4 top-14 bottom-20 z-20 w-[240px] overflow-y-auto flex flex-col gap-2 scrollbar-hide">
+        <div className="absolute right-4 top-14 bottom-20 z-20 w-[320px] overflow-y-auto flex flex-col gap-2 scrollbar-hide">
           <RoomMembers
             members={members}
             hostCodes={roomData?.hosts || []}
