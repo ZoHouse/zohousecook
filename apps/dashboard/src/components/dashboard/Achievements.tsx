@@ -4,12 +4,12 @@ import { GlassCard } from "./GlassCard";
 import { useMyXp } from "../../hooks/useMyXp";
 
 const COUNTRY_CARDS = [
-  { id: "india", name: "India", file: "Country-card_India.gif", region: "Asia", desc: "Explored destinations across incredible India — from the Himalayas to the beaches of Goa." },
-  { id: "spain", name: "Spain", file: "Country-Cards_Spain.gif", region: "Europe", desc: "Discover the vibrant culture, tapas, and beaches of España." },
-  { id: "france", name: "France", file: "Country-Cards_France.gif", region: "Europe", desc: "From Paris to Provence — unlock the heart of France." },
-  { id: "japan", name: "Japan", file: "Country-Cards_Japan.gif", region: "Asia", desc: "Ancient temples, neon cities, and zen gardens await." },
-  { id: "russia", name: "Russia", file: "Country-Cards_Russia.gif", region: "Europe", desc: "The world's largest country — from Moscow to Siberia." },
-  { id: "el-salvador", name: "El Salvador", file: "Country-Cards_El-Salvador.gif", region: "Americas", desc: "Central America's hidden gem — volcanoes, surf, and Bitcoin." },
+  { id: "india", name: "India", file: "Country-card_India.gif", region: "Asia", desc: "Explored destinations across incredible India, from the Himalayas to the coasts." },
+  { id: "spain", name: "Spain", file: "Country-Cards_Spain.gif", region: "Europe", desc: "Vibrant culture, tapas, and beaches across España." },
+  { id: "france", name: "France", file: "Country-Cards_France.gif", region: "Europe", desc: "Paris to Provence, unlock the heart of France." },
+  { id: "japan", name: "Japan", file: "Country-Cards_Japan.gif", region: "Asia", desc: "Ancient temples, neon cities, and zen gardens." },
+  { id: "russia", name: "Russia", file: "Country-Cards_Russia.gif", region: "Europe", desc: "The world's largest country, Moscow to Siberia." },
+  { id: "el-salvador", name: "El Salvador", file: "Country-Cards_El-Salvador.gif", region: "Americas", desc: "Volcanoes, surf, and the first Bitcoin nation." },
 ];
 
 function getUnlockedCountries(destinations: string[]): Set<string> {
