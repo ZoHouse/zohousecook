@@ -96,14 +96,6 @@ export function LobbyScene({ members = [], selfCode, speakingMap = {} }: LobbySc
     }
   };
 
-  if (seedLoading) {
-    return (
-      <div className="pointer-events-auto flex flex-col items-center gap-3">
-        <div className="animate-pulse bg-white/5 rounded-dash-lg" style={{ width: 200, height: 400 }} />
-      </div>
-    );
-  }
-
   // Responsive avatar size — smaller on mobile to match background proportions
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
   useEffect(() => {
@@ -112,6 +104,14 @@ export function LobbyScene({ members = [], selfCode, speakingMap = {} }: LobbySc
     return () => window.removeEventListener('resize', onResize);
   }, []);
   const avatarSize = useMemo(() => (windowWidth < 640 ? 360 : windowWidth < 1024 ? 280 : 400), [windowWidth]);
+
+  if (seedLoading) {
+    return (
+      <div className="pointer-events-auto flex flex-col items-center gap-3">
+        <div className="animate-pulse bg-white/5 rounded-dash-lg" style={{ width: 200, height: 400 }} />
+      </div>
+    );
+  }
 
   // Other members in the room (exclude self)
   const otherMembers = members.filter((m) => m.code !== selfCode).slice(0, 4);
