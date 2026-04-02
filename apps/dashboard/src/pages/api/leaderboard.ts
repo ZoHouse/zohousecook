@@ -12,14 +12,14 @@ function getCurrentSeason() {
 }
 
 // Verified stay stats from proc_checkout2_mv with guards:
-//   - max 180 days per booking (kills ghost bookings never closed)
-//   - checkout capped at today (kills future dates like 2033)
+//   - max 365 days per booking (kills ghost bookings never closed, allows long-term residents)
+//   - checkout capped at today (kills future dates)
 //   - phone must be 10+ digits (kills junk: null, '0', '91')
 //   - exclude all-zero phones
 //   - row_dedupe = 1 (no duplicate rows)
 //   - HAVING COUNT(DISTINCT bg_name) < 5 filters shared OTA placeholder phones
 function staysSql(seasonStart?: string): string {
-  let where = `WHERE (cb_checkout_date::date - cb_checkin_date::date) BETWEEN 0 AND 180
+  let where = `WHERE (cb_checkout_date::date - cb_checkin_date::date) BETWEEN 0 AND 365
   AND row_dedupe = 1
   AND LENGTH(bg_mobile) >= 10
   AND bg_mobile !~ '^0+$'`;

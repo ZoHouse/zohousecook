@@ -65,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         COUNT(DISTINCT cb_operator_id) AS destinations_unlocked
       FROM proc_checkout2_mv
       WHERE RIGHT(bg_mobile, 10) = '${mobile.replace(/'/g, "''")}'
-        AND (cb_checkout_date::date - cb_checkin_date::date) BETWEEN 0 AND 180
+        AND (cb_checkout_date::date - cb_checkin_date::date) BETWEEN 0 AND 365
         AND row_dedupe = 1`
     );
 
