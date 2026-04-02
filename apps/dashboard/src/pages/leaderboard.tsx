@@ -136,11 +136,19 @@ function LoadingSkeleton() {
   );
 }
 
+type TimeFilter = "all-time" | "season";
+
 export default function LeaderboardPage() {
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all-time");
   const [activeTab, setActiveTab] = useState<Tab>("global");
   const { data, isLoading, isError } = useLeaderboard(activeTab as LeaderboardScope);
   const { profile } = useProfile();
   const router = useRouter();
+
+  const timeFilters: { key: TimeFilter; label: string }[] = [
+    { key: "all-time", label: "All Time" },
+    { key: "season", label: "Season 1" },
+  ];
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "global", label: "Global" },
@@ -213,7 +221,32 @@ export default function LeaderboardPage() {
         {/* Your summary */}
         {yourEntry && <YourSummary entry={yourEntry} />}
 
-        {/* Tabs */}
+        {/* Master filter: All Time / Season */}
+        <div className="flex items-center gap-4 mb-4">
+          {timeFilters.map((tf) => (
+            <button
+              key={tf.key}
+              onClick={() => setTimeFilter(tf.key)}
+              className={`text-sm font-medium pb-1 transition-colors border-b-2 ${
+                timeFilter === tf.key
+                  ? "text-dash-text border-dash-accent"
+                  : "text-dash-text-40 border-transparent hover:text-dash-text-60"
+              }`}
+            >
+              {tf.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Season coming soon banner */}
+        {timeFilter === "season" && (
+          <GlassCard className="p-4 mb-4 text-center">
+            <p className="text-sm text-dash-text-80">Season 1 launching soon</p>
+            <p className="text-xs text-dash-text-40 mt-1">30-day seasons with Gold, Silver & Bronze trophies for City, Country & Global champions</p>
+          </GlassCard>
+        )}
+
+        {/* Scope tabs: Global / City / Country */}
         <div className="flex gap-1 mb-4 p-1 bg-white/5 rounded-dash-md w-fit">
           {tabs.map((tab) => (
             <button
