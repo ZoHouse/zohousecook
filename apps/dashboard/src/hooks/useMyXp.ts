@@ -9,6 +9,8 @@ export interface MyXpData {
   city: string | null;
   createdAt: string | null;
   tribeMembers?: string[];
+  destinationNames?: string[];
+  zostelNames?: string[];
   stats: {
     nights: number;
     destinations: number;

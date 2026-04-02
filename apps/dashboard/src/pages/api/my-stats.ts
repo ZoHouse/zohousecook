@@ -50,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       CAST(zostels_stayed_in AS int) AS zostels_stayed_in, CAST(tribe_count AS int) AS tribe_count,
       mobile_verified, email_verified, identity_verified,
       gender, birthday, phone_number, email, cultures, identity_type, passport_number,
-      created_at, tribe_members_names
+      created_at, tribe_members_names, destination_names, zostel_names
       FROM proc_user_data_plus
       WHERE ${whereClause}
       LIMIT 1`;
@@ -101,10 +101,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     else if (xp >= 2000) rankTitle = 'Adventurer';
     else if (xp >= 500) rankTitle = 'Wanderer';
 
-    // Parse tribe members (comma-separated names, take last 3)
-    const tribeNames: string[] = row.tribe_members_names
-      ? String(row.tribe_members_names).split(',').map((n: string) => n.trim()).filter(Boolean).slice(-3)
-      : [];
+    // Parse comma-separated lists
+    const parseCsv = (val: any, limit?: number) => {
+      if (!val) return [];
+      const items = String(val).split(',').map((n: string) => n.trim()).filter(Boolean);
+      return limit ? items.slice(-limit) : items;
+    };
+
+    const tribeNames = parseCsv(row.tribe_members_names, 3);
+    const destinationNames = parseCsv(row.destination_names);
+    const zostelNames = parseCsv(row.zostel_names);
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
     return res.status(200).json({
@@ -114,6 +120,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       city: row.home_city || null,
       createdAt: row.created_at || null,
       tribeMembers: tribeNames,
+      destinationNames,
+      zostelNames,
       stats: {
         nights: Number(row.nights_stayed) || 0,
         destinations: Number(row.destinations_unlocked) || 0,
