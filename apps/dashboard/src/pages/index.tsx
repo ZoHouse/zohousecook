@@ -78,7 +78,7 @@ const DashboardPage: NextPageWithLayout = () => {
         </div>
 
         {/* LEFT PANEL */}
-        <div className="absolute left-4 top-16 bottom-20 z-20 flex flex-col gap-2 w-[270px] overflow-y-auto scrollbar-hide">
+        <div className="absolute left-3 top-14 bottom-20 z-20 flex flex-col gap-1.5 w-[240px] overflow-y-auto scrollbar-hide">
           <PassportCard />
           <QuestContainer />
           <ZoBalance />
@@ -86,7 +86,7 @@ const DashboardPage: NextPageWithLayout = () => {
         </div>
 
         {/* RIGHT PANEL */}
-        <div className="absolute right-4 top-14 bottom-20 z-20 w-[320px] overflow-y-auto flex flex-col gap-2 scrollbar-hide">
+        <div className="absolute right-3 top-14 bottom-20 z-20 w-[300px] overflow-y-auto flex flex-col gap-1.5 scrollbar-hide">
           <RoomMembers
             members={members}
             hostCodes={roomData?.hosts || []}
