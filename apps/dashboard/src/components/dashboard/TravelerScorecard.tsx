@@ -27,14 +27,17 @@ export function TravelerScorecard() {
 
   if (isLoading || !myXp) return null;
 
-  // "Tripping since" — use profile created_at or fallback
-  const createdAt = profile?.created_at || profile?.date_joined;
+  // "Tripping since" — use stats createdAt or profile fallback
+  const createdAt = myXp.createdAt || profile?.created_at || profile?.date_joined;
   let trippingSince = "—";
   if (createdAt) {
     const d = new Date(createdAt);
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     trippingSince = `${months[d.getMonth()]} ${d.getFullYear()}`;
   }
+
+  // Current city — from stats or profile
+  const currentCity = myXp.city || profile?.place_name;
 
   // Total destinations possible (Zostel has 108+ properties across ~60+ destinations)
   const totalDestinations = 65;
@@ -55,13 +58,13 @@ export function TravelerScorecard() {
       {/* Rank badge */}
       <div className="flex items-center justify-between mb-3 p-2.5 rounded-dash-sm bg-dash-accent/10 border border-dash-accent/20">
         <span className="text-xs text-dash-accent font-medium">{myXp.rankTitle}</span>
-        <span className="text-[10px] text-dash-text-40">Rank #{myXp.rank}</span>
+        {myXp.rank && <span className="text-[10px] text-dash-text-40">Rank #{myXp.rank}</span>}
       </div>
 
       {/* Stats */}
       <div className="flex flex-col">
-        {profile?.place_name && (
-          <StatRow label="Currently In" value={profile.place_name} />
+        {currentCity && (
+          <StatRow label="Currently In" value={currentCity} />
         )}
         <StatRow label="Days Spent with Zo" value={myXp.stats.nights} sub="nights" />
         <StatRow label="Tripping Since" value={trippingSince} />
