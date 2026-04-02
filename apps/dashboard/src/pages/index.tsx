@@ -98,16 +98,6 @@ const DashboardPage: NextPageWithLayout = () => {
           <MyCulturesCompact />
         </div>
 
-        {/* BOTTOM CENTER: Voice Controls */}
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20">
-          <VoiceControls
-            isActive={voiceActive}
-            isMuted={isMuted}
-            onJoin={startVoice}
-            onLeave={leaveVoice}
-            onToggleMute={toggleMute}
-          />
-        </div>
       </div>
 
       {/* ═══ MOBILE: scrollable layout ═══ */}
@@ -154,17 +144,6 @@ const DashboardPage: NextPageWithLayout = () => {
               }}
             />
             <LobbyScene members={members} selfCode={profile?.code} speakingMap={speakingMap} />
-          </div>
-
-          {/* Voice Controls */}
-          <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20">
-            <VoiceControls
-              isActive={voiceActive}
-              isMuted={isMuted}
-              onJoin={startVoice}
-              onLeave={leaveVoice}
-              onToggleMute={toggleMute}
-            />
           </div>
 
           {/* Scroll hint */}
