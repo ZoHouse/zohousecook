@@ -12,51 +12,90 @@ function getCurrentSeason() {
   return SEASONS.find(s => now >= s.start && now <= s.end) || null;
 }
 
-// Fetch raw user data from analytics DB, compute XP in JS
-// We fetch broadly (no ORDER BY nights — XP depends on multiple factors)
-const BASE_SQL = `SELECT user_id, full_name, nick_name, home_city, nationality,
-nights_stayed, CAST(destinations_unlocked AS int) AS destinations_unlocked,
-CAST(zostels_stayed_in AS int) AS zostels_stayed_in, CAST(tribe_count AS int) AS tribe_count,
-mobile_verified, email_verified, identity_verified,
-gender, birthday, phone_number, email, cultures, identity_type, passport_number
-FROM proc_user_data_plus
-WHERE (nights_stayed > 0 OR CAST(tribe_count AS int) > 0 OR CAST(destinations_unlocked AS int) > 0)
-AND nights_stayed < 10000
-AND is_generic_phone = false
-AND full_name IS NOT NULL AND full_name != ''
-AND mobile_number IS NOT NULL AND mobile_number != '' AND mobile_number != '0000000000'`;
+// ── Verified stay stats from proc_checkout2_mv ──
+// Guards:
+//   - max 180 days per booking (kills ghost bookings that were never closed)
+//   - checkout capped at today (kills future dates like 2033)
+//   - phone must be 10+ digits (kills junk: null, '0', '91', '911')
+//   - exclude all-zero phones
+//   - row_dedupe = 1 (no duplicate rows)
+//   - HAVING COUNT(DISTINCT bg_name) < 5 filters shared OTA placeholder phones
+const STAYS_SQL = `SELECT bg_mobile,
+  SUM(GREATEST(LEAST(cb_checkout_date::date, CURRENT_DATE) - cb_checkin_date::date, 0)) AS nights_stayed,
+  COUNT(DISTINCT cb_booking_code) AS total_bookings,
+  COUNT(DISTINCT operator_name) AS zostels_stayed_in,
+  COUNT(DISTINCT cb_operator_id) AS destinations_unlocked,
+  MIN(cb_checkin_date)::date AS first_stay,
+  MAX(cb_checkin_date)::date AS last_stay
+FROM proc_checkout2_mv
+WHERE (cb_checkout_date::date - cb_checkin_date::date) BETWEEN 0 AND 180
+  AND row_dedupe = 1
+  AND LENGTH(bg_mobile) >= 10
+  AND bg_mobile !~ '^0+$'
+GROUP BY bg_mobile
+HAVING COUNT(DISTINCT bg_name) < 5
+ORDER BY nights_stayed DESC
+LIMIT 500`;
 
-const SCOPE_FILTER: Record<string, string> = {
-  global: '',
-  city: ` AND home_city IS NOT NULL AND home_city != ''`,
-  country: ` AND nationality IS NOT NULL AND nationality != ''`,
-};
+// For seasonal: add a date filter on checkin
+function staysSqlWithSeason(seasonStart: string): string {
+  return STAYS_SQL.replace(
+    'AND row_dedupe = 1',
+    `AND row_dedupe = 1\n  AND cb_checkin_date >= '${seasonStart}'`
+  );
+}
+
+// ── Profile data from proc_user_data (base table, not _plus) ──
+// Joined by mobile_number. We fetch for all phones from the stays query.
+function profileSql(phones: string[]): string {
+  const right10 = phones.map(p => p.slice(-10)).filter(p => p.length === 10);
+  const uniquePhones = [...new Set(right10)];
+  const phoneList = uniquePhones.map(p => `'${p}'`).join(',');
+
+  // Keep columns minimal to stay under 1000-char nl-query limit
+  return `SELECT mobile_number, user_id, full_name, nick_name, home_city, nationality,
+    mobile_verified, email_verified, identity_verified,
+    gender, birthday, email, cultures, identity_type, passport_number
+  FROM proc_user_data
+  WHERE mobile_number IN (${phoneList}) AND rn_same_full_mobile = 1`;
+}
+
+// ── Tribe counts from proc_user_data_plus (tribe is computed from booking co-guests, not affected by nights bug) ──
+function tribeSql(phones: string[]): string {
+  const right10 = phones.map(p => p.slice(-10)).filter(p => p.length === 10);
+  const uniquePhones = [...new Set(right10)];
+  const phoneList = uniquePhones.map(p => `'${p}'`).join(',');
+
+  return `SELECT mobile_number, CAST(tribe_count AS int) AS tribe_count
+  FROM proc_user_data_plus
+  WHERE mobile_number IN (${phoneList})
+    AND is_generic_phone = false`;
+}
 
 // XP formula — matches Erum's PRD
-function computeXp(row: any): number {
+function computeXp(stats: { nights: number; destinations: number; properties: number; tribe: number }, profileFields: Record<string, any>): number {
   let xp = 0;
 
   // Travel
-  xp += (Number(row.nights_stayed) || 0) * 50;           // 50 XP per night
-  xp += (Number(row.destinations_unlocked) || 0) * 150;  // 150 XP per destination
-  xp += (Number(row.zostels_stayed_in) || 0) * 100;      // 100 XP per property
-  xp += (Number(row.tribe_count) || 0) * 10;             // 10 XP per tribe member
+  xp += stats.nights * 50;
+  xp += stats.destinations * 150;
+  xp += stats.properties * 100;
+  xp += stats.tribe * 10;
 
   // Profile completion (10 XP each)
-  const fields = ['full_name', 'nick_name', 'birthday', 'gender', 'phone_number', 'email', 'home_city', 'nationality', 'cultures', 'identity_type', 'passport_number'];
+  const fields = ['full_name', 'nick_name', 'birthday', 'gender', 'mobile_number', 'email', 'home_city', 'nationality', 'cultures', 'identity_type', 'passport_number'];
   for (const f of fields) {
-    if (row[f] != null && row[f] !== '') xp += 10;
+    if (profileFields[f] != null && profileFields[f] !== '') xp += 10;
   }
 
   // Verification (15 XP each)
-  if (row.mobile_verified) xp += 15;
-  if (row.email_verified) xp += 15;
-  if (row.identity_verified) xp += 15;
+  if (profileFields.mobile_verified) xp += 15;
+  if (profileFields.email_verified) xp += 15;
+  if (profileFields.identity_verified) xp += 15;
 
   return xp;
 }
 
-// Compute passport rank from XP
 function computeRankTitle(xp: number): string {
   if (xp >= 50000) return 'Legend';
   if (xp >= 25000) return 'Trailblazer';
@@ -65,6 +104,17 @@ function computeRankTitle(xp: number): string {
   if (xp >= 2000)  return 'Adventurer';
   if (xp >= 500)   return 'Wanderer';
   return 'Citizen';
+}
+
+async function queryAnalytics(sql: string, auth: string): Promise<any[]> {
+  const upstream = await fetch(OPS_BACKEND_URL, {
+    method: 'POST',
+    headers: { 'Authorization': auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question: `Run this exact SQL: ${sql}` }),
+  });
+  const data = await upstream.json();
+  if (!data.success) throw new Error(data.error || 'Analytics query failed');
+  return data.data?.rows || [];
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -78,77 +128,96 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const scope = (req.query.scope as string) || 'global';
-  const filter = SCOPE_FILTER[scope];
-  if (filter === undefined) {
+  if (!['global', 'city', 'country'].includes(scope)) {
     return res.status(400).json({ error: 'Invalid scope. Use: global, city, country' });
   }
 
-  // Time filter: 'all-time' (default) or 'season'
   const time = (req.query.time as string) || 'all-time';
+  const filterValue = req.query.filter as string | undefined;
   const season = time === 'season' ? getCurrentSeason() : null;
 
-  // For city/country scopes, also accept a filter value (e.g. ?scope=city&filter=Bangalore)
-  const filterValue = req.query.filter as string | undefined;
-
-  let sql = `${BASE_SQL}${filter}`;
-
-  // Apply specific city/country filter when provided
-  if (scope === 'city' && filterValue) {
-    sql += ` AND LOWER(home_city) = LOWER('${filterValue.replace(/'/g, "''")}')`;
-  } else if (scope === 'country' && filterValue) {
-    sql += ` AND LOWER(nationality) = LOWER('${filterValue.replace(/'/g, "''")}')`;
-  }
-
-  // For seasonal leaderboard, filter users who signed up or were active in season window
-  // Note: proc_user_data_plus has last_updated and created_at but no per-booking dates.
-  // True seasonal XP requires booking-level data. For now, we filter by last_updated >= season start
-  // which shows users active during the season (imperfect but directionally correct).
-  if (season) {
-    sql += ` AND last_updated >= '${season.start}'`;
-  }
-
-  // Order by nights_stayed DESC (heaviest XP weight at 50/night) to ensure top travelers
-  // are included. We compute final XP in JS and re-sort, so this is a "best effort" fetch.
-  sql += ` ORDER BY nights_stayed DESC LIMIT 1000`;
-
   try {
-    const upstream = await fetch(OPS_BACKEND_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': auth,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        question: `Run this exact SQL: ${sql}`,
-      }),
-    });
+    // ── Step 1: Fetch verified stay stats ──
+    const staysSql = season ? staysSqlWithSeason(season.start) : STAYS_SQL;
+    const stayRows = await queryAnalytics(staysSql, auth);
 
-    const data = await upstream.json();
-
-    if (!data.success) {
-      return res.status(502).json({ error: 'Analytics query failed', detail: data.error });
+    if (stayRows.length === 0) {
+      return res.status(200).json({
+        scope, time: season ? season.id : 'all-time', season, count: 0, leaderboard: [],
+      });
     }
 
-    const rows = data.data?.rows || [];
+    // ── Step 2: Fetch profiles + tribe in parallel ──
+    const phones = stayRows.map((r: any) => r.bg_mobile as string);
 
-    // Compute XP and sort
-    const ranked = rows
-      .map((row: any) => ({
-        userId: row.user_id,
-        name: row.full_name || row.nick_name || 'Anonymous',
-        handle: row.nick_name || null,
-        xp: computeXp(row),
+    // Split into chunks of 40 to stay under nl-query's 1000 char limit
+    // (~341 chars base SQL + ~14 chars per phone = 40 phones * 14 = 560 + 341 = 901 chars)
+    const chunkSize = 40;
+    const phoneChunks: string[][] = [];
+    for (let i = 0; i < phones.length; i += chunkSize) {
+      phoneChunks.push(phones.slice(i, i + chunkSize));
+    }
+
+    const profileMap = new Map<string, any>();
+    const tribeMap = new Map<string, number>();
+
+    await Promise.all(phoneChunks.map(async (chunk) => {
+      const [profileRows, tribeRows] = await Promise.all([
+        queryAnalytics(profileSql(chunk), auth),
+        queryAnalytics(tribeSql(chunk), auth),
+      ]);
+
+      for (const row of profileRows) {
+        profileMap.set(row.mobile_number, row);
+      }
+      for (const row of tribeRows) {
+        tribeMap.set(row.mobile_number, Number(row.tribe_count) || 0);
+      }
+    }));
+
+    // ── Step 3: Join stays + profiles in JS ──
+    const entries = stayRows.map((stay: any) => {
+      const phone10 = (stay.bg_mobile as string).slice(-10);
+      const profile = profileMap.get(phone10) || {};
+      const tribe = tribeMap.get(phone10) || 0;
+
+      const stats = {
+        nights: Number(stay.nights_stayed) || 0,
+        destinations: Number(stay.destinations_unlocked) || 0,
+        properties: Number(stay.zostels_stayed_in) || 0,
+        tribe,
+      };
+
+      const xp = computeXp(stats, profile);
+
+      return {
+        userId: profile.user_id || null,
+        name: profile.full_name || stay.bg_mobile,
+        handle: profile.nick_name || profile.custom_nickname || null,
+        xp,
         rankTitle: '',
-        city: row.home_city || null,
-        nationality: row.nationality || null,
-        stats: {
-          nights: Number(row.nights_stayed) || 0,
-          destinations: Number(row.destinations_unlocked) || 0,
-          properties: Number(row.zostels_stayed_in) || 0,
-          tribe: Number(row.tribe_count) || 0,
-        },
-      }))
-      .sort((a: any, b: any) => b.xp - a.xp)
+        city: profile.home_city || null,
+        nationality: profile.nationality || null,
+        stats,
+      };
+    });
+
+    // ── Step 4: Sort by XP, apply scope filters, rank ──
+    entries.sort((a: any, b: any) => b.xp - a.xp);
+
+    // Apply city/country scope filter
+    let filtered = entries;
+    if (scope === 'city' && filterValue) {
+      filtered = entries.filter((e: any) => e.city && e.city.toLowerCase() === filterValue.toLowerCase());
+    } else if (scope === 'country' && filterValue) {
+      filtered = entries.filter((e: any) => {
+        const nat = String(e.nationality || '').toLowerCase();
+        const fv = filterValue.toLowerCase();
+        return nat === fv || nat.includes(fv);
+      });
+    }
+
+    const ranked = filtered
       .slice(0, 100)
       .map((entry: any, i: number) => ({
         ...entry,
@@ -156,7 +225,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         rankTitle: computeRankTitle(entry.xp),
       }));
 
-    // For city/country scopes without a specific filter, group by and return top per group
+    // Group counts for city/country scopes
     let groupedBy: Record<string, number> | undefined;
     if ((scope === 'city' || scope === 'country') && !filterValue) {
       groupedBy = {};
@@ -167,7 +236,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+    // Cache for 15 minutes (data changes only on MV refresh)
+    res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=1800');
     return res.status(200).json({
       scope,
       time: time === 'season' && season ? season.id : 'all-time',
