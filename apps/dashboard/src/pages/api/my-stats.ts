@@ -16,37 +16,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  // First get the user's ID from their profile
-  try {
-    const profileRes = await fetch('https://api.io.zo.xyz/api/v1/profile/me/', {
-      headers: { 'Authorization': auth },
-    });
-    if (!profileRes.ok) {
-      return res.status(profileRes.status).json({ error: 'Failed to fetch profile' });
-    }
-    const profileData = await profileRes.json();
-    const prof = profileData?.data || profileData;
-    const userId = prof?.code;
-    const pid = prof?.pid;
-    const phone = prof?.mobile_number;
-    const nickname = prof?.nickname || prof?.custom_nickname;
+  // Client passes lookup info as query params (from useProfile on frontend)
+  const userId = req.query.userId as string | undefined;
+  const phone = req.query.phone as string | undefined;
+  const nickname = req.query.nickname as string | undefined;
 
-    // Build lookup — try user_id first, then PID, then phone, then nickname
+  try {
+    // Build lookup — try user_id first, then phone, then nickname
     let whereClause = '';
     if (userId) {
       whereClause = `user_id = '${userId.replace(/'/g, "''")}'`;
-    } else if (pid) {
-      // PID is not in proc_user_data_plus, skip
-      whereClause = '';
     }
-
-    // Phone fallback — strip country code prefix if present
     if (!whereClause && phone) {
       const cleanPhone = phone.replace(/^\+?91/, '');
       whereClause = `mobile_number = '${cleanPhone.replace(/'/g, "''")}'`;
     }
-
-    // Nickname fallback
     if (!whereClause && nickname) {
       const cleanNick = nickname.replace('.zo', '');
       whereClause = `nick_name = '${cleanNick.replace(/'/g, "''")}'`;
@@ -55,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!whereClause) {
       return res.status(200).json({
         xp: 0, rankTitle: 'Citizen', rank: null,
-        city: prof?.place_name || null, createdAt: prof?.created_at || null,
+        city: null, createdAt: null, tribeMembers: [],
         stats: { nights: 0, destinations: 0, properties: 0, tribe: 0 },
       });
     }
@@ -84,13 +68,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const rows = data?.data?.rows || [];
 
     if (rows.length === 0) {
-      // User exists in auth but not in analytics — return zeroes
+      // User not found in analytics — return zeroes
       return res.status(200).json({
-        xp: 0,
-        rankTitle: 'Citizen',
-        rank: null,
-        city: prof?.place_name || null,
-        createdAt: prof?.created_at || null,
+        xp: 0, rankTitle: 'Citizen', rank: null,
+        city: null, createdAt: null, tribeMembers: [],
         stats: { nights: 0, destinations: 0, properties: 0, tribe: 0 },
       });
     }
