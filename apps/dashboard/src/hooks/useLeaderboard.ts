@@ -14,6 +14,8 @@ export interface LeaderboardEntry {
     destinations: number;
     properties: number;
     tribe: number;
+    trips?: number;
+    tripNights?: number;
   };
   isYou?: boolean;
 }

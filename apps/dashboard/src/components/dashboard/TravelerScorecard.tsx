@@ -109,7 +109,7 @@ export function TravelerScorecard() {
         <DrawerRow
           label="Destinations"
           value={`${myXp.stats.destinations}/${totalDestinations}`}
-          items={myXp.destinationNames || []}
+          items={[...(myXp.destinationNames || []), ...(myXp.tripDestinations || [])]}
           icon="📍"
           emptyText="Book your first Zostel to unlock"
         />
@@ -121,6 +121,17 @@ export function TravelerScorecard() {
           icon="🏠"
           emptyText="No Zostels visited yet"
         />
+
+        {(myXp.stats.trips > 0) && (
+          <DrawerRow
+            label="Zo Trips"
+            value={String(myXp.stats.trips)}
+            sub={`${myXp.stats.tripNights}N`}
+            items={myXp.tripDestinations || []}
+            icon="🗺️"
+            emptyText="No trips yet"
+          />
+        )}
 
         <DrawerRow
           label="Frens"

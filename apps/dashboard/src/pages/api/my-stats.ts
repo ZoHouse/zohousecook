@@ -17,10 +17,14 @@ function parseCsv(val: any, limit?: number): string[] {
   return limit ? items.slice(-limit) : items;
 }
 
+const ZO_API = 'https://api.io.zo.xyz';
+const CAS_TOKEN = process.env.ZO_CAS_TOKEN;
+
 const EMPTY = {
   xp: 0, rankTitle: 'Citizen', rank: null,
   city: null, createdAt: null, tribeMembers: [] as string[], destinationNames: [] as string[], zostelNames: [] as string[],
-  stats: { nights: 0, destinations: 0, properties: 0, tribe: 0 },
+  tripDestinations: [] as string[],
+  stats: { nights: 0, destinations: 0, properties: 0, tribe: 0, trips: 0, tripNights: 0 },
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -70,15 +74,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
 
     const stay = stayRows[0] || {};
+
+    // Step 3: Fetch Zo Trips (confirmed bookings from CAS API)
+    let trips = 0, tripNights = 0;
+    const tripDestinations: string[] = [];
+    if (CAS_TOKEN && profile.user_id) {
+      try {
+        const tripResp = await fetch(
+          `${ZO_API}/api/v1/cas/trip/bookings/?user=${profile.user_id}&limit=100`,
+          { headers: { Authorization: `Bearer ${CAS_TOKEN}` } }
+        );
+        if (tripResp.ok) {
+          const tripData = await tripResp.json();
+          const confirmed = (tripData.results || []).filter(
+            (b: any) => b.status === 'confirmed' || b.status === 'completed'
+          );
+          trips = confirmed.length;
+          const destSet = new Set<string>();
+          for (const b of confirmed) {
+            if (b.start_at && b.end_at) {
+              const nights = Math.max(0, Math.round(
+                (new Date(b.end_at).getTime() - new Date(b.start_at).getTime()) / 86400000
+              ));
+              tripNights += nights;
+            }
+            for (const sku of (b.booked_skus || [])) {
+              const name = (sku?.sku?.inventory?.name || sku?.sku?.name || '')
+                .replace(/^Experience\s+/i, '').replace(/\s*\(.*?\)\s*/g, '').trim();
+              if (name) destSet.add(name);
+            }
+          }
+          tripDestinations.push(...[...destSet].sort());
+        }
+      } catch (e) { /* trip fetch is best-effort */ }
+    }
+
     const stats = {
       nights: Number(stay.nights_stayed) || 0,
-      destinations: Number(stay.destinations_unlocked) || 0,
+      destinations: (Number(stay.destinations_unlocked) || 0) + tripDestinations.length,
       properties: Number(stay.zostels_stayed_in) || 0,
       tribe: Number(profile.tribe_count) || 0,
+      trips,
+      tripNights,
     };
 
-    // Step 3: Compute XP
-    let xp = stats.nights * 50 + stats.destinations * 150 + stats.properties * 100 + stats.tribe * 10;
+    // Step 4: Compute XP
+    let xp = stats.nights * 50 + stats.destinations * 150 + stats.properties * 100 + stats.tribe * 10
+      + trips * 300 + tripNights * 50;
     const fields = ['full_name', 'nick_name', 'birthday', 'gender', 'phone_number', 'email', 'home_city', 'nationality', 'cultures', 'passport_number'];
     for (const f of fields) {
       if (profile[f] != null && profile[f] !== '') xp += 10;
@@ -97,6 +139,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       tribeMembers: parseCsv(profile.tribe_members_names, 3),
       destinationNames: parseCsv(profile.destination_names),
       zostelNames: parseCsv(profile.zostel_names),
+      tripDestinations,
       stats,
     });
   } catch (err: any) {

@@ -153,37 +153,38 @@ export function ZoRadioPill() {
     <div className="flex items-center gap-2">
       <div ref={containerRef} className="absolute w-0 h-0 overflow-hidden opacity-0 pointer-events-none" />
 
-      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-dash-border hover:border-dash-border-hover transition-colors cursor-pointer select-none max-w-[300px]"
+      <div className="flex items-center gap-1.5 rounded-full cursor-pointer select-none
+        sm:px-2.5 sm:py-1 sm:bg-white/5 sm:border sm:border-dash-border sm:hover:border-dash-border-hover sm:max-w-[300px] transition-colors"
         onClick={togglePlay}
       >
-        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+        <span className="flex-shrink-0 w-8 h-8 sm:w-5 sm:h-5 rounded-full bg-white/10 flex items-center justify-center active:scale-95 transition-transform">
           {isPlaying ? (
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" className="text-green-400">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-green-400 sm:w-2 sm:h-2">
               <rect x="5" y="4" width="5" height="16" rx="1" />
               <rect x="14" y="4" width="5" height="16" rx="1" />
             </svg>
           ) : (
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" className="text-dash-text-50">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-dash-text-50 sm:w-2 sm:h-2">
               <polygon points="6,3 20,12 6,21" />
             </svg>
           )}
         </span>
 
         {isPlaying ? (
-          <span className="flex gap-[2px] items-end h-3 flex-shrink-0">
+          <span className="hidden sm:flex gap-[2px] items-end h-3 flex-shrink-0">
             <span className="w-[2px] bg-green-400 rounded-full animate-pulse h-2" />
             <span className="w-[2px] bg-green-400 rounded-full animate-pulse h-3" style={{ animationDelay: "150ms" }} />
             <span className="w-[2px] bg-green-400 rounded-full animate-pulse h-1.5" style={{ animationDelay: "300ms" }} />
           </span>
         ) : (
-          <span className="flex gap-[2px] items-end h-3 flex-shrink-0">
+          <span className="hidden sm:flex gap-[2px] items-end h-3 flex-shrink-0">
             <span className="w-[2px] bg-dash-text-40 rounded-full h-1.5" />
             <span className="w-[2px] bg-dash-text-40 rounded-full h-2" />
             <span className="w-[2px] bg-dash-text-40 rounded-full h-1" />
           </span>
         )}
 
-        <span className={`text-[10px] font-medium truncate ${isPlaying ? "text-green-400" : "text-dash-text-60"}`}>
+        <span className={`hidden sm:inline text-[10px] font-medium truncate ${isPlaying ? "text-green-400" : "text-dash-text-60"}`}>
           {songTitle}
         </span>
 

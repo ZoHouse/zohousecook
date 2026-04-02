@@ -11,11 +11,14 @@ export interface MyXpData {
   tribeMembers?: string[];
   destinationNames?: string[];
   zostelNames?: string[];
+  tripDestinations?: string[];
   stats: {
     nights: number;
     destinations: number;
     properties: number;
     tribe: number;
+    trips: number;
+    tripNights: number;
   };
 }
 

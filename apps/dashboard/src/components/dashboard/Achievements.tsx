@@ -15,11 +15,45 @@ const COUNTRY_CARDS = [
   { id: "el-salvador", name: "El Salvador", src: countryElSalvador, region: "Americas", desc: "Volcanoes, surf, and the first Bitcoin nation." },
 ];
 
-function getUnlockedCountries(destinations: string[]): Set<string> {
+// Map trip destination names to country IDs for achievement unlocking
+const TRIP_COUNTRY_MAP: Record<string, string> = {
+  "bhutan": "india", // Bhutan unlocks — but we don't have a Bhutan card yet, count as Asia neighbor
+  "japan": "japan",
+  "bali": "india", // Indonesia — no card yet
+  "annapurna base camp trek": "india", // Nepal — no card yet
+  "nepal": "india",
+};
+
+// Trips that indicate domestic India travel
+const INDIA_TRIP_KEYWORDS = [
+  "spiti", "ladakh", "kashmir", "kedarnath", "sikkim", "arunachal", "meghalaya",
+  "kerala", "kareri", "tirthan", "mcleodganj", "triund", "darjeeling", "chopta",
+  "tungnath", "chikkamagaluru", "auli", "yulla kanda",
+];
+
+function getUnlockedCountries(destinations: string[], tripDestinations?: string[]): Set<string> {
   const countries = new Set<string>();
+
+  // Zostel stays → India
   if (destinations.length > 0) {
     countries.add("india");
   }
+
+  // Zo Trips → match to countries
+  for (const trip of (tripDestinations || [])) {
+    const lower = trip.toLowerCase();
+
+    // Check direct country map
+    for (const [keyword, country] of Object.entries(TRIP_COUNTRY_MAP)) {
+      if (lower.includes(keyword)) countries.add(country);
+    }
+
+    // Check India keywords
+    if (INDIA_TRIP_KEYWORDS.some(k => lower.includes(k))) {
+      countries.add("india");
+    }
+  }
+
   return countries;
 }
 
@@ -85,7 +119,7 @@ function AchievementModal({
 
             {!isUnlocked && (
               <p className="text-xs text-white/40 mt-3 italic">
-                Visit a Zostel in {card.name} to unlock this achievement
+                Visit a Zostel or take a Zo Trip to {card.name} to unlock
               </p>
             )}
           </div>
@@ -100,7 +134,7 @@ export function Achievements() {
   const [selectedCard, setSelectedCard] = useState<typeof COUNTRY_CARDS[0] | null>(null);
   const { myXp } = useMyXp();
 
-  const unlocked = getUnlockedCountries(myXp?.destinationNames || []);
+  const unlocked = getUnlockedCountries(myXp?.destinationNames || [], myXp?.tripDestinations);
   const unlockedCount = unlocked.size;
   const totalCount = COUNTRY_CARDS.length;
 
