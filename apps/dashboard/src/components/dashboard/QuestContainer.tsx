@@ -60,7 +60,7 @@ export function QuestContainer() {
           <button className="w-full py-3 rounded-dash-md text-sm font-semibold text-dash-text bg-white/10 border border-dash-border hover:bg-white/15 hover:border-dash-border-hover backdrop-blur-dash-md transition-colors">
             Join as Creator
           </button>
-          <button className="w-full py-2.5 rounded-dash-md text-xs font-medium text-dash-text-60 bg-white/5 border border-dash-border hover:bg-white/10 hover:text-dash-text transition-colors">
+          <button className="w-full py-2.5 rounded-dash-md text-xs font-medium text-white bg-white/5 border border-dash-border hover:bg-white/10 transition-colors">
             Share &amp; Earn — Coming Soon
           </button>
         </div>
@@ -76,7 +76,7 @@ export function QuestContainer() {
           >
             Connect Instagram
           </button>
-          <button className="w-full py-2.5 rounded-dash-md text-xs font-medium text-dash-text-60 bg-white/5 border border-dash-border hover:bg-white/10 hover:text-dash-text transition-colors">
+          <button className="w-full py-2.5 rounded-dash-md text-xs font-medium text-white bg-white/5 border border-dash-border hover:bg-white/10 transition-colors">
             Share &amp; Earn — Coming Soon
           </button>
         </div>
