@@ -1,17 +1,37 @@
 import React, { useState } from "react";
+import { useRouter } from "next/router";
 import { GlassCard } from "./GlassCard";
+import { useMyXp } from "../../hooks/useMyXp";
 
-const MOCK_BADGES = [
-  { id: "first-checkin", emoji: "🏠", name: "First Check-in", desc: "Checked into a Zo House" },
-  { id: "7-day-streak", emoji: "🔥", name: "7-Day Streak", desc: "7 consecutive days at a Zo House" },
-  { id: "event-host", emoji: "🎤", name: "Event Host", desc: "Hosted your first event" },
-  { id: "nft-staker", emoji: "💎", name: "NFT Staker", desc: "Staked a Founder NFT" },
-  { id: "culture-leader", emoji: "🌍", name: "Culture Leader", desc: "Led a culture for a cohort" },
+// Country achievements — unlocked when user has visited destinations in that country
+const COUNTRY_CARDS = [
+  { id: "india", name: "India", file: "Country-card_India.gif" },
+  { id: "spain", name: "Spain", file: "Country-Cards_Spain.gif" },
+  { id: "france", name: "France", file: "Country-Cards_France.gif" },
+  { id: "japan", name: "Japan", file: "Country-Cards_Japan.gif" },
+  { id: "russia", name: "Russia", file: "Country-Cards_Russia.gif" },
+  { id: "el-salvador", name: "El Salvador", file: "Country-Cards_El-Salvador.gif" },
 ];
+
+// Map destination names to countries (Zostel destinations are all in India currently)
+function getUnlockedCountries(destinations: string[]): Set<string> {
+  const countries = new Set<string>();
+  if (destinations.length > 0) {
+    // All current Zostel destinations are in India
+    countries.add("india");
+  }
+  // Future: map international destinations to countries
+  return countries;
+}
 
 export function Achievements() {
   const [expanded, setExpanded] = useState(false);
-  const earned = MOCK_BADGES;
+  const { basePath } = useRouter();
+  const { myXp } = useMyXp();
+
+  const unlocked = getUnlockedCountries(myXp?.destinationNames || []);
+  const unlockedCount = unlocked.size;
+  const totalCount = COUNTRY_CARDS.length;
 
   return (
     <GlassCard className="px-dash-lg py-dash-md overflow-hidden transition-all duration-300">
@@ -21,49 +41,76 @@ export function Achievements() {
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex -space-x-2">
-          {earned.slice(0, 5).map((badge) => (
-            <div
-              key={badge.id}
-              className="w-7 h-7 rounded-full bg-white/10 border-2 border-dash-bg-solid flex items-center justify-center"
-              title={badge.name}
-            >
-              <span className="text-xs">{badge.emoji}</span>
-            </div>
-          ))}
+          {COUNTRY_CARDS.slice(0, 5).map((card) => {
+            const isUnlocked = unlocked.has(card.id);
+            return (
+              <div
+                key={card.id}
+                className={`w-7 h-7 rounded-full border-2 border-dash-bg-solid overflow-hidden flex-shrink-0 ${
+                  isUnlocked ? "" : "opacity-30 grayscale"
+                }`}
+                title={card.name}
+              >
+                <img
+                  src={`${basePath}/dashboard-assets/${card.file}`}
+                  alt={card.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            );
+          })}
         </div>
-        <span className="text-sm text-dash-text-80 flex-1">
-          <span className="font-medium text-dash-text">{earned.length}</span>{" "}
-          Badges Earned
+        <span className="text-sm text-white/80 flex-1">
+          <span className="font-medium text-white">{unlockedCount}/{totalCount}</span>{" "}
+          Achievements
         </span>
         <span
-          className="text-dash-text-50 text-xs transition-transform duration-300"
+          className="text-white/50 text-xs transition-transform duration-300"
           style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
         >
           ▼
         </span>
       </div>
 
-      {/* Expanded badge grid */}
+      {/* Expanded card grid */}
       <div
-        className="grid grid-cols-2 gap-2 transition-all duration-300"
+        className="grid grid-cols-3 gap-2 transition-all duration-300"
         style={{
-          maxHeight: expanded ? "300px" : "0px",
+          maxHeight: expanded ? "400px" : "0px",
           marginTop: expanded ? "12px" : "0px",
           opacity: expanded ? 1 : 0,
         }}
       >
-        {earned.map((badge) => (
-          <div
-            key={badge.id}
-            className="flex items-center gap-2 px-3 py-2 rounded-dash-pill bg-white/5 border border-dash-border"
-          >
-            <span className="text-lg">{badge.emoji}</span>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-dash-text truncate">{badge.name}</p>
-              <p className="text-[10px] text-dash-text-50 truncate">{badge.desc}</p>
+        {COUNTRY_CARDS.map((card) => {
+          const isUnlocked = unlocked.has(card.id);
+          return (
+            <div
+              key={card.id}
+              className={`relative rounded-dash-md overflow-hidden border ${
+                isUnlocked
+                  ? "border-dash-accent/30"
+                  : "border-white/[0.06] opacity-40 grayscale"
+              }`}
+            >
+              <img
+                src={`${basePath}/dashboard-assets/${card.file}`}
+                alt={card.name}
+                className="w-full aspect-[3/4] object-cover"
+              />
+              <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-t from-black/80 to-transparent">
+                <p className="text-[9px] font-medium text-white truncate">{card.name}</p>
+                {isUnlocked && (
+                  <p className="text-[7px] text-dash-accent">Unlocked</p>
+                )}
+              </div>
+              {!isUnlocked && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-lg">🔒</span>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </GlassCard>
   );
