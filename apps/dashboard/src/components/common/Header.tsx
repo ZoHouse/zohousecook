@@ -74,7 +74,7 @@ const Header: React.FC<HeaderProps> = () => {
                       className="flex items-center space-x-2 p-4 pr-8 w-full hover:bg-zui-white hover:text-zui-black"
                       onClick={goTo.bind(
                         null,
-                        "https://zo.xyz/dashboard",
+                        `${process.env.WEB_BASE_URL || ""}/dashboard`,
                         false
                       )}
                     >
@@ -87,7 +87,7 @@ const Header: React.FC<HeaderProps> = () => {
                       className="flex items-center space-x-2 p-4 pr-8 w-full hover:bg-zui-white hover:text-zui-black"
                       onClick={window.open.bind(
                         null,
-                        "https://zo.xyz/me/bookings",
+                        `${process.env.WEB_BASE_URL || ""}/me/bookings`,
                         "_parent"
                       )}
                     >

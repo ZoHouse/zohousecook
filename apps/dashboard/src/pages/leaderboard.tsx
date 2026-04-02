@@ -96,10 +96,10 @@ function YourSummary({ entry }: { entry: LeaderboardEntry }) {
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
             <span className="text-2xl font-bold text-dash-accent tabular-nums">
-              #{entry.rank}
+              {entry.rank > 0 ? `#${entry.rank}` : "—"}
             </span>
             <div>
-              <p className="text-sm text-dash-text-50">Your Rank</p>
+              <p className="text-sm text-dash-text-50">{entry.rank > 0 ? "Your Rank" : "Unranked"}</p>
               {entry.rankTitle && (
                 <p className="text-xs text-dash-accent/80 font-medium">{entry.rankTitle}</p>
               )}
@@ -166,7 +166,7 @@ export default function LeaderboardPage() {
   // Fallback: if not in leaderboard top 500, use dedicated my-stats
   const { myXp } = useMyXp();
   const yourEntry: LeaderboardEntry | null = leaderboardEntry || (myXp ? {
-    rank: myXp.rank || 0,
+    rank: myXp.rank ?? -1,
     userId: currentUserId || '',
     name: profile?.first_name || 'You',
     handle: profile?.nickname || profile?.custom_nickname || null,

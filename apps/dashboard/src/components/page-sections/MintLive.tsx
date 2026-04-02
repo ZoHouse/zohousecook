@@ -8,7 +8,7 @@ interface MintLiveProps {}
 
 const MintLive: React.FC<MintLiveProps> = () => {
   const openMint = () => {
-    window.open("https://zo.xyz/membership");
+    window.open(`${process.env.WEB_BASE_URL || ""}/membership`);
   };
 
   return (
