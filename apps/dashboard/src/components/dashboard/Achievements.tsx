@@ -39,19 +39,11 @@ function AchievementModal({
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
 
-      {/* Modal */}
+      {/* Modal container */}
       <div
-        className="relative max-w-sm w-full animate-in fade-in zoom-in"
+        className="relative max-w-sm w-full"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute -top-3 -right-3 z-10 w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-colors"
-        >
-          ✕
-        </button>
-
         {/* Card image */}
         <div className={`relative rounded-2xl overflow-hidden border-2 ${
           isUnlocked ? "border-dash-accent/40" : "border-white/10"
