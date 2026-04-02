@@ -66,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       CAST(zostels_stayed_in AS int) AS zostels_stayed_in, CAST(tribe_count AS int) AS tribe_count,
       mobile_verified, email_verified, identity_verified,
       gender, birthday, phone_number, email, cultures, identity_type, passport_number,
-      created_at
+      created_at, tribe_members_names
       FROM proc_user_data_plus
       WHERE ${whereClause}
       LIMIT 1`;
@@ -120,13 +120,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     else if (xp >= 2000) rankTitle = 'Adventurer';
     else if (xp >= 500) rankTitle = 'Wanderer';
 
+    // Parse tribe members (comma-separated names, take last 3)
+    const tribeNames: string[] = row.tribe_members_names
+      ? String(row.tribe_members_names).split(',').map((n: string) => n.trim()).filter(Boolean).slice(-3)
+      : [];
+
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
     return res.status(200).json({
       xp,
       rankTitle,
-      rank: null, // Would need full leaderboard sort to determine
+      rank: null,
       city: row.home_city || null,
       createdAt: row.created_at || null,
+      tribeMembers: tribeNames,
       stats: {
         nights: Number(row.nights_stayed) || 0,
         destinations: Number(row.destinations_unlocked) || 0,

@@ -75,6 +75,23 @@ export function TravelerScorecard() {
         <StatRow label="Zostels Visited" value={myXp.stats.properties} />
         <StatRow label="Tribe Size" value={myXp.stats.tribe} sub="members" />
       </div>
+
+      {/* Tribe members */}
+      {myXp.tribeMembers && myXp.tribeMembers.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-dash-border">
+          <p className="text-[9px] text-dash-text-40 uppercase tracking-wider mb-2">Recent Tribe</p>
+          <div className="flex flex-col gap-1.5">
+            {myXp.tribeMembers.map((name, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-dash-accent/15 flex items-center justify-center flex-shrink-0">
+                  <span className="text-[8px] font-bold text-dash-accent">{name.charAt(0).toUpperCase()}</span>
+                </div>
+                <span className="text-[11px] text-dash-text-80 truncate">{name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </GlassCard>
   );
 }

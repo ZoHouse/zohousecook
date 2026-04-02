@@ -8,6 +8,7 @@ export interface MyXpData {
   rankTitle: string;
   city: string | null;
   createdAt: string | null;
+  tribeMembers?: string[];
   stats: {
     nights: number;
     destinations: number;
