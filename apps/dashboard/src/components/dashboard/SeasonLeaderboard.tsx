@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useRouter } from "next/router";
 import { GlassCard } from "./GlassCard";
 import { useLeaderboard, LeaderboardEntry, LeaderboardScope } from "../../hooks/useLeaderboard";
 import { useProfile } from "@zo/auth";
@@ -145,15 +146,20 @@ export function SeasonLeaderboard() {
   const yourRank = yourEntry ? { ...yourEntry, isYou: true } : null;
   const youInTop = yourEntry ? yourEntry.rank <= displayCount : false;
 
+  const router = useRouter();
+
   return (
     <GlassCard className="p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[10px] font-medium text-dash-text-50 uppercase tracking-wider">
           Leaderboard
         </h3>
-        <span className="px-1.5 py-0.5 text-[9px] font-bold text-dash-accent bg-dash-accent/15 rounded-dash-pill">
-          LIVE
-        </span>
+        <button
+          onClick={() => router.push("/dashboard/leaderboard")}
+          className="text-[9px] font-medium text-dash-accent hover:text-dash-accent/80 transition-colors"
+        >
+          View All →
+        </button>
       </div>
 
       {/* Your XP card — always visible when we have your data */}

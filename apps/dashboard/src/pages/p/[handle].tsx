@@ -150,7 +150,7 @@ export default function PublicPassportPage() {
               <p className="text-xs text-dash-text-40 mb-4">Check your own passport and see where you rank.</p>
               <button
                 onClick={() => router.push("/dashboard/passport")}
-                className="w-full py-3 bg-dash-accent text-black font-medium text-sm rounded-dash-md hover:bg-dash-accent/90 transition-colors"
+                className="w-full py-3 bg-dash-accent text-white font-medium text-sm rounded-dash-md hover:bg-dash-accent/90 transition-colors"
               >
                 Check my Passport
               </button>

@@ -11,55 +11,57 @@ function formatXp(n: number): string {
 
 function StatRow({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="flex items-center justify-between py-2.5 border-b border-dash-border">
-      <span className="text-xs text-dash-text-50">{label}</span>
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-sm font-bold text-dash-text tabular-nums">{value}</span>
-        {sub && <span className="text-[9px] text-dash-text-40">{sub}</span>}
+    <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
+      <span className="text-[11px] text-dash-text-40">{label}</span>
+      <div className="flex items-baseline gap-1">
+        <span className="text-[13px] font-semibold text-dash-text tabular-nums">{value}</span>
+        {sub && <span className="text-[9px] text-dash-text-30">{sub}</span>}
       </div>
     </div>
   );
 }
 
 function DrawerRow({
-  label, value, sub, items, emptyText,
+  label, value, sub, items, emptyText, icon,
 }: {
   label: string;
   value: string | number;
   sub?: string;
   items: string[];
   emptyText?: string;
+  icon?: string;
 }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="border-b border-dash-border">
+    <div className="border-b border-white/[0.04]">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center justify-between py-2.5 w-full text-left group"
+        className="flex items-center justify-between py-2 w-full text-left group"
       >
-        <span className="text-xs text-dash-text-50 group-hover:text-dash-text-80 transition-colors">{label}</span>
-        <div className="flex items-center gap-2">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-sm font-bold text-dash-text tabular-nums">{value}</span>
-            {sub && <span className="text-[9px] text-dash-text-40">{sub}</span>}
-          </div>
-          <span className={`text-[9px] text-dash-text-30 transition-transform ${open ? "rotate-180" : ""}`}>▼</span>
+        <span className="text-[11px] text-dash-text-40 group-hover:text-dash-text-60 transition-colors">{label}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[13px] font-semibold text-dash-text tabular-nums">{value}</span>
+          {sub && <span className="text-[9px] text-dash-text-30">{sub}</span>}
+          <span className={`text-[8px] text-dash-text-30 transition-transform duration-200 ${open ? "rotate-180" : ""}`}>▼</span>
         </div>
       </button>
       {open && (
-        <div className="pb-2.5 pl-1">
+        <div className="pb-2.5 -mt-0.5">
           {items.length > 0 ? (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-wrap gap-1.5">
               {items.map((item, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="text-[9px] text-dash-text-30 w-4 text-right tabular-nums">{i + 1}.</span>
-                  <span className="text-[11px] text-dash-text-80">{item}</span>
-                </div>
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1 px-2 py-1 text-[10px] text-dash-text-80 bg-white/[0.04] border border-white/[0.06] rounded-dash-pill"
+                >
+                  {icon && <span className="text-[9px]">{icon}</span>}
+                  {item}
+                </span>
               ))}
             </div>
           ) : (
-            <p className="text-[10px] text-dash-text-30 italic">{emptyText || "None yet"}</p>
+            <p className="text-[10px] text-dash-text-30 italic pl-1">{emptyText || "None yet"}</p>
           )}
         </div>
       )}
@@ -85,45 +87,48 @@ export function TravelerScorecard() {
   const totalDestinations = 65;
 
   return (
-    <GlassCard className="p-4">
-      {/* Header: Rank + XP in one line */}
-      <div className="flex items-center justify-between mb-3 p-2.5 rounded-dash-sm bg-dash-accent/10 border border-dash-accent/20">
-        <span className="text-sm text-dash-accent font-bold">{myXp.rankTitle}</span>
+    <GlassCard className="px-4 py-3">
+      {/* Rank + XP header */}
+      <div className="flex items-center justify-between p-2.5 mb-2 rounded-dash-sm bg-dash-accent/10 border border-dash-accent/20">
+        <span className="text-[13px] text-dash-accent font-bold">{myXp.rankTitle}</span>
         <div className="flex items-baseline gap-1">
-          <span className="text-sm font-bold text-dash-accent tabular-nums">{formatXp(myXp.xp)}</span>
+          <span className="text-[13px] font-bold text-dash-accent tabular-nums">{formatXp(myXp.xp)}</span>
           <span className="text-[9px] text-dash-text-40">XP</span>
           {myXp.rank && <span className="text-[9px] text-dash-text-30 ml-1">#{myXp.rank}</span>}
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats list */}
       <div className="flex flex-col">
         {currentCity && (
           <StatRow label="Currently In" value={currentCity} />
         )}
-        <StatRow label="Days Spent with Zo" value={myXp.stats.nights} sub="nights" />
+        <StatRow label="Days with Zo" value={myXp.stats.nights} sub="nights" />
         <StatRow label="Tripping Since" value={trippingSince} />
 
         <DrawerRow
-          label="Destinations Unlocked"
+          label="Destinations"
           value={`${myXp.stats.destinations}/${totalDestinations}`}
           items={myXp.destinationNames || []}
+          icon="📍"
           emptyText="Book your first Zostel to unlock"
         />
 
         <DrawerRow
-          label="Zostels Visited"
-          value={myXp.stats.properties}
+          label="Zostels"
+          value={String(myXp.stats.properties)}
           items={myXp.zostelNames || []}
+          icon="🏠"
           emptyText="No Zostels visited yet"
         />
 
         <DrawerRow
-          label="Tribe Size"
-          value={myXp.stats.tribe}
+          label="Tribe"
+          value={String(myXp.stats.tribe)}
           sub="members"
           items={myXp.tribeMembers || []}
-          emptyText="Share your passport link to grow your tribe"
+          icon="👤"
+          emptyText="Share your passport to grow"
         />
       </div>
     </GlassCard>
