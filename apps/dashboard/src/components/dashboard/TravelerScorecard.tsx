@@ -11,11 +11,11 @@ function formatXp(n: number): string {
 
 function StatRow({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
-      <span className="text-[11px] text-dash-text-40">{label}</span>
+    <div className="flex items-center justify-between py-2.5 border-b border-white/[0.1]">
+      <span className="text-[11px] text-white/70">{label}</span>
       <div className="flex items-baseline gap-1">
-        <span className="text-[13px] font-semibold text-dash-text tabular-nums">{value}</span>
-        {sub && <span className="text-[9px] text-dash-text-30">{sub}</span>}
+        <span className="text-[13px] font-semibold text-white tabular-nums">{value}</span>
+        {sub && <span className="text-[9px] text-white/50">{sub}</span>}
       </div>
     </div>
   );
@@ -34,26 +34,26 @@ function DrawerRow({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="border-b border-white/[0.04]">
+    <div className="border-b border-white/[0.1]">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center justify-between py-2 w-full text-left group"
+        className="flex items-center justify-between py-2.5 w-full text-left group"
       >
-        <span className="text-[11px] text-dash-text-40 group-hover:text-dash-text-60 transition-colors">{label}</span>
+        <span className="text-[11px] text-white/70 group-hover:text-white/80 transition-colors">{label}</span>
         <div className="flex items-center gap-1.5">
-          <span className="text-[13px] font-semibold text-dash-text tabular-nums">{value}</span>
-          {sub && <span className="text-[9px] text-dash-text-30">{sub}</span>}
-          <span className={`text-[8px] text-dash-text-30 transition-transform duration-200 ${open ? "rotate-180" : ""}`}>▼</span>
+          <span className="text-[13px] font-semibold text-white tabular-nums">{value}</span>
+          {sub && <span className="text-[9px] text-white/50">{sub}</span>}
+          <span className={`text-[8px] text-white/50 transition-transform duration-200 ${open ? "rotate-180" : ""}`}>▼</span>
         </div>
       </button>
       {open && (
-        <div className="pb-2.5 -mt-0.5">
+        <div className="pb-3 -mt-0.5">
           {items.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {items.map((item, i) => (
                 <span
                   key={i}
-                  className="inline-flex items-center gap-1 px-2 py-1 text-[10px] text-dash-text-80 bg-white/[0.04] border border-white/[0.06] rounded-dash-pill"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] text-white/90 bg-white/[0.12] border border-white/[0.1] rounded-dash-pill"
                 >
                   {icon && <span className="text-[9px]">{icon}</span>}
                   {item}
@@ -61,7 +61,7 @@ function DrawerRow({
               ))}
             </div>
           ) : (
-            <p className="text-[10px] text-dash-text-30 italic pl-1">{emptyText || "None yet"}</p>
+            <p className="text-[10px] text-white/30 italic pl-1">{emptyText || "None yet"}</p>
           )}
         </div>
       )}
@@ -93,8 +93,8 @@ export function TravelerScorecard() {
         <span className="text-[13px] text-dash-accent font-bold">{myXp.rankTitle}</span>
         <div className="flex items-baseline gap-1">
           <span className="text-[13px] font-bold text-dash-accent tabular-nums">{formatXp(myXp.xp)}</span>
-          <span className="text-[9px] text-dash-text-40">XP</span>
-          {myXp.rank && <span className="text-[9px] text-dash-text-30 ml-1">#{myXp.rank}</span>}
+          <span className="text-[9px] text-white/50">XP</span>
+          {myXp.rank && <span className="text-[9px] text-white/50 ml-1">#{myXp.rank}</span>}
         </div>
       </div>
 
