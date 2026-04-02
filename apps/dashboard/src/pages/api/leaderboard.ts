@@ -85,7 +85,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     sql += ` AND LOWER(nationality) = LOWER('${filterValue.replace(/'/g, "''")}')`;
   }
 
-  sql += ` LIMIT 500`;
+  // Order by nights_stayed DESC (heaviest XP weight at 50/night) to ensure top travelers
+  // are included. We compute final XP in JS and re-sort, so this is a "best effort" fetch.
+  sql += ` ORDER BY nights_stayed DESC LIMIT 1000`;
 
   try {
     const upstream = await fetch(OPS_BACKEND_URL, {
