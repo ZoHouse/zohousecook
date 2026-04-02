@@ -2,6 +2,16 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 const OPS_BACKEND_URL = 'https://zo.xyz/ops-backend/api/analytics/nl-query';
 
+// Season configuration
+const SEASONS = [
+  { id: 's1', name: 'Season 1', start: '2026-04-01', end: '2026-04-30', active: true },
+] as const;
+
+function getCurrentSeason() {
+  const now = new Date().toISOString().slice(0, 10);
+  return SEASONS.find(s => now >= s.start && now <= s.end) || null;
+}
+
 // Fetch raw user data from analytics DB, compute XP in JS
 // We fetch broadly (no ORDER BY nights — XP depends on multiple factors)
 const BASE_SQL = `SELECT user_id, full_name, nick_name, home_city, nationality,
@@ -73,6 +83,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Invalid scope. Use: global, city, country' });
   }
 
+  // Time filter: 'all-time' (default) or 'season'
+  const time = (req.query.time as string) || 'all-time';
+  const season = time === 'season' ? getCurrentSeason() : null;
+
   // For city/country scopes, also accept a filter value (e.g. ?scope=city&filter=Bangalore)
   const filterValue = req.query.filter as string | undefined;
 
@@ -83,6 +97,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     sql += ` AND LOWER(home_city) = LOWER('${filterValue.replace(/'/g, "''")}')`;
   } else if (scope === 'country' && filterValue) {
     sql += ` AND LOWER(nationality) = LOWER('${filterValue.replace(/'/g, "''")}')`;
+  }
+
+  // For seasonal leaderboard, filter users who signed up or were active in season window
+  // Note: proc_user_data_plus has last_updated and created_at but no per-booking dates.
+  // True seasonal XP requires booking-level data. For now, we filter by last_updated >= season start
+  // which shows users active during the season (imperfect but directionally correct).
+  if (season) {
+    sql += ` AND last_updated >= '${season.start}'`;
   }
 
   // Order by nights_stayed DESC (heaviest XP weight at 50/night) to ensure top travelers
@@ -148,6 +170,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
     return res.status(200).json({
       scope,
+      time: time === 'season' && season ? season.id : 'all-time',
+      season: season ? { id: season.id, name: season.name, start: season.start, end: season.end } : null,
       count: ranked.length,
       leaderboard: ranked,
       ...(groupedBy ? { groups: groupedBy } : {}),

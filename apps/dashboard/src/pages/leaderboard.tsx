@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/router";
 import { GlassCard } from "../components/dashboard/GlassCard";
-import { useLeaderboard, LeaderboardEntry, LeaderboardScope } from "../hooks/useLeaderboard";
+import { useLeaderboard, LeaderboardEntry, LeaderboardScope, LeaderboardTime } from "../hooks/useLeaderboard";
 import { useProfile } from "@zo/auth";
 
 type Tab = "global" | "city" | "country";
@@ -141,7 +141,7 @@ type TimeFilter = "all-time" | "season";
 export default function LeaderboardPage() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all-time");
   const [activeTab, setActiveTab] = useState<Tab>("global");
-  const { data, isLoading, isError } = useLeaderboard(activeTab as LeaderboardScope);
+  const { data, isLoading, isError } = useLeaderboard(activeTab as LeaderboardScope, undefined, timeFilter as LeaderboardTime);
   const { profile } = useProfile();
   const router = useRouter();
 
@@ -238,11 +238,23 @@ export default function LeaderboardPage() {
           ))}
         </div>
 
-        {/* Season coming soon banner */}
+        {/* Season info banner */}
         {timeFilter === "season" && (
-          <GlassCard className="p-4 mb-4 text-center">
-            <p className="text-sm text-dash-text-80">Season 1 launching soon</p>
-            <p className="text-xs text-dash-text-40 mt-1">30-day seasons with Gold, Silver & Bronze trophies for City, Country & Global champions</p>
+          <GlassCard className="p-4 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-dash-text">
+                  {data?.season?.name || "Season 1"}
+                </p>
+                <p className="text-xs text-dash-text-40 mt-0.5">
+                  {data?.season ? `${data.season.start} → ${data.season.end}` : "Apr 1 → Apr 30, 2026"}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-dash-text-40 uppercase tracking-wider">Prizes</p>
+                <p className="text-xs text-dash-text-50 mt-0.5">🥇🥈🥉 City · Country · Global</p>
+              </div>
+            </div>
           </GlassCard>
         )}
 
