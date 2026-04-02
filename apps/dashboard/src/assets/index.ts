@@ -1,0 +1,10 @@
+export { default as bgLobby } from './bg-lobby.svg';
+export { default as dashboardBg } from './dashboard-bg.png';
+export { default as zoWorldIcon } from './zo-world-icon.gif';
+export { default as zoSpinner } from './zo-spinner.gif';
+export { default as countryIndia } from './Country-card_India.gif';
+export { default as countrySpain } from './Country-Cards_Spain.gif';
+export { default as countryFrance } from './Country-Cards_France.gif';
+export { default as countryJapan } from './Country-Cards_Japan.gif';
+export { default as countryRussia } from './Country-Cards_Russia.gif';
+export { default as countryElSalvador } from './Country-Cards_El-Salvador.gif';

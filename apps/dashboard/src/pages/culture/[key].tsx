@@ -2,6 +2,7 @@ import React, { ReactElement } from "react";
 import { useRouter } from "next/router";
 import { useProfile } from "@zo/auth";
 import { GlassCard, DashboardHeader } from "../../components/dashboard";
+import { dashboardBg } from "../../assets";
 import type { NextPageWithLayout } from "../_app";
 
 const MOCK_LEADERBOARD = [
@@ -31,7 +32,7 @@ const CulturePage: NextPageWithLayout = () => {
     <div
       className="flex-1 min-h-screen bg-dash-bg-solid"
       style={{
-        backgroundImage: `url(${router.basePath}/dashboard-assets/dashboard-bg.png)`,
+        backgroundImage: `url(${dashboardBg})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",

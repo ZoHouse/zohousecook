@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { useAuth, useProfile } from "@zo/auth";
 import { ZoRadioPill } from "./ZoRadioPill";
+import { zoWorldIcon } from "../../assets";
 
 export function DashboardHeader() {
   const { basePath } = useRouter();
@@ -32,7 +33,7 @@ export function DashboardHeader() {
   return (
     <header className="fixed bottom-0 left-0 right-0 z-50 grid grid-cols-3 items-center px-dash-xl py-dash-lg bg-dash-bg-secondary backdrop-blur-dash-md border-t border-dash-border">
       <div className="flex items-center gap-dash-lg">
-        <img src={`${basePath}/dashboard-assets/zo-world-icon.gif`} alt="Zo" className="h-8" />
+        <img src={zoWorldIcon} alt="Zo" className="h-8" />
       </div>
       <div className="flex justify-center">
         <ZoRadioPill />

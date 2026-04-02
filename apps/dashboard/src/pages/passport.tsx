@@ -7,6 +7,7 @@ import { useMyNfts } from "../hooks/useMyNfts";
 import useInstagramConnect from "../hooks/useInstagramConnect";
 import { useMyXp } from "../hooks/useMyXp";
 import { useMyRoles } from "../hooks/useMyRoles";
+import { dashboardBg } from "../assets";
 import type { NextPageWithLayout } from "./_app";
 
 function fixAvatarUrl(url?: string): string | undefined {
@@ -741,7 +742,7 @@ const PassportPage: NextPageWithLayout = () => {
 
   return (
     <div className="flex-1 min-h-screen bg-dash-bg-solid"
-      style={{ backgroundImage: `url(${router.basePath}/dashboard-assets/dashboard-bg.png)`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
+      style={{ backgroundImage: `url(${dashboardBg})`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
       <DashboardHeader />
       <div className="max-w-6xl mx-auto px-dash-xl py-dash-xl pb-32">
         <button onClick={() => router.push("/")}

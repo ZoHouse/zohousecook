@@ -1,5 +1,6 @@
 import React, { ReactElement } from "react";
 import { useRouter } from "next/router";
+import { bgLobby } from "../assets";
 import {
   Achievements,
   DashboardHeader,
@@ -39,7 +40,7 @@ const DashboardPage: NextPageWithLayout = () => {
         <div
           className="absolute inset-0 z-0"
           style={{
-            backgroundImage: `url(${basePath}/dashboard-assets/bg-lobby.svg)`,
+            backgroundImage: `url(${bgLobby})`,
             backgroundSize: "cover",
             backgroundPosition: "center bottom",
           }}
@@ -108,7 +109,7 @@ const DashboardPage: NextPageWithLayout = () => {
           <div
             className="absolute inset-0 z-0"
             style={{
-              backgroundImage: `url(${basePath}/dashboard-assets/bg-lobby.svg)`,
+              backgroundImage: `url(${bgLobby})`,
               backgroundSize: "cover",
               backgroundPosition: "center bottom",
             }}

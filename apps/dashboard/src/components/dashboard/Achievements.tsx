@@ -1,15 +1,18 @@
 import React, { useState } from "react";
-import { useRouter } from "next/router";
 import { GlassCard } from "./GlassCard";
 import { useMyXp } from "../../hooks/useMyXp";
+import {
+  countryIndia, countrySpain, countryFrance,
+  countryJapan, countryRussia, countryElSalvador,
+} from "../../assets";
 
 const COUNTRY_CARDS = [
-  { id: "india", name: "India", file: "Country-card_India.gif", region: "Asia", desc: "Explored destinations across incredible India, from the Himalayas to the coasts." },
-  { id: "spain", name: "Spain", file: "Country-Cards_Spain.gif", region: "Europe", desc: "Vibrant culture, tapas, and beaches across España." },
-  { id: "france", name: "France", file: "Country-Cards_France.gif", region: "Europe", desc: "Paris to Provence, unlock the heart of France." },
-  { id: "japan", name: "Japan", file: "Country-Cards_Japan.gif", region: "Asia", desc: "Ancient temples, neon cities, and zen gardens." },
-  { id: "russia", name: "Russia", file: "Country-Cards_Russia.gif", region: "Europe", desc: "The world's largest country, Moscow to Siberia." },
-  { id: "el-salvador", name: "El Salvador", file: "Country-Cards_El-Salvador.gif", region: "Americas", desc: "Volcanoes, surf, and the first Bitcoin nation." },
+  { id: "india", name: "India", src: countryIndia, region: "Asia", desc: "Explored destinations across incredible India, from the Himalayas to the coasts." },
+  { id: "spain", name: "Spain", src: countrySpain, region: "Europe", desc: "Vibrant culture, tapas, and beaches across España." },
+  { id: "france", name: "France", src: countryFrance, region: "Europe", desc: "Paris to Provence, unlock the heart of France." },
+  { id: "japan", name: "Japan", src: countryJapan, region: "Asia", desc: "Ancient temples, neon cities, and zen gardens." },
+  { id: "russia", name: "Russia", src: countryRussia, region: "Europe", desc: "The world's largest country, Moscow to Siberia." },
+  { id: "el-salvador", name: "El Salvador", src: countryElSalvador, region: "Americas", desc: "Volcanoes, surf, and the first Bitcoin nation." },
 ];
 
 function getUnlockedCountries(destinations: string[]): Set<string> {
@@ -23,12 +26,10 @@ function getUnlockedCountries(destinations: string[]): Set<string> {
 function AchievementModal({
   card,
   isUnlocked,
-  basePath,
   onClose,
 }: {
   card: typeof COUNTRY_CARDS[0];
   isUnlocked: boolean;
-  basePath: string;
   onClose: () => void;
 }) {
   return (
@@ -49,7 +50,7 @@ function AchievementModal({
           isUnlocked ? "border-dash-accent/40" : "border-white/10"
         }`}>
           <img
-            src={`${basePath}/dashboard-assets/${card.file}`}
+            src={card.src}
             alt={card.name}
             className={`w-full aspect-[3/4] object-cover ${isUnlocked ? "" : "grayscale opacity-50"}`}
           />
@@ -97,7 +98,6 @@ function AchievementModal({
 export function Achievements() {
   const [expanded, setExpanded] = useState(false);
   const [selectedCard, setSelectedCard] = useState<typeof COUNTRY_CARDS[0] | null>(null);
-  const { basePath } = useRouter();
   const { myXp } = useMyXp();
 
   const unlocked = getUnlockedCountries(myXp?.destinationNames || []);
@@ -124,7 +124,7 @@ export function Achievements() {
                   title={card.name}
                 >
                   <img
-                    src={`${basePath}/dashboard-assets/${card.file}`}
+                    src={card.src}
                     alt={card.name}
                     className="w-full h-full object-cover"
                   />
@@ -166,7 +166,7 @@ export function Achievements() {
                 }`}
               >
                 <img
-                  src={`${basePath}/dashboard-assets/${card.file}`}
+                  src={card.src}
                   alt={card.name}
                   className="w-full aspect-[3/4] object-cover"
                 />
@@ -192,7 +192,6 @@ export function Achievements() {
         <AchievementModal
           card={selectedCard}
           isUnlocked={unlocked.has(selectedCard.id)}
-          basePath={basePath}
           onClose={() => setSelectedCard(null)}
         />
       )}
