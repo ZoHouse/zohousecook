@@ -4,7 +4,6 @@ import { useRouter } from "next/router";
 import { ZoSpinner } from "../ui/ZoSpinner";
 import { GlassCard } from "./GlassCard";
 import { DashboardTokens } from "../../styles/dashboard-tokens";
-import { useMyXp } from "../../hooks/useMyXp";
 
 /** Fix CDN and IPFS URLs for browser display */
 function fixAvatarUrl(url?: string): string | undefined {
@@ -87,15 +86,8 @@ function AvatarFallback({ name }: { name: string }) {
   );
 }
 
-function formatXpShort(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
-  return String(n);
-}
-
 export function PassportCard() {
   const { profile, isLoading } = useProfile();
-  const { myXp } = useMyXp();
   const router = useRouter();
   const [imgError, setImgError] = useState(false);
 
@@ -224,40 +216,6 @@ export function PassportCard() {
         </div>
       </div>
 
-      {/* XP + Rank below card */}
-      {myXp && (
-        <div className="w-full mt-3 flex items-center justify-between px-1">
-          <div className="flex items-baseline gap-1">
-            <span className="text-sm font-bold text-dash-accent tabular-nums">{formatXpShort(myXp.xp)}</span>
-            <span className="text-[9px] text-dash-text-40">XP</span>
-          </div>
-          {myXp.rankTitle && (
-            <span className="text-[10px] text-dash-text-50 font-medium">{myXp.rankTitle}</span>
-          )}
-        </div>
-      )}
-
-      {/* Travel stats */}
-      {myXp && myXp.stats.nights > 0 && (
-        <div className="w-full mt-2 grid grid-cols-2 gap-1.5">
-          <div className="flex flex-col items-center py-1.5 rounded-dash-sm bg-white/[0.03]">
-            <span className="text-xs font-bold text-dash-text tabular-nums">{myXp.stats.nights}</span>
-            <span className="text-[8px] text-dash-text-40">Days with Zo</span>
-          </div>
-          <div className="flex flex-col items-center py-1.5 rounded-dash-sm bg-white/[0.03]">
-            <span className="text-xs font-bold text-dash-text tabular-nums">{myXp.stats.destinations}</span>
-            <span className="text-[8px] text-dash-text-40">Destinations</span>
-          </div>
-          <div className="flex flex-col items-center py-1.5 rounded-dash-sm bg-white/[0.03]">
-            <span className="text-xs font-bold text-dash-text tabular-nums">{myXp.stats.properties}</span>
-            <span className="text-[8px] text-dash-text-40">Zostels</span>
-          </div>
-          <div className="flex flex-col items-center py-1.5 rounded-dash-sm bg-white/[0.03]">
-            <span className="text-xs font-bold text-dash-text tabular-nums">{myXp.stats.tribe}</span>
-            <span className="text-[8px] text-dash-text-40">Tribe</span>
-          </div>
-        </div>
-      )}
     </GlassCard>
   );
 }
