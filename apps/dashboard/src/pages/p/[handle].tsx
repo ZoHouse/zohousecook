@@ -67,7 +67,7 @@ export default function PublicPassportPage() {
       <div className="relative max-w-lg mx-auto px-4 py-8">
         {/* Back */}
         <button
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push("/")}
           className="text-dash-text-50 hover:text-dash-text transition-colors text-sm mb-6"
         >
           ← Back
@@ -149,7 +149,7 @@ export default function PublicPassportPage() {
               <p className="text-sm text-dash-text-80 mb-1">Travelled with Zostel?</p>
               <p className="text-xs text-dash-text-40 mb-4">Check your own passport and see where you rank.</p>
               <button
-                onClick={() => router.push("/dashboard/passport")}
+                onClick={() => router.push("/passport")}
                 className="w-full py-3 bg-dash-accent text-white font-medium text-sm rounded-dash-md hover:bg-dash-accent/90 transition-colors"
               >
                 Check my Passport

@@ -171,7 +171,7 @@ export default function LeaderboardPage() {
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <button
-            onClick={() => router.push("/dashboard")}
+            onClick={() => router.push("/")}
             className="text-dash-text-50 hover:text-dash-text transition-colors text-sm"
           >
             ← Back

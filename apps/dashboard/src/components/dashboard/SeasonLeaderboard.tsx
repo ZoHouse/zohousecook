@@ -155,7 +155,7 @@ export function SeasonLeaderboard() {
           Leaderboard
         </h3>
         <button
-          onClick={() => router.push("/dashboard/leaderboard")}
+          onClick={() => router.push("/leaderboard")}
           className="text-[9px] font-medium text-dash-accent hover:text-dash-accent/80 transition-colors"
         >
           View All →

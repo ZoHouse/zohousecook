@@ -150,12 +150,12 @@ export function PassportCard() {
 
   return (
     <GlassCard
-      className="p-4 flex flex-col items-center xl:w-[270px] flex-shrink-0"
+      className="p-3 flex flex-col items-center flex-shrink-0"
       onClick={() => router.push("/passport")}
     >
       {/* Passport card */}
       <div
-        className="relative w-[234px] h-[300px] rounded-[20px] overflow-hidden flex-shrink-0"
+        className="relative w-full max-w-[234px] h-[300px] rounded-[20px] overflow-hidden flex-shrink-0"
         style={{
           boxShadow: isFounder
             ? "0 20px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.1)"
