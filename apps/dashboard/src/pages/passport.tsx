@@ -6,6 +6,7 @@ import { GlassCard, ComingSoon, DashboardHeader } from "../components/dashboard"
 import { useMyNfts } from "../hooks/useMyNfts";
 import useInstagramConnect from "../hooks/useInstagramConnect";
 import { useMyXp } from "../hooks/useMyXp";
+import { useMyRoles } from "../hooks/useMyRoles";
 import type { NextPageWithLayout } from "./_app";
 
 function fixAvatarUrl(url?: string): string | undefined {
@@ -166,6 +167,7 @@ function formatXpCompact(n: number): string {
 function ProfileHeader() {
   const { profile } = useProfile();
   const { myXp } = useMyXp();
+  const { roles } = useMyRoles();
   const [imgError, setImgError] = useState(false);
 
   const rawAvatar = profile?.avatar?.image || profile?.pfp_image;
@@ -198,7 +200,12 @@ function ProfileHeader() {
             )}
           </div>
           {pid && <p className="text-xs text-dash-text-40">PID: {pid}</p>}
-          <p className="text-xs text-dash-text-50 capitalize mt-1">{membership || "Citizen"} of Zo World</p>
+          <p className="text-xs text-dash-text-50 capitalize mt-1">
+            {membership || "Citizen"} of Zo World
+            {roles && roles.displayNames.length > 0 && (
+              <span className="text-dash-text-40">{" · "}{roles.displayNames.join(", ")}</span>
+            )}
+          </p>
         </div>
       </div>
 
