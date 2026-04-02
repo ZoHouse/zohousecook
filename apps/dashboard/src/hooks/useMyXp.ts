@@ -22,41 +22,38 @@ function getToken(): string | null {
   return localStorage.getItem('zo-admin-token') || localStorage.getItem('zo-web-token') || null;
 }
 
-async function fetchMyStats(userId?: string, phone?: string, nickname?: string): Promise<MyXpData> {
-  const token = getToken();
-  if (!token) throw new Error('Not authenticated');
-
-  const params = new URLSearchParams();
-  if (userId) params.set('userId', userId);
-  if (phone) params.set('phone', phone);
-  if (nickname) params.set('nickname', nickname);
-
-  const res = await fetch(`/dashboard/api/my-stats?${params.toString()}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error('Failed to fetch stats');
-  return res.json();
-}
-
 /**
  * Returns the current user's XP, rank, rank title, and travel stats.
- * Uses dedicated /api/my-stats endpoint (always returns data for current user).
- * Also checks leaderboard for rank position if available.
+ * Fetches from /api/my-stats using phone/nickname from profile.
  */
 export function useMyXp() {
-  const { profile } = useProfile();
+  const { profile, isLoading: profileLoading } = useProfile();
 
-  // Extract lookup keys from profile
-  const userId = profile?.code || undefined;
-  const phone = profile?.mobile_number || undefined;
-  const nickname = profile?.nickname || profile?.custom_nickname || undefined;
-  const hasLookup = !!(userId || phone || nickname);
+  // Build a stable lookup key from profile
+  const phone = profile?.mobile_number || '';
+  const nickname = profile?.nickname || profile?.custom_nickname || '';
+  const userId = profile?.code || '';
+  const lookupKey = userId || phone || nickname;
 
   const { data: stats, isLoading: statsLoading } = useQuery<MyXpData>(
-    ['my-stats', userId, phone, nickname],
-    () => fetchMyStats(userId, phone, nickname),
+    ['my-stats', lookupKey],
+    async () => {
+      const token = getToken();
+      if (!token) throw new Error('Not authenticated');
+
+      const params = new URLSearchParams();
+      if (userId) params.set('userId', userId);
+      if (phone) params.set('phone', phone);
+      if (nickname) params.set('nickname', nickname);
+
+      const res = await fetch(`/dashboard/api/my-stats?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to fetch stats');
+      return res.json();
+    },
     {
-      enabled: !!getToken() && hasLookup,
+      enabled: !!getToken() && !!lookupKey,
       staleTime: 5 * 60 * 1000,
       refetchOnWindowFocus: false,
     }
@@ -68,12 +65,12 @@ export function useMyXp() {
   let myXp: MyXpData | null = stats || null;
 
   // If we found ourselves in the leaderboard, use that rank
-  if (myXp && leaderboard?.leaderboard && profile?.code) {
-    const entry = leaderboard.leaderboard.find((e) => e.userId === profile.code);
+  if (myXp && leaderboard?.leaderboard && userId) {
+    const entry = leaderboard.leaderboard.find((e) => e.userId === userId);
     if (entry) {
       myXp = { ...myXp, rank: entry.rank };
     }
   }
 
-  return { myXp, isLoading: statsLoading };
+  return { myXp, isLoading: profileLoading || statsLoading };
 }
