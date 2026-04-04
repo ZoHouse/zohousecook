@@ -80,6 +80,16 @@
       "source": "/meme/:path*",
       "has": [{ "type": "host", "value": "zozozo.work" }],
       "destination": "https://zozozo-meme-samurais-dojo.vercel.app/meme/:path*"
+    },
+    {
+      "source": "/house",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zo-civilization.vercel.app/house"
+    },
+    {
+      "source": "/house/:path*",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zo-civilization.vercel.app/house/:path*"
     }
   ]
 }
