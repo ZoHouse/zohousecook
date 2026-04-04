@@ -1,3 +1,5 @@
+import alumniPageData from "./alumni";
+import { filterPills } from "./alumni";
 import homepageData from "./homepage";
 import membershipPageData from "./membership";
 import navigationLinks from "./navigationLinks";
@@ -37,6 +39,8 @@ export type {
 } from "./definitions";
 
 export {
+  alumniPageData,
+  filterPills,
   homepageData,
   membershipPageData,
   navigationLinks,
