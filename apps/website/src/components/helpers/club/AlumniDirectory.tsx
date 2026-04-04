@@ -49,15 +49,11 @@ const AlumniDirectory: React.FC = () => {
     );
   }, [apiFounders, activeFilter, curatedNicknames]);
 
-  type DisplayItem =
-    | { type: "curated"; data: AlumniMember }
-    | { type: "api"; data: FounderNft };
-
-  const allDisplay: DisplayItem[] = [
-    ...filteredCurated.map((m): DisplayItem => ({ type: "curated", data: m })),
-  ];
+  const allDisplay = [...filteredCurated.map((m) => ({ type: "curated" as const, data: m }))];
   if (activeFilter === 0) {
-    apiTier.forEach((f) => allDisplay.push({ type: "api", data: f }));
+    apiTier.forEach((f) =>
+      allDisplay.push({ type: "api" as const, data: f as any })
+    );
   }
 
   const totalCount = (apiFounders?.length || 0) + alumniPageData.curated.filter(
