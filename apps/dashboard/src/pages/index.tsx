@@ -1,6 +1,5 @@
 import React, { ReactElement } from "react";
 import { useRouter } from "next/router";
-import { bgLobby } from "../assets";
 import {
   Achievements,
   DashboardHeader,
@@ -9,12 +8,11 @@ import {
   QuestContainer,
   ZoBalance,
   MyCulturesCompact,
-  SeasonLeaderboard,
-  TravelerScorecard,
+  // SeasonLeaderboard,   // parked — waiting for events table
+  // TravelerScorecard,   // parked — waiting for events table
 } from "../components/dashboard";
 import { LobbyScene } from "../components/lobby/LobbyScene";
 import { RoomMembers } from "../components/lobby/RoomMembers";
-import { VoiceControls } from "../components/lobby/VoiceControls";
 import { useRoom } from "../hooks/useRoom";
 import { useAudioBridge } from "../hooks/useAudioBridge";
 import type { NextPageWithLayout } from "./_app";
@@ -34,48 +32,16 @@ const DashboardPage: NextPageWithLayout = () => {
   });
   return (
     <div className="flex-1 min-h-screen bg-dash-bg-solid relative">
-      {/* ═══ DESKTOP: original absolute-positioned layout ═══ */}
+      {/* ═══ DESKTOP: 3D lobby + overlay panels ═══ */}
       <div className="hidden xl:block relative w-full h-screen overflow-hidden">
-        {/* Room background */}
-        <div
-          className="absolute inset-0 z-0"
-          style={{
-            backgroundImage: `url(${bgLobby})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center bottom",
-          }}
-        />
-        <div
-          className="absolute inset-0 pointer-events-none z-0"
-          style={{
-            background: "linear-gradient(180deg, rgba(10,10,15,0.7) 0%, rgba(10,10,15,0.4) 50%, rgba(10,10,15,0.6) 100%)",
-          }}
-        />
-        <div
-          className="absolute inset-0 pointer-events-none z-0"
-          style={{
-            background:
-              "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.5) 100%)",
-          }}
-        />
+        {/* 3D Canvas — fills entire viewport */}
+        <div className="absolute inset-0 z-0">
+          <LobbyScene members={members} selfCode={profile?.code} speakingMap={speakingMap} />
+        </div>
 
         {/* TOP: Live Updates pill */}
         <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20">
           <LiveUpdatesPill />
-        </div>
-
-        {/* CENTER: Lobby Scene */}
-        <div className="absolute inset-0 flex items-end justify-center z-10 pointer-events-none pb-[14vh]">
-          <div
-            className="absolute bottom-[6vh] left-1/2 -translate-x-1/2"
-            style={{
-              width: "25vh",
-              height: "4vh",
-              background: "radial-gradient(ellipse, rgba(0,0,0,0.35) 0%, transparent 70%)",
-              borderRadius: "50%",
-            }}
-          />
-          <LobbyScene members={members} selfCode={profile?.code} speakingMap={speakingMap} />
         </div>
 
         {/* LEFT PANEL */}
@@ -87,64 +53,28 @@ const DashboardPage: NextPageWithLayout = () => {
         </div>
 
         {/* RIGHT PANEL */}
-        <div className="absolute right-3 top-14 bottom-14 z-20 w-[300px] overflow-y-auto flex flex-col gap-1.5 scrollbar-hide">
+        <div className="absolute right-3 top-14 bottom-14 z-20 w-[300px] overflow-y-auto flex flex-col gap-1.5 scrollbar-hide pointer-events-auto">
           <RoomMembers
             members={members}
             hostCodes={roomData?.hosts || []}
             isConnected={isConnected}
             speakingMap={speakingMap}
           />
-          <TravelerScorecard />
-          <SeasonLeaderboard />
           <MyCulturesCompact />
         </div>
-
       </div>
 
       {/* ═══ MOBILE: scrollable layout ═══ */}
       <div className="xl:hidden flex flex-col pb-20">
-        {/* Hero section: avatar viewport (full screen height) */}
+        {/* Hero section: 3D lobby viewport */}
         <div className="relative w-full h-screen flex-shrink-0">
-          {/* Room background */}
-          <div
-            className="absolute inset-0 z-0"
-            style={{
-              backgroundImage: `url(${bgLobby})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center bottom",
-            }}
-          />
-          <div
-            className="absolute inset-0 pointer-events-none z-0"
-            style={{
-              background: "linear-gradient(180deg, rgba(10,10,15,0.7) 0%, rgba(10,10,15,0.4) 50%, rgba(10,10,15,0.6) 100%)",
-            }}
-          />
-          <div
-            className="absolute inset-0 pointer-events-none z-0"
-            style={{
-              background:
-                "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.5) 100%)",
-            }}
-          />
+          <div className="absolute inset-0 z-0">
+            <LobbyScene members={members} selfCode={profile?.code} speakingMap={speakingMap} />
+          </div>
 
           {/* Live Updates pill */}
           <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20">
             <LiveUpdatesPill />
-          </div>
-
-          {/* Avatar center stage */}
-          <div className="absolute inset-0 flex items-end justify-center z-10 pointer-events-none pb-[18vh]">
-            <div
-              className="absolute bottom-[10vh] left-1/2 -translate-x-1/2"
-              style={{
-                width: "25vh",
-                height: "4vh",
-                background: "radial-gradient(ellipse, rgba(0,0,0,0.35) 0%, transparent 70%)",
-                borderRadius: "50%",
-              }}
-            />
-            <LobbyScene members={members} selfCode={profile?.code} speakingMap={speakingMap} />
           </div>
 
           {/* Scroll hint */}
@@ -158,8 +88,6 @@ const DashboardPage: NextPageWithLayout = () => {
           <PassportCard />
           <QuestContainer />
           <ZoBalance />
-          <TravelerScorecard />
-          <SeasonLeaderboard />
           <RoomMembers
             members={members}
             hostCodes={roomData?.hosts || []}

@@ -1,15 +1,18 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useProfile } from '@zo/auth';
 import { toast } from 'sonner';
-import cn from '../../utils/cn';
 import { useAvatarSeed } from '../../hooks/useAvatarSeed';
-import { AvatarDisplay, ZobuConfig, ZobuLayer, fetchSvgContent } from './AvatarDisplay';
+import { fetchSvgContent, ZobuConfig, ZobuLayer } from './AvatarDisplay';
 import { AvatarEditor } from './AvatarEditor';
-import { MemberZobu } from './MemberZobu';
+import { usePedestalSlots } from '../../hooks/usePedestalSlots';
 import type { RoomMember } from '../../hooks/useRoom';
 
-
+// Dynamic import — Three.js cannot SSR
+// Single dynamic boundary: LobbyView bundles Canvas + Scene so no next/dynamic
+// wrapper ends up inside the R3F reconciler (which breaks Three.js rendering).
+import dynamic from 'next/dynamic';
+const LobbyView = dynamic(() => import('./LobbyView'), { ssr: false });
 
 interface LobbySceneProps {
   members?: RoomMember[];
@@ -24,13 +27,12 @@ export function LobbyScene({ members = [], selfCode, speakingMap = {} }: LobbySc
   const [editorOpen, setEditorOpen] = useState(false);
   const [zobuConfig, setZobuConfig] = useState<ZobuConfig | null>(null);
 
-  const name = profile?.nickname || profile?.custom_nickname || 'New Citizen';
-  const culture = profile?.culture ?? null;
+  const slots = usePedestalSlots(members, selfCode);
 
   // Load default Zobu (base only) once seed is available
   useEffect(() => {
     if (!seed || zobuConfig) return;
-    const base = seed.bases[0]; // Default to first base (Bro)
+    const base = seed.bases[0];
     if (!base) return;
 
     fetchSvgContent(base.file).then(async (baseSvg) => {
@@ -43,7 +45,6 @@ export function LobbyScene({ members = [], selfCode, speakingMap = {} }: LobbySc
           svg: null,
         }));
 
-      // Auto-apply Hand asset (category 9) — always present on every Zobu
       const handCat = seed.categories.find((c) => c.id === 9);
       const handAsset = handCat?.assets[0];
       if (handAsset) {
@@ -73,7 +74,6 @@ export function LobbyScene({ members = [], selfCode, speakingMap = {} }: LobbySc
       const prefix = localStorage.getItem('zo-admin-token') ? 'zo-admin' : 'zo-web';
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      // Pass user/device info via x- prefixed headers (same-origin, no CORS)
       const deviceId = localStorage.getItem(`${prefix}-device-id`);
       const deviceSecret = localStorage.getItem(`${prefix}-device-secret`);
       if (deviceId) headers['x-client-device-id'] = deviceId;
@@ -96,66 +96,31 @@ export function LobbyScene({ members = [], selfCode, speakingMap = {} }: LobbySc
     }
   };
 
-  // Responsive avatar size — smaller on mobile to match background proportions
-  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
-  useEffect(() => {
-    const onResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-  const avatarSize = useMemo(() => (windowWidth < 640 ? 360 : windowWidth < 1024 ? 280 : 400), [windowWidth]);
-
   if (seedLoading) {
     return (
-      <div className="pointer-events-auto flex flex-col items-center gap-3">
+      <div className="w-full h-full flex items-center justify-center">
         <div className="animate-pulse bg-white/5 rounded-dash-lg" style={{ width: 200, height: 400 }} />
       </div>
     );
   }
 
-  // Other members in the room (exclude self)
-  const otherMembers = members.filter((m) => m.code !== selfCode).slice(0, 4);
-
   return (
-    <div className="pointer-events-auto flex flex-col items-center gap-3 relative">
-      {/* Room members behind the main avatar */}
-      {otherMembers.length > 0 && (
-        <div className="absolute -top-4 flex items-end gap-2 opacity-90" style={{ zIndex: -1 }}>
-          {otherMembers.map((m, i) => (
-            <div
-              key={m.code}
-              style={{
-                transform: `translateX(${(i - (otherMembers.length - 1) / 2) * 90}px) scale(0.85)`,
-              }}
-            >
-              <MemberZobu
-                avatarUrl={m.avatar_url}
-                nickname={m.nickname}
-                size={100}
-                speaking={speakingMap[m.code]}
-              />
-            </div>
-          ))}
-          {members.filter((m) => m.code !== selfCode).length > 4 && (
-            <span className="text-[10px] text-dash-text-50 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-dash-pill">
-              +{members.filter((m) => m.code !== selfCode).length - 4} more
-            </span>
-          )}
-        </div>
-      )}
-      <AvatarDisplay
-        zobuConfig={zobuConfig}
-        size={avatarSize}
+    <>
+      {/* 3D Canvas fills parent container */}
+      <div
+        className="w-full h-full cursor-pointer"
         onClick={() => setEditorOpen(true)}
-      />
+      >
+        <LobbyView slots={slots} speakingMap={speakingMap} />
+      </div>
 
-      {/* Editor */}
+      {/* Editor modal — stays as HTML overlay */}
       {editorOpen && (
         <AvatarEditor
           onSave={handleSave}
           onClose={() => setEditorOpen(false)}
         />
       )}
-    </div>
+    </>
   );
 }
