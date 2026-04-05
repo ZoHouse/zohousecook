@@ -3,11 +3,11 @@ import { cn } from "@zo/utils/font";
 import alumniPageData from "../../../config/alumni";
 import { useFadeInOnScroll } from "../../../hooks";
 import { rubikClassName, syneClassName } from "../../utils/font";
-
-const AVATAR_CDN = "https://proxy.cdn.zo.xyz/avatars";
+import { fixAvatarUrl } from "./utils";
 
 const ZoEffect: React.FC = () => {
   const sectionRef = useFadeInOnScroll<HTMLDivElement>();
+
   const featured = useMemo(
     () => alumniPageData.curated.filter((m) => m.featured),
     []
@@ -45,30 +45,67 @@ const ZoEffect: React.FC = () => {
       </p>
 
       {spotlight && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 md:p-10 rounded-2xl bg-[rgba(255,214,0,0.02)] border border-[rgba(255,214,0,0.1)] mb-10">
-          <div className="flex flex-col justify-center">
-            {spotlight.featuredQuote && (
-              <p className={cn("text-white/70 text-lg italic leading-relaxed border-l-2 border-zui-yellow pl-5 mb-6", rubikClassName)}>
-                "{spotlight.featuredQuote}"
-              </p>
-            )}
-            <h3 className={cn("text-2xl font-bold", syneClassName)}>{spotlight.name}</h3>
-            <p className="text-zui-yellow text-sm mt-1">{spotlight.company} — {spotlight.description}</p>
-          </div>
-          <div className="flex flex-col gap-4">
-            {[
-              { label: "Sector", value: spotlight.sector },
-              { label: "Backed by", value: spotlight.backedBy || "—" },
-              { label: "Zo House proof", value: spotlight.featuredProof || "—" },
-              { label: "Story type", value: spotlight.storyType || "—" },
-            ].map((s) => (
-              <div key={s.label} className="flex justify-between py-3 border-b border-white/5 last:border-0">
-                <span className={cn("text-white/40 text-sm", rubikClassName)}>{s.label}</span>
-                <span className={cn("text-white font-semibold text-sm", syneClassName)}>
-                  {s.value}
-                </span>
+        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-0 rounded-2xl bg-[rgba(255,214,0,0.02)] border border-[rgba(255,214,0,0.1)] mb-10 overflow-hidden">
+          {/* Photo side */}
+          <div className="relative h-[280px] md:h-auto bg-gradient-to-br from-neutral-900 to-neutral-800">
+            {spotlight.photo ? (
+              <img
+                src={spotlight.photo}
+                alt={spotlight.name}
+                className="w-full h-full object-cover"
+              />
+            ) : fixAvatarUrl(spotlight.pfp) ? (
+              <div className="w-full h-full flex items-center justify-center p-8">
+                <img
+                  src={fixAvatarUrl(spotlight.pfp)!}
+                  alt={spotlight.name}
+                  referrerPolicy="no-referrer"
+                  className="w-40 h-40 object-cover"
+                />
               </div>
-            ))}
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <span className={`${syneClassName} text-zui-yellow font-bold text-4xl`}>{spotlight.name.split(" ").map((n) => n[0]).join("")}</span>
+              </div>
+            )}
+            {/* Citizenship pfp badge */}
+            {fixAvatarUrl(spotlight.pfp) && spotlight.photo && (
+              <div className="absolute bottom-3 right-3 w-12 h-12 rounded-full overflow-hidden border-2 border-black/50 bg-neutral-900 shadow-lg">
+                <img
+                  src={fixAvatarUrl(spotlight.pfp)!}
+                  alt=""
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+          </div>
+          {/* Content side */}
+          <div className="p-6 md:p-10 flex flex-col justify-between">
+            <div>
+              {spotlight.featuredQuote && (
+                <p className={cn("text-white/70 text-lg italic leading-relaxed border-l-2 border-zui-yellow pl-5 mb-6", rubikClassName)}>
+                  "{spotlight.featuredQuote}"
+                </p>
+              )}
+              <h3 className={cn("text-2xl font-bold", syneClassName)}>{spotlight.name}</h3>
+              <p className="text-zui-yellow text-sm mt-1">{spotlight.company} · {spotlight.description}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-6">
+              {[
+                { label: "Sector", value: spotlight.sector, accent: true },
+                { label: "Story type", value: spotlight.storyType || "", accent: false },
+                { label: "Backed by", value: spotlight.backedBy || "", accent: false },
+                { label: "Zo House proof", value: spotlight.featuredProof || "", accent: false },
+              ].filter((s) => s.value).map((s) => (
+                <div key={s.label} className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-3">
+                  <span className={cn("text-white/30 text-[10px] uppercase tracking-[2px]", rubikClassName)}>{s.label}</span>
+                  <p className={cn("mt-1 text-sm font-semibold", syneClassName, s.accent ? "text-zui-yellow" : "text-white")}>
+                    {s.value}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -97,16 +134,21 @@ const ZoEffect: React.FC = () => {
           >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-neutral-800 to-neutral-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                <img
-                  src={`${AVATAR_CDN}/${member.nickname}.png?w=96`}
-                  alt={member.name}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = "none";
-                    target.parentElement!.innerHTML = `<span class="${syneClassName} text-zui-yellow font-bold text-sm">${member.name.split(" ").map((n) => n[0]).join("")}</span>`;
-                  }}
-                />
+                {fixAvatarUrl(member.pfp) ? (
+                  <img
+                    src={fixAvatarUrl(member.pfp)!}
+                    alt={member.name}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = "none";
+                      target.parentElement!.innerHTML = `<span class="${syneClassName} text-zui-yellow font-bold text-sm">${member.name.split(" ").map((n) => n[0]).join("")}</span>`;
+                    }}
+                  />
+                ) : (
+                  <span className={`${syneClassName} text-zui-yellow font-bold text-sm`}>{member.name.split(" ").map((n) => n[0]).join("")}</span>
+                )}
               </div>
               <div>
                 <h4 className={cn("font-semibold text-sm", syneClassName)}>{member.name}</h4>

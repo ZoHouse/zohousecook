@@ -4,10 +4,11 @@ import {
   NetworkHero,
   ZoEffect,
   AlumniDirectory,
-  ProgrammingProof,
   MentorStack,
   NetworkCTA,
 } from "../components/helpers/club";
+import Events from "../components/helpers/membership/Events";
+import membershipData from "../config/membership";
 
 import { getServerSideProps as getServerSidePropsType } from "next/dist/build/templates/pages";
 
@@ -28,7 +29,7 @@ const Club: React.FC<
       <NetworkHero />
       <ZoEffect />
       <AlumniDirectory />
-      <ProgrammingProof />
+      <Events events={membershipData.events} />
       <MentorStack />
       <NetworkCTA />
     </Page>

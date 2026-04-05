@@ -5,8 +5,7 @@ import { isValidString } from "@zo/utils/string";
 import alumniPageData, { filterPills, AlumniMember } from "../../../config/alumni";
 import { useFadeInOnScroll } from "../../../hooks";
 import { rubikClassName, syneClassName } from "../../utils/font";
-
-const AVATAR_CDN = "https://proxy.cdn.zo.xyz/avatars";
+import { fixAvatarUrl } from "./utils";
 
 type FounderNft = {
   token_ref_id: string;
@@ -101,16 +100,21 @@ const AlumniDirectory: React.FC = () => {
             return (
               <div key={m.nickname} className="bg-black p-4 text-center hover:bg-[rgba(255,214,0,0.02)] transition-colors">
                 <div className="w-14 h-14 rounded-full mx-auto mb-2 bg-gradient-to-br from-neutral-800 to-neutral-600 border-2 border-transparent hover:border-zui-yellow transition-colors overflow-hidden flex items-center justify-center">
-                  <img
-                    src={`${AVATAR_CDN}/${m.nickname}.png?w=112`}
-                    alt={m.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = "none";
-                      target.parentElement!.innerHTML = `<span class="text-white/40 font-bold text-xs">${m.name.split(" ").map((n) => n[0]).join("")}</span>`;
-                    }}
-                  />
+                  {fixAvatarUrl(m.pfp) ? (
+                    <img
+                      src={fixAvatarUrl(m.pfp)!}
+                      alt={m.name}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = "none";
+                        target.parentElement!.innerHTML = `<span class="text-white/40 font-bold text-xs">${m.name.split(" ").map((n) => n[0]).join("")}</span>`;
+                      }}
+                    />
+                  ) : (
+                    <span className="text-white/40 font-bold text-xs">{m.name.split(" ").map((n) => n[0]).join("")}</span>
+                  )}
                 </div>
                 <div className={cn("text-xs font-semibold truncate", syneClassName)}>{m.name}</div>
                 <div className="text-[10px] text-white/40 truncate">{m.company}</div>
@@ -126,23 +130,21 @@ const AlumniDirectory: React.FC = () => {
             return (
               <div key={f.nickname || i} className="bg-black p-4 text-center hover:bg-[rgba(255,214,0,0.02)] transition-colors">
                 <div className="w-14 h-14 rounded-full mx-auto mb-2 bg-gradient-to-br from-neutral-800 to-neutral-600 border-2 border-transparent overflow-hidden flex items-center justify-center">
-                  <img
-                    src={`${AVATAR_CDN}/${f.nickname}.png?w=112`}
-                    alt={f.nickname}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = "none";
-                      if (f.pfp_image) {
-                        const img = new Image();
-                        img.src = f.pfp_image;
-                        img.className = "w-full h-full object-cover";
-                        target.parentElement!.appendChild(img);
-                      } else {
+                  {fixAvatarUrl(f.pfp_image) ? (
+                    <img
+                      src={fixAvatarUrl(f.pfp_image)}
+                      alt={f.nickname}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = "none";
                         target.parentElement!.innerHTML = `<span class="text-white/40 font-bold text-xs">${(f.nickname || "?")[0].toUpperCase()}</span>`;
-                      }
-                    }}
-                  />
+                      }}
+                    />
+                  ) : (
+                    <span className="text-white/40 font-bold text-xs">{(f.nickname || "?")[0].toUpperCase()}</span>
+                  )}
                 </div>
                 <div className={cn("text-xs font-semibold truncate", syneClassName)}>{f.nickname}</div>
               </div>

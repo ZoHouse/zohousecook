@@ -3,11 +3,11 @@ import { cn } from "@zo/utils/font";
 import alumniPageData from "../../../config/alumni";
 import { useFadeInOnScroll } from "../../../hooks";
 import { rubikClassName, syneClassName } from "../../utils/font";
-
-const AVATAR_CDN = "https://proxy.cdn.zo.xyz/avatars";
+import { fixAvatarUrl } from "./utils";
 
 const MentorStack: React.FC = () => {
   const sectionRef = useFadeInOnScroll<HTMLDivElement>();
+
   const mentors = useMemo(
     () => alumniPageData.curated.filter((m) => m.mentorStack),
     []
@@ -32,16 +32,21 @@ const MentorStack: React.FC = () => {
             className="bg-black p-6 md:p-8 text-center hover:bg-[rgba(255,214,0,0.02)] transition-colors"
           >
             <div className="w-[72px] h-[72px] rounded-full mx-auto mb-4 bg-gradient-to-br from-neutral-800 to-neutral-600 border-2 border-[rgba(255,214,0,0.2)] flex items-center justify-center overflow-hidden">
-              <img
-                src={`${AVATAR_CDN}/${mentor.nickname}.png?w=144`}
-                alt={mentor.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = "none";
-                  target.parentElement!.innerHTML = `<span class="${syneClassName} text-zui-yellow font-bold text-lg">${mentor.name.split(" ").map((n) => n[0]).join("")}</span>`;
-                }}
-              />
+              {fixAvatarUrl(mentor.pfp) ? (
+                <img
+                  src={fixAvatarUrl(mentor.pfp)!}
+                  alt={mentor.name}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                    target.parentElement!.innerHTML = `<span class="${syneClassName} text-zui-yellow font-bold text-lg">${mentor.name.split(" ").map((n) => n[0]).join("")}</span>`;
+                  }}
+                />
+              ) : (
+                <span className={`${syneClassName} text-zui-yellow font-bold text-lg`}>{mentor.name.split(" ").map((n) => n[0]).join("")}</span>
+              )}
             </div>
             <h3 className={cn("font-bold text-base", syneClassName)}>{mentor.name}</h3>
             <p className="text-zui-yellow text-sm mt-1">{mentor.mentorRole}</p>

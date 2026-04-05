@@ -12,6 +12,10 @@ export interface AlumniMember {
   company: string;
   description: string;
   sector: AlumniSector;
+  /** Citizenship avatar URL (same as dashboard passport pfp) */
+  pfp?: string;
+  /** Real photo of the founder (uploaded to CDN) */
+  photo?: string;
   fundingAmount?: string;
   fundingType?: string;
   role?: string;
@@ -74,6 +78,8 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Shubham Kukreti",
       nickname: "shubham",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/2ae9540b-b671-4d40-8519-49416f201f38.svg",
+      photo: "https://proxy.cdn.zo.xyz/gallery/media/images/7c56bd50-c4a4-452c-97b8-d7bbae0313ea_20260405101157.png",
       company: "Prava",
       description: "Payments infrastructure for AI agents. Met co-founder at Zo House.",
       sector: "Payments",
@@ -87,6 +93,8 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Tejas Arun",
       nickname: "tejas",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/bc7118f4-ecd4-4f74-afd4-48394d8576a1.svg",
+      photo: "https://proxy.cdn.zo.xyz/gallery/media/images/16efd133-7210-47cc-9215-d06d5e681272_20260405101200.png",
       company: "Endl",
       description: "Cross-border payments infrastructure for businesses.",
       sector: "Payments",
@@ -102,6 +110,8 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Dibyo Majumder",
       nickname: "dibyo",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/734f5e3e-d6c6-4a26-a781-151ad1312959_g1373KC.svg",
+      photo: "https://proxy.cdn.zo.xyz/gallery/media/images/c1a7b13e-adfd-4db2-9b21-a1d79cacd1bf_20260405101201.png",
       company: "TURF Network",
       description: "Intent-driven data orchestration for AI agents. HBS alum, 3x founder.",
       sector: "AI / ML",
@@ -116,6 +126,8 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Kush Ratna Gupta",
       nickname: "kush",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/01c5a350-d4d2-4558-b81b-c370d684981f.svg",
+      photo: "https://proxy.cdn.zo.xyz/gallery/media/images/c0c15d54-65d6-4d09-a6f5-ae543d825542_20260405101201.png",
       company: "Komet / Kometverse",
       description: "Deal-intelligence layer for autonomous CRM.",
       sector: "Enterprise",
@@ -123,10 +135,15 @@ const alumniPageData: AlumniPageData = {
       fundingType: "Seed",
       role: "Founder",
       storyType: "Capital raised",
+      featured: true,
+      featuredQuote: "The deal-intelligence layer for autonomous CRM started at Zo House. IIT Madras alumnus, now scaling from San Francisco.",
+      featuredProof: "IIT Madras to SF",
     },
     {
       name: "Roshan Vadassery",
       nickname: "roshan",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/2d1c3a67-7b10-47bb-8c45-8a5741503ef0.svg",
+      photo: "https://proxy.cdn.zo.xyz/gallery/media/images/bde18556-8fc3-4cf9-b793-d3d4192cfeee_20260405101202.png",
       company: "Permissionless",
       description: "Open public infrastructure. Raised $250K in community backing in 48 hours.",
       sector: "Deep Tech",
@@ -134,10 +151,15 @@ const alumniPageData: AlumniPageData = {
       fundingType: "Community",
       role: "Founder",
       storyType: "Capital raised",
+      featured: true,
+      featuredQuote: "Raised $250K in community backing in 48 hours. Open public infrastructure, built from Zo House.",
+      featuredProof: "Community-backed raise",
     },
     {
       name: "Fiona Bao",
       nickname: "fiona",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/4c9f3100-61e7-4cbc-ba8f-52c550cb9ea2.svg",
+      photo: "https://proxy.cdn.zo.xyz/gallery/media/images/949d721b-ad1d-420f-9f43-bfc030b8ccd8_20260405101203.png",
       company: "GENPULSE / Lushair",
       description: "Forbes-listed founder. $8M post-money pre-seed milestone.",
       sector: "Enterprise",
@@ -145,19 +167,28 @@ const alumniPageData: AlumniPageData = {
       fundingType: "Seed",
       role: "Founder",
       storyType: "Capital raised",
+      featured: true,
+      featuredQuote: "Forbes-listed founder. Closed at $8M post-money valuation. Became a creative mentor for artists inside the community.",
+      featuredProof: "$8M post-money valuation",
     },
     {
       name: "Akash Chaudhary",
       nickname: "akash",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/5c584cef-621c-4c41-b93e-3e3675a57b43.svg",
+      photo: "https://proxy.cdn.zo.xyz/gallery/media/images/ea13d805-42fd-4c9c-bf47-1abfb4ae343e_20260405101204.png",
       company: "Fancall",
       description: "Creator-fan 1:1 video call platform. 1,000+ creators. Bootstrapped.",
       sector: "Creator Economy",
       role: "Founder",
       storyType: "Bootstrapped",
+      featured: true,
+      featuredQuote: "1,000+ creators on the platform. The talent, knowledge exchange, and the environment keeps pushing me to ship.",
+      featuredProof: "Bootstrapped to 1K creators",
     },
     {
       name: "Saumya Saxena",
       nickname: "saumya",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/a0428364-9178-4279-b2ed-8f414932cfa7.svg",
       company: "Purple Pay",
       description: "Payments platform. Polygon-backed, ETHIndia 2022 winner.",
       sector: "Payments",
@@ -167,6 +198,7 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Anoushk Kharangate",
       nickname: "anoushk",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/138ca966-6ade-44fa-98d7-674d77a45f94.svg",
       company: "Tinydancer",
       description: "Light client infrastructure for Solana.",
       sector: "Deep Tech",
@@ -176,6 +208,7 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Venkat Kunisetty",
       nickname: "venkat",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/bc1c9536-8df9-4358-9c36-edb348530508.svg",
       company: "STRKFarm",
       description: "DeFi yield optimization. $7M+ TVL.",
       sector: "Finance",
@@ -185,6 +218,7 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Mrigank Bhargava",
       nickname: "mrigank",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/7f9de2ca-824c-469f-a5d6-0443c620ce43.svg",
       company: "Eddy Finance",
       description: "$105M+ trading volume. Cross-chain DeFi.",
       sector: "Finance",
@@ -194,6 +228,7 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Rishabh Keshan",
       nickname: "rishabh",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/fc4e303d-9e26-49d8-be9d-870d6fff496f.svg",
       company: "Fuel Labs",
       description: "Modular execution layer. $81.5M raised.",
       sector: "Deep Tech",
@@ -202,6 +237,7 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Gathin",
       nickname: "gathin",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/518432cc-cf8e-43f8-880c-72138dc83660.svg",
       company: "0G Labs",
       description: "Modular AI blockchain. $75M raised.",
       sector: "AI / ML",
@@ -210,6 +246,7 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Sukriti Taneja",
       nickname: "sukriti",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/94d0fb6e-4a6c-4646-8882-40633e190463_xEbQ6t1.svg",
       company: "Initia",
       description: "Interwoven rollup network. $21.5M raised.",
       sector: "Deep Tech",
@@ -218,6 +255,7 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Aadith Narayanan",
       nickname: "aadith",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/51154477-4d35-4a34-b810-5939a437991d.svg",
       company: "Router Protocol",
       description: "Cross-chain infrastructure. $4.59M raised.",
       sector: "Deep Tech",
@@ -226,6 +264,7 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Mohit Sorout",
       nickname: "mohit",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/ce280622-9e84-41d4-b028-229fd843a167.svg",
       company: "Bitazu Capital",
       description: "Founding Partner. Crypto fund manager with deep market infrastructure experience.",
       sector: "Finance",
@@ -246,6 +285,7 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Abhay Tandon",
       nickname: "abhay",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/3c16f360-e842-4b63-b1fe-7e02c9ebaa78.svg",
       company: "3to1 Capital",
       description: "Co-founder & GP. Active deal flow, early-stage portfolio across sectors.",
       sector: "Finance",
@@ -256,6 +296,7 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Ajeet Khurana",
       nickname: "ajeet",
+      pfp: "https://proxy.cdn.zo.xyz/citizenship/images/9e509c21-196b-4b7b-8bae-2097c126d683.svg",
       company: "Reflexical",
       description: "Founder. Angel investor — backed Tablesprint ($1M round).",
       sector: "Finance",
@@ -269,25 +310,25 @@ const alumniPageData: AlumniPageData = {
       name: "Founder Dinners",
       frequency: "Monthly · Rooftop",
       description: "Curated 20-person dinners. No pitching, no networking theater. Real conversation between operators.",
-      media: `${MEDIA}/gallery/media/videos/36d8c488-738b-42db-91cb-d72c8fd66f94_20241206054520.mp4`,
+      media: `${MEDIA}/gallery/media/videos/95daf79a-483c-4f8a-a080-2d41db4517b9_20241211105242.mp4`,
     },
     {
       name: "AI Build Sprints",
       frequency: "Partner-led · 2-4 weeks",
       description: "Intensive build programs with AI Grants India. Ship or go home.",
-      media: `${MEDIA}/gallery/media/videos/36d8c488-738b-42db-91cb-d72c8fd66f94_20241206054520.mp4`,
+      media: `${MEDIA}/gallery/media/videos/979b549e-8020-453b-89d3-8b3448e4bf7c_20241211105218.mp4`,
     },
     {
       name: "The Residency",
       frequency: "Cohort · 8-12 weeks",
       description: "Structured founder residency. 2 cohorts completed. Demo day graduates building companies.",
-      media: `${MEDIA}/gallery/media/videos/36d8c488-738b-42db-91cb-d72c8fd66f94_20241206054520.mp4`,
+      media: `${MEDIA}/gallery/media/videos/d8fac0d8-6c08-4ad0-91c2-d70b1c201f1a_20241211105303.mp4`,
     },
     {
       name: "Demo Days",
       frequency: "End of program",
       description: "Founders present to investors, partners, and the community. Warm intros happen that night.",
-      media: `${MEDIA}/gallery/media/videos/36d8c488-738b-42db-91cb-d72c8fd66f94_20241206054520.mp4`,
+      media: `${MEDIA}/gallery/media/videos/9286b29b-afc2-4c20-b5c9-5561a4f30916_20241211105150.mp4`,
     },
     {
       name: "Garage BLR",
