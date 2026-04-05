@@ -41,7 +41,7 @@ const NetworkHero: React.FC = () => {
         <p className={cn("text-sm font-medium text-white/40 uppercase tracking-[4px] mb-8", rubikClassName)}>
           Zo World
         </p>
-        <h1 className={cn("text-[60px] md:text-[120px] leading-[0.9] font-extrabold uppercase -tracking-[3%]", syneClassName)}>
+        <h1 className={cn("text-[40px] sm:text-[60px] md:text-[120px] leading-[0.9] font-extrabold uppercase -tracking-[3%]", syneClassName)}>
           The
           <br />
           <span className="text-zui-yellow">Network</span>
@@ -53,7 +53,7 @@ const NetworkHero: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-12 justify-center mt-12 max-w-[800px] mx-auto pt-8 border-t border-white/10">
           {stats.map((stat) => (
             <div key={stat.label} className="text-center">
-              <h3 className={cn("text-3xl md:text-5xl font-bold text-white", syneClassName)}>
+              <h3 className={cn("text-2xl sm:text-3xl md:text-5xl font-bold text-white", syneClassName)}>
                 {stat.value}
               </h3>
               <span className={cn("text-[10px] md:text-xs text-white/40 uppercase tracking-[2px] mt-2 block", rubikClassName)}>
