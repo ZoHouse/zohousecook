@@ -12,14 +12,6 @@ const ZoEffect: React.FC = () => {
     () => alumniPageData.curated.filter((m) => m.featured),
     []
   );
-  const companies = useMemo(
-    () =>
-      alumniPageData.curated
-        .filter((m) => m.featured || m.fundingAmount)
-        .slice(0, 6),
-    []
-  );
-
   const [spotlightIndex, setSpotlightIndex] = useState(0);
 
   useEffect(() => {
@@ -126,51 +118,6 @@ const ZoEffect: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-white/[0.06] rounded-2xl overflow-hidden">
-        {companies.map((member) => (
-          <div
-            key={member.nickname}
-            className="bg-[rgba(255,255,255,0.03)] p-6 hover:bg-[rgba(255,214,0,0.03)] transition-colors"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-neutral-800 to-neutral-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                {fixAvatarUrl(member.pfp) ? (
-                  <img
-                    src={fixAvatarUrl(member.pfp)!}
-                    alt={member.name}
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = "none";
-                      target.parentElement!.innerHTML = `<span class="${syneClassName} text-zui-yellow font-bold text-sm">${member.name.split(" ").map((n) => n[0]).join("")}</span>`;
-                    }}
-                  />
-                ) : (
-                  <span className={`${syneClassName} text-zui-yellow font-bold text-sm`}>{member.name.split(" ").map((n) => n[0]).join("")}</span>
-                )}
-              </div>
-              <div>
-                <h4 className={cn("font-semibold text-sm", syneClassName)}>{member.name}</h4>
-                <span className="text-zui-yellow text-xs">{member.company}</span>
-              </div>
-            </div>
-            <p className={cn("text-white/50 text-sm leading-relaxed mb-4", rubikClassName)}>
-              {member.description}
-            </p>
-            <div className="flex gap-2 flex-wrap">
-              {member.fundingAmount && (
-                <span className="text-[10px] uppercase tracking-[0.5px] px-3 py-1 rounded-full border border-[rgba(255,214,0,0.3)] text-zui-yellow">
-                  {member.fundingAmount}
-                </span>
-              )}
-              <span className="text-[10px] uppercase tracking-[0.5px] px-3 py-1 rounded-full border border-white/10 text-white/50">
-                {member.sector}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
     </section>
   );
 };

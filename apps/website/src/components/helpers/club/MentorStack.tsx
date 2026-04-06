@@ -1,17 +1,42 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { cn } from "@zo/utils/font";
 import alumniPageData from "../../../config/alumni";
 import { useFadeInOnScroll } from "../../../hooks";
 import { rubikClassName, syneClassName } from "../../utils/font";
 import { fixAvatarUrl } from "./utils";
 
+const MENTOR_ORDER = [
+  "ajeet",
+  "dharamveer",
+  "lisaray",
+  "kratex",
+  "kartikey",
+  "roshan",
+  "shabbiryk",
+];
+
 const MentorStack: React.FC = () => {
   const sectionRef = useFadeInOnScroll<HTMLDivElement>();
+  const [spotlightIndex, setSpotlightIndex] = useState(0);
 
-  const mentors = useMemo(
-    () => alumniPageData.curated.filter((m) => m.mentorStack),
-    []
-  );
+  const mentors = useMemo(() => {
+    const mentorMap = new Map(
+      alumniPageData.curated
+        .filter((m) => m.mentorStack)
+        .map((m) => [m.nickname, m])
+    );
+    return MENTOR_ORDER.map((nick) => mentorMap.get(nick)).filter(Boolean);
+  }, []);
+
+  useEffect(() => {
+    if (mentors.length <= 1) return;
+    const timer = setInterval(() => {
+      setSpotlightIndex((prev) => (prev + 1) % mentors.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [mentors.length]);
+
+  const spotlight = mentors[spotlightIndex];
 
   return (
     <section ref={sectionRef} className="snap-center py-24 px-6 max-w-[1100px] mx-auto">
@@ -25,37 +50,86 @@ const MentorStack: React.FC = () => {
         CEOs, fund managers, artists, and operators inside the network. Mentorship at Zo House is lived-in, not scheduled.
       </p>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/[0.04] rounded-xl overflow-hidden">
-        {mentors.map((mentor) => (
-          <div
-            key={mentor.nickname}
-            className="bg-black p-6 md:p-8 text-center hover:bg-[rgba(255,214,0,0.02)] transition-colors"
-          >
-            <div className="w-[72px] h-[72px] rounded-full mx-auto mb-4 bg-gradient-to-br from-neutral-800 to-neutral-600 border-2 border-[rgba(255,214,0,0.2)] flex items-center justify-center overflow-hidden">
-              {fixAvatarUrl(mentor.pfp) ? (
+      {spotlight && (
+        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-0 rounded-2xl bg-[rgba(255,214,0,0.02)] border border-[rgba(255,214,0,0.1)] mb-10 overflow-hidden">
+          {/* Photo side */}
+          <div className="relative h-[280px] md:h-auto bg-gradient-to-br from-neutral-900 to-neutral-800">
+            {spotlight.photo ? (
+              <img
+                src={spotlight.photo}
+                alt={spotlight.name}
+                className="w-full h-full object-cover"
+              />
+            ) : fixAvatarUrl(spotlight.pfp) ? (
+              <div className="w-full h-full flex items-center justify-center p-8">
                 <img
-                  src={fixAvatarUrl(mentor.pfp)!}
-                  alt={mentor.name}
+                  src={fixAvatarUrl(spotlight.pfp)!}
+                  alt={spotlight.name}
+                  referrerPolicy="no-referrer"
+                  className="w-40 h-40 object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <span className={`${syneClassName} text-zui-yellow font-bold text-4xl`}>
+                  {spotlight.name.split(" ").map((n) => n[0]).join("")}
+                </span>
+              </div>
+            )}
+            {fixAvatarUrl(spotlight.pfp) && spotlight.photo && (
+              <div className="absolute bottom-3 right-3 w-12 h-12 rounded-full overflow-hidden border-2 border-black/50 bg-neutral-900 shadow-lg">
+                <img
+                  src={fixAvatarUrl(spotlight.pfp)!}
+                  alt=""
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = "none";
-                    target.parentElement!.innerHTML = `<span class="${syneClassName} text-zui-yellow font-bold text-lg">${mentor.name.split(" ").map((n) => n[0]).join("")}</span>`;
-                  }}
                 />
-              ) : (
-                <span className={`${syneClassName} text-zui-yellow font-bold text-lg`}>{mentor.name.split(" ").map((n) => n[0]).join("")}</span>
-              )}
-            </div>
-            <h3 className={cn("font-bold text-base", syneClassName)}>{mentor.name}</h3>
-            <p className="text-zui-yellow text-sm mt-1">{mentor.mentorRole}</p>
-            <p className={cn("text-white/40 text-xs mt-3 leading-relaxed", rubikClassName)}>
-              {mentor.mentorDescription}
-            </p>
+              </div>
+            )}
           </div>
-        ))}
-      </div>
+          {/* Content side */}
+          <div className="p-6 md:p-10 flex flex-col justify-between">
+            <div>
+              <p className={cn("text-white/70 text-lg italic leading-relaxed border-l-2 border-zui-yellow pl-5 mb-6", rubikClassName)}>
+                {spotlight.mentorDescription}
+              </p>
+              <h3 className={cn("text-2xl font-bold", syneClassName)}>{spotlight.name}</h3>
+              <p className="text-zui-yellow text-sm mt-1">{spotlight.mentorRole}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-6">
+              {[
+                { label: "Company", value: spotlight.company, accent: true },
+                { label: "Sector", value: spotlight.sector, accent: false },
+                ...(spotlight.fundingAmount ? [{ label: "Raised", value: spotlight.fundingAmount, accent: true }] : []),
+                ...(spotlight.description ? [{ label: "Known for", value: spotlight.description, accent: false }] : []),
+              ].filter((s) => s.value).map((s) => (
+                <div key={s.label} className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-3">
+                  <span className={cn("text-white/30 text-[10px] uppercase tracking-[2px]", rubikClassName)}>{s.label}</span>
+                  <p className={cn("mt-1 text-sm font-semibold", syneClassName, s.accent ? "text-zui-yellow" : "text-white")}>
+                    {s.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mentors.length > 1 && (
+        <div className="flex gap-2 justify-center mb-10">
+          {mentors.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setSpotlightIndex(i)}
+              className={cn(
+                "w-2 h-2 rounded-full transition-all",
+                i === spotlightIndex ? "bg-zui-yellow w-6" : "bg-white/20"
+              )}
+              aria-label={`View mentor ${i + 1}`}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 };

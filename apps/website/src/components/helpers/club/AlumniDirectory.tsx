@@ -59,9 +59,12 @@ const AlumniDirectory: React.FC = () => {
     apiTier.forEach((f) => allDisplay.push({ type: "api", data: f }));
   }
 
-  const totalCount = (apiFounders?.length || 0) + alumniPageData.curated.filter(
-    (m) => !apiFounders?.some((f) => f.nickname === m.nickname)
-  ).length;
+  const totalCount = Math.max(
+    500,
+    (apiFounders?.length || 0) + alumniPageData.curated.filter(
+      (m) => !apiFounders?.some((f) => f.nickname === m.nickname)
+    ).length
+  );
   const displayed = showAll ? allDisplay : allDisplay.slice(0, 24);
 
   return (
