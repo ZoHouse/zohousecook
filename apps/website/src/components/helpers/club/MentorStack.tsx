@@ -22,7 +22,7 @@ const MentorStack: React.FC = () => {
         The Mentor Stack
       </h2>
       <p className={cn("text-white/40 text-base max-w-[550px] mt-2 mb-10", rubikClassName)}>
-        Fund managers, serial founders, and operators inside the network. Mentorship at Zo House is lived-in, not scheduled.
+        CEOs, fund managers, artists, and operators inside the network. Mentorship at Zo House is lived-in, not scheduled.
       </p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/[0.04] rounded-xl overflow-hidden">
