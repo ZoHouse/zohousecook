@@ -43,6 +43,7 @@
     "@types/react-leaflet": "^3.0.0",
     "@types/react-signature-canvas": "^1.0.5",
     "@types/three": "^0.160.0",
+    "@xyflow/react": "^12.10.2",
     "antd": "^5.27.4",
     "antd-style": "^3.7.1",
     "axios": "^1.6.2",

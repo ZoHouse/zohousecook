@@ -15,3 +15,4 @@ export { default as AlumniDirectory } from "./AlumniDirectory";
 export { default as ProgrammingProof } from "./ProgrammingProof";
 export { default as MentorStack } from "./MentorStack";
 export { default as NetworkCTA } from "./NetworkCTA";
+export { default as ChemistryCard } from "./ChemistryCard";

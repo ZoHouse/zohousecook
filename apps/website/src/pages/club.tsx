@@ -6,6 +6,7 @@ import {
   AlumniDirectory,
   MentorStack,
   NetworkCTA,
+  ChemistryCard,
 } from "../components/helpers/club";
 import Events from "../components/helpers/membership/Events";
 import membershipData from "../config/membership";
@@ -29,6 +30,7 @@ const Club: React.FC<
       <NetworkHero />
       <ZoEffect />
       <AlumniDirectory />
+      <ChemistryCard />
       <Events events={membershipData.events} />
       <MentorStack />
       <NetworkCTA />
