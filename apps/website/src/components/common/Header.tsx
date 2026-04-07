@@ -51,9 +51,9 @@ const Header: React.FC<HeaderProps> = () => {
 
   const handleLogin = () => {
     if (isLoggedIn) {
-      router.push("/dashboard");
+      router.push("/passport");
     } else {
-      showLoginModal(undefined, "/dashboard");
+      showLoginModal(undefined, "/passport");
     }
   };
 

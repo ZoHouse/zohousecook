@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { rubikClassName } from "../../utils/font";
+import { rubikClassName } from "../utils/font";
 
 interface CultureTagProps {
   name: string;

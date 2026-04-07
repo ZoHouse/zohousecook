@@ -9,6 +9,7 @@ import {
   HeroSection,
   NewsSection,
   TweetsSection,
+  WhatsNewSection,
   ZoBrandsSection,
 } from "../components/helpers/home";
 import { Nodes } from "../components/helpers/membership";
@@ -28,7 +29,8 @@ const Index: React.FC<
         image={metaData?.image}
       />
       <HeroSection />
-      <NewsSection news={homepageData.newsSection.data} />
+      <WhatsNewSection />
+      {/* <NewsSection news={homepageData.newsSection.data} /> */}
       <Nodes title="Zo Zo Zo" subtitle="If you Zo you Zo" nodes={[]} />
       <ZoBrandsSection />
       {/* <Nodes title="Vibes" subtitle="" nodes={[

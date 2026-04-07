@@ -19,7 +19,7 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
 
   return (
     <>
-      <section className="flex flex-col items-center text-center w-full h-[70vh] md:min-h-screen md:max-h-[1400px] relative">
+      <section className="flex flex-col items-center text-center w-full h-[70vh] md:h-[80vh] md:max-h-[900px] relative">
         <div
           className={cn(
             "h-fit w-full absolute bottom-0 top-[50%] md:top-[50%] left-[50%] -translate-x-[50%] -translate-y-[50%] md:-translate-y-[50%] z-50 select-none"
@@ -31,19 +31,19 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
               syneClassName
             )}
           >
-            A connected world of{" "}
+            Unlock the Future of{" "}
             <span
               className={cn(
                 "font-bold text-gradient-white-to-lighter italic ",
                 syneClassName
               )}
             >
-              Founders, Travellers & Misfits
+              Travel, Explore, and Earn
             </span>{" "}
           </h1>
           <Button
             onClick={handleTuneIn}
-            className="hidden md:block mt-6 w-full md:w-1/4 mx-auto"
+            className="hidden md:block mt-4 w-full md:w-1/4 mx-auto"
             type="primary"
           >
             Unlock your Passport
@@ -104,7 +104,7 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
           alt="science and tech"
         />
       </section>
-      <hr className="w-[80%] md:w-[60%] horizontal-divider my-20" />
+      <hr className="w-[80%] md:w-[60%] horizontal-divider my-10" />
     </>
   );
 };

@@ -12,11 +12,6 @@
       "destination": "https://zozozo-pm-samurais-dojo.vercel.app/pm/:path*"
     },
     {
-      "source": "/passport",
-      "has": [{ "type": "host", "value": "zozozo.work" }],
-      "destination": "https://zozozo-dashboard-samurais-dojo.vercel.app/dashboard/passport"
-    },
-    {
       "source": "/dashboard",
       "has": [{ "type": "host", "value": "zozozo.work" }],
       "destination": "https://zozozo-dashboard-samurais-dojo.vercel.app/dashboard"
