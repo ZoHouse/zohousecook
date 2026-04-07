@@ -244,16 +244,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
     const xp = Object.values(xpBreakdown).reduce((a, b) => a + b, 0);
 
-    console.log('my-stats breakdown:', JSON.stringify({
-      xp, xpBreakdown,
-      hasZostelToken: !!zostelToken,
-      hasZostelUserId: !!zostelUserId,
-      hasUserUuid: !!userUuid,
-      stayNights: stays.nights,
-      stayProperties: stays.properties.length,
-    }));
-
-
     const result: StatsResponse = {
       xp,
       rankTitle: getRankTitle(xp),
@@ -275,17 +265,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
-    return res.status(200).json({
-      ...result,
-      _debug: {
-        xpBreakdown,
-        hasZostelToken: !!zostelToken,
-        hasZostelUserId: !!zostelUserId,
-        hasUserUuid: !!userUuid,
-        hasCasToken: !!process.env.ZO_CAS_TOKEN,
-        zostelAppId: (process.env.ZOSTEL_APP_ID || '').slice(0, 6) + '...',
-      },
-    });
+    return res.status(200).json(result);
   } catch (err: any) {
     console.error('my-stats error:', err.message);
     return res.status(200).json(EMPTY);
