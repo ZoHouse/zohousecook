@@ -6,7 +6,6 @@ const SAMPLE_QUESTS = [
   {
     title:
       "Create a Reel on: Why I'd choose Zostel Pahalgam for my next trip",
-    reward: "200 Zo Cred",
     type: "reel" as const,
     status: "live" as const,
     timeRemaining: "12h 14m",

@@ -63,7 +63,7 @@ const WhyPassportPlus: React.FC = () => {
             </div>
 
             {/* Benefits teaser (faded) */}
-            <div className="mt-6 opacity-10">
+            <div className="mt-6 opacity-70">
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-8 h-8 bg-purple-700 rounded-lg flex items-center justify-center text-sm">
                   ⭐️

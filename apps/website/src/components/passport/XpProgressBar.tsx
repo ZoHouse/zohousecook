@@ -23,9 +23,9 @@ const XpProgressBar: React.FC<XpProgressBarProps> = ({
       <div className="flex items-center gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={`${basePath}/passport/compass-badge.png`}
-          alt="XP Badge"
-          className="w-[43px] h-[43px] rounded-xl border-2 border-[#71c8b6]"
+          src={`${basePath}/passport/zo-coin.png`}
+          alt="$Zo"
+          className="w-[43px] h-[43px] rounded-full"
         />
         <div className="flex flex-col">
           <span className="text-white font-bold text-[14px] uppercase tracking-wide">
