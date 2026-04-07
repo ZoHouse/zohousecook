@@ -22,56 +22,83 @@ export interface MyXpData {
   };
 }
 
-function getToken(): string | null {
+function getZoToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('zo-admin-token') || localStorage.getItem('zo-web-token') || null;
 }
 
+function getZostelToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('zostel-token') || null;
+}
+
+function getZostelUserId(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    // Try user object first
+    const raw = localStorage.getItem('zostel-user');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.user_id) return parsed.user_id;
+    }
+    // Decode user_id from JWT payload (the user object doesn't have it)
+    const token = localStorage.getItem('zostel-token');
+    if (token) {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (payload?.user_id) return payload.user_id;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Returns the current user's XP, rank, rank title, and travel stats.
- * Fetches from /api/my-stats using phone/nickname from profile.
- * Falls back to auth context user data if profile API is unavailable.
+ * Sends both Zo and Zostel tokens so the API can fetch from both services.
  */
 export function useMyXp() {
   const { profile, isLoading: profileLoading } = useProfile();
   const { user } = useAuth();
 
-  // Build a stable lookup key from profile, falling back to auth context user
-  const phone = profile?.mobile_number || user?.mobile_number || '';
-  const nickname = profile?.nickname || profile?.custom_nickname || '';
   const userId = profile?.code || user?.id || '';
-  const lookupKey = userId || phone || nickname;
+  const lookupKey = userId || profile?.mobile_number || user?.mobile_number || '';
 
   const { data: stats, isLoading: statsLoading } = useQuery<MyXpData>(
     ['my-stats', lookupKey],
     async () => {
-      const token = getToken();
-      if (!token) throw new Error('Not authenticated');
+      const zoToken = getZoToken();
+      if (!zoToken) throw new Error('Not authenticated');
 
       const params = new URLSearchParams();
       if (userId) params.set('userId', userId);
-      if (phone) params.set('phone', phone);
-      if (nickname) params.set('nickname', nickname);
 
-      const res = await fetch(`/dashboard/api/my-stats?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${zoToken}`,
+      };
+
+      // Pass Zostel credentials for stay data
+      const zostelToken = getZostelToken();
+      const zostelUserId = getZostelUserId();
+      if (zostelToken) headers['x-zostel-token'] = zostelToken;
+      if (zostelUserId) headers['x-zostel-user-id'] = zostelUserId;
+
+      const res = await fetch(`/api/my-stats?${params.toString()}`, { headers });
       if (!res.ok) throw new Error('Failed to fetch stats');
       return res.json();
     },
     {
-      enabled: !!getToken() && !!lookupKey,
+      enabled: !!getZoToken() && !!lookupKey,
       staleTime: 5 * 60 * 1000,
       refetchOnWindowFocus: false,
     }
   );
 
-  // Also check leaderboard for rank position
+  // Check leaderboard for rank position
   const { data: leaderboard } = useLeaderboard('global');
 
   let myXp: MyXpData | null = stats || null;
 
-  // If we found ourselves in the leaderboard, use that rank
   if (myXp && leaderboard?.leaderboard && userId) {
     const entry = leaderboard.leaderboard.find((e) => e.userId === userId);
     if (entry) {

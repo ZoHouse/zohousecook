@@ -48,7 +48,7 @@ async function fetchLeaderboard(scope: LeaderboardScope, filter?: string, time?:
   const token = getToken();
   if (!token) throw new Error('Not authenticated');
 
-  let url = `/dashboard/api/leaderboard?scope=${scope}`;
+  let url = `/api/leaderboard?scope=${scope}`;
   if (filter) url += `&filter=${encodeURIComponent(filter)}`;
   if (time && time !== 'all-time') url += `&time=${time}`;
 

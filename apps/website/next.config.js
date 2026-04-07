@@ -45,6 +45,8 @@ const nextConfig = {
     ZOHOUSE_SFO_PID: process.env.ZOHOUSE_SFO_PID || "",
     CRYPTO_EVENT_PID: process.env.CRYPTO_EVENT_PID || "",
     MEDIA_BASE_URL: process.env.MEDIA_BASE_URL || "",
+    ZOSTEL_APP_ID: process.env.ZOSTEL_APP_ID || "",
+    API_BASE_URL_ZOSTEL: process.env.API_BASE_URL_ZOSTEL || "",
   },
   async rewrites() {
     // Sub-app routing: proxy path-based routes to their respective Vercel deployments

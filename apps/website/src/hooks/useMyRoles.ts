@@ -33,9 +33,16 @@ async function fetchMyRoles(): Promise<string[]> {
   const token = getToken();
   if (!token) throw new Error('Not authenticated');
 
-  const res = await fetch('/dashboard/api/my-roles', {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+
+  // Forward device headers required by Zo API
+  const deviceId = localStorage.getItem('zo-admin-device-id') || localStorage.getItem('zo-web-device-id') || '';
+  const deviceSecret = localStorage.getItem('zo-admin-device-secret') || localStorage.getItem('zo-web-device-secret') || '';
+  if (deviceId) headers['client-device-id'] = deviceId;
+  if (deviceSecret) headers['client-device-secret'] = deviceSecret;
+  if (process.env.APP_ID) headers['client-key'] = process.env.APP_ID;
+
+  const res = await fetch('/api/my-roles', { headers });
   if (!res.ok) throw new Error('Failed to fetch roles');
   const data = await res.json();
   return data.roles || [];

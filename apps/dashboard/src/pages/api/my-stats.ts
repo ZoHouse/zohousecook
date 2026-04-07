@@ -1,8 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-// PARKED: Analytics DB queries removed while backend builds the events table.
-// This endpoint will be rebuilt on top of the atomic activity ledger.
-// See: prior implementation in git history for reference.
+// PARKED: Stats now live on the website app (apps/website/src/pages/api/my-stats.ts).
+// This endpoint kept as empty fallback for any old callers.
 
 const EMPTY = {
   xp: 0, rankTitle: 'Citizen', rank: null,
