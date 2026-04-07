@@ -81,8 +81,11 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
     new QueryClient({
       queryCache: new QueryCache({
         onError: async (error: any) => {
+          // Log auth errors but do NOT auto-logout — a single 401/403 from
+          // any Axios query (e.g. PROFILE_ME) was nuking the entire session
+          // for normal users whose token lacked admin privileges.
           if (error?.response?.status === 403 || error?.response?.status === 401) {
-            logout();
+            console.warn('[auth] Query returned', error.response.status, '— token may be invalid');
           }
         },
       }),

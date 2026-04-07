@@ -22,10 +22,28 @@ const data: HomePageData = {
   newsSection: {
     data: [
       {
-        mediaLink: `${process.env.MEDIA_BASE_URL}/gallery/media/images/9e5d8a7a-375c-4aca-9c73-412b9d8a4587_20241022122613.png?w=320`,
-        title: "Trip in San Francisco",
-        subtitle: "Find the best party in SF",
-        route: "/san-francisco",
+        mediaLink: `${process.env.MEDIA_BASE_URL}/gallery/media/videos/cfaed441-be10-47a3-a7ab-0e51079b6776_20240903100520.mp4`,
+        title: "Creator",
+        subtitle: "Turn travel stories into income",
+        route: "/dashboard",
+      },
+      {
+        mediaLink: `${process.env.MEDIA_BASE_URL}/gallery/media/videos/cfabdbd5-6f9c-4b26-956d-a5c12f60fef7_20241007084352.mp4`,
+        title: "Tribebuilder",
+        subtitle: "Grow your tribe",
+        route: "/dashboard",
+      },
+      {
+        mediaLink: `${process.env.MEDIA_BASE_URL}/gallery/media/videos/8795e054-5c51-42ac-8570-2279a93f3aaf_20240903101643.mp4`,
+        title: "Host",
+        subtitle: "Bring people together",
+        route: "/dashboard",
+      },
+      {
+        mediaLink: `${process.env.MEDIA_BASE_URL}/gallery/media/videos/c243c43c-7199-485e-9e56-8976a594f4f9_20240903100216.mp4`,
+        title: "Builder",
+        subtitle: "Open doors for the community",
+        route: "/dashboard",
       },
     ],
   },

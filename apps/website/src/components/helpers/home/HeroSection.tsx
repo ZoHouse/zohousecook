@@ -11,9 +11,9 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
 
   const handleTuneIn = () => {
     if (isLoggedIn) {
-      window.location.href = "/dashboard";
+      window.location.href = "/passport";
     } else {
-      showLoginModal(undefined, "/dashboard");
+      showLoginModal(undefined, "/passport");
     }
   };
 
@@ -46,7 +46,7 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
             className="hidden md:block mt-6 w-full md:w-1/4 mx-auto"
             type="primary"
           >
-            Tune into Zo World
+            Unlock your Passport
           </Button>
         </div>
 

@@ -7,7 +7,9 @@ import {
   EventCard,
   FounderMemberCard,
   HeroSection,
+  NewsSection,
   TweetsSection,
+  ZoBrandsSection,
 } from "../components/helpers/home";
 import { Nodes } from "../components/helpers/membership";
 import { homepageData, membershipPageData } from "../config";
@@ -26,15 +28,17 @@ const Index: React.FC<
         image={metaData?.image}
       />
       <HeroSection />
-      <Nodes title="Zo Zo Zo" subtitle="If you Zo you Zo" nodes={[
+      <NewsSection news={homepageData.newsSection.data} />
+      <Nodes title="Zo Zo Zo" subtitle="If you Zo you Zo" nodes={[]} />
+      <ZoBrandsSection />
+      {/* <Nodes title="Vibes" subtitle="" nodes={[
         { ...membershipPageData.nodes[1], text: "People" },
         { ...membershipPageData.nodes[0], text: "Parties" },
         { ...membershipPageData.nodes[2], text: "Places" },
-      ]} />
-      <EventCard />
-      <Brands brands={homepageData.brands.data} />
-      <FounderMemberCard />
+      ]} /> */}
+      {/* <FounderMemberCard /> */}
       <TweetsSection />
+      <Brands brands={homepageData.brands.data} />
     </Page>
   );
 };

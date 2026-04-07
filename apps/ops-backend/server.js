@@ -4276,6 +4276,61 @@ Fix the query. Use ONLY columns that exist in the schema. Return ONLY the correc
   }
 });
 
+// POST /api/analytics/sql — Direct SQL execution (no LLM, SELECT-only)
+// Used by internal dashboard endpoints (leaderboard, my-stats) that build their own SQL.
+// Same safety checks as nl-query: SELECT/WITH only, no mutations, auto-LIMIT.
+app.post("/api/analytics/sql", async (req, res) => {
+  const { sql } = req.body;
+
+  if (!sql || typeof sql !== "string" || !sql.trim()) {
+    return res.status(400).json({ success: false, error: "sql field is required" });
+  }
+
+  if (sql.length > 5000) {
+    return res.status(400).json({ success: false, error: "SQL too long (max 5000 chars)" });
+  }
+
+  const validation = validateAndSanitizeSQL(sql);
+  if (!validation.valid) {
+    return res.status(400).json({
+      success: false,
+      error: validation.error === "unsafe_query"
+        ? "Only SELECT queries are allowed."
+        : validation.error,
+    });
+  }
+
+  try {
+    const startTime = Date.now();
+    const result = await analyticsPool.query({
+      text: validation.sql,
+      timeout: 30000,
+    });
+    const executionTimeMs = Date.now() - startTime;
+    const columns = result.fields ? result.fields.map(f => f.name) : [];
+
+    console.log(`[SQL Direct] ${validation.sql.slice(0, 120)}... → ${result.rowCount} rows in ${executionTimeMs}ms`);
+
+    res.json({
+      success: true,
+      data: {
+        sql: validation.sql,
+        rows: result.rows,
+        rowCount: result.rowCount,
+        columns,
+        executionTimeMs,
+      },
+    });
+  } catch (pgError) {
+    console.error("[SQL Direct] PG error:", pgError.message);
+    return res.status(400).json({
+      success: false,
+      error: humanizeQueryError(pgError),
+      sql: validation.sql,
+    });
+  }
+});
+
 // GET /api/analytics/nl-query/schema — Return cached DB schema
 app.get("/api/analytics/nl-query/schema", async (req, res) => {
   try {

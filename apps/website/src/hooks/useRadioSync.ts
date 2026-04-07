@@ -15,8 +15,8 @@ interface NowPlayingData {
   seekTo: number;
   duration: number;
   slot: { name: string; mood: string; djName: string; voice: string };
-  nextSong: { id: string; title: string; artist: string };
-  previousSong: { id: string; title: string; artist: string };
+  nextSong: { id: string; title: string; artist: string } | null;
+  previousSong: { id: string; title: string; artist: string } | null;
   playlistIndex: number;
   playlistLength: number;
   serverTime: number;
@@ -67,6 +67,8 @@ export function useRadioSync() {
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const djPlayedForRef = useRef<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioBlobUrlRef = useRef<string | null>(null);
+  const djCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isActiveRef = useRef(false);
   const prefetchedRef = useRef<NowPlayingData | null>(null);
   const playerReadyRef = useRef(false);
@@ -161,6 +163,14 @@ export function useRadioSync() {
   );
 
   const stopDJAudio = useCallback(() => {
+    if (djCheckIntervalRef.current) {
+      clearInterval(djCheckIntervalRef.current);
+      djCheckIntervalRef.current = null;
+    }
+    if (audioBlobUrlRef.current) {
+      URL.revokeObjectURL(audioBlobUrlRef.current);
+      audioBlobUrlRef.current = null;
+    }
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.onended = null;
@@ -178,26 +188,23 @@ export function useRadioSync() {
       stopDJAudio();
 
       const url = URL.createObjectURL(blob);
+      audioBlobUrlRef.current = url;
       const audio = new Audio(url);
       audioRef.current = audio;
       audio.volume = 1.0;
 
+      const cleanup = () => {
+        if (audioBlobUrlRef.current === url) {
+          URL.revokeObjectURL(url);
+          audioBlobUrlRef.current = null;
+        }
+        djInProgressRef.current = false;
+      };
+
       const done = new Promise<void>((resolve) => {
-        audio.onended = () => {
-          URL.revokeObjectURL(url);
-          djInProgressRef.current = false;
-          resolve();
-        };
-        audio.onerror = () => {
-          URL.revokeObjectURL(url);
-          djInProgressRef.current = false;
-          resolve();
-        };
-        audio.play().catch(() => {
-          URL.revokeObjectURL(url);
-          djInProgressRef.current = false;
-          resolve();
-        });
+        audio.onended = () => { cleanup(); resolve(); };
+        audio.onerror = () => { cleanup(); resolve(); };
+        audio.play().catch(() => { cleanup(); resolve(); });
       });
 
       return { audio, done };
@@ -208,32 +215,41 @@ export function useRadioSync() {
   const generateDJClipOnce = useCallback(
     async (
       slot: NowPlayingData["slot"],
-      previousSong: { title: string; artist: string },
+      previousSong: { title: string; artist: string } | null,
       nextSong: { id?: string; title: string; artist: string }
     ): Promise<{ blob: Blob; script: string } | null> => {
-      const scriptRes = await fetch(`${RADIO_API}/api/dj/script`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mood: slot.mood,
-          previousSong,
-          nextSong,
-          djName: slot.djName,
-          djStyle: getDJStyle(slot.mood),
-        }),
-      });
-      if (!scriptRes.ok) return null;
-      const { script } = await scriptRes.json();
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      try {
+        const scriptRes = await fetch(`${RADIO_API}/api/dj/script`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mood: slot.mood,
+            previousSong: previousSong || undefined,
+            nextSong,
+            djName: slot.djName,
+            djStyle: getDJStyle(slot.mood),
+            isIntro: !previousSong,
+          }),
+          signal: controller.signal,
+        });
+        if (!scriptRes.ok) return null;
+        const { script } = await scriptRes.json();
 
-      const ttsRes = await fetch(`${RADIO_API}/api/dj/speak`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: script, voice: slot.voice }),
-      });
-      if (!ttsRes.ok) return null;
+        const ttsRes = await fetch(`${RADIO_API}/api/dj/speak`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: script, voice: slot.voice }),
+          signal: controller.signal,
+        });
+        if (!ttsRes.ok) return null;
 
-      const blob = await ttsRes.blob();
-      return { blob, script };
+        const blob = await ttsRes.blob();
+        return { blob, script };
+      } finally {
+        clearTimeout(timeout);
+      }
     },
     []
   );
@@ -241,7 +257,7 @@ export function useRadioSync() {
   const generateDJClip = useCallback(
     async (
       slot: NowPlayingData["slot"],
-      previousSong: { title: string; artist: string },
+      previousSong: { title: string; artist: string } | null,
       nextSong: { id?: string; title: string; artist: string }
     ): Promise<{ blob: Blob; script: string } | null> => {
       try {
@@ -276,11 +292,11 @@ export function useRadioSync() {
         )
           return;
         const data = latestDataRef.current;
-        if (!data) return;
+        if (!data || !data.nextSong) return;
         const songId = currentSongIdRef.current || data.song.id;
         prefetchStartedForRef.current = songId;
         generateDJClip(data.slot, data.song, data.nextSong).then((result) => {
-          if (result && isActiveRef.current) {
+          if (result && isActiveRef.current && data.nextSong) {
             prefetchedDJRef.current = {
               audioBlob: result.blob,
               script: result.script,
@@ -314,7 +330,7 @@ export function useRadioSync() {
     stopDJAudio();
 
     const data = latestDataRef.current;
-    if (!data) {
+    if (!data || !data.nextSong) {
       transitionInProgressRef.current = false;
       return;
     }
@@ -356,11 +372,15 @@ export function useRadioSync() {
         const nextSong = data.nextSong;
         const loadNextSongUnderDJ = () => {
           if (!djAudio.duration || !isActiveRef.current) return;
-          const checkInterval = setInterval(() => {
+          if (djCheckIntervalRef.current) clearInterval(djCheckIntervalRef.current);
+          djCheckIntervalRef.current = setInterval(() => {
             if (!djAudio.duration) return;
             const progress = djAudio.currentTime / djAudio.duration;
             if (progress > 0.75) {
-              clearInterval(checkInterval);
+              if (djCheckIntervalRef.current) {
+                clearInterval(djCheckIntervalRef.current);
+                djCheckIntervalRef.current = null;
+              }
               const player = playerRef.current;
               if (player) {
                 currentSongIdRef.current = nextSong.id;
@@ -384,9 +404,12 @@ export function useRadioSync() {
               }
             }
           }, 200);
-          djAudio.addEventListener("ended", () => clearInterval(checkInterval), {
-            once: true,
-          });
+          djAudio.addEventListener("ended", () => {
+            if (djCheckIntervalRef.current) {
+              clearInterval(djCheckIntervalRef.current);
+              djCheckIntervalRef.current = null;
+            }
+          }, { once: true });
         };
 
         setTimeout(loadNextSongUnderDJ, 500);
@@ -423,20 +446,21 @@ export function useRadioSync() {
       if (!isActiveRef.current) return;
 
       const player = playerRef.current;
-      if (player) {
-        if (currentSongIdRef.current !== data.nextSong.id) {
-          currentSongIdRef.current = data.nextSong.id;
+      const next = data.nextSong;
+      if (player && next) {
+        if (currentSongIdRef.current !== next.id) {
+          currentSongIdRef.current = next.id;
           player.setVolume(0);
           player.loadVideoById({
-            videoId: data.nextSong.id,
+            videoId: next.id,
             startSeconds: 0,
           });
           setState((prev) => ({
             ...prev,
             currentSong: {
-              id: data.nextSong.id,
-              title: data.nextSong.title,
-              artist: data.nextSong.artist,
+              id: next.id,
+              title: next.title,
+              artist: next.artist,
               mood: data.slot.mood,
               genre: prev.currentSong?.genre || "",
             },
@@ -536,11 +560,12 @@ export function useRadioSync() {
       if (
         remaining < 26 &&
         remaining > 5 &&
+        data.nextSong &&
         prefetchStartedForRef.current !== actualSongId
       ) {
         prefetchStartedForRef.current = actualSongId;
         generateDJClip(data.slot, data.song, data.nextSong).then((result) => {
-          if (result && isActiveRef.current) {
+          if (result && isActiveRef.current && data.nextSong) {
             prefetchedDJRef.current = {
               audioBlob: result.blob,
               script: result.script,
@@ -616,10 +641,10 @@ export function useRadioSync() {
           djInProgressRef.current = true;
           generateDJClip(
             data.slot,
-            null as unknown as { title: string; artist: string },
+            null,
             data.song
           ).then(async (result) => {
-            if (!result || !isActiveRef.current) {
+            if (!result || !isActiveRef.current || transitionInProgressRef.current) {
               djInProgressRef.current = false;
               return;
             }
@@ -720,10 +745,10 @@ export function useRadioSync() {
       djInProgressRef.current = true;
       generateDJClip(
         data.slot,
-        null as unknown as { title: string; artist: string },
+        null,
         data.song
       ).then(async (result) => {
-        if (!result || !isActiveRef.current) {
+        if (!result || !isActiveRef.current || transitionInProgressRef.current) {
           djInProgressRef.current = false;
           return;
         }

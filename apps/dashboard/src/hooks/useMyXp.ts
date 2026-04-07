@@ -1,6 +1,6 @@
 import { useQuery } from 'react-query';
 import { useLeaderboard } from './useLeaderboard';
-import { useProfile } from '@zo/auth';
+import { useProfile, useAuth } from '@zo/auth';
 
 export interface MyXpData {
   xp: number;
@@ -30,14 +30,16 @@ function getToken(): string | null {
 /**
  * Returns the current user's XP, rank, rank title, and travel stats.
  * Fetches from /api/my-stats using phone/nickname from profile.
+ * Falls back to auth context user data if profile API is unavailable.
  */
 export function useMyXp() {
   const { profile, isLoading: profileLoading } = useProfile();
+  const { user } = useAuth();
 
-  // Build a stable lookup key from profile
-  const phone = profile?.mobile_number || '';
+  // Build a stable lookup key from profile, falling back to auth context user
+  const phone = profile?.mobile_number || user?.mobile_number || '';
   const nickname = profile?.nickname || profile?.custom_nickname || '';
-  const userId = profile?.code || '';
+  const userId = profile?.code || user?.id || '';
   const lookupKey = userId || phone || nickname;
 
   const { data: stats, isLoading: statsLoading } = useQuery<MyXpData>(

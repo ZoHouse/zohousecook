@@ -10,6 +10,9 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        serif: ['"Instrument Serif"', "Georgia", "serif"],
+      },
       animation: {
         "spin-slow": "spin 20s linear infinite",
         "spin-slow-reverse": "spin 20s linear reverse infinite",

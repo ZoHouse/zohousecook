@@ -34,28 +34,7 @@ const navigationLinks: NavigationLinksType = {
     ],
   },
   "/house": {
-    links: [
-      {
-        label: "Houses",
-        id: "houses",
-        showOnWebHeader: true,
-      },
-      {
-        label: "Program",
-        id: "program",
-        showOnWebHeader: true,
-      },
-      {
-        label: "Culture",
-        id: "culture",
-        showOnWebHeader: true,
-      },
-      {
-        label: "Apply",
-        href: "https://zostel.typeform.com/to/LgcBfa0M",
-        showOnWebHeader: true,
-      },
-    ],
+    links: [],
   },
 };
 

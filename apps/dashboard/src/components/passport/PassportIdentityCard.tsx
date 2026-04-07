@@ -133,8 +133,8 @@ const PassportIdentityCard: React.FC<PassportIdentityCardProps> = ({
         {/* Role Badges */}
         {hasRoles && (
           <div className="flex flex-row gap-2">
-            {showCreator && <RoleBadge role="Creator" />}
-            {showTribeBuilder && <RoleBadge role="TribeBuilder" />}
+            {showCreator && <RoleBadge type="creator" />}
+            {showTribeBuilder && <RoleBadge type="tribebuilder" />}
           </div>
         )}
 

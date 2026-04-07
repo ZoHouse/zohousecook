@@ -109,7 +109,7 @@ const Header: React.FC<HeaderProps> = () => {
                       rubikClassName
                     )}
                   >
-                    {isLoggedIn ? "Dashboard" : "Login"}
+                    {isLoggedIn ? "Passport" : "Login"}
                   </button>
                 )}
               </div>

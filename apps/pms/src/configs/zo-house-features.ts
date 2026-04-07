@@ -43,6 +43,17 @@ export interface ZoFeature {
 }
 
 export const ZO_FEATURES: Record<string, ZoFeature> = {
+  pnl: {
+    id: "pnl",
+    label: "P&L",
+    backend: "supabase",
+    status: "testing",
+    minAccess: "front-desk-manager",
+    icon: "Dollar",
+    navLinks: [
+      { id: "pnl-dashboard", name: "P&L", path: "/pnl", icon: "Dollar" },
+    ],
+  },
   cafe: {
     id: "cafe",
     label: "Cafe Zomad",
@@ -113,17 +124,6 @@ export const ZO_FEATURES: Record<string, ZoFeature> = {
     icon: "Vibe",
     navLinks: [
       { id: "zo-dist-dashboard", name: "Dashboard", path: "/zo-distribution", icon: "Vibe" },
-    ],
-  },
-  pnl: {
-    id: "pnl",
-    label: "P&L",
-    backend: "supabase",
-    status: "testing",
-    minAccess: "front-desk-manager",
-    icon: "Dollar",
-    navLinks: [
-      { id: "pnl-dashboard", name: "P&L", path: "/pnl", icon: "Dollar" },
     ],
   },
 };

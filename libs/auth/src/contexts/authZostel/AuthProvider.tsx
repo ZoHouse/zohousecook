@@ -64,7 +64,11 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children, localKey }) => {
   const logout = useCallback(() => {
     setLoggedIn(false);
     setUser(null);
-    localStorage.clear();
+    // Only remove zostel keys — localStorage.clear() was destroying
+    // zo-admin-* tokens and all other app state
+    localStorage.removeItem(`${localKey}-token`);
+    localStorage.removeItem(`${localKey}-user`);
+    localStorage.removeItem(`${localKey}-token-expiry`);
     const customAxiosHeaders: GeneralObject = {
       ...axios.defaults.headers,
       "Client-User-Id": randomString(10),

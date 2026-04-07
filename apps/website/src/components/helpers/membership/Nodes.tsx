@@ -19,25 +19,29 @@ const Nodes: React.FC<NodesProps> = ({ nodes, title, subtitle }) => {
   const sectionRef = useFadeInOnScroll<HTMLDivElement>();
 
   return (
-    <section className="min-h-fit py-10 md:py-20 px-6 lg:px-[108px] max-w-[1400px] mx-auto" ref={sectionRef}>
-      <h4
-        className={cn(
-          "text-[40px] leading-8 -tracking-[3%] font-bold text-center uppercase",
-          syneClassName
-        )}
-      >
-        {title || "Nodes"}
-      </h4>
-      <p
-        className={cn(
-          "mt-4 md:mt-10 md:text-2xl md:leading-8 font-medium text-white/40 text-center tracking-[1%]",
-          rubikClassName
-        )}
-      >
-        {subtitle || "IRL spaces across the world, where founder members get privileged access"}
-      </p>
+    <section className={`min-h-fit pt-10 md:pt-20 px-6 lg:px-[108px] max-w-[1400px] mx-auto ${nodes.length > 0 ? 'pb-10 md:pb-20' : 'pb-0'}`} ref={sectionRef}>
+      {title && (
+        <h4
+          className={cn(
+            "text-[40px] leading-8 -tracking-[3%] font-bold text-center uppercase",
+            syneClassName
+          )}
+        >
+          {title}
+        </h4>
+      )}
+      {subtitle && (
+        <p
+          className={cn(
+            "mt-4 md:mt-10 md:text-2xl md:leading-8 font-medium text-white/40 text-center tracking-[1%]",
+            rubikClassName
+          )}
+        >
+          {subtitle}
+        </p>
+      )}
 
-      <div className="flex flex-col h-full md:flex-row gap-8 md:gap-6 mt-10">
+      <div className={`flex flex-col h-full md:flex-row gap-8 md:gap-6 ${nodes.length > 0 ? 'mt-10' : ''}`}>
         {nodes.map((node) => (
           <div key={node.id} className="w-full md:w-1/3 rounded-3xl h-fit">
             <video

@@ -66,6 +66,10 @@ const nextConfig = {
     "@dnd-kit/sortable",
     "@dnd-kit/utilities",
     "rc-table",
+    "three",
+    "@react-three/fiber",
+    "@react-three/drei",
+    "@react-three/postprocessing",
   ],
 };
 

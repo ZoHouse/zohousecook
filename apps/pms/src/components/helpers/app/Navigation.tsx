@@ -300,11 +300,11 @@ const Navigation: React.FC<Navigation> = () => {
                   : true)
             );
 
-            // Find where to inject Zo House features (after "activities" link)
-            const activityIndex = filteredLinks.findIndex(
-              (link: GeneralObject) => link.id === "activities"
+            // Find where to inject Zo House features (after "overview" link)
+            const overviewIndex = filteredLinks.findIndex(
+              (link: GeneralObject) => link.id === "overview"
             );
-            const insertAfter = activityIndex >= 0 ? activityIndex : -1;
+            const insertAfter = overviewIndex >= 0 ? overviewIndex : -1;
 
             // Get visible Zo House features for this operator
             const visibleFeatures = Object.values(ZO_FEATURES).filter(

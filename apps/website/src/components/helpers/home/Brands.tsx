@@ -17,7 +17,7 @@ const Brands: React.FC<BrandsProps> = ({ brands }) => {
   const sectionRef = useFadeInOnScroll<HTMLDivElement>();
 
   return (
-    <section ref={sectionRef}>
+    <section ref={sectionRef} className="mt-20 md:mt-[120px]">
       <h2 className={cn("sub-heading-3 font-bold text-center", syneClassName)}>
         As seen on
       </h2>

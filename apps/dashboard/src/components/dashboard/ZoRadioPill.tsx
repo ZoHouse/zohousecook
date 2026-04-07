@@ -1,14 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-
-const RADIO_API = "https://zo-radio-production.up.railway.app/api/radio/now-playing";
-
-interface NowPlayingData {
-  song: { id: string; title: string; artist: string };
-  seekTo: number;
-  duration: number;
-  slot: { name: string; mood: string };
-  serverTime: number;
-}
+import { useRadioSync } from "../../hooks/useRadioSync";
 
 // Load YouTube IFrame API script once
 let ytApiLoaded = false;
@@ -34,128 +25,78 @@ function onYTReady(cb: () => void) {
 }
 
 export function ZoRadioPill() {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [songTitle, setSongTitle] = useState("Zo Radio");
-  const [slotName, setSlotName] = useState("");
-  const playerRef = useRef<any>(null);
+  const { status, currentSong, slot, djScript, tuneIn, playerRef, onPlayerReady, onPlayerEnd } = useRadioSync();
   const containerRef = useRef<HTMLDivElement>(null);
-  const currentSongIdRef = useRef<string | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const dataRef = useRef<NowPlayingData | null>(null);
+  const playerCreatedRef = useRef(false);
+  const [paused, setPaused] = useState(false);
 
-  const fetchNowPlaying = useCallback(async () => {
-    try {
-      const res = await fetch(RADIO_API);
-      const data: NowPlayingData = await res.json();
-      dataRef.current = data;
-      const newTitle = data.song?.title || "Zo Radio";
-      const newSlot = data.slot?.name || "";
-      setSongTitle((prev) => (prev === newTitle ? prev : newTitle));
-      setSlotName((prev) => (prev === newSlot ? prev : newSlot));
-      return data;
-    } catch {
-      return null;
-    }
-  }, []);
+  const isActive = status === "playing" || status === "dj-speaking";
+  const isPlaying = isActive && !paused;
+  const isDJSpeaking = status === "dj-speaking" && !paused;
+  const songTitle = currentSong?.title || "Zo Radio";
+  const slotName = slot?.name || "";
 
+  // Create hidden YouTube player on mount
   useEffect(() => {
-    fetchNowPlaying();
     loadYTApi();
-  }, [fetchNowPlaying]);
-
-  useEffect(() => {
-    if (!isPlaying) return;
-    pollRef.current = setInterval(async () => {
-      const data = await fetchNowPlaying();
-      if (data && playerRef.current && data.song.id !== currentSongIdRef.current) {
-        const elapsed = Math.floor((Date.now() - data.serverTime) / 1000);
-        const adjustedSeek = data.seekTo + elapsed;
-        currentSongIdRef.current = data.song.id;
-        playerRef.current.loadVideoById({ videoId: data.song.id, startSeconds: adjustedSeek });
-        playerRef.current.setVolume(80);
-      }
-    }, 30000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [isPlaying, fetchNowPlaying]);
-
-  const startPlaying = useCallback(async () => {
-    const data = await fetchNowPlaying();
-    if (!data) return;
-
-    const elapsed = Math.floor((Date.now() - data.serverTime) / 1000);
-    const adjustedSeek = data.seekTo + elapsed;
-
-    if (playerRef.current) {
-      currentSongIdRef.current = data.song.id;
-      playerRef.current.loadVideoById({ videoId: data.song.id, startSeconds: adjustedSeek });
-      playerRef.current.setVolume(80);
-      setIsPlaying(true);
-      return;
-    }
-
     onYTReady(() => {
-      if (!containerRef.current) return;
+      if (!containerRef.current || playerCreatedRef.current) return;
+      playerCreatedRef.current = true;
       const div = document.createElement("div");
-      div.id = "zo-radio-player";
+      div.id = "zo-radio-dash-player";
       containerRef.current.appendChild(div);
 
-      playerRef.current = new (window as any).YT.Player("zo-radio-player", {
+      new (window as any).YT.Player("zo-radio-dash-player", {
         height: "1",
         width: "1",
-        videoId: data.song.id,
         playerVars: {
-          autoplay: 1,
+          autoplay: 0,
           controls: 0,
           disablekb: 1,
           fs: 0,
           modestbranding: 1,
           playsinline: 1,
-          start: adjustedSeek,
         },
         events: {
-          onReady: (e: any) => {
-            currentSongIdRef.current = data.song.id;
-            e.target.setVolume(80);
-            e.target.playVideo();
-          },
+          onReady: onPlayerReady,
           onStateChange: (e: any) => {
-            if (e.data === 0) {
-              fetchNowPlaying().then((next) => {
-                if (next && playerRef.current) {
-                  const el = Math.floor((Date.now() - next.serverTime) / 1000);
-                  const adj = next.seekTo + el;
-                  currentSongIdRef.current = next.song.id;
-                  playerRef.current.loadVideoById({ videoId: next.song.id, startSeconds: adj });
-                  playerRef.current.setVolume(80);
-                }
-              });
-            }
+            if (e.data === 0) onPlayerEnd();
+          },
+          onError: (e: any) => {
+            console.warn("[ZoRadio] YouTube player error:", e.data);
           },
         },
       });
-      setIsPlaying(true);
     });
-  }, [fetchNowPlaying]);
+  }, [onPlayerReady, onPlayerEnd]);
 
-  const stopPlaying = useCallback(() => {
-    if (playerRef.current?.pauseVideo) {
-      playerRef.current.pauseVideo();
+  const handleClick = useCallback(() => {
+    if (isActive && !paused) {
+      // Pause playback
+      if (playerRef.current?.pauseVideo) {
+        playerRef.current.pauseVideo();
+      }
+      setPaused(true);
+    } else if (isActive && paused) {
+      // Resume playback
+      if (playerRef.current?.playVideo) {
+        playerRef.current.playVideo();
+      }
+      setPaused(false);
+    } else if (status === "ready" || status === "prefetching") {
+      setPaused(false);
+      tuneIn();
     }
-    setIsPlaying(false);
-  }, []);
-
-  const togglePlay = () => {
-    if (isPlaying) stopPlaying();
-    else startPlaying();
-  };
+  }, [isActive, paused, status, tuneIn, playerRef]);
 
   return (
     <div className="flex items-center gap-2">
       <div ref={containerRef} className="absolute w-0 h-0 overflow-hidden opacity-0 pointer-events-none" />
 
-      <div className="flex items-center gap-1.5 rounded-full cursor-pointer select-none
-        sm:px-2.5 sm:py-1 sm:bg-white/5 sm:border sm:border-dash-border sm:hover:border-dash-border-hover sm:max-w-[300px] transition-colors"
-        onClick={togglePlay}
+      <div
+        className="flex items-center gap-1.5 rounded-full cursor-pointer select-none
+          sm:px-2.5 sm:py-1 sm:bg-white/5 sm:border sm:border-dash-border sm:hover:border-dash-border-hover sm:max-w-[300px] transition-colors"
+        onClick={handleClick}
       >
         <span className="flex-shrink-0 w-8 h-8 sm:w-5 sm:h-5 rounded-full bg-white/10 flex items-center justify-center active:scale-95 transition-transform">
           {isPlaying ? (
@@ -172,9 +113,9 @@ export function ZoRadioPill() {
 
         {isPlaying ? (
           <span className="hidden sm:flex gap-[2px] items-end h-3 flex-shrink-0">
-            <span className="w-[2px] bg-green-400 rounded-full animate-pulse h-2" />
-            <span className="w-[2px] bg-green-400 rounded-full animate-pulse h-3" style={{ animationDelay: "150ms" }} />
-            <span className="w-[2px] bg-green-400 rounded-full animate-pulse h-1.5" style={{ animationDelay: "300ms" }} />
+            <span className={`w-[2px] rounded-full animate-pulse h-2 ${isDJSpeaking ? "bg-amber-400" : "bg-green-400"}`} />
+            <span className={`w-[2px] rounded-full animate-pulse h-3 ${isDJSpeaking ? "bg-amber-400" : "bg-green-400"}`} style={{ animationDelay: "150ms" }} />
+            <span className={`w-[2px] rounded-full animate-pulse h-1.5 ${isDJSpeaking ? "bg-amber-400" : "bg-green-400"}`} style={{ animationDelay: "300ms" }} />
           </span>
         ) : (
           <span className="hidden sm:flex gap-[2px] items-end h-3 flex-shrink-0">
@@ -184,12 +125,18 @@ export function ZoRadioPill() {
           </span>
         )}
 
-        <span className={`hidden sm:inline text-[10px] font-medium truncate ${isPlaying ? "text-green-400" : "text-dash-text-60"}`}>
-          {songTitle}
+        <span className={`hidden sm:inline text-[10px] font-medium truncate ${
+          isDJSpeaking ? "text-amber-400" : isPlaying ? "text-green-400" : "text-dash-text-60"
+        }`}>
+          {isDJSpeaking
+            ? (djScript ? djScript.slice(0, 30) + "..." : "RJ speaking...")
+            : songTitle}
         </span>
 
-        {slotName && (
-          <span className={`text-[9px] flex-shrink-0 hidden sm:inline px-1.5 py-0.5 rounded-full ${isPlaying ? "bg-green-500/10 text-green-400/60" : "bg-white/5 text-dash-text-40"}`}>
+        {slotName && !isDJSpeaking && (
+          <span className={`text-[9px] flex-shrink-0 hidden sm:inline px-1.5 py-0.5 rounded-full ${
+            isPlaying ? "bg-green-500/10 text-green-400/60" : "bg-white/5 text-dash-text-40"
+          }`}>
             {slotName}
           </span>
         )}

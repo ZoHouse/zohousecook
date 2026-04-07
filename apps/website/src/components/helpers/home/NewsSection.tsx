@@ -1,6 +1,7 @@
 import React from "react";
 import { useFadeInOnScroll } from "../../../hooks";
 import NewsCard, { NewsCard as NewsCardType } from "./NewsCard";
+import EventCard from "./EventCard";
 import { syneClassName } from "../../utils/font";
 import { cn } from "@zo/utils/font";
 
@@ -13,12 +14,9 @@ const NewsSection: React.FC<NewsSectionProps> = ({ news }) => {
 
   return (
     <div className="relative z-20" ref={sectionRef}>
-      <h2 className={cn("sub-heading-2 text-center font-bold", syneClassName)}>
-        ✨ What’s New? ✨
-      </h2>
+      <EventCard />
 
-      <div className={`grid grid-cols-1 md:grid-cols-3 place-content-center`}>
-        {news.length === 1 && <div />}
+      <div className={`grid grid-cols-1 md:grid-cols-4 place-content-center gap-4`}>
         {news.map((news: NewsCardType, index) => (
           <NewsCard
             key={`news-${index}`}

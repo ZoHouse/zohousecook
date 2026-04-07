@@ -6,6 +6,10 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
         <Script
           id="gtm"
           strategy="beforeInteractive"

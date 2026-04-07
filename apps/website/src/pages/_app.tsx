@@ -1,6 +1,7 @@
 import "mapbox-gl/dist/mapbox-gl.css";
 import { AppProps } from "next/app";
 import "./styles.css";
+import "../components/helpers/house/house.css";
 
 import Icon from "@zo/assets/icons";
 import { AuthProvider, ZostelAuthProvider } from "@zo/auth";
