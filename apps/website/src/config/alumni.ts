@@ -291,7 +291,7 @@ const alumniPageData: AlumniPageData = {
       name: "Ajeet Khurana",
       nickname: "ajeet",
       pfp: "https://proxy.cdn.zo.xyz/citizenship/images/9e509c21-196b-4b7b-8bae-2097c126d683.svg",
-      photo: "/mentors/ajeet.png",
+      photo: "https://proxy.cdn.zo.xyz/gallery/media/images/19fba4d9-281c-4c66-b9ed-15b8953e3840_20260407043345.png",
       company: "Reflexical",
       description: "Ex-CEO ZebPay (India's largest crypto exchange, 3M+ users). Sold company to Intel. 28+ investments.",
       sector: "Finance",
@@ -302,7 +302,7 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Dharamveer Singh Chouhan",
       nickname: "dharamveer",
-      photo: "/mentors/dharamveer.png",
+      photo: "https://proxy.cdn.zo.xyz/gallery/media/images/e9ebc3b3-eac2-4f4b-bae8-6d8f39ad3d7c_20260407043412.png",
       company: "Zostel / Zo World",
       description: "Co-founder & Chairman, Zostel. IIT BHU + IIM Calcutta. $240M valuation. Tiger Global backed.",
       sector: "Enterprise",
@@ -313,7 +313,7 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Lisa Ray",
       nickname: "lisaray",
-      photo: "/mentors/lisa-ray.png",
+      photo: "https://proxy.cdn.zo.xyz/gallery/media/images/765aee64-43a0-4b4a-8762-8b61047d1141_20260407043412.png",
       company: "Actress · Author · Founder",
       description: "India's first supermodel. Starred in Oscar-nominated Water. Author of Close to the Bone. Cancer survivor.",
       sector: "Creator Economy",
@@ -324,7 +324,7 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Kartikey Sharma",
       nickname: "kartikey",
-      photo: "/mentors/kartikey.png",
+      photo: "https://proxy.cdn.zo.xyz/gallery/media/images/2afa8fef-a03d-47b0-9145-423f098fe563_20260407043412.png",
       company: "PaperPlane",
       description: "Two-time cancer survivor. Muralist for Netflix, JW Marriott, Hyundai. India's largest mural (24K sqft).",
       sector: "Creator Economy",
@@ -335,7 +335,7 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Kratex",
       nickname: "kratex",
-      photo: "/mentors/kratex.png",
+      photo: "https://proxy.cdn.zo.xyz/gallery/media/images/3675fd06-2450-468e-b0bc-0256f1ca9ad1_20260407043413.png",
       company: "M-House Music",
       description: "Creator of M-House genre. First Marathi track on Spinnin' Records. 20M+ streams. KSHMR remix.",
       sector: "Creator Economy",
@@ -346,7 +346,7 @@ const alumniPageData: AlumniPageData = {
     {
       name: "Shabbir YK",
       nickname: "shabbiryk",
-      photo: "/mentors/shabbir.jpeg",
+      photo: "https://proxy.cdn.zo.xyz/gallery/media/images/ad6759d5-fd33-4614-b283-f4f7a77f83fb_20260407043413.jpeg",
       company: "EAK Ventures",
       description: "Web3 investor. EAK Ventures. Ex-CoinSwitch Ventures. 40+ projects backed. Ex-NVIDIA, Square.",
       sector: "Finance",
