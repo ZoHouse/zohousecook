@@ -127,6 +127,7 @@ const PassportIdentityCard: React.FC<PassportIdentityCardProps> = ({
           xp={myXp?.xp || 0}
           xpToNextTier={myXp?.xpToNextTier || 0}
           rankTitle={myXp?.rankTitle || "Newcomer"}
+          loading={!myXp}
         />
 
         {/* Role Badges */}

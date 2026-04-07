@@ -6,12 +6,14 @@ interface XpProgressBarProps {
   xp: number;
   xpToNextTier: number;
   rankTitle: string;
+  loading?: boolean;
 }
 
 const XpProgressBar: React.FC<XpProgressBarProps> = ({
   xp,
   xpToNextTier,
   rankTitle,
+  loading,
 }) => {
   const { basePath } = useRouter();
   const total = xp + xpToNextTier;
@@ -27,14 +29,21 @@ const XpProgressBar: React.FC<XpProgressBarProps> = ({
           alt="$Zo"
           className="w-[43px] h-[43px] rounded-full"
         />
-        <div className="flex flex-col">
-          <span className="text-white font-bold text-[14px] uppercase tracking-wide">
-            {xp.toLocaleString()} XP
-          </span>
-          <span className="text-[#52bda9] font-bold text-[14px] uppercase tracking-wide">
-            {rankTitle}
-          </span>
-        </div>
+        {loading ? (
+          <div className="flex flex-col gap-1.5">
+            <div className="w-20 h-4 bg-white/10 rounded animate-pulse" />
+            <div className="w-16 h-4 bg-white/10 rounded animate-pulse" />
+          </div>
+        ) : (
+          <div className="flex flex-col">
+            <span className="text-white font-bold text-[14px] uppercase tracking-wide">
+              {xp.toLocaleString()} XP
+            </span>
+            <span className="text-[#52bda9] font-bold text-[14px] uppercase tracking-wide">
+              {rankTitle}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Progress bar */}
