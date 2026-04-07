@@ -1,5 +1,4 @@
 import React from "react";
-import { useRouter } from "next/router";
 import { toast } from "sonner";
 import GlowCard from "./GlowCard";
 
@@ -8,8 +7,6 @@ interface ReferralSectionProps {
 }
 
 const ReferralSection: React.FC<ReferralSectionProps> = ({ handle }) => {
-  const router = useRouter();
-  const basePath = router.basePath || "";
 
   const copyLink = () => {
     navigator.clipboard.writeText(`https://zo.xyz/@${handle}`);
@@ -63,7 +60,7 @@ const ReferralSection: React.FC<ReferralSectionProps> = ({ handle }) => {
       <div
         className="rounded-bl-2xl rounded-br-2xl backdrop-blur p-4 flex items-center justify-center gap-2"
         style={{
-          backgroundImage: `url(${basePath}/passport/gradient-bar.png)`,
+          background: "linear-gradient(90deg, #F5A623 0%, #E87BAF 50%, #B24BD6 100%)",
           backgroundSize: "cover",
           backgroundPosition: "center",
           boxShadow: "inset 0px 2px 8px 0px rgba(255,255,255,0.25)",

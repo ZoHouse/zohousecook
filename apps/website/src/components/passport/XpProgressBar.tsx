@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/router";
+import { ZO_COIN_SRC } from "./zo-coin-data";
 
 interface XpProgressBarProps {
   xp: number;
@@ -15,7 +15,6 @@ const XpProgressBar: React.FC<XpProgressBarProps> = ({
   rankTitle,
   loading,
 }) => {
-  const { basePath } = useRouter();
   const total = xp + xpToNextTier;
   const progressPercent = total > 0 ? (xp / total) * 100 : 0;
 
@@ -25,7 +24,7 @@ const XpProgressBar: React.FC<XpProgressBarProps> = ({
       <div className="flex items-center gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={`${basePath}/passport/zo-coin.png`}
+          src={ZO_COIN_SRC}
           alt="$Zo"
           className="w-[43px] h-[43px] rounded-full"
         />

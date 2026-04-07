@@ -27,6 +27,16 @@ function getZoToken(): string | null {
   return localStorage.getItem('zo-admin-token') || localStorage.getItem('zo-web-token') || null;
 }
 
+function getDeviceId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('zo-admin-device-id') || localStorage.getItem('zo-web-device-id') || null;
+}
+
+function getDeviceSecret(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('zo-admin-device-secret') || localStorage.getItem('zo-web-device-secret') || null;
+}
+
 function getZostelToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('zostel-token') || null;
@@ -76,6 +86,12 @@ export function useMyXp() {
       const headers: Record<string, string> = {
         Authorization: `Bearer ${zoToken}`,
       };
+
+      // Pass device credentials for Zo profile API
+      const deviceId = getDeviceId();
+      const deviceSecret = getDeviceSecret();
+      if (deviceId) headers['client-device-id'] = deviceId;
+      if (deviceSecret) headers['client-device-secret'] = deviceSecret;
 
       // Pass Zostel credentials for stay data
       const zostelToken = getZostelToken();
