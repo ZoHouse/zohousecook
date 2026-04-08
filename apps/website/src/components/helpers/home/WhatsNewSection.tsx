@@ -595,6 +595,26 @@ const WhatsNewSection: React.FC = () => {
             </div>
           </div>
 
+          {/* Perks */}
+          <div className="relative z-10 flex flex-col gap-6 px-4 mt-2">
+            {proPerks.map((perk) => (
+              <div key={perk.section} className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-8">
+                <div className="flex items-center gap-3 sm:w-[200px] flex-shrink-0">
+                  {perk.icon}
+                  <span className={cn("text-base md:text-lg font-semibold text-white", syneClassName)}>{perk.section}</span>
+                </div>
+                <div className="flex flex-col gap-2.5 pl-11 sm:pl-0">
+                  {perk.items.map((item) => (
+                    <div key={item} className="flex items-center gap-3">
+                      <TickIcon />
+                      <span className={cn("text-sm text-white/80", rubikClassName)}>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
           {/* CTA Button */}
           <div className="relative z-10 flex justify-center mt-4">
             <a
