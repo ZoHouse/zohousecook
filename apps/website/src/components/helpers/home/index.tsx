@@ -10,6 +10,7 @@ import ZoHouses from "./ZoHouses";
 import WhatsNewSection from "./WhatsNewSection";
 import ZoBrandsSection from "./ZoBrandsSection";
 import ZoStudio from "./ZoStudio";
+import DiscoverZoWorld from "./DiscoverZoWorld";
 export {
   WhatsNewSection,
   ZoBrandsSection,
@@ -23,4 +24,5 @@ export {
   ZoHotels,
   ZoHouses,
   ZoStudio,
+  DiscoverZoWorld,
 };

@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
+import Marquee from "react-fast-marquee";
 import { useFadeInOnScroll } from "../../../hooks";
 import { syneClassName, rubikClassName } from "../../utils/font";
 import { cn } from "@zo/utils/font";
@@ -537,10 +538,10 @@ const WhatsNewSection: React.FC = () => {
       <div className="flex flex-col items-center mt-20 gap-6">
         <div className="flex flex-col items-center gap-4 max-w-[808px] text-center">
           <h2 className={cn("text-3xl md:text-[56px] md:leading-[67px] font-semibold text-white", syneClassName)}>
-            Free gets you in.<br />Pro gets you paid.
+            All citizens can participate and earn.
           </h2>
           <p className={cn("text-lg md:text-xl leading-[30px] text-white", rubikClassName)}>
-            Every citizen can participate. Pro citizens earn real money.
+            Pro citizens unlock the full travel perks and earning stack.
           </p>
         </div>
 
@@ -613,6 +614,33 @@ const WhatsNewSection: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Coming Soon marquee */}
+          <div className="relative z-10 mt-4 -mx-6 overflow-hidden">
+            <div className="flex items-center gap-2 px-6 mb-3">
+              <div className="w-2 h-2 rounded-full bg-[#FFE880]" />
+              <span className={cn("text-xs font-semibold text-[#FFE880] uppercase tracking-wider", rubikClassName)}>Coming soon</span>
+            </div>
+            <Marquee speed={20} gradient={false} pauseOnHover>
+              {[
+                "Zostel common area access",
+                "Builder tools for listing spaces",
+                "Host community experiences",
+                "City community chats",
+                "Early access across Zo properties",
+                "Zobu travel partner agent",
+                "Hosted experiences around you",
+                "Buy 1 Get 1 Free nights",
+              ].map((item) => (
+                <span
+                  key={item}
+                  className={cn("text-xs text-white/40 border border-white/10 rounded-full px-4 py-1.5 mx-1.5 whitespace-nowrap", rubikClassName)}
+                >
+                  {item}
+                </span>
+              ))}
+            </Marquee>
           </div>
 
           {/* CTA Button */}

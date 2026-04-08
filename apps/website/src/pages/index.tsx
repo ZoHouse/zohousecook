@@ -12,6 +12,7 @@ import {
   TweetsSection,
   WhatsNewSection,
   ZoBrandsSection,
+  DiscoverZoWorld,
 } from "../components/helpers/home";
 import { Nodes } from "../components/helpers/membership";
 import { homepageData, membershipPageData } from "../config";
@@ -41,7 +42,7 @@ function FloatingPassportCTA() {
         }
         className="w-full py-3.5 rounded-full bg-white text-black font-semibold text-base"
       >
-        Unlock your Passport
+        Become a Citizen
       </button>
     </div>
   );
@@ -51,7 +52,7 @@ const Index: React.FC<
   InferGetServerSidePropsType<typeof getServerSidePropsType>
 > = ({ metaData }) => {
   return (
-    <Page className="relative">
+    <Page className="relative flex-none">
       <MetaTags
         title={metaData?.title}
         description={metaData?.description}
@@ -61,15 +62,15 @@ const Index: React.FC<
       <FloatingPassportCTA />
       <WhatsNewSection />
       {/* <NewsSection news={homepageData.newsSection.data} /> */}
-      <Nodes title="Zo Zo Zo" subtitle="If you Zo you Zo" nodes={[]} />
-      <ZoBrandsSection />
+      <DiscoverZoWorld />
+      {/* <ZoBrandsSection /> */}
       {/* <Nodes title="Vibes" subtitle="" nodes={[
         { ...membershipPageData.nodes[1], text: "People" },
         { ...membershipPageData.nodes[0], text: "Parties" },
         { ...membershipPageData.nodes[2], text: "Places" },
       ]} /> */}
       {/* <FounderMemberCard /> */}
-      <TweetsSection />
+      {/* <TweetsSection /> */}
       <Brands brands={homepageData.brands.data} />
     </Page>
   );

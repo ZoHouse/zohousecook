@@ -50,7 +50,7 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
             className="hidden md:block mt-4 w-full md:w-1/4 mx-auto"
             type="primary"
           >
-            Unlock your Passport
+            Become a Citizen
           </Button>
         </div>
 
