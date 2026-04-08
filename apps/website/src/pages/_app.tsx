@@ -65,7 +65,7 @@ function CustomApp({ Component, pageProps }: AppProps) {
       <ConditionalZostelAuth>
         <AuthProvider
           localKey={ZOSTEL_ENABLED ? "zo-admin" : "zo-web"}
-          isLoginRequired={ZOSTEL_ENABLED}
+          isLoginRequired={false}
           isZostelLoginRequired={ZOSTEL_ENABLED}
           allowedLoginTypes={ZOSTEL_ENABLED ? ["mobile"] : undefined}
         >
