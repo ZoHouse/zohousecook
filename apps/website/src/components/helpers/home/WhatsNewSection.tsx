@@ -5,6 +5,7 @@ import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from
 import { useFadeInOnScroll } from "../../../hooks";
 import { syneClassName, rubikClassName } from "../../utils/font";
 import { cn } from "@zo/utils/font";
+import EventCard from "./EventCard";
 
 /* ── TiltCard (ported from zo-passport) ── */
 
@@ -468,13 +469,10 @@ const WhatsNewSection: React.FC = () => {
         THE ZO COMMUNITY
       </p>
       <h2 className={cn("text-3xl md:text-[48px] md:leading-[58px] text-center font-semibold text-white mt-4", syneClassName)}>
-        One passport.<br />
-        Unlimited ways to belong.
+        You were never looking for a place.
       </h2>
-      <p className={cn("text-sm md:text-base text-white/70 text-center mt-4 leading-relaxed", rubikClassName)}>
-        Every human has a unique vibration.<br />
-        Pick your Vibe and join the journey.
-      </p>
+
+      <EventCard />
 
       {/* ── Vibe Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-5 mt-10">

@@ -19,7 +19,7 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
 
   return (
     <>
-      <section className="flex flex-col items-center text-center w-full h-[70vh] md:h-[80vh] md:max-h-[900px] relative">
+      <section className="flex flex-col items-center text-center w-full h-[85vh] md:h-[85vh] md:max-h-[960px] relative">
         <div
           className={cn(
             "h-fit w-full absolute bottom-0 top-[50%] md:top-[50%] left-[50%] -translate-x-[50%] -translate-y-[50%] md:-translate-y-[50%] z-50 select-none"
@@ -41,6 +41,10 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
               Travel, Explore, and Earn
             </span>{" "}
           </h1>
+          <p className="text-white/60 text-sm md:text-lg mt-3 md:mt-4 max-w-[90%] md:max-w-[600px] mx-auto leading-relaxed">
+            Member-only access to free stays, community experiences, creator
+            rewards, referral earnings, and tools to host and build Zo World.
+          </p>
           <Button
             onClick={handleTuneIn}
             className="hidden md:block mt-4 w-full md:w-1/4 mx-auto"
@@ -71,7 +75,7 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
         </div>
 
         {/* Video Section */}
-        <div className="w-[120px] h-[156px] md:w-[260px] md:h-[340px] overflow-hidden absolute right-4 bottom-[15%] md:bottom-[20%] rotate-[8deg] rounded-2xl inner-border">
+        <div className="w-[120px] h-[156px] md:w-[260px] md:h-[340px] overflow-hidden absolute right-4 bottom-[12%] md:bottom-[20%] rotate-[8deg] rounded-2xl inner-border">
           <video
             className="w-full h-full object-cover z-100"
             src={`${process.env.MEDIA_BASE_URL}/gallery/media/videos/8795e054-5c51-42ac-8570-2279a93f3aaf_20240903101643.mp4`}
@@ -87,7 +91,7 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
           alt="science and tech"
         />
 
-        <div className="w-[120px] h-[156px] md:w-[260px] md:h-[340px] overflow-hidden absolute left-0 bottom-[20%] md:bottom-[5%] -rotate-[9deg] rounded-2xl inner-border">
+        <div className="w-[120px] h-[156px] md:w-[260px] md:h-[340px] overflow-hidden absolute left-0 bottom-[5%] md:bottom-[5%] -rotate-[9deg] rounded-2xl inner-border">
           <video
             className="w-full h-full object-cover z-100"
             src={`${process.env.MEDIA_BASE_URL}/gallery/media/videos/c243c43c-7199-485e-9e56-8976a594f4f9_20240903100216.mp4`}

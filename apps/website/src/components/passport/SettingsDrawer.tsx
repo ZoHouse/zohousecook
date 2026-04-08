@@ -212,7 +212,7 @@ function PersonalDetails() {
     { value: "non-binary", label: "Non-binary" }, { value: "other", label: "Other" },
   ];
   const bodyTypeOptions = [
-    { value: "bro", label: "Bro" }, { value: "sis", label: "Sis" }, { value: "they", label: "They" },
+    { value: "bro", label: "Bro" }, { value: "bae", label: "Bae" }, { value: "they", label: "They" },
   ];
 
   return (
