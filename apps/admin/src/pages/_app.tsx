@@ -26,6 +26,7 @@ function CustomApp({ Component, pageProps }: AppProps) {
               isZostelLoginRequired
               allowedLoginTypes={["mobile"]}
               showOtherLoginOptions={true}
+              skipOnboarding
             >
               <Head />
 

@@ -19,6 +19,7 @@ function CustomApp({ Component, pageProps }: AppProps) {
             isLoginRequired
             isZostelLoginRequired
             allowedLoginTypes={["mobile"]}
+            skipOnboarding
           >
             <Head title="Property Management | Zo World" />
             <Toaster richColors position="bottom-center" />

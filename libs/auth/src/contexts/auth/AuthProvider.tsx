@@ -55,6 +55,7 @@ interface AuthProviderProps {
   children: React.ReactNode;
   allowedLoginTypes?: LoginTypes[];
   showOtherLoginOptions?: boolean;
+  skipOnboarding?: boolean;
 }
 
 const AuthProvider: React.FC<AuthProviderProps> = ({
@@ -64,6 +65,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
   isLoginRequired,
   isZostelLoginRequired,
   showOtherLoginOptions = false,
+  skipOnboarding = false,
 }) => {
   const router = useRouter();
   const redirectPathRef = useRef<string | null>(null);
@@ -254,7 +256,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
             })}
           >
             <AuthContext.Provider
-              value={{ isLoggedIn, logout, user, showLoginModal, login }}
+              value={{ isLoggedIn, logout, user, showLoginModal, login, skipOnboarding }}
             >
               {isLoginModalVisible ? (
                 <ZoAuth
