@@ -162,12 +162,15 @@ In `apps/pms/src/pages/_app.tsx`, find the `<AuthProvider>` JSX and add `skipOnb
 
 - [ ] **Step 4: Wire skipOnboarding=true in Admin app**
 
-In `apps/admin/src/pages/_app.tsx`, do the same:
+In `apps/admin/src/pages/_app.tsx`, find the existing `<AuthProvider>` (around line 23) and add `skipOnboarding`:
 
 ```tsx
 <AuthProvider
   localKey="zo-admin"
-  // ...existing props
+  isLoginRequired
+  isZostelLoginRequired
+  allowedLoginTypes={["mobile"]}
+  showOtherLoginOptions={true}
   skipOnboarding
 >
 ```
@@ -279,7 +282,7 @@ const advanceOnboarding = () => {
 };
 ```
 
-`replaceStep` should already exist in the component (it replaces the top of the step stack instead of pushing). If not, add a wrapper that calls `setStep` after popping the current step.
+`replaceStep` already exists at `ZoAuth.tsx:74` — it replaces the top of the step stack instead of pushing. Use it as-is.
 
 - [ ] **Step 5: Update the auto-close useEffect with isOnboarding guard**
 
@@ -972,13 +975,23 @@ git commit -m "feat(auth): Welcome step renders generated avatar and custom nick
 **Files:**
 - Modify: `libs/auth/src/components/ZoAuth/steps/Entry.tsx`
 
-- [ ] **Step 1: Find and remove the redundant useEffect**
+- [ ] **Step 1: Delete the redundant useEffect**
 
-Open `libs/auth/src/components/ZoAuth/steps/Entry.tsx`. Locate the `useEffect` that watches `isLoggedIn` and calls `setStep("ONBOARDING_CHECK")` (around lines 104-121 per v1 spec). Per v1 spec analysis, the OTP success handler already calls `setStep("ONBOARDING_CHECK")` synchronously, so this useEffect causes a duplicate stack entry.
+Open `libs/auth/src/components/ZoAuth/steps/Entry.tsx`. Locate the `useEffect` that watches `isLoggedIn` and calls `setStep("ONBOARDING_CHECK")` (around lines 104-121 per v1 spec). The OTP success handler already calls `setStep("ONBOARDING_CHECK")` synchronously, so this useEffect causes a duplicate stack entry.
 
-The simplest fix per v1 spec note: **delete the useEffect entirely**. The `isLoggedIn`-based navigation was only needed for wallet-connected users (which we're removing).
+**Delete the useEffect entirely.** The `isLoggedIn`-based navigation was only needed for wallet-connected users (being removed in Step 2 below).
 
-If a manual smoke test reveals returning users no longer land on `ONBOARDING_CHECK` after re-opening the modal, restore the effect with a guard:
+- [ ] **Step 1b: Smoke-test that returning users still hit ONBOARDING_CHECK**
+
+After deleting, manually test that a returning user (already-logged-in token, modal re-opened) lands on `ONBOARDING_CHECK`. Run:
+
+```bash
+npx nx serve website --port 4202
+```
+
+Open `http://localhost:4202/`, click "Become a Citizen" while already logged in. You should see `OnboardingCheck` ("Setting things up..."), not the ENTRY screen.
+
+If the modal goes straight to ENTRY and never reaches `ONBOARDING_CHECK` for already-logged-in users, restore the effect with a guard:
 
 ```typescript
 useEffect(() => {
@@ -987,6 +1000,8 @@ useEffect(() => {
   }
 }, [isLoggedIn, step]);
 ```
+
+If the smoke test passes (returning users do land on `ONBOARDING_CHECK`), do NOT restore the useEffect — leaving it deleted is the desired state.
 
 - [ ] **Step 2: Also remove wallet UI from Entry.tsx (per v1 spec)**
 
