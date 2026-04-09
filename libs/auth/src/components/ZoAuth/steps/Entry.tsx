@@ -305,18 +305,22 @@ const Entry: FC<EntryProps> = ({
     }
   }, []);
 
+  const btnPrimary =
+    "w-full py-3 rounded-lg font-bold text-sm uppercase tracking-wider bg-white text-black hover:bg-white/90 cursor-pointer transition-all disabled:bg-white/10 disabled:text-white/30 disabled:cursor-not-allowed";
+  const btnSecondary =
+    "w-full py-3 rounded-lg font-bold text-sm uppercase tracking-wider bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:border-white/20 cursor-pointer transition-all";
+
   return (
-    <div className="flex flex-1 flex-col items-start ">
-      <span className="mb-8">
-        Zo World is an alternate reality where everyone follows their heart, with a network of physical nodes and digital communities.
-        <br />
-        <br />
+    <div className="flex flex-col items-center w-full text-center">
+      <span className="text-sm text-white/50 mb-6">
         Log in to stay tuned into the Zo Frequency.
       </span>
-      <div className="flex flex-col space-y-4 w-full">
+      <div className="flex flex-col gap-4 w-full">
         {allowedLoginTypes?.includes("mobile") && (
           <div className="w-full space-y-4">
-            <h3>Your Mobile</h3>
+            <span className="text-xs text-white/40 uppercase tracking-wider">
+              Your Mobile
+            </span>
             <MobileInput
               className="w-full"
               onEnterKeyPress={handleMobileSubmit}
@@ -328,33 +332,35 @@ const Entry: FC<EntryProps> = ({
               <form onSubmit={handleOTPFormSubmit} className="space-y-4">
                 <OtpInputComponent value={otp} setter={setOtp} numInputs={6} />
                 {otpVerificationResponse && (
-                  <span className="text-xs text-zui-red">
+                  <span className="text-xs text-red-400">
                     {otpVerificationResponse}
                   </span>
                 )}
                 <button
                   type="submit"
                   disabled={String(otp).replace("-", "").length !== 6}
-                  className="outline-none flex py-4 justify-center bg-zui-white text-zui-dark w-full disabled:cursor-not-allowed disabled:bg-zui-white/70"
+                  className={btnPrimary}
                 >
                   Verify OTP
                 </button>
-                <span className="text-sm">
-                  Didn't receive the code?{" "}
+                <span className="text-sm text-white/50">
+                  Didn&apos;t receive the code?{" "}
                   {timer > 0 ? (
                     <>
                       <button
-                        className="text-zui-neon cursor-not-allowed opacity-50"
+                        className="text-[#66DF48]/50 cursor-not-allowed"
                         disabled={true}
                         type="button"
                       >
                         Resend OTP
                       </button>{" "}
-                      (00:{timer < 10 ? `0${timer}` : timer})
+                      <span className="text-white/30">
+                        (00:{timer < 10 ? `0${timer}` : timer})
+                      </span>
                     </>
                   ) : (
                     <button
-                      className="text-zui-neon"
+                      className="text-[#66DF48] hover:text-[#66DF48]/80 transition-colors"
                       onClick={handleMobileSubmit}
                       disabled={isResendOtpButtonDisabled}
                       type="button"
@@ -368,7 +374,7 @@ const Entry: FC<EntryProps> = ({
               <button
                 type="submit"
                 onClick={handleMobileSubmit}
-                className="outline-none flex py-4 justify-center bg-zui-white text-zui-dark w-full disabled:cursor-not-allowed disabled:bg-zui-white/70"
+                className={btnPrimary}
                 disabled={
                   mobileNumber?.startsWith("91")
                     ? !isValidNumber("+" + mobileNumber, "IN")
@@ -383,7 +389,7 @@ const Entry: FC<EntryProps> = ({
 
         {allowedLoginTypes?.includes("email") && (
           <button
-            className="flex py-4 justify-center bg-zui-white text-zui-dark w-[236px]"
+            className={btnSecondary}
             onClick={setStep.bind(null, "EMAIL_LOGIN")}
           >
             Continue with Email
@@ -392,29 +398,23 @@ const Entry: FC<EntryProps> = ({
 
         {allowedLoginTypes?.includes("wallet") && <CustomButton />}
       </div>
-      {allowedLoginTypes?.includes("wallet") && (
-        <button
-          className="text-sm underline mt-4"
-          onClick={setYoutubeModalVisible.bind(null, true)}
-        >
-          Learn more about Zo World
-        </button>
-      )}
 
       {showOtherLoginOptions && (
         <Collapse
-          className="w-[236px] mt-4 bg-transparent border-none"
+          className="w-full mt-4 bg-transparent border-none"
           items={[
             {
               key: "1",
-              label: "Other login options",
+              label: (
+                <span className="text-xs text-white/40 uppercase tracking-wider">
+                  Other login options
+                </span>
+              ),
               children: (
-                <div className="flex flex-col space-y-4">
+                <div className="flex flex-col gap-3">
                   {hiddenLoginOptions?.includes("email") && (
                     <button
-                      className={
-                        "flex py-4 justify-center bg-zui-white text-zui-dark w-full"
-                      }
+                      className={btnSecondary}
                       onClick={setStep.bind(null, "EMAIL_LOGIN")}
                     >
                       Continue with Email
@@ -422,9 +422,7 @@ const Entry: FC<EntryProps> = ({
                   )}
                   {hiddenLoginOptions?.includes("mobile") && (
                     <button
-                      className={
-                        "flex py-4 justify-center bg-zui-white text-zui-dark w-full"
-                      }
+                      className={btnSecondary}
                       onClick={setStep.bind(null, "MOBILE_LOGIN")}
                     >
                       Continue with Mobile
@@ -436,6 +434,15 @@ const Entry: FC<EntryProps> = ({
             },
           ]}
         />
+      )}
+
+      {allowedLoginTypes?.includes("wallet") && (
+        <button
+          className="text-xs text-white/30 hover:text-white/50 mt-6 transition-colors"
+          onClick={setYoutubeModalVisible.bind(null, true)}
+        >
+          Learn more about Zo World
+        </button>
       )}
 
       {allowedLoginTypes?.includes("wallet") && isYoutubeModalVisible && (

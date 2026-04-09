@@ -8,11 +8,13 @@ import { computeOnboardingQueue } from "./computeOnboardingQueue";
 
 interface OnboardingCheckProps extends ZoAuthStepProps {
   setOnboardingQueue: (queue: ZoAuthStep[]) => void;
+  onComplete: () => void;
 }
 
 const OnboardingCheck: FC<OnboardingCheckProps> = ({
   setStep,
   setOnboardingQueue,
+  onComplete,
 }) => {
   const { skipOnboarding } = useAuth();
   const { profile } = useProfile();
@@ -30,14 +32,14 @@ const OnboardingCheck: FC<OnboardingCheckProps> = ({
     if (!profile || whereabouts === undefined) return;
 
     if (skipOnboarding) {
-      setStep("WELCOME");
+      onComplete();
       return;
     }
 
     const queue = computeOnboardingQueue(profile, whereabouts);
 
     if (queue.length === 0) {
-      setStep("WELCOME");
+      onComplete();
     } else {
       trackOnboarding("onboarding_started", {
         queue_length: queue.length,

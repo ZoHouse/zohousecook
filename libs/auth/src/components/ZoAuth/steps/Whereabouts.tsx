@@ -69,8 +69,8 @@ const Whereabouts: FC<WhereaboutsProps> = ({ advanceOnboarding }) => {
   if (phase === "done" && savedPlaceName) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center w-full">
-        <span className="text-4xl mb-4">📍</span>
-        <span className="text-xl font-bold text-white">{savedPlaceName}</span>
+        <span className="text-3xl md:text-4xl mb-3 md:mb-4">📍</span>
+        <span className="text-lg md:text-xl font-bold text-white">{savedPlaceName}</span>
         <span className="text-sm text-white/50 mt-2">Locked in</span>
       </div>
     );
@@ -78,18 +78,18 @@ const Whereabouts: FC<WhereaboutsProps> = ({ advanceOnboarding }) => {
 
   return (
     <div className="flex flex-1 flex-col items-start w-full">
-      <span className="text-2xl font-bold mb-2">
+      <span className="text-xl md:text-2xl font-bold mb-1 md:mb-2">
         Where in Zo World are you right now?
       </span>
-      <span className="text-sm text-white/50 mb-8">
+      <span className="text-sm text-white/50 mb-4 md:mb-8">
         We&apos;ll use this to show you stuff happening near you
       </span>
 
       <div className="flex-1 flex items-center justify-center w-full">
         {phase === "ask" || phase === "error" ? (
-          <span className="text-6xl">📍</span>
+          <span className="text-4xl md:text-6xl">📍</span>
         ) : (
-          <i className="uil uil-spinner animate-spin text-4xl" />
+          <i className="uil uil-spinner animate-spin text-3xl md:text-4xl" />
         )}
       </div>
 
@@ -117,7 +117,7 @@ const Whereabouts: FC<WhereaboutsProps> = ({ advanceOnboarding }) => {
       <button
         onClick={handleShareLocation}
         disabled={phase === "requesting" || phase === "geocoding" || phase === "saving"}
-        className={`mt-auto w-full py-3 rounded-lg font-bold text-sm uppercase tracking-wider transition-all ${
+        className={`mt-4 md:mt-8 w-full py-3 rounded-lg font-bold text-sm uppercase tracking-wider transition-all ${
           phase === "requesting" || phase === "geocoding" || phase === "saving"
             ? "bg-white/10 text-white/30 cursor-not-allowed"
             : "bg-white text-black hover:bg-white/90 cursor-pointer"

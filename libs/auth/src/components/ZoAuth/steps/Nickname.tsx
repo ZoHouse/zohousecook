@@ -73,8 +73,8 @@ const Nickname: FC<NicknameProps> = ({ advanceOnboarding }) => {
 
   return (
     <div className="flex flex-1 flex-col items-start w-full">
-      <span className="text-2xl font-bold mb-2">Pick your .zo handle</span>
-      <span className="text-sm text-white/50 mb-8">
+      <span className="text-xl md:text-2xl font-bold mb-1 md:mb-2">Pick your .zo handle</span>
+      <span className="text-sm text-white/50 mb-4 md:mb-8">
         Your permanent identity in Zo World
       </span>
 
@@ -93,7 +93,7 @@ const Nickname: FC<NicknameProps> = ({ advanceOnboarding }) => {
         <span className="text-white/30 text-lg">.zo</span>
       </div>
 
-      <div className="flex flex-col gap-1.5 mb-8">
+      <div className="flex flex-col gap-1.5 mb-4 md:mb-8">
         {renderCheck("4-16 characters", isValidLength)}
         {renderCheck(
           "Letters and numbers only",
@@ -109,7 +109,7 @@ const Nickname: FC<NicknameProps> = ({ advanceOnboarding }) => {
       <button
         onClick={handleSubmit}
         disabled={!allValid || isSaving}
-        className={`mt-auto w-full py-3 rounded-lg font-bold text-sm uppercase tracking-wider transition-all ${
+        className={`mt-4 md:mt-8 w-full py-3 rounded-lg font-bold text-sm uppercase tracking-wider transition-all ${
           allValid && !isSaving
             ? "bg-white text-black hover:bg-white/90 cursor-pointer"
             : "bg-white/10 text-white/30 cursor-not-allowed"

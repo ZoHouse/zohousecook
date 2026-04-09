@@ -63,7 +63,7 @@ const Cultures: FC<CulturesProps> = ({ advanceOnboarding }) => {
 
   return (
     <div className="flex flex-1 flex-col items-start w-full">
-      <span className="text-2xl font-bold mb-2">What&apos;s your culture?</span>
+      <span className="text-xl md:text-2xl font-bold mb-1 md:mb-2">What&apos;s your culture?</span>
       <span className="text-sm text-white/50 mb-4">
         Pick everything that&apos;s you
       </span>
@@ -77,7 +77,7 @@ const Cultures: FC<CulturesProps> = ({ advanceOnboarding }) => {
           <i className="uil uil-spinner animate-spin text-2xl" />
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 w-full mb-6 max-h-64 overflow-y-auto">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 w-full mb-4 md:mb-6 max-h-40 md:max-h-64 overflow-y-auto">
           {cultures.map((c) => {
             const isSelected = selectedKeys.has(c.key);
             return (
@@ -104,7 +104,7 @@ const Cultures: FC<CulturesProps> = ({ advanceOnboarding }) => {
       <button
         onClick={handleSubmit}
         disabled={!canSubmit}
-        className={`mt-auto w-full py-3 rounded-lg font-bold text-sm uppercase tracking-wider transition-all ${
+        className={`mt-4 md:mt-8 w-full py-3 rounded-lg font-bold text-sm uppercase tracking-wider transition-all ${
           canSubmit
             ? "bg-white text-black hover:bg-white/90 cursor-pointer"
             : "bg-white/10 text-white/30 cursor-not-allowed"

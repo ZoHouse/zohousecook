@@ -40,15 +40,15 @@ const Citizen: FC<CitizenProps> = ({ advanceOnboarding }) => {
 
   return (
     <div className="flex flex-1 flex-col items-start w-full">
-      <span className="text-2xl font-bold mb-2">
+      <span className="text-xl md:text-2xl font-bold mb-1 md:mb-2">
         Where are you a proud citizen?
       </span>
-      <span className="text-sm text-white/50 mb-8">
+      <span className="text-sm text-white/50 mb-4 md:mb-8">
         Your homeland flag on your passport
       </span>
 
       {selected && (
-        <div className="w-full text-center mb-4 text-6xl">{selected.flag}</div>
+        <div className="w-full text-center mb-3 md:mb-4 text-4xl md:text-6xl">{selected.flag}</div>
       )}
 
       <input
@@ -60,11 +60,14 @@ const Citizen: FC<CitizenProps> = ({ advanceOnboarding }) => {
         autoFocus
       />
 
-      <div className="w-full flex-1 overflow-y-auto max-h-64 border border-white/10 rounded-lg">
+      <div className="w-full flex-1 overflow-y-auto max-h-40 md:max-h-64 border border-white/10 rounded-lg">
         {filtered.map((country) => (
           <button
             key={country.code}
-            onClick={() => setSelected(country)}
+            onClick={() => {
+              setSelected(country);
+              setQuery(country.name);
+            }}
             className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
               selected?.code === country.code
                 ? "bg-white/10"
@@ -81,7 +84,7 @@ const Citizen: FC<CitizenProps> = ({ advanceOnboarding }) => {
       <button
         onClick={handleSubmit}
         disabled={!selected || isSaving}
-        className={`mt-6 w-full py-3 rounded-lg font-bold text-sm uppercase tracking-wider transition-all ${
+        className={`mt-4 md:mt-8 w-full py-3 rounded-lg font-bold text-sm uppercase tracking-wider transition-all ${
           selected && !isSaving
             ? "bg-white text-black hover:bg-white/90 cursor-pointer"
             : "bg-white/10 text-white/30 cursor-not-allowed"
