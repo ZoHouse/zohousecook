@@ -101,16 +101,15 @@ const Entry: FC<EntryProps> = ({
     return allLoginTypes.filter((type) => !allowedLoginTypes.includes(type));
   }, [allowedLoginTypes]);
 
+  // Handle returning users who are already logged in when the modal opens.
+  // OTP success handlers call setStep("ONBOARDING_CHECK") directly, so this
+  // effect only needs to fire on mount (not on every isLoggedIn change).
   useEffect(() => {
-    if (isLoggedIn != null) {
-      if (isLoggedIn) {
-        setStep("ONBOARDING_CHECK");
-      } else {
-        setStep("ENTRY");
-      }
+    if (isLoggedIn) {
+      setStep("ONBOARDING_CHECK");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected, isLoggedIn]);
+  }, []);
 
   const handleMobileSubmit = async () => {
     if (mobileNumber) {
