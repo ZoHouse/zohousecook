@@ -1,5 +1,7 @@
 # zozozo.work Onboarding Flow — Design Spec
 
+> **⚠ SUPERSEDED 2026-04-09** by [`2026-04-09-zozozo-onboarding-v2-design.md`](./2026-04-09-zozozo-onboarding-v2-design.md). v2 expands this 3-step flow (Nickname, Avatar, City) into 8 required steps (adds Whereabouts, Citizen, Birthday, Cultures + makes Hometown required). v1 was never implemented; v2 inherits its architectural decisions (queue-based progressive onboarding, `skipOnboarding` prop, modal auto-close guard) and extends them. Read this file only for historical context.
+
 ## Goal
 
 Replace the defunct web3 onboarding (ENS/PFP/wallet/socials — all commented out) with a hospitality-focused flow that collects nickname, body type (avatar), and city. Applies to website and dashboard apps on zozozo.work. PMS and admin apps skip onboarding (see Cross-App Impact section).
