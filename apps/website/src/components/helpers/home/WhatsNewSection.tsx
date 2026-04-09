@@ -8,6 +8,10 @@ import { syneClassName, rubikClassName } from "../../utils/font";
 import { cn } from "@zo/utils/font";
 import EventCard from "./EventCard";
 import { useJourney } from "../../journey/JourneyContext";
+// Illustrations must be JS imports (NX monorepo: public/ assets 404 on Vercel)
+import travellerIllustration from "../../../assets/tiers/traveller-illustration.png";
+import creatorIllustration from "../../../assets/tiers/creator-illustration.png";
+import vibetribeIllustration from "../../../assets/tiers/vibetribe-illustration.png";
 
 /* ── TiltCard (ported from zo-passport) ── */
 
@@ -194,7 +198,7 @@ interface RoleCard {
   glowColor: string;
   comingSoon?: boolean;
   icon: React.ReactNode;
-  illustration?: string;
+  illustration?: { src: string } | string;
   perks: Perk[];
   cta?: { label: string; href: string };
 }
@@ -207,7 +211,7 @@ const roles: RoleCard[] = [
     taglineColor: "#F87B2F",
     glowColor: "#FDAA7B",
     icon: <TravellerIcon />,
-    illustration: "/tiers/traveller-illustration.png",
+    illustration: travellerIllustration,
     perks: [
       { text: "Buy 1 Get 1 Free nights every month", pro: true },
       { text: "Access Zostel common areas", pro: true },
@@ -224,7 +228,7 @@ const roles: RoleCard[] = [
     taglineColor: "#B85DFF",
     glowColor: "linear-gradient(180deg, #950DFF 18.27%, rgba(212, 156, 255, 0.3) 52.88%)",
     icon: <CreatorIcon />,
-    illustration: "/tiers/creator-illustration.png",
+    illustration: creatorIllustration,
     perks: [
       { text: "Join daily Instagram quests" },
       { text: "Unlock Daily ₹7k Creator Bed Drops and Zo Credits" },
@@ -238,7 +242,7 @@ const roles: RoleCard[] = [
     taglineColor: "#FF0D55",
     glowColor: "#CE0A48",
     icon: <TribebuilderIcon />,
-    illustration: "/tiers/vibetribe-illustration.png",
+    illustration: vibetribeIllustration,
     perks: [
       { text: "Invite others to join using your link, earn 7% on their first booking" },
       { text: "Earn 7% commission on bookings made through your link for 1 year", pro: true },
@@ -330,7 +334,7 @@ function VibeCard({ role, className = "" }: { role: RoleCard; className?: string
           <div className="relative z-10 flex-1 flex items-center justify-center px-4 py-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={role.illustration}
+              src={typeof role.illustration === "string" ? role.illustration : role.illustration?.src}
               alt=""
               className="w-[60%] max-w-[180px] h-auto object-contain drop-shadow-2xl"
             />
