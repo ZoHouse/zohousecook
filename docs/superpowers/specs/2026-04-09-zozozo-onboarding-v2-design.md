@@ -14,6 +14,8 @@ related:
 
 Replace the defunct web3 onboarding (ENS / PFP / wallet / socials — all commented out) with a hospitality-and-identity-focused 8-step flow that runs after OTP login on every zozozo.work session. Required for new users; resumable for returning users with partial profiles.
 
+The flow is **8 user-facing steps rendered by 7 component files** — `Avatar.tsx` covers two consecutive steps (body type selection and avatar generation polling) within a single component using internal phase state, matching the zo-zo mobile pattern.
+
 This spec **supersedes** `2026-04-05-zozozo-onboarding-design.md`, which described a 3-step flow (Nickname, Avatar, City). v1 was never implemented; we're not migrating anything, just expanding the design.
 
 ## Goal
@@ -136,6 +138,7 @@ No changes. The Zostel auth handshake still happens before `ONBOARDING_CHECK` vi
 - `libs/auth/src/components/ZoAuth/steps/Cultures.tsx`
 - `libs/auth/src/data/countries.json` (bundled country list with ISO 3-letter codes + flags) — unless a Zo API endpoint is found
 - `libs/auth/src/utils/geocoding.ts` — Google Maps reverse geocode helper (ported from zo-zo `utils/geo.ts`)
+- `libs/auth/src/utils/whereabouts.ts` — typed wrappers `fetchWhereabouts()` (GET) and `postWhereabouts({place_name, place_ref_id, location: {lat, long}})` (POST) for `/api/v2/places/whereabouts/`. Used by `OnboardingCheck` and `Whereabouts.tsx`. The dedicated helper exists specifically to enforce the `long` (not `lng`) field name at the type level.
 
 **Delete (per v1 spec):**
 - 11 dead web3 step files: `Intro.tsx`, `SetENS.tsx`, `NoENS.tsx`, `SetZo.tsx`, `SetPFP.tsx`, `NoPFP.tsx`, `WalletAddition.tsx`, `WalletConnecting.tsx`, `Socials.tsx`, `Founder.tsx`, `NoFounder.tsx`
