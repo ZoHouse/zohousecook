@@ -106,15 +106,7 @@ const Entry: FC<EntryProps> = ({
       if (isLoggedIn) {
         setStep("ONBOARDING_CHECK");
       } else {
-        if (allowedLoginTypes.includes("wallet") || showOtherLoginOptions) {
-          if (isConnected) {
-            setStep("WALLET_CONNECTING");
-          } else {
-            setStep("ENTRY");
-          }
-        } else {
-          setStep("ENTRY");
-        }
+        setStep("ENTRY");
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -5,22 +5,18 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../contexts/auth";
 import { useZostelAuth } from "../../contexts/authZostel";
 import UserCollection from "./components/UserCollection";
+import Avatar from "./steps/Avatar";
+import Birthday from "./steps/Birthday";
+import Citizen from "./steps/Citizen";
+import Cultures from "./steps/Cultures";
 import EmailLogin from "./steps/EmailLogin";
 import Entry from "./steps/Entry";
-import Founder from "./steps/Founder";
-import Intro from "./steps/Intro";
+import Hometown from "./steps/Hometown";
 import MobileLogin from "./steps/MobileLogin";
-import NoENS from "./steps/NoENS";
-import NoFounder from "./steps/NoFounder";
-import NoPFP from "./steps/NoPFP";
+import Nickname from "./steps/Nickname";
 import OnboardingCheck from "./steps/OnboardingCheck";
-import SetENS from "./steps/SetENS";
-import SetPFP from "./steps/SetPFP";
-import SetZo from "./steps/SetZo";
-import Socials from "./steps/Socials";
-import WalletAddition from "./steps/WalletAddition";
-import WalletConnecting from "./steps/WalletConnecting";
 import Welcome from "./steps/Welcome";
+import Whereabouts from "./steps/Whereabouts";
 interface ZoAuthProps {
   hideModal: () => void;
   isZostelLoginRequired?: boolean;
@@ -31,20 +27,16 @@ interface ZoAuthProps {
 
 export type ZoAuthStep =
   | "ENTRY"
-  | "WALLET_CONNECTING"
-  | "EMAIL_LOGIN"
   | "MOBILE_LOGIN"
+  | "EMAIL_LOGIN"
   | "ONBOARDING_CHECK"
-  | "INTRO"
-  | "SET_ENS"
-  | "NO_ENS"
-  | "SET_ZO"
-  | "SET_PFP"
-  | "NO_PFP"
-  | "WALLET_ADDITION"
-  | "SOCIALS"
-  | "NO_FOUNDER"
-  | "FOUNDER"
+  | "NICKNAME"
+  | "AVATAR"
+  | "WHEREABOUTS"
+  | "CITIZEN"
+  | "HOMETOWN"
+  | "BIRTHDAY"
+  | "CULTURES"
   | "WELCOME";
 
 export type ZoAuthFocus = "pfp" | "name" | "twitter" | "founder" | "all";
@@ -78,6 +70,31 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
     setSteps((prev) => prev.slice(0, prev.length - 1));
   };
 
+  const ONBOARDING_STEPS: ZoAuthStep[] = [
+    "ONBOARDING_CHECK",
+    "NICKNAME",
+    "AVATAR",
+    "WHEREABOUTS",
+    "CITIZEN",
+    "HOMETOWN",
+    "BIRTHDAY",
+    "CULTURES",
+  ];
+
+  const isOnboarding = ONBOARDING_STEPS.includes(step);
+
+  const [onboardingQueue, setOnboardingQueue] = useState<ZoAuthStep[]>([]);
+
+  const advanceOnboarding = () => {
+    const remaining = onboardingQueue.slice(1);
+    setOnboardingQueue(remaining);
+    if (remaining.length > 0) {
+      replaceStep(remaining[0]);
+    } else {
+      replaceStep("WELCOME");
+    }
+  };
+
   const handleMobileLogin = (
     user: AuthUser,
     token: string,
@@ -88,7 +105,7 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
   };
 
   useEffect(() => {
-    if (isLoggedIn) {
+    if (isLoggedIn && !isOnboarding) {
       if (isLoggingWithMobile) {
         if (isZostelLoggedIn) {
           hideModal();
@@ -98,7 +115,7 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
         hideModal();
       }
     }
-  }, [hideModal, isLoggedIn, isZostelLoggedIn, step]);
+  }, [hideModal, isLoggedIn, isZostelLoggedIn, step, isOnboarding]);
 
   const renderStep = () => {
     switch (step) {
@@ -111,14 +128,6 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
             showOtherLoginOptions={showOtherLoginOptions}
             login={login}
             isZostelLoginRequired={isZostelLoginRequired}
-          />
-        );
-      case "WALLET_CONNECTING":
-        return (
-          <WalletConnecting
-            setStep={setStep}
-            setFocus={setFocus}
-            login={login}
           />
         );
       case "EMAIL_LOGIN":
@@ -135,27 +144,27 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
           />
         );
       case "ONBOARDING_CHECK":
-        return <OnboardingCheck setStep={setStep} setFocus={setFocus} />;
-      case "INTRO":
-        return <Intro setStep={replaceStep} setFocus={setFocus} />;
-      case "SET_ENS":
-        return <SetENS setStep={setStep} setFocus={setFocus} />;
-      case "NO_ENS":
-        return <NoENS setStep={setStep} setFocus={setFocus} />;
-      case "SET_ZO":
-        return <SetZo setStep={setStep} setFocus={setFocus} />;
-      case "SET_PFP":
-        return <SetPFP setStep={setStep} setFocus={setFocus} />;
-      case "NO_PFP":
-        return <NoPFP setStep={setStep} setFocus={setFocus} />;
-      case "WALLET_ADDITION":
-        return <WalletAddition setStep={setStep} setFocus={setFocus} />;
-      case "SOCIALS":
-        return <Socials setStep={setStep} setFocus={setFocus} />;
-      case "FOUNDER":
-        return <Founder setStep={setStep} setFocus={setFocus} />;
-      case "NO_FOUNDER":
-        return <NoFounder setStep={setStep} setFocus={setFocus} />;
+        return (
+          <OnboardingCheck
+            setStep={setStep}
+            setFocus={setFocus}
+            setOnboardingQueue={setOnboardingQueue}
+          />
+        );
+      case "NICKNAME":
+        return <Nickname advanceOnboarding={advanceOnboarding} />;
+      case "AVATAR":
+        return <Avatar advanceOnboarding={advanceOnboarding} />;
+      case "WHEREABOUTS":
+        return <Whereabouts advanceOnboarding={advanceOnboarding} />;
+      case "CITIZEN":
+        return <Citizen advanceOnboarding={advanceOnboarding} />;
+      case "HOMETOWN":
+        return <Hometown advanceOnboarding={advanceOnboarding} />;
+      case "BIRTHDAY":
+        return <Birthday advanceOnboarding={advanceOnboarding} />;
+      case "CULTURES":
+        return <Cultures advanceOnboarding={advanceOnboarding} />;
       case "WELCOME":
         return (
           <Welcome
@@ -180,7 +189,7 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
             </span>
             <h1 className="font-bold text-6xl mt-2 text-zui-pink ">Zo World</h1>
           </div>
-        ) : step !== "WELCOME" ? (
+        ) : step !== "WELCOME" && !ONBOARDING_STEPS.includes(step) ? (
           <div className="flex flex-shrink-0 flex-col mb-4 items-start">
             <button onClick={goBack}>
               <Icon name="ArrowLeft" size={24} fill="#fff" />
@@ -194,7 +203,7 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
           fillOpacity={0.1}
         />
       </div>
-      <UserCollection focus={focus} />
+      {!isOnboarding && <UserCollection focus={focus} />}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { FC, useEffect, useState } from "react";
 import useProfile from "../../../hooks/useProfile";
-import { ZoAuthStepProps } from "../ZoAuth";
+import { ZoAuthStep, ZoAuthStepProps } from "../ZoAuth";
 
 function groupBy(array: any[], key: string) {
   return array.reduce(function (result, currentValue) {
@@ -12,7 +12,11 @@ function groupBy(array: any[], key: string) {
   }, {});
 }
 
-const OnboardingCheck: FC<ZoAuthStepProps> = ({ setFocus, setStep }) => {
+interface OnboardingCheckProps extends ZoAuthStepProps {
+  setOnboardingQueue: (queue: ZoAuthStep[]) => void;
+}
+
+const OnboardingCheck: FC<OnboardingCheckProps> = ({ setFocus, setStep, setOnboardingQueue }) => {
   useEffect(() => {
     setFocus("all");
   }, [setFocus]);
