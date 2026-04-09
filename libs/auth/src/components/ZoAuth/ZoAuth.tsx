@@ -4,6 +4,7 @@ import { AuthUser, LoginTypes } from "@zo/definitions/auth";
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../contexts/auth";
 import { useZostelAuth } from "../../contexts/authZostel";
+import { trackOnboarding } from "../../utils/telemetry";
 import UserCollection from "./components/UserCollection";
 import Avatar from "./steps/Avatar";
 import Birthday from "./steps/Birthday";
@@ -116,6 +117,16 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
       }
     }
   }, [hideModal, isLoggedIn, isZostelLoggedIn, step, isOnboarding]);
+
+  // Track abandonment during onboarding
+  useEffect(() => {
+    if (!isOnboarding) return;
+    const handler = () => {
+      trackOnboarding("onboarding_abandoned", { step_name: step });
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isOnboarding, step]);
 
   const renderStep = () => {
     switch (step) {

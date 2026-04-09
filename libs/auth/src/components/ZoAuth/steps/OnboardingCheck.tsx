@@ -1,6 +1,7 @@
 import { FC, useEffect, useState } from "react";
 import { useAuth } from "../../../contexts/auth";
 import useProfile from "../../../hooks/useProfile";
+import { trackOnboarding } from "../../../utils/telemetry";
 import { fetchWhereabouts, WhereaboutsRecord } from "../../../utils/whereabouts";
 import { ZoAuthStep, ZoAuthStepProps } from "../ZoAuth";
 import { computeOnboardingQueue } from "./computeOnboardingQueue";
@@ -38,6 +39,10 @@ const OnboardingCheck: FC<OnboardingCheckProps> = ({
     if (queue.length === 0) {
       setStep("WELCOME");
     } else {
+      trackOnboarding("onboarding_started", {
+        queue_length: queue.length,
+        queue_steps: queue,
+      });
       setOnboardingQueue(queue);
       setStep(queue[0]);
     }

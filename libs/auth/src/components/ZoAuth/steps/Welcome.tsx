@@ -1,5 +1,6 @@
 import { FC, useEffect } from "react";
 import useProfile from "../../../hooks/useProfile";
+import { trackOnboarding } from "../../../utils/telemetry";
 import { ZoAuthStepProps } from "../ZoAuth";
 
 interface WelcomeProps extends ZoAuthStepProps {
@@ -14,6 +15,7 @@ const Welcome: FC<WelcomeProps> = ({ setFocus, hideModal }) => {
   }, [setFocus]);
 
   useEffect(() => {
+    trackOnboarding("onboarding_completed");
     const timer = setTimeout(hideModal, 2000);
     return () => clearTimeout(timer);
   }, [hideModal]);
