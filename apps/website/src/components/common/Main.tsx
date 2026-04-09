@@ -46,7 +46,7 @@ const Main: React.FC<MainProps> = ({ Component, pageProps }) => {
   return (
     <main
       className={cn(
-        "h-full flex flex-col w-full transition-all ease-in-out duration-200",
+        "min-h-full flex flex-col w-full transition-all ease-in-out duration-200",
         fontClassName,
         hasBlackBackground.some((path) => router.pathname.startsWith(path)) &&
           "bg-black"

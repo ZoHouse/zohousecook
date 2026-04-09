@@ -1,6 +1,7 @@
 import { InferGetServerSidePropsType } from "next";
 import { getServerSideProps as getServerSidePropsType } from "next/dist/build/templates/pages";
 import React, { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useAuth } from "@zo/auth";
 import { MetaTags, Page } from "../components/common";
 import {
@@ -16,6 +17,9 @@ import {
 } from "../components/helpers/home";
 import { Nodes } from "../components/helpers/membership";
 import { homepageData, membershipPageData } from "../config";
+import { JourneyProvider } from "../components/journey/JourneyContext";
+
+const JourneyOverlay = dynamic(() => import("../components/journey/JourneyOverlay"), { ssr: false });
 
 import { fetchMetaData as getServerSideProps } from "../components/utils";
 export { getServerSideProps };
@@ -52,27 +56,30 @@ const Index: React.FC<
   InferGetServerSidePropsType<typeof getServerSidePropsType>
 > = ({ metaData }) => {
   return (
-    <Page className="relative flex-none">
-      <MetaTags
-        title={metaData?.title}
-        description={metaData?.description}
-        image={metaData?.image}
-      />
-      <HeroSection />
-      <FloatingPassportCTA />
-      <WhatsNewSection />
-      {/* <NewsSection news={homepageData.newsSection.data} /> */}
-      <DiscoverZoWorld />
-      {/* <ZoBrandsSection /> */}
-      {/* <Nodes title="Vibes" subtitle="" nodes={[
-        { ...membershipPageData.nodes[1], text: "People" },
-        { ...membershipPageData.nodes[0], text: "Parties" },
-        { ...membershipPageData.nodes[2], text: "Places" },
-      ]} /> */}
-      {/* <FounderMemberCard /> */}
-      {/* <TweetsSection /> */}
-      <Brands brands={homepageData.brands.data} />
-    </Page>
+    <JourneyProvider>
+      <Page className="relative flex-none">
+        <MetaTags
+          title={metaData?.title}
+          description={metaData?.description}
+          image={metaData?.image}
+        />
+        <HeroSection />
+        <FloatingPassportCTA />
+        <WhatsNewSection />
+        {/* <NewsSection news={homepageData.newsSection.data} /> */}
+        <DiscoverZoWorld />
+        {/* <ZoBrandsSection /> */}
+        {/* <Nodes title="Vibes" subtitle="" nodes={[
+          { ...membershipPageData.nodes[1], text: "People" },
+          { ...membershipPageData.nodes[0], text: "Parties" },
+          { ...membershipPageData.nodes[2], text: "Places" },
+        ]} /> */}
+        {/* <FounderMemberCard /> */}
+        {/* <TweetsSection /> */}
+        <Brands brands={homepageData.brands.data} />
+        <JourneyOverlay />
+      </Page>
+    </JourneyProvider>
   );
 };
 

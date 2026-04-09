@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useRef, useState } from "react";
-import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
+import React, { useRef } from "react";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import Marquee from "react-fast-marquee";
 import { useFadeInOnScroll } from "../../../hooks";
 import { syneClassName, rubikClassName } from "../../utils/font";
 import { cn } from "@zo/utils/font";
 import EventCard from "./EventCard";
+import { useJourney } from "../../journey/JourneyContext";
 
 /* ── TiltCard (ported from zo-passport) ── */
 
@@ -193,6 +194,7 @@ interface RoleCard {
   glowColor: string;
   comingSoon?: boolean;
   icon: React.ReactNode;
+  illustration?: string;
   perks: Perk[];
   cta?: { label: string; href: string };
 }
@@ -205,6 +207,7 @@ const roles: RoleCard[] = [
     taglineColor: "#F87B2F",
     glowColor: "#FDAA7B",
     icon: <TravellerIcon />,
+    illustration: "/tiers/traveller-illustration.png",
     perks: [
       { text: "Buy 1 Get 1 Free nights every month", pro: true },
       { text: "Access Zostel common areas", pro: true },
@@ -221,6 +224,7 @@ const roles: RoleCard[] = [
     taglineColor: "#B85DFF",
     glowColor: "linear-gradient(180deg, #950DFF 18.27%, rgba(212, 156, 255, 0.3) 52.88%)",
     icon: <CreatorIcon />,
+    illustration: "/tiers/creator-illustration.png",
     perks: [
       { text: "Join daily Instagram quests" },
       { text: "Unlock Daily ₹7k Creator Bed Drops and Zo Credits" },
@@ -234,6 +238,7 @@ const roles: RoleCard[] = [
     taglineColor: "#FF0D55",
     glowColor: "#CE0A48",
     icon: <TribebuilderIcon />,
+    illustration: "/tiers/vibetribe-illustration.png",
     perks: [
       { text: "Invite others to join using your link, earn 7% on their first booking" },
       { text: "Earn 7% commission on bookings made through your link for 1 year", pro: true },
@@ -270,6 +275,85 @@ const roles: RoleCard[] = [
     ],
   },
 ];
+
+/* ── VibeCard — replaces static PNGs with real UI ── */
+
+function VibeCard({ role, className = "" }: { role: RoleCard; className?: string }) {
+  const glowColor = role.glowColor.startsWith("linear")
+    ? role.glowColor
+    : role.glowColor;
+
+  return (
+    <TiltCard
+      glowColor={role.glowColor.startsWith("linear") ? "rgba(149, 13, 255, 0.25)" : `${role.glowColor}44`}
+      className={cn("rounded-2xl", className)}
+    >
+      <div
+        className="relative flex flex-col justify-between overflow-hidden rounded-2xl h-full border border-white/[0.12]"
+        style={{
+          background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)",
+          boxShadow: "inset 0px 1px 1px rgba(255, 255, 255, 0.15), 0px 4px 24px rgba(0, 0, 0, 0.4)",
+          backdropFilter: "blur(40px)",
+          WebkitBackdropFilter: "blur(40px)",
+        }}
+      >
+        {/* Color glow */}
+        <div
+          className="absolute w-[140px] h-[140px] -left-4 -top-4 pointer-events-none opacity-70"
+          style={{ background: glowColor, filter: "blur(60px)", zIndex: 0 }}
+        />
+
+        {/* Header: icon + title */}
+        <div className="relative z-10 flex items-center gap-3 p-4 pb-0">
+          <div className="flex-shrink-0 origin-top-left scale-50 w-10 h-10">
+            {role.icon}
+          </div>
+          <h3 className={cn("text-lg font-semibold text-white", syneClassName)}>
+            {role.title}
+          </h3>
+        </div>
+
+        {/* Coming Soon badge */}
+        {role.comingSoon && (
+          <div className="relative z-10 px-4 mt-1 flex-shrink-0">
+            <span
+              className={cn("text-[10px] px-2 py-0.5 rounded-full", rubikClassName)}
+              style={{ background: "#2B3228", color: "#54B835" }}
+            >
+              Coming Soon
+            </span>
+          </div>
+        )}
+
+        {/* 3D illustration (only for Travel, Create, VibeTribe) */}
+        {role.illustration && (
+          <div className="relative z-10 flex-1 flex items-center justify-center px-4 py-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={role.illustration}
+              alt=""
+              className="w-[60%] max-w-[180px] h-auto object-contain drop-shadow-2xl"
+            />
+          </div>
+        )}
+
+        {/* Spacer pushes tagline to bottom on short cards */}
+        {!role.illustration && <div className="flex-1" />}
+
+        {/* Tagline */}
+        <p
+          className={cn(
+            "relative z-10 text-sm font-medium leading-snug px-4 pb-3 pt-1 flex-shrink-0",
+            rubikClassName
+          )}
+          style={{ color: role.taglineColor }}
+        >
+          {role.tagline}
+        </p>
+      </div>
+    </TiltCard>
+  );
+}
 
 /* ── Small icons for Pro Passport perks ── */
 
@@ -458,81 +542,54 @@ function RoleModal({ role, onClose }: { role: RoleCard; onClose: () => void }) {
 
 const WhatsNewSection: React.FC = () => {
   const sectionRef = useFadeInOnScroll<HTMLDivElement>();
-  const [selectedRole, setSelectedRole] = useState<RoleCard | null>(null);
+  const { startJourney } = useJourney();
 
   return (
     <div
-      className="relative z-20 px-6 lg:px-[108px] max-w-[1400px] mx-auto"
+      className="relative z-20 px-6 lg:px-16 max-w-[1600px] mx-auto"
       ref={sectionRef}
     >
-      {/* Section heading */}
-      <p className={cn("text-xs md:text-sm uppercase tracking-[0.2em] text-white/60 text-center font-medium", rubikClassName)}>
-        THE ZO COMMUNITY
-      </p>
-      <h2 className={cn("text-3xl md:text-[48px] md:leading-[58px] text-center font-semibold text-white mt-4", syneClassName)}>
-        You were never looking for a place.
-      </h2>
-
       <EventCard />
 
-      {/* ── Vibe Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-5 mt-10">
-        {roles.map((role) => (
-          <TiltCard
+      {/* ── Vibe Cards — horizontal scroll on mobile, Host+Build stacked ── */}
+      <div className="flex xl:hidden gap-3 mt-10 overflow-x-auto pb-4 -mx-6 px-6 snap-x scroll-smooth hide-scrollbar">
+        {roles.slice(0, 3).map((role) => (
+          <button
             key={role.title}
-            glowColor={role.glowColor.startsWith("linear") ? "rgba(149, 13, 255, 0.3)" : role.glowColor + "55"}
-            onClick={() => setSelectedRole(role)}
-            className="flex-1"
+            onClick={() => startJourney(role.title)}
+            className="flex-shrink-0 snap-start"
           >
-            <div
-              className="relative flex flex-col items-start p-6 gap-4 overflow-hidden h-full"
-              style={{
-                background: "linear-gradient(180deg, #292929 -14.43%, #000000 116.42%)",
-                boxShadow: "0px 4px 4px rgba(0, 0, 0, 0.25), inset 0px 1.93px 7.71px rgba(255, 255, 255, 0.25)",
-                backdropFilter: "blur(48px)",
-                borderRadius: "24px",
-              }}
-            >
-              {/* Glow */}
-              <div
-                className="absolute w-[159px] h-[159px] -left-9 -top-9 pointer-events-none"
-                style={{ background: role.glowColor, filter: "blur(80px)", zIndex: 0 }}
-              />
-
-              {/* Content */}
-              <div className="relative z-10 flex flex-col gap-4 w-full">
-                {role.icon}
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-3">
-                    <h3 className={cn("text-xl md:text-2xl font-semibold text-white", syneClassName)}>
-                      {role.title}
-                    </h3>
-                    {role.comingSoon && (
-                      <span className={cn("text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap", rubikClassName)} style={{ background: "#2B3228", color: "#54B835" }}>
-                        Coming Soon
-                      </span>
-                    )}
-                  </div>
-                  <p className={cn("text-sm leading-[24px] mt-1", rubikClassName)} style={{ color: role.taglineColor }}>
-                    {role.tagline}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </TiltCard>
+            <VibeCard role={role} className="h-[280px] w-[200px]" />
+          </button>
         ))}
+        {/* Host + Build stacked as one scroll item */}
+        <div className="flex-shrink-0 snap-start flex flex-col gap-3 w-[200px]">
+          <button onClick={() => startJourney(roles[3].title)}>
+            <VibeCard role={roles[3]} className="h-[134px] w-[200px]" />
+          </button>
+          <button onClick={() => startJourney(roles[4].title)}>
+            <VibeCard role={roles[4]} className="h-[134px] w-[200px]" />
+          </button>
+        </div>
       </div>
 
-      {/* ── Role Modal (rendered via portal to escape stacking context) ── */}
-      {typeof document !== "undefined" &&
-        require("react-dom").createPortal(
-          <AnimatePresence>
-            {selectedRole && (
-              <RoleModal role={selectedRole} onClose={() => setSelectedRole(null)} />
-            )}
-          </AnimatePresence>,
-          document.body
-        )}
+      {/* Desktop: asymmetric grid — 3 tall + 2 stacked */}
+      <div className="hidden xl:grid grid-cols-[1fr_1fr_1fr_1fr] gap-4 mt-10">
+        {roles.slice(0, 3).map((role) => (
+          <button key={role.title} onClick={() => startJourney(role.title)} className="cursor-pointer hover:scale-[1.02] transition-transform">
+            <VibeCard role={role} className="h-full" />
+          </button>
+        ))}
+        {/* Host + Build stacked */}
+        <div className="flex flex-col gap-4">
+          <button onClick={() => startJourney(roles[3].title)} className="flex-1 cursor-pointer hover:scale-[1.02] transition-transform">
+            <VibeCard role={roles[3]} className="h-full" />
+          </button>
+          <button onClick={() => startJourney(roles[4].title)} className="flex-1 cursor-pointer hover:scale-[1.02] transition-transform">
+            <VibeCard role={roles[4]} className="h-full" />
+          </button>
+        </div>
+      </div>
 
       {/* ── Plans Section ── */}
       <div className="flex flex-col items-center mt-20 gap-6">
@@ -617,43 +674,45 @@ const WhatsNewSection: React.FC = () => {
           </div>
 
           {/* Coming Soon marquee */}
-          <div className="relative z-10 mt-4 -mx-6 overflow-hidden">
-            <div className="flex items-center gap-2 px-6 mb-3">
+          <div className="relative z-10 mt-4 -mx-6 flex items-center overflow-hidden">
+            <div className="flex items-center gap-2 px-6 flex-shrink-0">
               <div className="w-2 h-2 rounded-full bg-[#FFE880]" />
-              <span className={cn("text-xs font-semibold text-[#FFE880] uppercase tracking-wider", rubikClassName)}>Coming soon</span>
+              <span className={cn("text-xs font-semibold text-[#FFE880] uppercase tracking-wider whitespace-nowrap", rubikClassName)}>Coming soon</span>
             </div>
-            <Marquee speed={20} gradient={false} pauseOnHover>
-              {[
-                "Zostel common area access",
-                "Builder tools for listing spaces",
-                "Host community experiences",
-                "City community chats",
-                "Early access across Zo properties",
-                "Zobu travel partner agent",
-                "Hosted experiences around you",
-                "Buy 1 Get 1 Free nights",
-              ].map((item) => (
-                <span
-                  key={item}
-                  className={cn("text-xs text-white/40 border border-white/10 rounded-full px-4 py-1.5 mx-1.5 whitespace-nowrap", rubikClassName)}
-                >
-                  {item}
-                </span>
-              ))}
-            </Marquee>
+            <div className="flex-1 overflow-hidden">
+              <Marquee speed={20} gradient={false} pauseOnHover>
+                {[
+                  "Zostel common area access",
+                  "Builder tools for listing spaces",
+                  "Host community experiences",
+                  "City community chats",
+                  "Early access across Zo properties",
+                  "Zobu travel partner agent",
+                  "Hosted experiences around you",
+                  "Buy 1 Get 1 Free nights",
+                ].map((item) => (
+                  <span
+                    key={item}
+                    className={cn("text-xs text-white/40 border border-white/10 rounded-full px-4 py-1.5 mx-1.5 whitespace-nowrap", rubikClassName)}
+                  >
+                    {item}
+                  </span>
+                ))}
+              </Marquee>
+            </div>
           </div>
 
           {/* CTA Button */}
           <div className="relative z-10 flex justify-center mt-4">
-            <a
-              href="/passport"
+            <button
+              onClick={() => startJourney("Passport")}
               className={cn("px-8 py-[14px] text-center font-medium text-base text-[#111111] rounded-xl", rubikClassName)}
               style={{
                 background: "linear-gradient(0deg, #FFFFFF, #FFFFFF), linear-gradient(89.93deg, #B9FFCF 1.66%, #FFE880 31.68%, #FFB591 64.46%, #FFB4CA 97.11%)",
               }}
             >
               Get Pro Passport
-            </a>
+            </button>
           </div>
         </div>
       </div>
