@@ -55,6 +55,39 @@ export type Profile = {
   time_create: string;
   time_update: string;
   work_role: string;
+  // Onboarding fields (returned by backend, previously untyped)
+  custom_nickname?: string;
+  ens_nickname?: string;
+  selected_nickname?: string;
+  body_type?: "bro" | "bae";
+  avatar?: {
+    image: string;
+    metadata: string;
+    ref_id: number;
+  };
+  pfp_image?: string;
+  pfp_metadata?: {
+    contract_address?: string;
+    token_id?: string;
+    metadata?: string;
+    is_valid?: string;
+  };
+  place_name?: string;
+  place_ref_id?: string;
+  home_location?: { lat: number; lng: number } | null;
+  country?: {
+    code: string;
+    name: string;
+    local_currency?: string;
+    flag?: string;
+    mobile_code?: string;
+  };
+  cultures?: Array<{
+    key: string;
+    name: string;
+    description?: string;
+    icon?: string;
+  }>;
 };
 
 export type QueryConfig = {
