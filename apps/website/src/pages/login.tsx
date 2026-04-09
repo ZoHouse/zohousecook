@@ -2,7 +2,6 @@ import {
   CustomButton,
   EmailLogin,
   MobileLogin,
-  WalletConnecting,
   useAuth,
 } from "@zo/auth";
 import { Button } from "@zo/moal";
@@ -48,16 +47,7 @@ const Login: React.FC<LoginProps> = () => {
           {step === "ENTRY" ? (
             <div className="flex flex-col items-start justify-start gap-2 mt-6">
               <div role="button" onClick={handleWalletClick} className="w-full">
-                {isConnected ? (
-                  <WalletConnecting
-                    onSuccess={handleSuccessFullLogin}
-                    login={login}
-                    setStep={() => {}}
-                    setFocus={() => {}}
-                  />
-                ) : (
-                  <CustomButton />
-                )}
+                <CustomButton />
               </div>
               <Button
                 className="w-full font-normal"

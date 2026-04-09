@@ -1,26 +1,23 @@
 import { Zo } from "@zo/assets/brands";
 import Icon from "@zo/assets/icons";
 import { AuthUser, LoginTypes } from "@zo/definitions/auth";
+import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../contexts/auth";
 import { useZostelAuth } from "../../contexts/authZostel";
+import { trackOnboarding } from "../../utils/telemetry";
 import UserCollection from "./components/UserCollection";
+import Avatar from "./steps/Avatar";
+import Birthday from "./steps/Birthday";
+import Citizen from "./steps/Citizen";
+import Cultures from "./steps/Cultures";
 import EmailLogin from "./steps/EmailLogin";
 import Entry from "./steps/Entry";
-import Founder from "./steps/Founder";
-import Intro from "./steps/Intro";
+import Hometown from "./steps/Hometown";
 import MobileLogin from "./steps/MobileLogin";
-import NoENS from "./steps/NoENS";
-import NoFounder from "./steps/NoFounder";
-import NoPFP from "./steps/NoPFP";
+import Nickname from "./steps/Nickname";
 import OnboardingCheck from "./steps/OnboardingCheck";
-import SetENS from "./steps/SetENS";
-import SetPFP from "./steps/SetPFP";
-import SetZo from "./steps/SetZo";
-import Socials from "./steps/Socials";
-import WalletAddition from "./steps/WalletAddition";
-import WalletConnecting from "./steps/WalletConnecting";
-import Welcome from "./steps/Welcome";
+import Whereabouts from "./steps/Whereabouts";
 interface ZoAuthProps {
   hideModal: () => void;
   isZostelLoginRequired?: boolean;
@@ -31,21 +28,16 @@ interface ZoAuthProps {
 
 export type ZoAuthStep =
   | "ENTRY"
-  | "WALLET_CONNECTING"
-  | "EMAIL_LOGIN"
   | "MOBILE_LOGIN"
+  | "EMAIL_LOGIN"
   | "ONBOARDING_CHECK"
-  | "INTRO"
-  | "SET_ENS"
-  | "NO_ENS"
-  | "SET_ZO"
-  | "SET_PFP"
-  | "NO_PFP"
-  | "WALLET_ADDITION"
-  | "SOCIALS"
-  | "NO_FOUNDER"
-  | "FOUNDER"
-  | "WELCOME";
+  | "NICKNAME"
+  | "AVATAR"
+  | "WHEREABOUTS"
+  | "CITIZEN"
+  | "HOMETOWN"
+  | "BIRTHDAY"
+  | "CULTURES";
 
 export type ZoAuthFocus = "pfp" | "name" | "twitter" | "founder" | "all";
 
@@ -78,6 +70,35 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
     setSteps((prev) => prev.slice(0, prev.length - 1));
   };
 
+  const ONBOARDING_STEPS: ZoAuthStep[] = [
+    "ONBOARDING_CHECK",
+    "NICKNAME",
+    "AVATAR",
+    "WHEREABOUTS",
+    "CITIZEN",
+    "HOMETOWN",
+    "BIRTHDAY",
+    "CULTURES",
+  ];
+
+  const isOnboarding = ONBOARDING_STEPS.includes(step);
+
+  const [onboardingQueue, setOnboardingQueue] = useState<ZoAuthStep[]>([]);
+
+  const router = useRouter();
+
+  const advanceOnboarding = () => {
+    const remaining = onboardingQueue.slice(1);
+    setOnboardingQueue(remaining);
+    if (remaining.length > 0) {
+      replaceStep(remaining[0]);
+    } else {
+      trackOnboarding("onboarding_completed");
+      hideModal();
+      router.push("/passport");
+    }
+  };
+
   const handleMobileLogin = (
     user: AuthUser,
     token: string,
@@ -88,7 +109,7 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
   };
 
   useEffect(() => {
-    if (isLoggedIn) {
+    if (isLoggedIn && !isOnboarding) {
       if (isLoggingWithMobile) {
         if (isZostelLoggedIn) {
           hideModal();
@@ -98,7 +119,17 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
         hideModal();
       }
     }
-  }, [hideModal, isLoggedIn, isZostelLoggedIn, step]);
+  }, [hideModal, isLoggedIn, isZostelLoggedIn, step, isOnboarding]);
+
+  // Track abandonment during onboarding
+  useEffect(() => {
+    if (!isOnboarding) return;
+    const handler = () => {
+      trackOnboarding("onboarding_abandoned", { step_name: step });
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isOnboarding, step]);
 
   const renderStep = () => {
     switch (step) {
@@ -111,14 +142,6 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
             showOtherLoginOptions={showOtherLoginOptions}
             login={login}
             isZostelLoginRequired={isZostelLoginRequired}
-          />
-        );
-      case "WALLET_CONNECTING":
-        return (
-          <WalletConnecting
-            setStep={setStep}
-            setFocus={setFocus}
-            login={login}
           />
         );
       case "EMAIL_LOGIN":
@@ -135,66 +158,118 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
           />
         );
       case "ONBOARDING_CHECK":
-        return <OnboardingCheck setStep={setStep} setFocus={setFocus} />;
-      case "INTRO":
-        return <Intro setStep={replaceStep} setFocus={setFocus} />;
-      case "SET_ENS":
-        return <SetENS setStep={setStep} setFocus={setFocus} />;
-      case "NO_ENS":
-        return <NoENS setStep={setStep} setFocus={setFocus} />;
-      case "SET_ZO":
-        return <SetZo setStep={setStep} setFocus={setFocus} />;
-      case "SET_PFP":
-        return <SetPFP setStep={setStep} setFocus={setFocus} />;
-      case "NO_PFP":
-        return <NoPFP setStep={setStep} setFocus={setFocus} />;
-      case "WALLET_ADDITION":
-        return <WalletAddition setStep={setStep} setFocus={setFocus} />;
-      case "SOCIALS":
-        return <Socials setStep={setStep} setFocus={setFocus} />;
-      case "FOUNDER":
-        return <Founder setStep={setStep} setFocus={setFocus} />;
-      case "NO_FOUNDER":
-        return <NoFounder setStep={setStep} setFocus={setFocus} />;
-      case "WELCOME":
         return (
-          <Welcome
+          <OnboardingCheck
             setStep={setStep}
             setFocus={setFocus}
-            hideModal={hideModal}
+            setOnboardingQueue={setOnboardingQueue}
+            onComplete={() => {
+              hideModal();
+              router.push("/passport");
+            }}
           />
         );
-
+      case "NICKNAME":
+        return <Nickname advanceOnboarding={advanceOnboarding} />;
+      case "AVATAR":
+        return <Avatar advanceOnboarding={advanceOnboarding} />;
+      case "WHEREABOUTS":
+        return <Whereabouts advanceOnboarding={advanceOnboarding} />;
+      case "CITIZEN":
+        return <Citizen advanceOnboarding={advanceOnboarding} />;
+      case "HOMETOWN":
+        return <Hometown advanceOnboarding={advanceOnboarding} />;
+      case "BIRTHDAY":
+        return <Birthday advanceOnboarding={advanceOnboarding} />;
+      case "CULTURES":
+        return <Cultures advanceOnboarding={advanceOnboarding} />;
       default:
         return null;
     }
   };
 
   return (
-    <div className="bg-zui-dark text-zui-white w-full h-full fixed inset-0 z-[100] flex">
-      <div className="md:max-w-sm w-full flex-shrink-0 mx-auto flex flex-col items-start h-full p-4 overflow-hidden relative">
-        {step === "ENTRY" ? (
-          <div className="flex flex-shrink-0 flex-col mb-4 items-start">
-            <span className="font-semibold text-3xl leading-none">
-              Follow Your Heart
-            </span>
-            <h1 className="font-bold text-6xl mt-2 text-zui-pink ">Zo World</h1>
-          </div>
-        ) : step !== "WELCOME" ? (
-          <div className="flex flex-shrink-0 flex-col mb-4 items-start">
-            <button onClick={goBack}>
-              <Icon name="ArrowLeft" size={24} fill="#fff" />
-            </button>
-          </div>
-        ) : null}
-        {renderStep()}
-        <Zo
-          className="absolute bottom-0 left-0 h-28"
-          fill="white"
-          fillOpacity={0.1}
+    <div className="bg-zui-dark text-zui-white w-full h-full fixed inset-0 z-[100]">
+      {/* VHS static background */}
+      <video
+        autoPlay
+        playsInline
+        loop
+        muted
+        className="fixed inset-0 z-[100] w-full h-full pointer-events-none object-cover"
+      >
+        <source
+          src="https://zoworld-static.s3.ap-south-1.amazonaws.com/media/meme/artifacts-background.mp4"
+          type="video/mp4"
         />
+      </video>
+
+      {/* TV Frame */}
+      <img
+        src="https://zoworld-static.s3.ap-south-1.amazonaws.com/media/meme/tv-frame.png"
+        className="fixed inset-0 z-[110] w-full h-full pointer-events-none object-fill"
+        alt=""
+      />
+
+      {/* UserCollection as background */}
+      {!isOnboarding && (
+        <div className="absolute inset-0 z-[101]">
+          <UserCollection focus={focus} />
+        </div>
+      )}
+
+      {/* Centered glass card */}
+      <div className="relative z-[115] w-full h-full flex items-center justify-center px-10 py-16 md:px-4 md:py-4">
+        <div
+          className="w-full max-w-xs md:max-w-lg rounded-2xl border border-white/[0.12] px-5 py-6 md:px-10 md:py-12 overflow-hidden relative"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 40%, rgba(0,0,0,0.3) 100%)",
+            backdropFilter: "blur(60px) saturate(1.4)",
+            WebkitBackdropFilter: "blur(60px) saturate(1.4)",
+            boxShadow:
+              "0 8px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(255,255,255,0.02)",
+          }}
+        >
+          {/* Aurora glow */}
+          <div
+            className="absolute -top-20 left-1/2 -translate-x-1/2 w-[120%] h-48 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse at 50% 0%, rgba(102,223,72,0.15) 0%, rgba(45,180,120,0.08) 30%, transparent 70%)",
+              filter: "blur(30px)",
+            }}
+          />
+          <div
+            className="absolute top-0 right-0 w-1/2 h-32 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse at 80% 0%, rgba(255,255,255,0.06) 0%, transparent 60%)",
+            }}
+          />
+
+          <div className="relative flex flex-col items-center w-full max-h-[75vh] overflow-y-auto">
+            {step === "ENTRY" ? (
+              <div className="flex flex-shrink-0 flex-col mb-2 items-center">
+                <h1 className="font-bold text-2xl md:text-4xl text-white whitespace-nowrap">Welcome to Zo World</h1>
+              </div>
+            ) : !ONBOARDING_STEPS.includes(step) ? (
+              <div className="flex flex-shrink-0 flex-col mb-4 items-start">
+                <button onClick={goBack}>
+                  <Icon name="ArrowLeft" size={24} fill="#fff" />
+                </button>
+              </div>
+            ) : null}
+            <div className="w-full">{renderStep()}</div>
+          </div>
+
+          <Zo
+            className="absolute bottom-0 left-0 h-16 opacity-[0.04]"
+            fill="white"
+            fillOpacity={1}
+          />
+        </div>
       </div>
-      <UserCollection focus={focus} />
     </div>
   );
 };

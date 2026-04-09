@@ -12,6 +12,7 @@ interface AuthContextInterface {
     allowedLoginTypes?: LoginTypes[],
     redirectPath?: string
   ) => void;
+  skipOnboarding?: boolean;
 }
 
 const AuthContext = createContext<AuthContextInterface>({
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextInterface>({
   login: () => {},
   logout: () => {},
   showLoginModal: () => {},
+  skipOnboarding: false,
 });
 
 const useAuth = () => useContext(AuthContext);
