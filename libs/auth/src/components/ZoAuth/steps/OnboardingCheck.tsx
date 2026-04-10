@@ -17,7 +17,7 @@ const OnboardingCheck: FC<OnboardingCheckProps> = ({
   onComplete,
 }) => {
   const { skipOnboarding } = useAuth();
-  const { profile } = useProfile();
+  const { profile, isLoading } = useProfile();
   const [whereabouts, setWhereabouts] = useState<
     WhereaboutsRecord | null | undefined
   >(undefined);
@@ -29,7 +29,7 @@ const OnboardingCheck: FC<OnboardingCheckProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!profile || whereabouts === undefined) return;
+    if (isLoading || !profile || whereabouts === undefined) return;
 
     if (skipOnboarding) {
       onComplete();
