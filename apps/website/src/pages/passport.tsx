@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useProfile } from "@zo/auth";
+import { useAuth, useProfile } from "@zo/auth";
 import {
   PassportIdentityCard,
   PassportProCard,
@@ -12,6 +12,7 @@ import { useMyXp } from "../hooks/useMyXp";
 import { useMyRoles } from "../hooks/useMyRoles";
 
 export default function PassportPage() {
+  const { isLoggedIn, showLoginModal } = useAuth();
   const { profile, isLoading } = useProfile();
   const { myXp } = useMyXp();
   const { roles } = useMyRoles();
@@ -21,6 +22,23 @@ export default function PassportPage() {
     profile?.custom_nickname?.replace(".zo", "") ||
     profile?.nickname ||
     "";
+
+  if (!isLoggedIn) {
+    return (
+      <div className="flex-1 min-h-screen bg-[#111] flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-white text-2xl font-bold mb-4">Zo Passport</h1>
+          <p className="text-white/50 mb-6">Log in to view your passport</p>
+          <button
+            onClick={() => showLoginModal()}
+            className="px-8 py-3 bg-white text-black rounded-lg font-bold text-sm"
+          >
+            Log In
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
