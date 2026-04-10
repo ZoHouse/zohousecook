@@ -1,6 +1,6 @@
-import { FC, useEffect, useMemo, useState } from "react";
+import { FC, useEffect, useState } from "react";
+import BUNDLED_CULTURES from "../../../data/cultures.json";
 import useProfile from "../../../hooks/useProfile";
-import useQueryApi from "../../../hooks/useQueryApi";
 
 interface CulturesProps {
   advanceOnboarding: () => void;
@@ -12,6 +12,8 @@ interface Culture {
   name: string;
   icon?: string;
 }
+
+const cultures: Culture[] = BUNDLED_CULTURES;
 
 const Cultures: FC<CulturesProps> = ({ advanceOnboarding }) => {
   const { profile, updateProfile } = useProfile();
@@ -25,18 +27,6 @@ const Cultures: FC<CulturesProps> = ({ advanceOnboarding }) => {
       setSelectedKeys(new Set(profile.cultures.map((c: { key: string }) => c.key)));
     }
   }, [profile?.cultures]);
-
-  const { data, isLoading } = useQueryApi(
-    "CAS_CULTURES",
-    { enabled: true, refetchOnWindowFocus: false },
-    "",
-    "limit=50"
-  );
-
-  const cultures: Culture[] = useMemo(
-    () => data?.data?.results || [],
-    [data]
-  );
 
   const toggle = (key: string) => {
     setSelectedKeys((prev) => {
@@ -72,34 +62,28 @@ const Cultures: FC<CulturesProps> = ({ advanceOnboarding }) => {
         {selectedKeys.size} selected
       </span>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center w-full py-12">
-          <i className="uil uil-spinner animate-spin text-2xl" />
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 w-full mb-4 md:mb-6 max-h-40 md:max-h-64 overflow-y-auto">
-          {cultures.map((c) => {
-            const isSelected = selectedKeys.has(c.key);
-            return (
-              <button
-                key={c.id}
-                onClick={() => toggle(c.key)}
-                data-selected={isSelected ? "true" : "false"}
-                className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all text-left ${
-                  isSelected
-                    ? "border-[#66DF48] bg-[#66DF48]/10"
-                    : "border-white/10 bg-white/[0.02] hover:border-white/20"
-                }`}
-              >
-                {c.icon && (
-                  <img src={c.icon} alt="" className="w-6 h-6" />
-                )}
-                <span className="text-sm text-white">{c.name}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 w-full mb-4 md:mb-6 max-h-40 md:max-h-64 overflow-y-auto">
+        {cultures.map((c) => {
+          const isSelected = selectedKeys.has(c.key);
+          return (
+            <button
+              key={c.id}
+              onClick={() => toggle(c.key)}
+              data-selected={isSelected ? "true" : "false"}
+              className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all text-left ${
+                isSelected
+                  ? "border-[#66DF48] bg-[#66DF48]/10"
+                  : "border-white/10 bg-white/[0.02] hover:border-white/20"
+              }`}
+            >
+              {c.icon && (
+                <img src={c.icon} alt="" className="w-6 h-6" />
+              )}
+              <span className="text-sm text-white">{c.name}</span>
+            </button>
+          );
+        })}
+      </div>
 
       <button
         onClick={handleSubmit}
