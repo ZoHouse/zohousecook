@@ -212,12 +212,11 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
       if (allowedLoginTypes) {
         setLoginTypes(allowedLoginTypes);
       }
-      if (redirectPath) {
-        redirectPathRef.current = redirectPath;
-      }
+      // Capture the redirect: explicit path takes priority, otherwise use current route
+      redirectPathRef.current = redirectPath || router.asPath;
       setLoginModalVisible(true);
     },
-    [logout]
+    [logout, router.asPath]
   );
 
   const login = (user: AuthUser, token: string, validTill: number) => {
@@ -237,10 +236,6 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
     setTimeout(() => {
       setLoggedIn(true);
     }, 2000);
-    if (redirectPathRef.current) {
-      router.push(redirectPathRef.current);
-      redirectPathRef.current = null;
-    }
   };
 
   return (
@@ -265,6 +260,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
                   hideModal={setLoginModalVisible.bind(null, false)}
                   allowedLoginTypes={loginTypes}
                   showOtherLoginOptions={showOtherLoginOptions}
+                  redirectPath={redirectPathRef.current}
                 />
               ) : isLoginRequired ? (
                 isLoggedIn ? (

@@ -24,6 +24,7 @@ interface ZoAuthProps {
   login: (user: AuthUser, token: string, validTill: number) => void;
   allowedLoginTypes: LoginTypes[];
   showOtherLoginOptions?: boolean;
+  redirectPath?: string | null;
 }
 
 export type ZoAuthStep =
@@ -52,6 +53,7 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
   allowedLoginTypes,
   isZostelLoginRequired,
   showOtherLoginOptions = false,
+  redirectPath,
 }) => {
   const [steps, setSteps] = useState<ZoAuthStep[]>(["ENTRY"]);
   const [focus, setFocus] = useState<ZoAuthFocus>("all");
@@ -94,8 +96,7 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
       replaceStep(remaining[0]);
     } else {
       trackOnboarding("onboarding_completed");
-      hideModal();
-      router.push("/passport");
+      navigateAfterAuth();
     }
   };
 
@@ -108,15 +109,22 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
     login(user, token, validTill);
   };
 
+  const navigateAfterAuth = () => {
+    hideModal();
+    if (redirectPath && redirectPath !== router.asPath) {
+      router.push(redirectPath);
+    }
+  };
+
   useEffect(() => {
     if (isLoggedIn && !isOnboarding) {
       if (isLoggingWithMobile) {
         if (isZostelLoggedIn) {
-          hideModal();
+          navigateAfterAuth();
           setLoggingWithMobile(false);
         }
       } else {
-        hideModal();
+        navigateAfterAuth();
       }
     }
   }, [hideModal, isLoggedIn, isZostelLoggedIn, step, isOnboarding]);
@@ -164,8 +172,7 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
             setFocus={setFocus}
             setOnboardingQueue={setOnboardingQueue}
             onComplete={() => {
-              hideModal();
-              router.push("/passport");
+              navigateAfterAuth();
             }}
           />
         );
