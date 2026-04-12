@@ -7,7 +7,7 @@ import {
   ReferralSection,
   WhyPassportPlus,
 } from "../components/passport";
-import { SettingsDrawer } from "../components/passport/SettingsDrawer";
+import { SettingsModal } from "../components/passport/SettingsModal";
 import { useMyXp } from "../hooks/useMyXp";
 import { useMyRoles } from "../hooks/useMyRoles";
 
@@ -82,7 +82,7 @@ export default function PassportPage() {
         </div>
       </div>
 
-      <SettingsDrawer
+      <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
       />
