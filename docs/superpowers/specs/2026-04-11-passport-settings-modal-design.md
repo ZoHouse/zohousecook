@@ -153,7 +153,7 @@ Each section: small uppercase label (`text-[11px] text-white/40 tracking-wider u
 
 2. **Location**
    - Hometown (text) — field key `place_name` (not `hometown`)
-   - Nationality (select) — field key `country`. **Editable** in the new modal (today's drawer leaves it `disabled`). Options come from `useQueryApi("CAS_COUNTRIES")` (`libs/auth/src/endpoints/cas.ts:85`). Save stores the country identifier the endpoint returns (confirm shape during implementation — likely ISO code or country object id).
+   - Nationality (select) — field key `country`. **Editable** in the new modal (today's drawer leaves it `disabled`). Options come from `useQueryApi("CAS_COUNTRIES")` (`libs/auth/src/endpoints/cas.ts:85`). Before coding, inspect the `CAS_COUNTRIES` response payload to determine the exact shape (ISO-2 code, slug, or object id) and confirm what value `USERS_ME_UPDATE` accepts for `country` — pin the save shape in the implementation plan, not at runtime.
    - Address (textarea) — field key `address`
    - Pincode (text) — field key `pincode`
 
@@ -186,7 +186,8 @@ Each section: small uppercase label (`text-[11px] text-white/40 tracking-wider u
 
 All hooks and endpoints are imported from `@zo/auth`. Compared to today's drawer:
 
-- `useProfile()` from `@zo/auth` — current user profile + `updateProfile` (wraps the profile-update mutation). Used for Profile / Location / Cultures saves.
+- **Profile / Location / Cultures saves:** preserve whatever the current `SettingsDrawer.tsx` uses verbatim — do not reinvent. Today's drawer calls `useMutationApi("USERS_ME_UPDATE")` directly; if a higher-level `useProfile().updateProfile` wrapper exists in `@zo/auth`, either is acceptable, but keep the same call the drawer uses today so no regression is introduced.
+- `useProfile()` from `@zo/auth` — read current user profile.
 - `useMutationApi(...)` from `@zo/auth` — for wallet / email add-remove-setPrimary mutations:
   - Wallets: `AUTH_USER_WEB3_WALLETS` (PUT set-primary, DELETE remove)
   - Emails: `AUTH_USER_EMAILS` (PUT set-primary, DELETE remove) + `AUTH_USER_EMAIL_CREATE` (POST add)
