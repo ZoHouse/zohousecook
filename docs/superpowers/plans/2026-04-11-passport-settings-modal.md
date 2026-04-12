@@ -55,8 +55,10 @@ npx nx serve website
 
 - [ ] **Step 1: Create `SettingsModal.tsx` with shell only**
 
+> **Import style convention for this file:** import React as the default plus commonly used hooks by name: `import React, { useEffect, useState, useMemo, useCallback } from "react";`. Inside the component bodies, use the bare hook names (e.g., `useState(...)` not `useState(...)`). Later tasks assume this.
+
 ```tsx
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import GlowCard from "./GlowCard";
 
 interface SettingsModalProps {
@@ -245,12 +247,12 @@ interface EditableRowProps {
 function EditableRow({
   label, value, field, type = "text", options, disabled = false, onSave, displayValue,
 }: EditableRowProps) {
-  const [editing, setEditing] = React.useState(false);
-  const [draft, setDraft] = React.useState(value);
-  const [saving, setSaving] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  React.useEffect(() => { setDraft(value); }, [value]);
+  useEffect(() => { setDraft(value); }, [value]);
 
   const commit = async () => {
     if (draft === value) { setEditing(false); return; }
@@ -368,7 +370,7 @@ function ConnectedItemRow({
   icon, iconBg = "bg-white/10", primary, secondary, isPrimary,
   verified, showVerification, onMakePrimary, onRemove,
 }: ConnectedItemRowProps) {
-  const [confirming, setConfirming] = React.useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   return (
     <div className={`group flex items-center gap-3 py-3 border-b border-white/5 last:border-b-0 ${confirming ? "bg-red-500/10 -mx-2 px-2 rounded-md" : ""}`}>
@@ -476,7 +478,7 @@ import useInstagramConnect from "../../hooks/useInstagramConnect";
 function ProfileSection() {
   const { profile, updateProfile, refetchProfile } = useProfile();
 
-  const handleSave = React.useCallback(async (field: string, value: string) => {
+  const handleSave = useCallback(async (field: string, value: string) => {
     await new Promise<void>((resolve, reject) => {
       updateProfile(
         { data: { [field]: value } },
@@ -554,21 +556,39 @@ git commit -m "feat(website/passport): Profile section in SettingsModal"
 **Files:**
 - Modify: `apps/website/src/components/passport/SettingsModal.tsx`
 
-- [ ] **Step 1: Inspect the `CAS_COUNTRIES` response shape**
+- [ ] **Step 1: Pin the `CAS_COUNTRIES` response + save shape (do NOT skip)**
 
-Before coding, open the modal in the running dev server, then in the browser devtools Network tab trigger a test call:
+This step is a hard gate. Do not write Step 2 code until you have real answers for all three questions below. The current drawer keeps `country` `disabled` for a reason (no one pinned it), and guessing here will produce a silent 400 on save.
 
-```ts
-// Paste in devtools console while logged in on localhost:4202/passport
-fetch("/api/v1/cas/countries/", { credentials: "include" }).then((r) => r.json()).then(console.log);
-```
+Procedure:
 
-Record the shape of one country entry (e.g., `{ id, name, iso_code }` or similar), and what `profile.country` looks like today in the current drawer (likely `{ id, name }`). Note which field the mutation `USERS_ME_UPDATE` accepts for `country` — test by trying a known-good value first (`updateProfile({ data: { country: <id or iso> } })` inside a temporary button click handler, OR just pick the most likely field and verify it persists). This is 5 minutes of click-and-curl work that saves a debug loop later.
+1. Open the passport page on the running dev server (`localhost:4202/passport`) while logged in.
+2. In the browser devtools Network tab, filter for `countries`. If no call has been made yet, paste this in the console:
 
-Write down (in a scratch note, not the file) the three answers:
-1. `CAS_COUNTRIES` returns: _______
+   ```ts
+   fetch("/api/v1/cas/countries/", { credentials: "include" }).then((r) => r.json()).then(console.log);
+   ```
+
+   Write down the shape of **one** country entry. Look for the primary id field — usually `id`, `iso_code`, `code`, or `slug`.
+
+3. In the console, inspect `profile.country` from the React tree (or log it from a temporary `console.log` in `ProfileSection`). Note the shape — likely `{ id, name, iso_code }` or similar.
+
+4. Try the save, from the console or a temporary test button:
+
+   ```ts
+   // Replace <VALUE> with id, then iso_code, then name if earlier ones 400
+   updateProfile({ data: { country: "<VALUE>" } }, { onSuccess: (d) => console.log("ok", d), onError: (e) => console.log("err", e) });
+   ```
+
+   Keep trying until one value succeeds **and** reloading the page shows the new country. That is the save shape.
+
+Record the three answers in a scratch note — you'll need them in Step 2:
+
+1. `CAS_COUNTRIES` returns: each country has fields _______, primary id field is _______
 2. `profile.country` shape today: _______
-3. `USERS_ME_UPDATE` accepts `country` as: _______
+3. `USERS_ME_UPDATE` accepts `country` as: _______ (string id / iso code / full object / something else)
+
+**If you cannot confirm the save shape in under 15 minutes:** stop and leave Nationality read-only (pass `disabled` to `EditableRow`, keep the display label). Raise this as a ticket for the backend/auth team. Do not ship a silently-broken editor.
 
 - [ ] **Step 2: Add `LocationSection`**
 
@@ -586,7 +606,7 @@ function LocationSection() {
   );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const countries: any[] = React.useMemo(() => {
+  const countries: any[] = useMemo(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const raw = (countriesData as any)?.data;
     if (Array.isArray(raw)) return raw;
@@ -595,7 +615,7 @@ function LocationSection() {
     return [];
   }, [countriesData]);
 
-  const countryOptions = React.useMemo(
+  const countryOptions = useMemo(
     () =>
       countries
         // Adjust keys here based on real shape discovered in Step 1
@@ -612,7 +632,7 @@ function LocationSection() {
     : "";
   const currentCountryLabel = profile?.country?.name || "";
 
-  const handleSave = React.useCallback(async (field: string, value: string) => {
+  const handleSave = useCallback(async (field: string, value: string) => {
     await new Promise<void>((resolve, reject) => {
       updateProfile(
         { data: { [field]: value } },
@@ -680,11 +700,11 @@ function CulturesSection() {
   const { profile, updateProfile, refetchProfile } = useProfile();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cultures: any[] = profile?.cultures || [];
-  const selectedKeys = React.useMemo(() => new Set(cultures.map((c) => c.key)), [cultures]);
+  const selectedKeys = useMemo(() => new Set(cultures.map((c) => c.key)), [cultures]);
 
-  const [picking, setPicking] = React.useState(false);
-  const [search, setSearch] = React.useState("");
-  const [saving, setSaving] = React.useState(false);
+  const [picking, setPicking] = useState(false);
+  const [search, setSearch] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const searchQuery = search.trim() ? `search=${encodeURIComponent(search.trim())}` : "";
   const { data: allCulturesData, isLoading } = useQueryApi(
@@ -695,7 +715,7 @@ function CulturesSection() {
   );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const available: any[] = React.useMemo(() => {
+  const available: any[] = useMemo(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const raw = (allCulturesData as any)?.data;
     if (Array.isArray(raw)) return raw;
@@ -945,10 +965,10 @@ function EmailsSection() {
   const { mutate: deleteEmail } = useMutationApi("AUTH_USER_EMAILS", {}, "", "DELETE");
   const { mutate: createEmail } = useMutationApi("AUTH_USER_EMAIL_CREATE");
 
-  const [adding, setAdding] = React.useState(false);
-  const [newEmail, setNewEmail] = React.useState("");
-  const [addLoading, setAddLoading] = React.useState(false);
-  const [addError, setAddError] = React.useState("");
+  const [adding, setAdding] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError, setAddError] = useState("");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const emails: any[] = (userEmails as any)?.data?.emails || [];
@@ -1160,7 +1180,7 @@ function SocialsSection() {
   const { isConnected: igConnected, account: igAccount, connect: connectIg, disconnect: disconnectIg } = useInstagramConnect();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const otherSocials = React.useMemo(() => {
+  const otherSocials = useMemo(() => {
     if (!profile?.socials) return [] as { category: string; link: string; verified: boolean; handle: string }[];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (profile.socials as any[])
@@ -1181,16 +1201,33 @@ function SocialsSection() {
   const iconMap: Record<string, string> = { twitter: "X", telegram: "TG", discord: "DC" };
   const labelMap: Record<string, string> = { twitter: "Twitter", telegram: "Telegram", discord: "Discord" };
 
+  // Instagram "disconnect" is a single-action (no primary concept), so we render a custom
+  // row here rather than using ConnectedItemRow's confirm-on-remove flow.
   const instagramRow = igConnected && igAccount ? (
-    <ConnectedItemRow
-      icon="IG"
-      iconBg="text-white"
-      primary={`@${igAccount.ig_username}`}
-      secondary={labelMap.instagram || "Instagram"}
-      showVerification
-      verified
-      onRemove={disconnectIg}
-    />
+    <div className="flex items-center gap-3 py-3 border-b border-white/5">
+      <div
+        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
+        style={{ background: "linear-gradient(135deg, #833AB4, #E1306C, #F77737)" }}
+      >
+        IG
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-white/90 truncate">@{igAccount.ig_username}</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="flex items-center gap-1 text-[11px]">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+            <span className="text-green-400">Verified</span>
+          </span>
+          <span className="text-[11px] text-white/50">Instagram</span>
+        </div>
+      </div>
+      <button
+        onClick={disconnectIg}
+        className="text-[11px] text-red-400 hover:text-red-300"
+      >
+        Disconnect
+      </button>
+    </div>
   ) : (
     <div className="flex items-center gap-3 py-3 border-b border-white/5">
       <div
@@ -1336,7 +1373,7 @@ git commit -m "feat(website/passport): Founder NFTs section in SettingsModal"
 ```tsx
 function ProfileStrip() {
   const { profile } = useProfile();
-  const [imgError, setImgError] = React.useState(false);
+  const [imgError, setImgError] = useState(false);
 
   const rawAvatar = profile?.avatar?.image || profile?.pfp_image;
   const avatar = fixAvatarUrl(rawAvatar && rawAvatar.length > 0 ? rawAvatar : undefined);
@@ -1422,19 +1459,30 @@ Pick Option B if adding a dependency is out of scope for this session — it's a
 
 - [ ] **Step 2: If Option A: wrap the modal**
 
+`focus-trap-react` requires its child to be a single element that accepts a ref. `GlowCard` is a plain function component without `forwardRef`, so wrap `GlowCard` in an extra `<div>` (which accepts refs natively) instead of targeting `GlowCard` directly. Move the `relative w-full max-w-[640px]` sizing to the wrapping div to keep the visual identical.
+
 ```tsx
 // At top of file:
 import FocusTrap from "focus-trap-react";
 
-// Around the GlowCard in the return:
-<FocusTrap active={isOpen} focusTrapOptions={{ escapeDeactivates: false, allowOutsideClick: true }}>
-  <GlowCard className="...">
-    {/* ...existing modal content */}
-  </GlowCard>
+// In the return, replace the <GlowCard className="relative w-full max-w-[640px] ..."> block with:
+<FocusTrap
+  active={isOpen}
+  focusTrapOptions={{
+    escapeDeactivates: false,   // we handle Esc ourselves
+    allowOutsideClick: true,    // scrim-click close still works
+    returnFocusOnDeactivate: true,
+  }}
+>
+  <div className="relative w-full max-w-[640px] h-[100dvh] sm:h-auto sm:max-h-[85vh]">
+    <GlowCard className="w-full h-full sm:rounded-[24px] rounded-none flex flex-col overflow-hidden">
+      {/* existing header, profile strip, scroll body */}
+    </GlowCard>
+  </div>
 </FocusTrap>
 ```
 
-Make sure to also set `ref={previouslyFocusedRef}` style restoration or let `focus-trap-react` handle it (default is to restore).
+`focus-trap-react` restores focus to the previously focused element (the Settings button on the passport card) on deactivate — no manual ref bookkeeping required.
 
 - [ ] **Step 3: If Option B: add initial focus hint**
 
@@ -1493,10 +1541,10 @@ On `localhost:4202/passport`, run through the full acceptance list:
 - [ ] **Step 9: Final commit**
 
 ```bash
-git add apps/website/src/components/passport/SettingsModal.tsx \
-        apps/website/src/components/passport/ \
-        apps/website/package.json  # only if Option A picked
-git add -u apps/website/src/components/passport/SettingsDrawer.tsx  # mark deletion
+# stages: new SettingsModal.tsx, deleted SettingsDrawer.tsx, updated index.ts, updated pages/passport.tsx
+git add apps/website/src/components/passport/ apps/website/src/pages/passport.tsx
+# only if Option A (focus-trap-react) was picked:
+# git add apps/website/package.json package-lock.json
 git commit -m "feat(website/passport): replace SettingsDrawer with SettingsModal
 
 - Center glass-morphism modal using GlowCard shell
