@@ -27,10 +27,10 @@ Purely a UI rebuild — no API, hook, or data-model changes.
 
 **New component:** `apps/website/src/components/passport/SettingsModal.tsx`
 **Deleted:** `apps/website/src/components/passport/SettingsDrawer.tsx`
-**Touched:** `apps/website/src/components/passport/PassportIdentityCard.tsx` (import + component name only)
-**Index:** `apps/website/src/components/passport/index.ts` updated if it re-exports the drawer
+**Mount site (touched):** `apps/website/src/pages/passport.tsx` — the `<SettingsDrawer isOpen={...} onClose={...} />` render lives here (line ~85), not in `PassportIdentityCard`. `PassportIdentityCard` only raises `onOpenSettings` up to the page. Rename import + JSX tag to `SettingsModal`.
+**Index:** `apps/website/src/components/passport/index.ts` updated if it re-exports.
 
-**Prop API (unchanged):** `{ open: boolean; onClose: () => void }` — trigger site is the Settings button inside `PassportIdentityCard`, no callsite rewiring required.
+**Prop API (preserved):** `{ isOpen: boolean; onClose: () => void }` — keep the existing name so the callsite stays a pure rename.
 
 ---
 
@@ -45,6 +45,7 @@ Purely a UI rebuild — no API, hook, or data-model changes.
 - **Width:** `w-full max-w-[640px]`
 - **Height:** `max-h-[85vh]`, internal scroll on the body
 - **Header (sticky top):** `flex items-center justify-between px-5 py-4 border-b border-white/10` — "Settings" title (left), `✕` close button (right)
+- **Compact profile strip** (just below header, not sticky): small avatar (40–48px) + nickname / name + Founder badge (if applicable) + membership tier pill. Single row, `px-5 py-3 border-b border-white/10`. Identity cue — not editable here. Avatar intentionally not editable per scope.
 - **Body:** `overflow-y-auto px-5 py-4`, sections separated by a section label + rows beneath. No inner boxed subcards.
 
 **Mobile (`< sm`):**
@@ -121,16 +122,16 @@ Replaces today's `ItemMenu` dropdown pattern. Used for wallets, emails, phones, 
 - Click `✕` → row shifts to red tint (`bg-red-500/10`), buttons swap to `[Remove]` / `[Cancel]` inline. No separate confirm modal.
 
 **Verification indicator** (emails / phones):
-- Green dot + "Verified" if verified
-- Amber dot + "Verify" link that triggers resend-verification mutation (same endpoint as today)
+- Green dot + "Verified" if `verified === true`
+- Amber dot + "Unverified" label if not — **status only, no action**. No resend-verification endpoint exists in the current codebase, so no "Verify" link is wired.
 
-**Same row shape** across wallets (addr), emails, phones, Instagram (handle).
+**Same row shape** across wallets (addr), emails, phones, Instagram (handle), other socials.
 
-### Add-new pattern (kept from current)
+### Add-new pattern
 
-- Dashed-border button at the bottom of each list: `+ Add wallet` / `+ Add email` / `+ Add phone`
-- Click → expands into an inline form row (input + `Save` / `Cancel`), not a separate popover
-- Same validation / endpoints as today
+- **`+ Add email`** — dashed-border button at the bottom of the emails list. Click → inline form row (input + `Save` / `Cancel`). Wired to `AUTH_USER_EMAIL_CREATE` (exists today).
+- **`+ Add wallet`** — **dropped.** No wallet-create endpoint exists in the codebase; today's button is display-only. Wallets list is view / set-primary / remove only. Connecting a new wallet is handled elsewhere (web3 provider flow on the main dApp), out of scope for this modal.
+- **`+ Add phone`** — **dropped.** No mobile-create endpoint exists today (only PUT/DELETE). Phones list is view / set-primary / remove only.
 
 ---
 
@@ -139,59 +140,63 @@ Replaces today's `ItemMenu` dropdown pattern. Used for wallets, emails, phones, 
 Each section: small uppercase label (`text-[11px] text-white/40 tracking-wider uppercase mb-2`), then rows beneath. Gap between sections: `mt-6`.
 
 1. **Profile**
-   - Nickname (text)
-   - First name (text)
-   - Middle name (text)
-   - Last name (text)
-   - Bio (textarea)
-   - Date of birth (date)
-   - Gender (select)
-   - Body type (select)
+   - Nickname (text) — field key `custom_nickname`
+   - First name (text) — field key `first_name`
+   - Middle name (text) — field key `middle_name`
+   - Last name (text) — field key `last_name`
+   - Bio (textarea) — field key `bio`
+   - Date of birth (date) — field key `date_of_birth`
+   - Gender (select) — field key `gender`
+   - Body type (select) — field key `body_type`
+
+   Note: `custom_nickname` and `first_name` are distinct fields; the UI shows both as separate editable rows.
 
 2. **Location**
-   - Hometown (text)
-   - Nationality (select — country list)
-   - Address (textarea)
-   - Pincode (text)
+   - Hometown (text) — field key `place_name` (not `hometown`)
+   - Nationality (select) — field key `country`. **Editable** in the new modal (today's drawer leaves it `disabled`). Options come from `useQueryApi("CAS_COUNTRIES")` (`libs/auth/src/endpoints/cas.ts:85`). Save stores the country identifier the endpoint returns (confirm shape during implementation — likely ISO code or country object id).
+   - Address (textarea) — field key `address`
+   - Pincode (text) — field key `pincode`
 
 3. **Cultures**
    - Keep the picker just built (search + toggle-add pills).
    - Restyle pills/search input to use Tailwind `white/*` classes (no `dash-*` tokens).
 
 4. **Wallets**
-   - List of `ConnectedItemRow` (each wallet)
-   - `+ Add wallet` button
+   - List of `ConnectedItemRow` (each wallet — set primary / remove).
+   - No `+ Add wallet` button (see Add-new pattern note).
 
 5. **Emails**
-   - List of `ConnectedItemRow` (each email, with verification indicator)
-   - `+ Add email` button
+   - List of `ConnectedItemRow` (each email, with verified / unverified badge).
+   - `+ Add email` button (wired to `AUTH_USER_EMAIL_CREATE`).
 
 6. **Phones**
-   - List of `ConnectedItemRow` (each phone, with verification indicator)
-   - `+ Add phone` button
+   - List of `ConnectedItemRow` (each phone, with verified / unverified badge).
+   - No `+ Add phone` button (see Add-new pattern note).
 
 7. **Socials**
-   - Instagram: single `ConnectedItemRow`. If connected → shows handle + `✕` to disconnect. If not → shows `Connect` button in place of the row content.
+   - **Instagram:** `ConnectedItemRow`. Connected → shows handle + `✕` to disconnect. Not connected → row shows `Connect` button in place of the value. Uses `useInstagramConnect()`.
+   - **ENS, Twitter, Telegram, Discord:** each rendered as a read-only `ConnectedItemRow` when the corresponding field is present on `profile.socials` / `profile.ens_nickname`. Verified badge shown if applicable. No edit/disconnect in this modal — display only, matching today's drawer. Hidden when the field is empty.
 
 8. **Founder NFTs** (only rendered if `useMyNfts()` returns items)
    - Read-only grid of NFT cards. Keep existing visual, strip `dash-*` tokens.
 
 ---
 
-## Data flow (unchanged)
+## Data flow
 
-All hooks and endpoints carry over 1:1 from `SettingsDrawer.tsx`:
+All hooks and endpoints are imported from `@zo/auth`. Compared to today's drawer:
 
-- `useProfile()` — current user profile
-- `useMutationApi("USERS_ME_UPDATE")` — profile field saves (Profile + Location + Cultures)
-- Wallet add / remove / set-primary endpoints — identical calls
-- Email add / remove / set-primary / resend-verification endpoints — identical
-- Phone add / remove / set-primary / resend-verification endpoints — identical
-- `useInstagramConnect()` — Instagram connect/disconnect hook
-- `useMyNfts()` — founder NFTs
-- `useQueryApi("CAS_CULTURES")` — culture search
+- `useProfile()` from `@zo/auth` — current user profile + `updateProfile` (wraps the profile-update mutation). Used for Profile / Location / Cultures saves.
+- `useMutationApi(...)` from `@zo/auth` — for wallet / email add-remove-setPrimary mutations:
+  - Wallets: `AUTH_USER_WEB3_WALLETS` (PUT set-primary, DELETE remove)
+  - Emails: `AUTH_USER_EMAILS` (PUT set-primary, DELETE remove) + `AUTH_USER_EMAIL_CREATE` (POST add)
+  - Phones: `AUTH_USER_MOBILES` (PUT set-primary, DELETE remove) — no create
+- `useQueryApi("CAS_CULTURES")` — culture search (used by existing picker).
+- `useQueryApi("CAS_COUNTRIES")` — **new usage** for nationality dropdown (endpoint already exists at `libs/auth/src/endpoints/cas.ts:85`, just not called from the drawer today).
+- `useInstagramConnect()` — Instagram connect/disconnect.
+- `useMyNfts()` — founder NFTs.
 
-No new endpoints. No data-shape changes.
+**No new backend endpoints.** `CAS_COUNTRIES` is pre-existing. No resend-verify calls. No wallet-create. No phone-create.
 
 ---
 
@@ -204,6 +209,8 @@ No new endpoints. No data-shape changes.
 - Color is not the only indicator for verification state (dot + text label)
 - Touch targets on `ConnectedItemRow` remove/primary buttons are ≥ 32px on mobile
 
+**Focus-trap utility:** the codebase does not currently have a focus-trap primitive. Options: (a) add `focus-trap-react` as a new dependency, (b) roll a minimal one (Tab / Shift+Tab wrapping, ~20 lines). Decide during implementation; `focus-trap-react` is the safer call.
+
 ---
 
 ## Files
@@ -212,8 +219,9 @@ No new endpoints. No data-shape changes.
 |---|---|
 | **Create** | `apps/website/src/components/passport/SettingsModal.tsx` |
 | **Delete** | `apps/website/src/components/passport/SettingsDrawer.tsx` |
-| **Edit** | `apps/website/src/components/passport/PassportIdentityCard.tsx` (rename import + JSX tag) |
-| **Edit (if applicable)** | `apps/website/src/components/passport/index.ts` (update re-export if present) |
+| **Edit** | `apps/website/src/pages/passport.tsx` — rename import + JSX tag from `SettingsDrawer` to `SettingsModal`. Prop API (`isOpen`, `onClose`) unchanged. |
+| **Edit (if applicable)** | `apps/website/src/components/passport/index.ts` — update re-export if the drawer is re-exported there. |
+| **(Possibly) add dependency** | `focus-trap-react` in `apps/website/package.json` if chosen for focus management. |
 
 ---
 
