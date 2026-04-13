@@ -369,6 +369,151 @@ function WalletsSection() {
   );
 }
 
+function EmailsSection() {
+  const { isLoggedIn } = useAuth();
+  const { refetchProfile } = useProfile();
+  const { data: userEmails, isLoading, refetch } = useQueryApi(
+    "AUTH_USER_EMAILS",
+    { enabled: isLoggedIn === true },
+    "",
+    ""
+  );
+  const { mutate: updateEmail } = useMutationApi("AUTH_USER_EMAILS", {}, "", "PUT");
+  const { mutate: deleteEmail } = useMutationApi("AUTH_USER_EMAILS", {}, "", "DELETE");
+  const { mutate: createEmail } = useMutationApi("AUTH_USER_EMAIL_CREATE");
+
+  const [adding, setAdding] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError, setAddError] = useState("");
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const emails: any[] = (userEmails as any)?.data?.emails || [];
+
+  const setPrimary = (addr: string) => {
+    updateEmail(
+      { data: { email_address: addr, primary: true } },
+      {
+        onSuccess: () => {
+          refetch();
+          refetchProfile();
+        },
+      }
+    );
+  };
+  const remove = (addr: string) => {
+    deleteEmail(
+      { data: { email_address: addr } },
+      {
+        onSuccess: () => {
+          refetch();
+          refetchProfile();
+        },
+      }
+    );
+  };
+  const add = () => {
+    if (!newEmail || !newEmail.includes("@")) {
+      setAddError("Enter a valid email");
+      return;
+    }
+    setAddLoading(true);
+    createEmail(
+      { data: { email_address: newEmail } },
+      {
+        onSuccess: () => {
+          refetch();
+          setAdding(false);
+          setNewEmail("");
+          setAddError("");
+          setAddLoading(false);
+        },
+        onError: () => {
+          setAddError("Failed to add email");
+          setAddLoading(false);
+        },
+      }
+    );
+  };
+
+  return (
+    <section>
+      <SectionHeader title="Emails" />
+      {isLoading ? (
+        <div className="flex items-center justify-center py-4">
+          <Spinner size={20} />
+        </div>
+      ) : emails.length === 0 ? (
+        <p className="text-sm text-white/40 italic py-2">No emails connected</p>
+      ) : (
+        emails.map((e) => (
+          <ConnectedItemRow
+            key={e.email_address}
+            icon="@"
+            primary={e.email_address}
+            showVerification
+            verified={!!e.verified}
+            isPrimary={!!e.primary}
+            onMakePrimary={() => setPrimary(e.email_address)}
+            onRemove={() => remove(e.email_address)}
+          />
+        ))
+      )}
+
+      {adding ? (
+        <div className="mt-3 flex flex-col gap-2">
+          <div className="flex items-stretch gap-2">
+            <input
+              type="email"
+              value={newEmail}
+              onChange={(e) => {
+                setNewEmail(e.target.value);
+                setAddError("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") add();
+                if (e.key === "Escape") {
+                  setAdding(false);
+                  setNewEmail("");
+                  setAddError("");
+                }
+              }}
+              placeholder="email@example.com"
+              autoFocus
+              className="flex-1 bg-white/5 border border-white/15 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 placeholder:text-white/40"
+            />
+            <button
+              onClick={add}
+              disabled={addLoading}
+              className="px-3 text-[11px] bg-white text-black rounded-md hover:bg-white/90 disabled:opacity-60 flex items-center gap-2"
+            >
+              {addLoading ? <Spinner size={12} /> : "Add"}
+            </button>
+            <button
+              onClick={() => {
+                setAdding(false);
+                setNewEmail("");
+                setAddError("");
+              }}
+              className="px-3 text-[11px] text-white/60 hover:text-white"
+            >
+              Cancel
+            </button>
+          </div>
+          {addError && <p className="text-[11px] text-red-400">{addError}</p>}
+        </div>
+      ) : (
+        <button
+          onClick={() => setAdding(true)}
+          className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-white/50 hover:text-white border border-dashed border-white/15 hover:border-white/30 rounded-md transition-colors"
+        >
+          <span>+</span> Add email
+        </button>
+      )}
+    </section>
+  );
+}
+
 function CulturesSection() {
   const { isLoggedIn } = useAuth();
   const { profile, updateProfile, refetchProfile } = useProfile();
@@ -656,6 +801,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <LocationSection />
           <CulturesSection />
           <WalletsSection />
+          <EmailsSection />
         </div>
       </GlowCard>
     </div>
