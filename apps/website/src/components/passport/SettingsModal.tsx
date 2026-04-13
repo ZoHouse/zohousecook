@@ -1050,12 +1050,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </svg>
           </button>
         </div>
+        <ProfileStrip />
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <ProfileSection />
           <LocationSection />
           <CulturesSection />
           <WalletsSection />
           <EmailsSection />
+          <PhonesSection />
+          <SocialsSection />
+          <FounderNftsSection />
         </div>
       </div>
     </div>
