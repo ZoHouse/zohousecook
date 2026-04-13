@@ -305,6 +305,70 @@ function LocationSection() {
   );
 }
 
+function WalletsSection() {
+  const { isLoggedIn } = useAuth();
+  const { refetchProfile } = useProfile();
+  const { data: userWallets, isLoading, refetch } = useQueryApi(
+    "AUTH_USER_WEB3_WALLETS",
+    { enabled: isLoggedIn === true },
+    "",
+    ""
+  );
+  const { mutate: updateWallet } = useMutationApi("AUTH_USER_WEB3_WALLETS", {}, "", "PUT");
+  const { mutate: deleteWallet } = useMutationApi("AUTH_USER_WEB3_WALLETS", {}, "", "DELETE");
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const wallets: any[] = (userWallets as any)?.data?.web3_wallets || [];
+
+  const setPrimary = (addr: string) => {
+    updateWallet(
+      { data: { wallet_address: addr, primary: true } },
+      {
+        onSuccess: () => {
+          refetch();
+          refetchProfile();
+        },
+      }
+    );
+  };
+  const remove = (addr: string) => {
+    deleteWallet(
+      { data: { wallet_address: addr } },
+      {
+        onSuccess: () => {
+          refetch();
+          refetchProfile();
+        },
+      }
+    );
+  };
+
+  return (
+    <section>
+      <SectionHeader title="Wallets" />
+      {isLoading ? (
+        <div className="flex items-center justify-center py-4">
+          <Spinner size={20} />
+        </div>
+      ) : wallets.length === 0 ? (
+        <p className="text-sm text-white/40 italic py-2">No wallets connected</p>
+      ) : (
+        wallets.map((w) => (
+          <ConnectedItemRow
+            key={w.wallet_address}
+            icon="W"
+            primary={formatAddress(w.wallet_address)}
+            secondary={w.wallet_address}
+            isPrimary={!!w.primary}
+            onMakePrimary={() => setPrimary(w.wallet_address)}
+            onRemove={() => remove(w.wallet_address)}
+          />
+        ))
+      )}
+    </section>
+  );
+}
+
 function CulturesSection() {
   const { isLoggedIn } = useAuth();
   const { profile, updateProfile, refetchProfile } = useProfile();
@@ -591,6 +655,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <ProfileSection />
           <LocationSection />
           <CulturesSection />
+          <WalletsSection />
         </div>
       </GlowCard>
     </div>
