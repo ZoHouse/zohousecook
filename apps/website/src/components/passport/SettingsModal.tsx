@@ -1,5 +1,5 @@
-// NOTE: Full focus trap is tracked as a follow-up. Esc-close + scrim-close are
-// wired. Initial focus lands on the close button (see autoFocus below).
+// NOTE: Full focus trap is tracked as a follow-up. Esc-close + scrim-close +
+// close-button are wired.
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useAuth, useProfile, useMutationApi, useQueryApi } from "@zo/auth";
 import { useMyNfts } from "../../hooks/useMyNfts";
@@ -1042,12 +1042,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-shrink-0">
           <h2 id="settings-modal-title" className="text-lg font-bold text-white">Settings</h2>
           <button
+            type="button"
             onClick={onClose}
             aria-label="Close settings"
-            autoFocus
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              className="pointer-events-none"
+            >
               <path d="M12 4L4 12M4 4l8 8" />
             </svg>
           </button>
