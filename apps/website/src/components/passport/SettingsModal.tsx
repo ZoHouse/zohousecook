@@ -2,7 +2,6 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useAuth, useProfile, useMutationApi, useQueryApi } from "@zo/auth";
 import { useMyNfts } from "../../hooks/useMyNfts";
 import useInstagramConnect from "../../hooks/useInstagramConnect";
-import GlowCard from "./GlowCard";
 
 function Spinner({ size = 16 }: { size?: number }) {
   return (
@@ -366,6 +365,257 @@ function WalletsSection() {
         ))
       )}
     </section>
+  );
+}
+
+function PhonesSection() {
+  const { isLoggedIn } = useAuth();
+  const { refetchProfile } = useProfile();
+  const { data: userMobiles, isLoading, refetch } = useQueryApi(
+    "AUTH_USER_MOBILES",
+    { enabled: isLoggedIn === true },
+    "",
+    ""
+  );
+  const { mutate: updateMobile } = useMutationApi("AUTH_USER_MOBILES", {}, "", "PUT");
+  const { mutate: deleteMobile } = useMutationApi("AUTH_USER_MOBILES", {}, "", "DELETE");
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mobiles: any[] = (userMobiles as any)?.data?.mobiles || [];
+
+  const setPrimary = (number: string, code: string) => {
+    updateMobile(
+      { data: { mobile_number: number, mobile_country_code: code, primary: true } },
+      {
+        onSuccess: () => {
+          refetch();
+          refetchProfile();
+        },
+      }
+    );
+  };
+  const remove = (number: string, code: string) => {
+    deleteMobile(
+      { data: { mobile_number: number, mobile_country_code: code } },
+      {
+        onSuccess: () => {
+          refetch();
+          refetchProfile();
+        },
+      }
+    );
+  };
+
+  return (
+    <section>
+      <SectionHeader title="Phones" />
+      {isLoading ? (
+        <div className="flex items-center justify-center py-4">
+          <Spinner size={20} />
+        </div>
+      ) : mobiles.length === 0 ? (
+        <p className="text-sm text-white/40 italic py-2">No phone numbers connected</p>
+      ) : (
+        mobiles.map((m) => (
+          <ConnectedItemRow
+            key={`${m.mobile_country_code}-${m.mobile_number}`}
+            icon="#"
+            primary={`+${m.mobile_country_code} ${m.mobile_number}`}
+            showVerification
+            verified={!!m.verified}
+            isPrimary={!!m.primary}
+            onMakePrimary={() => setPrimary(m.mobile_number, m.mobile_country_code)}
+            onRemove={() => remove(m.mobile_number, m.mobile_country_code)}
+          />
+        ))
+      )}
+    </section>
+  );
+}
+
+function SocialsSection() {
+  const { profile } = useProfile();
+  const {
+    isConnected: igConnected,
+    account: igAccount,
+    connect: connectIg,
+    disconnect: disconnectIg,
+  } = useInstagramConnect();
+
+  const otherSocials = useMemo(() => {
+    if (!profile?.socials) return [] as { category: string; link: string; verified: boolean; handle: string }[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (profile.socials as any[])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((s: any) => s.category !== "instagram")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((s: any) => ({
+        category: s.category as string,
+        link: s.link as string,
+        verified: !!s.verified,
+        handle:
+          s.category === "twitter"
+            ? s.link?.split(".com/")[1]
+            : s.category === "telegram"
+            ? s.link?.split(".me/")[1]
+            : s.category === "discord"
+            ? "Connected"
+            : s.link,
+      }));
+  }, [profile?.socials]);
+
+  const ens = profile?.ens_nickname;
+  const iconMap: Record<string, string> = { twitter: "X", telegram: "TG", discord: "DC" };
+  const labelMap: Record<string, string> = { twitter: "Twitter", telegram: "Telegram", discord: "Discord" };
+
+  const instagramRow = igConnected && igAccount ? (
+    <div className="flex items-center gap-3 py-3 border-b border-white/5">
+      <div
+        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
+        style={{ background: "linear-gradient(135deg, #833AB4, #E1306C, #F77737)" }}
+      >
+        IG
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-white/90 truncate">@{igAccount.ig_username}</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="flex items-center gap-1 text-[11px]">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+            <span className="text-green-400">Verified</span>
+          </span>
+          <span className="text-[11px] text-white/50">Instagram</span>
+        </div>
+      </div>
+      <button onClick={disconnectIg} className="text-[11px] text-red-400 hover:text-red-300">
+        Disconnect
+      </button>
+    </div>
+  ) : (
+    <div className="flex items-center gap-3 py-3 border-b border-white/5">
+      <div
+        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
+        style={{ background: "linear-gradient(135deg, #833AB4, #E1306C, #F77737)" }}
+      >
+        IG
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-white/90">Instagram</p>
+        <p className="text-[11px] text-white/50">Not connected</p>
+      </div>
+      <button
+        onClick={connectIg}
+        className="px-3 py-1.5 text-[11px] font-semibold text-white rounded-md hover:opacity-90"
+        style={{ background: "linear-gradient(135deg, #833AB4, #E1306C, #F77737)" }}
+      >
+        Connect
+      </button>
+    </div>
+  );
+
+  return (
+    <section>
+      <SectionHeader title="Socials" />
+
+      {ens && <ConnectedItemRow icon="ENS" primary={ens} />}
+
+      {instagramRow}
+
+      {otherSocials.map((s) => (
+        <ConnectedItemRow
+          key={s.category}
+          icon={iconMap[s.category] || s.category.charAt(0).toUpperCase()}
+          primary={s.handle || s.link}
+          secondary={labelMap[s.category] || s.category}
+          verified={s.verified}
+          showVerification={s.verified}
+        />
+      ))}
+
+      {!ens && !igConnected && otherSocials.length === 0 && (
+        <p className="text-sm text-white/40 italic py-2">No socials connected yet</p>
+      )}
+    </section>
+  );
+}
+
+function FounderNftsSection() {
+  const { nfts, isLoading } = useMyNfts();
+  if (isLoading) {
+    return (
+      <section>
+        <SectionHeader title="Founder NFTs" />
+        <div className="flex items-center justify-center py-8">
+          <Spinner size={24} />
+        </div>
+      </section>
+    );
+  }
+  if (!nfts || nfts.length === 0) return null;
+
+  return (
+    <section>
+      <SectionHeader title="Founder NFTs" right={<span className="text-[11px] text-white/40">{nfts.length}</span>} />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {nfts.map((nft) => (
+          <div key={nft.token_ref_id} className="relative rounded-lg overflow-hidden border border-white/10">
+            <img src={nft.image_url} alt={nft.name} className="w-full aspect-square object-cover block" />
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5">
+              <p className="text-[10px] text-white/90 truncate">{nft.name}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ProfileStrip() {
+  const { profile } = useProfile();
+  const [imgError, setImgError] = useState(false);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawAvatar = (profile as any)?.avatar?.image || (profile as any)?.pfp_image;
+  const avatar = fixAvatarUrl(rawAvatar && rawAvatar.length > 0 ? rawAvatar : undefined);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const name = (profile as any)?.nickname || profile?.custom_nickname || "Citizen";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const membership = (profile as any)?.membership as string | undefined;
+  const isFounder =
+    membership?.toLowerCase() === "founder" ||
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (profile as any)?.role === "Founder" ||
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (((profile as any)?.founder_nfts_count ?? 0) as number) > 0;
+
+  return (
+    <div className="flex items-center gap-3 px-5 py-3 border-b border-white/10 flex-shrink-0">
+      <div className="w-11 h-11 rounded-full overflow-hidden border border-white/10 flex-shrink-0">
+        {avatar && !imgError ? (
+          <img
+            src={avatar}
+            alt={name}
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center">
+            <span className="text-base font-bold text-white">{name.charAt(0).toUpperCase()}</span>
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-white truncate">{name}</p>
+          {isFounder && (
+            <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider bg-white/15 text-white border border-white/20 rounded-full flex-shrink-0">
+              Founder
+            </span>
+          )}
+        </div>
+        <p className="text-[11px] text-white/50 capitalize">{membership || "Citizen"} of Zo World</p>
+      </div>
+    </div>
   );
 }
 
@@ -781,8 +1031,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       />
-      <GlowCard
-        className="relative w-full max-w-[640px] h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:rounded-[24px] rounded-none flex flex-col overflow-hidden"
+      <div
+        className="relative w-full max-w-[640px] h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:rounded-[24px] rounded-none flex flex-col overflow-hidden backdrop-blur-[48px] border border-white/10"
+        style={{
+          background: "linear-gradient(135deg, rgba(41,41,41,0.95), rgba(0,0,0,0.95))",
+          boxShadow: "inset 0px -1px 24px rgba(255,255,255,0.4)",
+        }}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-shrink-0">
           <h2 id="settings-modal-title" className="text-lg font-bold text-white">Settings</h2>
@@ -803,7 +1057,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <WalletsSection />
           <EmailsSection />
         </div>
-      </GlowCard>
+      </div>
     </div>
   );
 }
