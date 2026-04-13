@@ -241,6 +241,70 @@ function ConnectedItemRow({
   );
 }
 
+function LocationSection() {
+  const { isLoggedIn } = useAuth();
+  const { profile, updateProfile, refetchProfile } = useProfile();
+  const { data: countriesData } = useQueryApi(
+    "CAS_COUNTRIES",
+    { enabled: isLoggedIn === true, refetchOnWindowFocus: false },
+    "",
+    "limit=-1&ordering=name"
+  );
+
+  const countryOptions = useMemo<{ value: string; label: string }[]>(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = (countriesData as any)?.data;
+    const list: Array<{ code: string; name: string }> = Array.isArray(raw)
+      ? raw
+      : Array.isArray(raw?.results)
+      ? raw.results
+      : [];
+    return list
+      .filter((c) => c?.code && c?.name)
+      .map((c) => ({ value: c.code, label: c.name }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [countriesData]);
+
+  const currentCountryCode = profile?.country?.code || "";
+  const currentCountryLabel = profile?.country?.name || "";
+
+  const handleSave = useCallback(
+    async (field: string, value: string) => {
+      await new Promise<void>((resolve, reject) => {
+        updateProfile(
+          { data: { [field]: value } },
+          {
+            onSuccess: () => {
+              refetchProfile();
+              resolve();
+            },
+            onError: (err: unknown) => reject(err),
+          }
+        );
+      });
+    },
+    [updateProfile, refetchProfile]
+  );
+
+  return (
+    <section>
+      <SectionHeader title="Location" />
+      <EditableRow label="Hometown" value={profile?.place_name || ""} field="place_name" onSave={handleSave} />
+      <EditableRow
+        label="Nationality"
+        value={currentCountryCode}
+        displayValue={currentCountryLabel}
+        field="country"
+        type="select"
+        options={countryOptions}
+        onSave={handleSave}
+      />
+      <EditableRow label="Address" value={profile?.address || ""} field="address" type="textarea" onSave={handleSave} />
+      <EditableRow label="Pincode" value={profile?.pincode || ""} field="pincode" onSave={handleSave} />
+    </section>
+  );
+}
+
 function ProfileSection() {
   const { profile, updateProfile, refetchProfile } = useProfile();
 
@@ -336,6 +400,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <ProfileSection />
+          <LocationSection />
         </div>
       </GlowCard>
     </div>
