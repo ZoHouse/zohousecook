@@ -979,7 +979,6 @@ function ProfileSection() {
   const bodyTypeOptions = [
     { value: "bro", label: "Bro" },
     { value: "bae", label: "Bae" },
-    { value: "they", label: "They" },
   ];
 
   const genderLabel = genderOptions.find((o) => o.value === profile?.gender)?.label || "";
