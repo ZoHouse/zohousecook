@@ -1026,7 +1026,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="settings-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center sm:p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center sm:p-4"
     >
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
