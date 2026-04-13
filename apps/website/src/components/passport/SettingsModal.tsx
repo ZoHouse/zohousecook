@@ -51,7 +51,9 @@ function EditableRow({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { setDraft(value); }, [value]);
+  useEffect(() => {
+    if (!editing) setDraft(value);
+  }, [value, editing]);
 
   const commit = async () => {
     if (draft === value) { setEditing(false); return; }
@@ -104,8 +106,8 @@ function EditableRow({
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") commit();
-                  if (e.key === "Escape") cancel();
+                  if (e.key === "Enter") { e.preventDefault(); commit(); }
+                  if (e.key === "Escape") { e.preventDefault(); cancel(); }
                 }}
                 autoFocus
                 className="flex-1 bg-white/5 border border-white/15 rounded-md px-2 py-1.5 text-sm text-white focus:outline-none focus:border-white/30"
@@ -164,6 +166,7 @@ function ConnectedItemRow({
   verified, showVerification, onMakePrimary, onRemove,
 }: ConnectedItemRowProps) {
   const [confirming, setConfirming] = useState(false);
+  useEffect(() => { setConfirming(false); }, [primary]);
 
   return (
     <div className={`group flex items-center gap-3 py-3 border-b border-white/5 last:border-b-0 ${confirming ? "bg-red-500/10 -mx-2 px-2 rounded-md" : ""}`}>
