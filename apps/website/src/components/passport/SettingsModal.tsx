@@ -1,4 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useAuth, useProfile, useMutationApi, useQueryApi } from "@zo/auth";
+import { useMyNfts } from "../../hooks/useMyNfts";
+import useInstagramConnect from "../../hooks/useInstagramConnect";
 import GlowCard from "./GlowCard";
 
 function Spinner({ size = 16 }: { size?: number }) {
@@ -238,6 +241,51 @@ function ConnectedItemRow({
   );
 }
 
+function ProfileSection() {
+  const { profile, updateProfile, refetchProfile } = useProfile();
+
+  const handleSave = useCallback(async (field: string, value: string) => {
+    await new Promise<void>((resolve, reject) => {
+      updateProfile(
+        { data: { [field]: value } },
+        {
+          onSuccess: () => { refetchProfile(); resolve(); },
+          onError: (err: unknown) => reject(err),
+        }
+      );
+    });
+  }, [updateProfile, refetchProfile]);
+
+  const genderOptions = [
+    { value: "male", label: "Male" },
+    { value: "female", label: "Female" },
+    { value: "non-binary", label: "Non-binary" },
+    { value: "other", label: "Other" },
+  ];
+  const bodyTypeOptions = [
+    { value: "bro", label: "Bro" },
+    { value: "bae", label: "Bae" },
+    { value: "they", label: "They" },
+  ];
+
+  const genderLabel = genderOptions.find((o) => o.value === profile?.gender)?.label || "";
+  const bodyLabel = bodyTypeOptions.find((o) => o.value === profile?.body_type)?.label || "";
+
+  return (
+    <section>
+      <SectionHeader title="Profile" />
+      <EditableRow label="Nickname" value={profile?.custom_nickname || ""} field="custom_nickname" onSave={handleSave} />
+      <EditableRow label="First name" value={profile?.first_name || ""} field="first_name" onSave={handleSave} />
+      <EditableRow label="Middle name" value={profile?.middle_name || ""} field="middle_name" onSave={handleSave} />
+      <EditableRow label="Last name" value={profile?.last_name || ""} field="last_name" onSave={handleSave} />
+      <EditableRow label="Bio" value={profile?.bio || ""} field="bio" type="textarea" onSave={handleSave} />
+      <EditableRow label="Date of birth" value={profile?.date_of_birth || ""} field="date_of_birth" type="date" onSave={handleSave} />
+      <EditableRow label="Gender" value={profile?.gender || ""} field="gender" type="select" options={genderOptions} displayValue={genderLabel} onSave={handleSave} />
+      <EditableRow label="Body type" value={profile?.body_type || ""} field="body_type" type="select" options={bodyTypeOptions} displayValue={bodyLabel} onSave={handleSave} />
+    </section>
+  );
+}
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -287,7 +335,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          <p className="text-sm text-white/40">Sections go here.</p>
+          <ProfileSection />
         </div>
       </GlowCard>
     </div>
