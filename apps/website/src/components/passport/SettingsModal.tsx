@@ -1004,6 +1004,25 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
+function LogoutSection({ onClose }: { onClose: () => void }) {
+  const { logout } = useAuth();
+  const handleLogout = () => {
+    onClose();
+    logout();
+  };
+  return (
+    <section className="mt-8 pt-4 border-t border-white/10">
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="w-full px-3 py-2.5 text-sm font-medium text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 hover:bg-red-500/5 rounded-md transition-colors"
+      >
+        Log out
+      </button>
+    </section>
+  );
+}
+
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   useEffect(() => {
     if (!isOpen) return;
@@ -1071,6 +1090,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <PhonesSection />
           <SocialsSection />
           <FounderNftsSection />
+          <LogoutSection onClose={onClose} />
         </div>
       </div>
     </div>
