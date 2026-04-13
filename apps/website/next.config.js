@@ -95,6 +95,16 @@ const nextConfig = {
     "@dnd-kit/utilities",
     "rc-table",
   ],
+  webpack: (config) => {
+    config.module.rules.push({
+      test: /\.(mp4|webm)$/,
+      type: "asset/resource",
+      generator: {
+        filename: "static/media/[name].[hash][ext]",
+      },
+    });
+    return config;
+  },
 };
 
 const plugins = [
