@@ -1,3 +1,5 @@
+// NOTE: Full focus trap is tracked as a follow-up. Esc-close + scrim-close are
+// wired. Initial focus lands on the close button (see autoFocus below).
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useAuth, useProfile, useMutationApi, useQueryApi } from "@zo/auth";
 import { useMyNfts } from "../../hooks/useMyNfts";
@@ -1043,6 +1045,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <button
             onClick={onClose}
             aria-label="Close settings"
+            autoFocus
             className="w-8 h-8 flex items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
