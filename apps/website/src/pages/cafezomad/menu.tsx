@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../../config/supabase'
+import cafeZomadLogo from '../../assets/cafezomad/logo.png'
 
 interface MenuCategory { id: string; name: string; sort_order: number }
 interface MenuItem { id: string; category_id: string; name: string; description: string | null; price: number; image_url: string | null; diet: 'veg' | 'non_veg' | 'egg'; calories: number | null; protein: number | null; carbs: number | null; fats: number | null }
@@ -87,7 +88,7 @@ export default function CafeMenuPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <button onClick={() => router.push('/cafezomad')} className="w-9 h-9 rounded-xl bg-white overflow-hidden active:scale-95 transition-all shrink-0 p-1">
-              <img src="/cafezomad/logo.png" alt="Cafe Zomad" className="w-full h-full object-contain" />
+              <img src={cafeZomadLogo.src} alt="Cafe Zomad" className="w-full h-full object-contain" />
             </button>
             <div>
               <h1 className="text-lg font-extrabold tracking-tight text-black">Menu</h1>

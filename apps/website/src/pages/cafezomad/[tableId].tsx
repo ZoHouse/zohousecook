@@ -7,7 +7,12 @@ import { BioHackTab } from '../../components/cafezomad/BioHackTab'
 import { OrderStatusBadge } from '../../components/cafezomad/OrderStatusBadge'
 import { formatPaise } from '../../components/cafezomad/types'
 import type { MenuCategory, MenuItem, CafeOrderWithItems, CartItem, Tab } from '../../components/cafezomad/types'
+import cafeZomadLogo from '../../assets/cafezomad/logo.png'
 
+function normalizePhone(phone: string | null | undefined): string | null {
+  const normalized = (phone || '').replace(/\D/g, '').slice(-10)
+  return normalized.length === 10 ? normalized : null
+}
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
@@ -186,8 +191,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
 
     if (user?.id && propertyId) {
       // Logged in — get orders by user ID or phone at this property, plus session orders
-      const rawPh = user.mobile_number || ''
-      const phoneCleaned = rawPh.replace(/^\+?91/, '').replace(/\D/g, '')
+      const phoneCleaned = normalizePhone(user.mobile_number || null) || ''
       if (myIds.length > 0 && phoneCleaned) {
         query = query.or(`customer_phone.eq.${phoneCleaned},id.in.(${myIds.join(',')})`)
           .eq('property_id', propertyId)
@@ -280,12 +284,12 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       const customerName = user.first_name
         ? `${user.first_name} ${user.last_name || ''}`.trim()
         : null
-      const customerPhone = user.mobile_number || null
+      const customerPhone = normalizePhone(user.mobile_number || null)
 
       // Call server-side RPC — all validation happens in Postgres:
       // • Checks item availability & uses server-side prices
       // • Enforces daily limits per item
-      // • Validates & debits food credits atomically
+      // • Validates food credits (actual debit happens on kitchen acceptance)
       const { data, error } = await supabase.rpc('place_cafe_order', {
         p_property_id: propertyId,
         p_table_id: tableId,
@@ -382,7 +386,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2.5">
-              <img src="/cafezomad/logo.png" alt="Cafe Zomad" className="w-9 h-9 rounded-2xl object-contain bg-white p-1" />
+              <img src={cafeZomadLogo.src} alt="Cafe Zomad" className="w-9 h-9 rounded-2xl object-contain bg-white p-1" />
               <h1 className="text-xl font-extrabold tracking-tight text-black">Cafe Zomad</h1>
             </div>
             <p className="text-[11px] text-black/60 font-medium tracking-[0.15em] uppercase mt-0.5 ml-[46px]">

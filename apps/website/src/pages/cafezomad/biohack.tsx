@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router'
 import { useAuth } from '@zo/auth'
 import { BioHackTab } from '../../components/cafezomad/BioHackTab'
+import cafeZomadLogo from '../../assets/cafezomad/logo.png'
 
 export default function BioHackPage() {
   const router = useRouter()
@@ -13,7 +14,7 @@ export default function BioHackPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <button onClick={() => router.push('/cafezomad')} className="w-9 h-9 rounded-xl bg-white overflow-hidden active:scale-95 transition-all shrink-0 p-1">
-              <img src="/cafezomad/logo.png" alt="Cafe Zomad" className="w-full h-full object-contain" />
+              <img src={cafeZomadLogo.src} alt="Cafe Zomad" className="w-full h-full object-contain" />
             </button>
             <h1 className="text-lg font-extrabold tracking-tight text-black">Bio Hack</h1>
           </div>

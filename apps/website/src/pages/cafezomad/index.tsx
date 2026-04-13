@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router'
 import { useAuth } from '@zo/auth'
+import cafeZomadLogo from '../../assets/cafezomad/logo.png'
 
 export default function CafeZomadIndex() {
   const router = useRouter()
@@ -11,7 +12,7 @@ export default function CafeZomadIndex() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#f5f0e8] px-6">
       {/* Logo */}
       <div className="w-24 h-24 rounded-[2rem] bg-white p-3 mb-8 shadow-xl shadow-black/10">
-        <img src="/cafezomad/logo.png" alt="Cafe Zomad" className="w-full h-full object-contain" />
+        <img src={cafeZomadLogo.src} alt="Cafe Zomad" className="w-full h-full object-contain" />
       </div>
 
       {/* Title */}
