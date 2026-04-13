@@ -1,3 +1,18 @@
+// Polyfill localStorage for SSR — Node 25 exposes a localStorage object but
+// without getItem/setItem when --localstorage-file isn't set, which crashes
+// RainbowKit / WalletConnect during server-side rendering.
+if (typeof globalThis.localStorage?.getItem !== "function") {
+  const store: Record<string, string> = {};
+  globalThis.localStorage = {
+    getItem: (k: string) => store[k] ?? null,
+    setItem: (k: string, v: string) => { store[k] = v; },
+    removeItem: (k: string) => { delete store[k]; },
+    clear: () => { Object.keys(store).forEach((k) => delete store[k]); },
+    get length() { return Object.keys(store).length; },
+    key: (i: number) => Object.keys(store)[i] ?? null,
+  } as Storage;
+}
+
 import {
   darkTheme,
   getDefaultConfig,

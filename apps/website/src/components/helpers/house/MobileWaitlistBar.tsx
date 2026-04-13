@@ -17,9 +17,7 @@ export function MobileWaitlistBar() {
     <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden p-3 bg-black/80 backdrop-blur-xl border-t border-white/10">
       {isLoggedIn && user ? (
         <a
-          href="https://zostel.typeform.com/to/LgcBfa0M"
-          target="_blank"
-          rel="noopener noreferrer"
+          href="/house/apply"
           className="bg-white/10 border border-white/15 rounded-full p-1 flex items-center w-full active:scale-[0.98] transition-transform"
         >
           <div className="flex items-center gap-2.5 px-3 flex-1 min-w-0">

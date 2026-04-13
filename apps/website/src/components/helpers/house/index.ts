@@ -8,3 +8,5 @@ export { MobileWaitlistBar } from "./MobileWaitlistBar";
 export { FrequencyGate } from "./FrequencyGate";
 export { LoadingScreen } from "./LoadingScreen";
 export { HouseWrapper, useRadioAutoplay } from "./HouseWrapper";
+export { ProgramAccordion } from "./ProgramAccordion";
+export { TrackRecordScroll } from "./TrackRecordScroll";
