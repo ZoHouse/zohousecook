@@ -10,4 +10,4 @@ export { default as QuestsSection } from "./QuestsSection";
 export { default as ReferralSection } from "./ReferralSection";
 export { default as WhyPassportPlus } from "./WhyPassportPlus";
 export { default as PassportIdentityCard } from "./PassportIdentityCard";
-export { SettingsDrawer } from "./SettingsDrawer";
+export { SettingsModal } from "./SettingsModal";
