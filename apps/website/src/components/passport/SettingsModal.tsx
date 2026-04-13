@@ -305,6 +305,195 @@ function LocationSection() {
   );
 }
 
+function CulturesSection() {
+  const { isLoggedIn } = useAuth();
+  const { profile, updateProfile, refetchProfile } = useProfile();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cultures: any[] = profile?.cultures || [];
+  const selectedKeys = useMemo(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    () => new Set(cultures.map((c: any) => c.key)),
+    [cultures]
+  );
+
+  const [picking, setPicking] = useState(false);
+  const [search, setSearch] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const searchQuery = search.trim() ? `search=${encodeURIComponent(search.trim())}` : "";
+  const { data: allCulturesData, isLoading } = useQueryApi(
+    "CAS_CULTURES",
+    { enabled: isLoggedIn === true && picking },
+    "",
+    searchQuery
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const available: any[] = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = (allCulturesData as any)?.data;
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw?.results)) return raw.results;
+    if (Array.isArray(raw?.cultures)) return raw.cultures;
+    return [];
+  }, [allCulturesData]);
+
+  const saveCultures = (nextKeys: string[]) => {
+    setSaving(true);
+    updateProfile(
+      { data: { cultures: nextKeys } },
+      {
+        onSuccess: () => {
+          refetchProfile();
+          setSaving(false);
+        },
+        onError: () => setSaving(false),
+      }
+    );
+  };
+
+  const handleRemove = (key: string) => {
+    saveCultures(
+      cultures
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((c: any) => c.key !== key)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((c: any) => c.key)
+    );
+  };
+
+  const handleToggle = (key: string) => {
+    if (selectedKeys.has(key)) {
+      saveCultures(Array.from(selectedKeys).filter((k) => k !== key) as string[]);
+    } else {
+      saveCultures([...(Array.from(selectedKeys) as string[]), key]);
+    }
+  };
+
+  const pillSelected =
+    "flex items-center gap-2 px-3 py-1.5 rounded-full border bg-white/10 border-white/30 text-white";
+  const pillIdle =
+    "flex items-center gap-2 px-3 py-1.5 rounded-full border bg-white/5 border-white/10 hover:border-white/25 text-white/80";
+
+  return (
+    <section>
+      <SectionHeader title="Cultures" right={saving ? <Spinner size={12} /> : null} />
+
+      {cultures.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {cultures.map((c) => (
+            <div
+              key={c.key}
+              className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20"
+            >
+              {c.icon && (
+                <img
+                  src={fixAvatarUrl(c.icon)}
+                  alt={c.name}
+                  className="w-4 h-4 object-contain"
+                  referrerPolicy="no-referrer"
+                />
+              )}
+              <span className="text-xs text-white/90">{c.name}</span>
+              <button
+                onClick={() => handleRemove(c.key)}
+                aria-label={`Remove ${c.name}`}
+                className="w-4 h-4 flex items-center justify-center rounded-full text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors md:opacity-0 md:group-hover:opacity-100 opacity-100"
+              >
+                <svg width="8" height="8" viewBox="0 0 8 8">
+                  <path
+                    d="M6.5 1.5L1.5 6.5M1.5 1.5L6.5 6.5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    fill="none"
+                  />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-white/40 italic">No cultures selected yet — tap + to add</p>
+      )}
+
+      {!picking ? (
+        <button
+          onClick={() => setPicking(true)}
+          className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-white/50 hover:text-white border border-dashed border-white/15 hover:border-white/30 rounded-md transition-colors"
+        >
+          <span>+</span> Add cultures
+        </button>
+      ) : (
+        <div className="mt-3 flex flex-col gap-3">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search cultures..."
+            className="w-full bg-white/5 border border-white/15 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 placeholder:text-white/40"
+          />
+          <div className="max-h-[240px] overflow-y-auto -mx-1 px-1">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <Spinner size={20} />
+              </div>
+            ) : available.length === 0 ? (
+              <p className="text-xs text-white/40 italic text-center py-4">
+                {search ? "No cultures found" : "No cultures available"}
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {available.map((c) => {
+                  const isSelected = selectedKeys.has(c.key);
+                  return (
+                    <button
+                      key={c.key}
+                      onClick={() => handleToggle(c.key)}
+                      disabled={saving}
+                      className={`${isSelected ? pillSelected : pillIdle} transition-colors disabled:opacity-50`}
+                    >
+                      {c.icon && (
+                        <img
+                          src={fixAvatarUrl(c.icon)}
+                          alt=""
+                          className="w-4 h-4 object-contain flex-shrink-0"
+                          referrerPolicy="no-referrer"
+                        />
+                      )}
+                      <span className="text-xs whitespace-nowrap">{c.name}</span>
+                      {isSelected && (
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <path
+                            d="M1.5 5L4 7.5L8.5 2.5"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              setPicking(false);
+              setSearch("");
+            }}
+            className="w-full px-3 py-2 text-sm text-white/60 hover:text-white border border-white/10 hover:border-white/25 rounded-md transition-colors"
+          >
+            Done
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function ProfileSection() {
   const { profile, updateProfile, refetchProfile } = useProfile();
 
@@ -401,6 +590,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <ProfileSection />
           <LocationSection />
+          <CulturesSection />
         </div>
       </GlowCard>
     </div>
