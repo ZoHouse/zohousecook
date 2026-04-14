@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { GetServerSidePropsContext } from "next";
 import { useRouter } from "next/router";
 import { useAuth, useProfile } from "@zo/auth";
 import {
@@ -30,7 +31,19 @@ function resolveViewerState(
   return "free";
 }
 
-export default function PassportPage() {
+interface PassportPageProps {
+  handleFromUrl: string | null;
+}
+
+export async function getServerSideProps(
+  context: GetServerSidePropsContext,
+): Promise<{ props: PassportPageProps }> {
+  const reqUrl = context.req.url || "";
+  const handleFromUrl = parseHandleFromAsPath(reqUrl);
+  return { props: { handleFromUrl } };
+}
+
+export default function PassportPage({ handleFromUrl }: PassportPageProps) {
   const router = useRouter();
   const { isLoggedIn, showLoginModal } = useAuth();
   const { profile, isLoading } = useProfile();
@@ -43,7 +56,7 @@ export default function PassportPage() {
     profile?.nickname ||
     "";
 
-  const urlHandle = parseHandleFromAsPath(router.asPath);
+  const urlHandle = parseHandleFromAsPath(router.asPath) || handleFromUrl;
   const isVisitorView = !!urlHandle && urlHandle !== handle;
 
   useCaptureReferrer(isVisitorView ? urlHandle : null);

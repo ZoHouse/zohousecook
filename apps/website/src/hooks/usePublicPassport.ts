@@ -68,7 +68,7 @@ async function fetchPublicPassportStub(handle: string): Promise<PublicPassport> 
 
 export function usePublicPassport(handle: string | null) {
   const [data, setData] = useState<PublicPassport | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(!!handle);
   const [isError, setIsError] = useState(false);
 
   useEffect(() => {
