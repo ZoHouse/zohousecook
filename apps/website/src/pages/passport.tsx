@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import { useAuth, useProfile } from "@zo/auth";
 import {
   PassportIdentityCard,
@@ -12,6 +13,7 @@ import { useMyXp } from "../hooks/useMyXp";
 import { useMyRoles } from "../hooks/useMyRoles";
 
 export default function PassportPage() {
+  const router = useRouter();
   const { isLoggedIn, showLoginModal } = useAuth();
   const { profile, isLoading } = useProfile();
   const { myXp } = useMyXp();
@@ -22,6 +24,12 @@ export default function PassportPage() {
     profile?.custom_nickname?.replace(".zo", "") ||
     profile?.nickname ||
     "";
+
+  useEffect(() => {
+    if (router.asPath === "/passport" && isLoggedIn && handle) {
+      router.replace(`/@${handle}`);
+    }
+  }, [router, isLoggedIn, handle]);
 
   if (!isLoggedIn) {
     return (

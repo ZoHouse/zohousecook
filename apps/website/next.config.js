@@ -64,7 +64,9 @@ const nextConfig = {
       { path: "meme", devPort: 4208, vercelUrl: process.env.REWRITE_MEME_URL || "https://zozozo-meme-samurais-dojo.vercel.app" },
     ];
 
-    const rewrites = [];
+    const rewrites = [
+      { source: "/@:handle", destination: "/passport" },
+    ];
     for (const app of subApps) {
       const dest = isDev
         ? `http://localhost:${app.devPort}`
