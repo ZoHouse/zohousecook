@@ -26,6 +26,28 @@ function AvatarFallback({ initial }: { initial: string }) {
   );
 }
 
+function AvatarFrame({
+  src,
+  alt,
+  fallbackInitial,
+}: {
+  src: string | null;
+  alt: string;
+  fallbackInitial: string;
+}) {
+  if (!src) return <AvatarFallback initial={fallbackInitial} />;
+  return (
+    <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center overflow-hidden">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        className="w-full h-full object-contain"
+      />
+    </div>
+  );
+}
+
 function formatXp(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
@@ -67,16 +89,11 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
     <div className="flex-1 min-h-screen bg-[#111]">
       <div className="max-w-md mx-auto px-4 pt-32 pb-16">
         <div className="flex flex-col items-center gap-4 mb-6">
-          {data.pfp_image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={data.pfp_image}
-              alt={displayName}
-              className="w-28 h-28 rounded-2xl object-cover"
-            />
-          ) : (
-            <AvatarFallback initial={initial} />
-          )}
+          <AvatarFrame
+            src={data.avatar_image || data.pfp_image}
+            alt={displayName}
+            fallbackInitial={initial}
+          />
           <div className="text-center flex flex-col items-center gap-2">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold text-white">{data.custom_nickname}</h1>
