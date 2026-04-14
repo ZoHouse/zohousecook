@@ -9,8 +9,26 @@ import {
   WhyPassportPlus,
 } from "../components/passport";
 import { SettingsModal } from "../components/passport/SettingsModal";
+import { PublicPassportView } from "../components/passport/PublicPassportView";
+import { ViewerState } from "../components/passport/PassportPitch";
 import { useMyXp } from "../hooks/useMyXp";
 import { useMyRoles } from "../hooks/useMyRoles";
+import { useCaptureReferrer } from "../hooks/useCaptureReferrer";
+
+function parseHandleFromAsPath(asPath: string): string | null {
+  const m = asPath.match(/^\/@([^/?#]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+function resolveViewerState(
+  isLoggedIn: boolean | null | undefined,
+  profile: { custom_nickname?: string | null; nickname?: string | null } | null | undefined,
+): ViewerState {
+  if (!isLoggedIn) return "logged_out";
+  const hasHandle = !!(profile?.custom_nickname || profile?.nickname);
+  if (!hasHandle) return "logged_in_no_passport";
+  return "free";
+}
 
 export default function PassportPage() {
   const router = useRouter();
@@ -25,11 +43,25 @@ export default function PassportPage() {
     profile?.nickname ||
     "";
 
+  const urlHandle = parseHandleFromAsPath(router.asPath);
+  const isVisitorView = !!urlHandle && urlHandle !== handle;
+
+  useCaptureReferrer(isVisitorView ? urlHandle : null);
+
   useEffect(() => {
     if (router.asPath === "/passport" && isLoggedIn && handle) {
       router.replace(`/@${handle}`);
     }
   }, [router, isLoggedIn, handle]);
+
+  if (isVisitorView && urlHandle) {
+    return (
+      <PublicPassportView
+        handle={urlHandle}
+        viewerState={resolveViewerState(isLoggedIn, profile)}
+      />
+    );
+  }
 
   if (!isLoggedIn) {
     return (
