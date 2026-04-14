@@ -15,18 +15,18 @@ interface Founder {
 
 // ── BLRxZo — Koramangala ──
 const blrFounders: Founder[] = [
-  { name: "Tejas Agrawal", building: "TBD", link: "x.com/PossiblyTejas", avatar: "/pfp1.webp" },
-  { name: "Manan Gupta", building: "Artemis App", link: "x.com/yoitsmanan", avatar: "/pfp2.webp" },
-  { name: "Savio Martin", building: "Simpleclaw", link: "x.com/saviomartin7", avatar: "/pfp3.webp" },
-  { name: "Harish Ashok", building: "TBD", link: "x.com/habril27", avatar: "/pfp1.webp" },
-  { name: "Yuvraj", building: "TheResidency BLR", link: "x.com/AadityaYuvraj", avatar: "/pfp2.webp" },
-  { name: "Subh", building: "TBD", link: "instagram.com/shubhxho", avatar: "/pfp3.webp" },
-  { name: "Shlok", building: "PolyHedge", link: "x.com/shlokm289", avatar: "/pfp1.webp" },
+  { name: "Tejas Agrawal", building: "Stealth", link: "x.com/PossiblyTejas", avatar: "https://unavatar.io/x/PossiblyTejas" },
+  { name: "Manan Gupta", building: "Artemis App", link: "x.com/yoitsmanan", avatar: "https://unavatar.io/x/yoitsmanan" },
+  { name: "Savio Martin", building: "Simpleclaw", link: "x.com/saviomartin7", avatar: "https://avatars.githubusercontent.com/u/61895712?s=200" },
+  { name: "Harish Ashok", building: "Stealth", link: "x.com/habril27", avatar: "https://unavatar.io/x/habril27" },
+  { name: "Yuvraj Aaditya", building: "TheResidency BLR", link: "x.com/AadityaYuvraj", avatar: "https://unavatar.io/x/AadityaYuvraj" },
+  { name: "Subh", building: "Stealth", link: "instagram.com/shubhxho", avatar: "https://unavatar.io/instagram/shubhxho" },
+  { name: "Shlok", building: "PolyHedge", link: "x.com/shlokm289", avatar: "https://unavatar.io/x/shlokm289" },
 ];
 
 // ── WTFxZo — Whitefield ──
 const wtfFounders: Founder[] = [
-  { name: "Pratham", building: "MentiBus", link: "x.com/prathadox", avatar: "/pfp2.webp" },
+  { name: "Pratham", building: "MentiBus", link: "x.com/prathadox", avatar: "https://unavatar.io/x/prathadox" },
   { name: "Jacky", building: "TBD", link: "", avatar: "/pfp3.webp" },
 ];
 

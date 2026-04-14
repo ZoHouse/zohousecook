@@ -8,7 +8,7 @@ const cities = [
     description:
       "Three-week builder sprint in the desert. High-signal founders, zero distractions.",
     flag: "\u{1F1E6}\u{1F1EA}",
-    images: ["/house/reel-5.png", "/house/reel-4.png"],
+    images: ["/house/reel-5.png", "/house/reel-4.png", "/house/reel-6.png"],
   },
   {
     city: "Singapore",
@@ -16,7 +16,7 @@ const cities = [
     description:
       "TOKEN2049 side event. 200+ founders. The room that launched three companies.",
     flag: "\u{1F1F8}\u{1F1EC}",
-    images: ["/house/reel-3.png", "/house/reel-1.png"],
+    images: ["/house/reel-3.png", "/house/reel-7.png"],
   },
   {
     city: "San Francisco",
@@ -24,7 +24,7 @@ const cities = [
     description:
       "Two weeks in SOMA. Demo day with top-tier VCs. Six deals closed on-site.",
     flag: "\u{1F1FA}\u{1F1F8}",
-    images: ["/house/reel-2.png", "/house/founders-dinner.png"],
+    images: ["/house/founders-dinner.png", "/house/reel-8.png"],
   },
 ];
 
@@ -88,7 +88,8 @@ export function TrackRecordScroll() {
               transition: "transform 0.1s linear",
             }}
           >
-            {reelImages.map((src, i) => (
+            {reelImages.map((src, i) => {
+              return (
               <div
                 key={`${src}-${i}`}
                 className="relative flex-shrink-0 h-[70vh] rounded-2xl overflow-hidden border border-white/10"
@@ -100,10 +101,12 @@ export function TrackRecordScroll() {
                   fill
                   sizes="45vw"
                   className="object-cover"
+                  style={src.includes("reel-7") ? { objectPosition: "95% center" } : undefined}
                 />
                 <div className="absolute inset-0 bg-black/30" />
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
