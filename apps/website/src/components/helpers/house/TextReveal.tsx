@@ -41,7 +41,7 @@ export const TextReveal: FC<TextRevealProps> = ({ children, segments, className,
   }
 
   return (
-    <div ref={sectionRef} className={`relative z-0 h-[200vh] ${className || ""}`}>
+    <div ref={sectionRef} data-text-reveal className={`relative z-0 h-[200vh] ${className || ""}`}>
       <div
         className="sticky top-0 mx-auto flex flex-col h-[50%] max-w-4xl justify-center bg-transparent px-4 py-20"
       >

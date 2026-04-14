@@ -20,6 +20,8 @@ body {
 }
 
 :root {
+  --font-headline: "Instrument Serif", serif;
+
   /* bottom sheet styles */
 
   --rsbs-backdrop-bg: rgba(0, 0, 0, 0.6);
@@ -797,4 +799,9 @@ body {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.shiny-gold {
+  color: #d4af37 !important;
+  -webkit-text-fill-color: #d4af37 !important;
 }
