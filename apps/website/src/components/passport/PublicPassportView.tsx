@@ -30,6 +30,10 @@ function formatXp(n: number): string {
   return String(n);
 }
 
+function displayNameFor(data: { full_name: string | null; custom_nickname: string; handle: string }): string {
+  return data.full_name || data.handle.charAt(0).toUpperCase() + data.handle.slice(1);
+}
+
 export function PublicPassportView({ handle, viewerState }: PublicPassportViewProps) {
   const { data, isLoading, isError } = usePublicPassport(handle);
 
@@ -54,17 +58,18 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
     );
   }
 
-  const initial = data.display_name.charAt(0).toUpperCase();
+  const displayName = displayNameFor(data);
+  const initial = displayName.charAt(0).toUpperCase();
 
   return (
     <div className="flex-1 min-h-screen bg-[#111]">
       <div className="max-w-md mx-auto px-4 pt-32 pb-16">
         <div className="flex flex-col items-center gap-4 mb-6">
-          {data.avatar_url ? (
+          {data.pfp_image ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={data.avatar_url}
-              alt={data.display_name}
+              src={data.pfp_image}
+              alt={displayName}
               className="w-28 h-28 rounded-2xl object-cover"
             />
           ) : (
@@ -72,12 +77,14 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
           )}
           <div className="text-center">
             <h1 className="text-2xl font-bold text-white">{data.custom_nickname}</h1>
-            <p className="text-white/60 text-sm mt-1">{data.display_name}</p>
-            {(data.hometown || data.nationality) && (
+            {data.full_name && (
+              <p className="text-white/60 text-sm mt-1">{data.full_name}</p>
+            )}
+            {(data.place_name || data.country) && (
               <p className="text-white/40 text-xs mt-1">
-                {data.hometown && `from ${data.hometown}`}
-                {data.hometown && data.nationality && ", "}
-                {data.nationality}
+                {data.place_name && `from ${data.place_name}`}
+                {data.place_name && data.country && ", "}
+                {data.country}
               </p>
             )}
           </div>
@@ -95,24 +102,28 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
           )}
         </div>
 
-        <div className="mb-6 p-5 bg-white/5 rounded-2xl flex items-center justify-between">
-          <div>
-            <p className="text-[10px] text-white/40 uppercase tracking-wider">Passport Rank</p>
-            <p className="text-xl font-bold text-white mt-1">{data.xp.rank_title}</p>
+        {(data.rank_title || data.xp_total > 0) && (
+          <div className="mb-6 p-5 bg-white/5 rounded-2xl flex items-center justify-between">
+            <div>
+              <p className="text-[10px] text-white/40 uppercase tracking-wider">Passport Rank</p>
+              <p className="text-xl font-bold text-white mt-1">
+                {data.rank_title || "—"}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] text-white/40 uppercase tracking-wider">Total XP</p>
+              <p className="text-xl font-bold text-white tabular-nums mt-1">
+                {formatXp(data.xp_total)}
+              </p>
+            </div>
           </div>
-          <div className="text-right">
-            <p className="text-[10px] text-white/40 uppercase tracking-wider">Total XP</p>
-            <p className="text-xl font-bold text-white tabular-nums mt-1">
-              {formatXp(data.xp.total)}
-            </p>
-          </div>
-        </div>
+        )}
 
         <div className="grid grid-cols-4 gap-2 mb-6">
           <StatCell label="Stamps" value={data.stamps.length} />
           <StatCell label="Stays" value={data.stats.stays} />
           <StatCell label="Frens" value={data.stats.tribe} />
-          <StatCell label="Reels" value={data.stats.reels_qualified} />
+          <StatCell label="Reels" value={data.stats.reels} />
         </div>
 
         {data.stamps.length > 0 && (
@@ -121,14 +132,17 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
               Destination Stamps
             </h2>
             <div className="grid grid-cols-3 gap-2">
-              {data.stamps.map((stamp) => (
-                <div
-                  key={stamp.key}
-                  className="aspect-square rounded-xl bg-white/5 flex items-center justify-center p-2 text-center"
-                >
-                  <span className="text-[10px] text-white/80">{stamp.label}</span>
-                </div>
-              ))}
+              {data.stamps.map((stamp, i) => {
+                const s = stamp as { key?: string; label?: string };
+                return (
+                  <div
+                    key={s.key || i}
+                    className="aspect-square rounded-xl bg-white/5 flex items-center justify-center p-2 text-center"
+                  >
+                    <span className="text-[10px] text-white/80">{s.label || ""}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -137,14 +151,17 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
           <div className="mb-6">
             <h2 className="text-[10px] text-white/40 uppercase tracking-wider mb-2">Badges</h2>
             <div className="flex flex-wrap gap-2">
-              {data.badges.map((badge) => (
-                <span
-                  key={badge.key}
-                  className="px-3 py-1 rounded-full bg-white/10 text-white text-xs"
-                >
-                  {badge.label}
-                </span>
-              ))}
+              {data.badges.map((badge, i) => {
+                const b = badge as { key?: string; label?: string };
+                return (
+                  <span
+                    key={b.key || i}
+                    className="px-3 py-1 rounded-full bg-white/10 text-white text-xs"
+                  >
+                    {b.label || ""}
+                  </span>
+                );
+              })}
             </div>
           </div>
         )}
@@ -155,14 +172,17 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
               Season Champions
             </h2>
             <div className="flex gap-2">
-              {data.trophies.map((trophy, i) => (
-                <span
-                  key={i}
-                  className="px-3 py-1 rounded-full bg-white/10 text-white text-xs capitalize"
-                >
-                  {trophy.medal} • {trophy.season}
-                </span>
-              ))}
+              {data.trophies.map((trophy, i) => {
+                const t = trophy as { season?: string; medal?: string };
+                return (
+                  <span
+                    key={i}
+                    className="px-3 py-1 rounded-full bg-white/10 text-white text-xs capitalize"
+                  >
+                    {t.medal || ""} {t.season ? `• ${t.season}` : ""}
+                  </span>
+                );
+              })}
             </div>
           </div>
         )}
@@ -170,16 +190,19 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
         {data.tribe_sample.length > 0 && (
           <div className="mb-6">
             <h2 className="text-[10px] text-white/40 uppercase tracking-wider mb-2">
-              Tribe ({data.tribe_total})
+              Tribe ({data.stats.tribe})
             </h2>
             <div className="flex -space-x-2">
-              {data.tribe_sample.map((member) => (
-                <div
-                  key={member.handle}
-                  className="w-8 h-8 rounded-full bg-white/10 border-2 border-[#111]"
-                  title={member.handle}
-                />
-              ))}
+              {data.tribe_sample.map((member, i) => {
+                const m = member as { handle?: string };
+                return (
+                  <div
+                    key={m.handle || i}
+                    className="w-8 h-8 rounded-full bg-white/10 border-2 border-[#111]"
+                    title={m.handle || ""}
+                  />
+                );
+              })}
             </div>
           </div>
         )}
