@@ -13,6 +13,7 @@ import {
 import { SettingsModal } from "../components/passport/SettingsModal";
 import { PublicPassportView } from "../components/passport/PublicPassportView";
 import { ViewerState } from "../components/passport/PassportPitch";
+import { ShareQuestButtons } from "../components/passport/ShareQuestButtons";
 import { useMyXp } from "../hooks/useMyXp";
 import { useMyRoles } from "../hooks/useMyRoles";
 import { useCaptureReferrer } from "../hooks/useCaptureReferrer";
@@ -214,6 +215,11 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
             <PassportProCard />
             <QuestsSection />
             <ReferralSection handle={handle} />
+            {handle && (
+              <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+                <ShareQuestButtons handle={handle} />
+              </div>
+            )}
             <WhyPassportPlus />
           </div>
         </div>
