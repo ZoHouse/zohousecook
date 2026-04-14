@@ -90,7 +90,7 @@ export default function House({
         {/* TopNavBar */}
         <header className="fixed top-0 left-0 w-full z-50 px-8 md:px-28 py-6 bg-transparent flex justify-between items-center max-w-full">
           <span className="text-xl font-black tracking-tighter text-white font-[family-name:var(--font-headline)] italic shiny-gold">
-            Civilisation
+            Zo House
           </span>
           <nav className="hidden md:flex items-center gap-6">
             <a className="text-neutral-400 font-medium hover:text-white transition-colors duration-300 text-[13px] tracking-wide uppercase" href="#">
@@ -176,7 +176,7 @@ export default function House({
             <BlurFade inView delay={0.2} direction="up">
               <div className="border-t border-white/5 pt-12 text-center">
                 <p className="font-[family-name:var(--font-headline)] italic text-2xl shiny-gold opacity-60">
-                  &ldquo;The house doesn&apos;t reset — it compounds.&rdquo;
+                  &ldquo;The house doesn&apos;t reset. It compounds.&rdquo;
                 </p>
               </div>
             </BlurFade>
@@ -190,9 +190,9 @@ export default function House({
             segments={[
               { text: "India's permanent" },
               { text: "founder house", className: "font-[family-name:var(--font-headline)] italic shiny-gold" },
-              { text: "— where" },
+              { text: ". Where" },
               { text: "builders", className: "font-[family-name:var(--font-headline)] italic shiny-gold" },
-              { text: "live, collaborate, and compound. Two properties. 35 plots. Real founders, real time." },
+              { text: "live, collaborate, and compound. Two nodes. 35 slots. Real founders, real time." },
             ]}
             textClassName="text-3xl md:text-5xl font-medium leading-[1.3]"
             header={<ScrollGlobe />}
@@ -218,21 +218,11 @@ export default function House({
           <div className="relative z-10 text-center px-6 max-w-3xl">
             <BlurFade inView delay={0.1} direction="up">
               <h2 className="text-5xl md:text-7xl font-medium tracking-tight mb-6">
-                <HyperText as="span" className="font-medium tracking-tight" startOnView duration={800}>
-                  {"The "}
-                </HyperText>
-                <HyperText
-                  as="span"
-                  className="font-[family-name:var(--font-headline)] italic font-normal tracking-tight shiny-gold"
-                  startOnView
-                  duration={800}
-                  delay={300}
-                >
+                The{" "}
+                <span className="font-[family-name:var(--font-headline)] italic font-normal shiny-gold">
                   Civilisation
-                </HyperText>
-                <HyperText as="span" className="font-medium tracking-tight" startOnView duration={800} delay={500}>
-                  {" Is Waiting"}
-                </HyperText>
+                </span>{" "}
+                Is Waiting
               </h2>
               <p className="text-neutral-400 text-lg font-light mb-10">
                 Join the waitlist. Be part of what&apos;s next.
@@ -257,7 +247,7 @@ export default function House({
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center w-full border-t border-white/5 pt-12">
             <div className="mb-8 md:mb-0 text-center md:text-left">
               <span className="text-lg font-black text-white font-[family-name:var(--font-headline)] italic shiny-gold">
-                Civilisation
+                Zo House
               </span>
               <p className="text-[10px] font-bold tracking-widest uppercase text-neutral-500 mt-2">
                 &copy; 2026 Zo House. All rights reserved.

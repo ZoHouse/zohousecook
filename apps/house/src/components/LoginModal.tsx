@@ -64,7 +64,7 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
         </button>
 
         <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#d4af37] mb-3">
-          The Civilisation
+          Zo House
         </p>
         <h2 className="text-2xl md:text-3xl font-medium tracking-tight mb-2 text-white">
           {step === "phone" ? "Tune in, Citizen." : "Check your phone."}

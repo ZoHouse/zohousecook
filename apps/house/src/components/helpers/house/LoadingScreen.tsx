@@ -100,7 +100,7 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
           className="text-xs md:text-sm uppercase tracking-[0.3em] font-serif italic"
           style={{ color: "#888888" }}
         >
-          Civilisation
+          Zo House
         </span>
       </motion.div>
 

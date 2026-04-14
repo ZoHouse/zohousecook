@@ -19,12 +19,27 @@ interface PlotData {
 const jitter = (i: number, salt: number) =>
   (((i * 1103515245 + salt * 12345) % 1000) / 1000 - 0.5) * 0.35;
 
+// Plot grid parameters.
+const COL_SPACING = 1.5; // was 1.0 — houses were overlapping
+const ROW_SPACING = 1.6; // was 1.5
+const BLR_COLS = 5;
+const WTF_COLS = 5;
+const BLR_CENTER_X = -7.5;
+const WTF_CENTER_X = 7.5;
+
 function buildPlots(blr: Resident[], wtf: Resident[]): PlotData[] {
+  const blrRows = Math.ceil(BLR_CAPACITY / BLR_COLS);
+  const wtfRows = Math.ceil(WTF_CAPACITY / WTF_COLS);
+  const blrStartX = BLR_CENTER_X - ((BLR_COLS - 1) * COL_SPACING) / 2;
+  const wtfStartX = WTF_CENTER_X - ((WTF_COLS - 1) * COL_SPACING) / 2;
+  const blrStartZ = -((blrRows - 1) * ROW_SPACING) / 2;
+  const wtfStartZ = -((wtfRows - 1) * ROW_SPACING) / 2;
+
   const blrPlots = Array.from({ length: BLR_CAPACITY }, (_, i) => {
-    const row = Math.floor(i / 5);
-    const col = i % 5;
-    const x = -5 - 2 + col * 1 + jitter(i, 1);
-    const z = -1.5 + row * 1.5 + jitter(i, 2);
+    const row = Math.floor(i / BLR_COLS);
+    const col = i % BLR_COLS;
+    const x = blrStartX + col * COL_SPACING + jitter(i, 1);
+    const z = blrStartZ + row * ROW_SPACING + jitter(i, 2);
     const resident = blr[i];
     return {
       position: [x, 0, z] as [number, number, number],
@@ -35,10 +50,10 @@ function buildPlots(blr: Resident[], wtf: Resident[]): PlotData[] {
     };
   });
   const wtfPlots = Array.from({ length: WTF_CAPACITY }, (_, i) => {
-    const row = Math.floor(i / 5);
-    const col = i % 5;
-    const x = 5.5 - 2 + col * 1 + jitter(i + 100, 1);
-    const z = -2.25 + row * 1.5 + jitter(i + 100, 2);
+    const row = Math.floor(i / WTF_COLS);
+    const col = i % WTF_COLS;
+    const x = wtfStartX + col * COL_SPACING + jitter(i + 100, 1);
+    const z = wtfStartZ + row * ROW_SPACING + jitter(i + 100, 2);
     const resident = wtf[i];
     return {
       position: [x, 0, z] as [number, number, number],
@@ -51,67 +66,69 @@ function buildPlots(blr: Resident[], wtf: Resident[]): PlotData[] {
   return [...blrPlots, ...wtfPlots];
 }
 
-// Trees — around 2 clusters
-const treePositions: { pos: [number, number, number]; scale: number; type: number }[] = [
-  { pos: [-8, 0, -2.5], scale: 1.2, type: 0 },
-  { pos: [-8.5, 0, 0.5], scale: 0.8, type: 1 },
-  { pos: [-3, 0, -2.5], scale: 1.0, type: 0 },
-  { pos: [-7.5, 0, 2], scale: 0.9, type: 1 },
-  { pos: [-2.5, 0, -0.5], scale: 0.7, type: 2 },
-  { pos: [-8, 0, 1.5], scale: 1.1, type: 0 },
-  { pos: [-7, 0, -2.8], scale: 1.0, type: 1 },
-  { pos: [-9, 0, -1], scale: 1.3, type: 0 },
-  { pos: [-3, 0, 2], scale: 0.75, type: 2 },
-  { pos: [-1.5, 0, -1], scale: 1.1, type: 0 },
-  { pos: [0, 0, 0.5], scale: 0.9, type: 1 },
-  { pos: [1, 0, -1.5], scale: 0.8, type: 0 },
-  { pos: [-0.5, 0, 1.5], scale: 0.7, type: 2 },
-  { pos: [2, 0, 0.5], scale: 0.6, type: 2 },
-  { pos: [0.5, 0, -2.5], scale: 0.95, type: 0 },
-  { pos: [8, 0, -2], scale: 1.0, type: 0 },
-  { pos: [8.5, 0, 1], scale: 0.9, type: 1 },
-  { pos: [3.5, 0, -2.5], scale: 1.2, type: 0 },
-  { pos: [7.5, 0, 2], scale: 0.8, type: 1 },
-  { pos: [8.5, 0, 2], scale: 0.7, type: 2 },
-  { pos: [9, 0, -0.5], scale: 1.1, type: 0 },
-  { pos: [3.5, 0, 2], scale: 0.65, type: 2 },
-  { pos: [-10, 0, -3], scale: 1.4, type: 0 },
-  { pos: [10, 0, -3], scale: 1.3, type: 0 },
-  { pos: [-10, 0, 2], scale: 1.2, type: 1 },
-  { pos: [10, 0, 2], scale: 1.1, type: 1 },
-  { pos: [0, 0, 3.5], scale: 1.0, type: 0 },
-  { pos: [-10.5, 0, 0], scale: 1.3, type: 0 },
-  { pos: [10.5, 0, 0], scale: 1.2, type: 0 },
-  { pos: [0, 0, -3.5], scale: 1.1, type: 0 },
+// Trees — placed around each island's outer ring + a few between clusters.
+type TreeSpec = { pos: [number, number, number]; scale: number; type: number };
+
+function treesAroundIsland(
+  centerX: number,
+  innerR: number,
+  count: number,
+  salt: number
+): TreeSpec[] {
+  const trees: TreeSpec[] = [];
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2 + jitter(i + salt, 1) * 0.4;
+    const r = innerR + 0.4 + Math.abs(jitter(i + salt, 2)) * 1.2;
+    trees.push({
+      pos: [
+        centerX + Math.cos(angle) * r,
+        0,
+        Math.sin(angle) * r,
+      ],
+      scale: 0.7 + Math.abs(jitter(i + salt, 3)) * 0.8,
+      type: i % 3,
+    });
+  }
+  return trees;
+}
+
+const treePositions: TreeSpec[] = [
+  ...treesAroundIsland(-7.5, 5.5, 14, 11),
+  ...treesAroundIsland(7.5, 6.2, 16, 23),
+  // A few between the clusters
+  { pos: [0, 0, -2.5], scale: 1.0, type: 0 },
+  { pos: [0, 0, 2.5], scale: 0.9, type: 1 },
+  { pos: [-1.5, 0, 0.5], scale: 0.7, type: 2 },
+  { pos: [1.5, 0, 0.5], scale: 0.7, type: 2 },
 ];
 
 const streetLightPositions: [number, number, number][] = [
-  [-4, 0, -0.5], [-6, 0, 0.5],
-  [-5, 0, -2], [-3.5, 0, 1.5],
-  [5, 0, -1.5], [6.5, 0, 1],
-  [4.5, 0, 1.5], [7, 0, -0.5],
+  [-9, 0, -0.5], [-6, 0, 0.5],
+  [-7.5, 0, -2.2], [-7.5, 0, 2.2],
+  [6, 0, -1.5], [9, 0, 1],
+  [6, 0, 1.5], [9, 0, -0.5],
   [-1, 0, 0], [1, 0, -0.5],
 ];
 
 // Shared materials
-const matTrunk = new THREE.MeshStandardMaterial({ color: "#2a1e10", roughness: 0.9 });
-const matCanopy = new THREE.MeshStandardMaterial({ color: "#1a3518", roughness: 0.8 });
-const matCanopyHighlight = new THREE.MeshStandardMaterial({ color: "#224020", roughness: 0.75, transparent: true, opacity: 0.7 });
-const matPine1 = new THREE.MeshStandardMaterial({ color: "#152a12", roughness: 0.8 });
-const matPine2 = new THREE.MeshStandardMaterial({ color: "#1e3518", roughness: 0.8 });
-const matBush1 = new THREE.MeshStandardMaterial({ color: "#182a14", roughness: 0.85 });
-const matBush2 = new THREE.MeshStandardMaterial({ color: "#203218", roughness: 0.85 });
-const matStone = new THREE.MeshStandardMaterial({ color: "#252420", roughness: 0.9 });
-const matWood = new THREE.MeshStandardMaterial({ color: "#3a2a18", roughness: 0.8 });
-const matRoof = new THREE.MeshStandardMaterial({ color: "#2a1a10", roughness: 0.8, metalness: 0.1 });
+const matTrunk = new THREE.MeshStandardMaterial({ color: "#5a3f24", roughness: 0.9 });
+const matCanopy = new THREE.MeshStandardMaterial({ color: "#3d6e32", roughness: 0.8 });
+const matCanopyHighlight = new THREE.MeshStandardMaterial({ color: "#4f8a3d", roughness: 0.75, transparent: true, opacity: 0.85 });
+const matPine1 = new THREE.MeshStandardMaterial({ color: "#335b28", roughness: 0.8 });
+const matPine2 = new THREE.MeshStandardMaterial({ color: "#407035", roughness: 0.8 });
+const matBush1 = new THREE.MeshStandardMaterial({ color: "#38582a", roughness: 0.85 });
+const matBush2 = new THREE.MeshStandardMaterial({ color: "#466b34", roughness: 0.85 });
+const matStone = new THREE.MeshStandardMaterial({ color: "#524d44", roughness: 0.9 });
+const matWood = new THREE.MeshStandardMaterial({ color: "#7d5830", roughness: 0.8 });
+const matRoof = new THREE.MeshStandardMaterial({ color: "#5c341d", roughness: 0.8, metalness: 0.1 });
 const matPole = new THREE.MeshStandardMaterial({ color: "#3a3020", metalness: 0.6, roughness: 0.4 });
 const matLanternBox = new THREE.MeshStandardMaterial({ color: "#2a2015", metalness: 0.5, roughness: 0.5 });
 const matLanternGlow = new THREE.MeshStandardMaterial({ color: "#ffc040", emissive: "#ffc040", emissiveIntensity: 12 });
 const matPath = new THREE.MeshStandardMaterial({ color: "#1e1a12", roughness: 0.85 });
 const matPathEdge = new THREE.MeshStandardMaterial({ color: "#151210", roughness: 0.9, transparent: true, opacity: 0.5 });
-const matGround = new THREE.MeshStandardMaterial({ color: "#080808", roughness: 0.95 });
-const matIsland = new THREE.MeshStandardMaterial({ color: "#121010", roughness: 0.9 });
-const matGrass = new THREE.MeshStandardMaterial({ color: "#152010", roughness: 0.9, transparent: true, opacity: 0.5 });
+const matGround = new THREE.MeshStandardMaterial({ color: "#161412", roughness: 0.95 });
+const matIsland = new THREE.MeshStandardMaterial({ color: "#28221b", roughness: 0.9 });
+const matGrass = new THREE.MeshStandardMaterial({ color: "#2c3f1c", roughness: 0.9, transparent: true, opacity: 0.7 });
 const matGroundGlow = new THREE.MeshStandardMaterial({ color: "#ffa830", transparent: true, opacity: 0.2 });
 const matDoor = new THREE.MeshStandardMaterial({ color: "#d4a030", emissive: "#d4a030", emissiveIntensity: 2.0 });
 
@@ -207,7 +224,7 @@ function HouseModel({
               className="block bg-[#0e0e0c]/95 backdrop-blur-xl border border-[#d4af37]/30 rounded-lg px-4 py-2.5 whitespace-nowrap shadow-2xl cursor-pointer hover:border-[#d4af37]/60 transition-colors"
             >
               <span className="text-[11px] font-bold tracking-[0.2em] uppercase text-[#d4af37]">
-                Claim your plot →
+                Claim your slot →
               </span>
             </a>
           </Html>
@@ -271,7 +288,7 @@ function Island({ position, radius }: { position: [number, number, number]; radi
 function StaticCamera() {
   const { camera } = useThree();
   useFrame(() => {
-    camera.position.set(0, 12, 14);
+    camera.position.set(0, 14, 18);
     camera.lookAt(0, 0, 0);
   });
   return null;
@@ -284,13 +301,13 @@ function VillageScene({ plots }: { plots: PlotData[] }) {
 
   return (
     <>
-      <ambientLight intensity={0.15} color="#8090b0" />
-      <directionalLight position={[5, 14, -3]} intensity={0.1} color="#a0b0d0" />
-      <hemisphereLight color="#1a2040" groundColor="#0a0806" intensity={0.15} />
-      <pointLight position={[-5, 2, 0]} color="#ffa830" intensity={15} distance={8} decay={2} />
-      <pointLight position={[5.5, 2, 0]} color="#ffa830" intensity={15} distance={8} decay={2} />
-      <directionalLight position={[3, 20, -5]} intensity={0.2} color="#c0d0ff" />
-      <fog attach="fog" args={["#050508", 14, 28]} />
+      <ambientLight intensity={0.55} color="#9baac0" />
+      <directionalLight position={[5, 14, -3]} intensity={0.4} color="#b8c8e0" />
+      <hemisphereLight color="#3a4a70" groundColor="#2a1a12" intensity={0.5} />
+      <pointLight position={[BLR_CENTER_X, 3, 0]} color="#ffb040" intensity={45} distance={18} decay={2} />
+      <pointLight position={[WTF_CENTER_X, 3, 0]} color="#ffb040" intensity={45} distance={18} decay={2} />
+      <directionalLight position={[3, 20, -5]} intensity={0.4} color="#dce6ff" />
+      <fog attach="fog" args={["#0a0a12", 20, 40]} />
 
       <StaticCamera />
 
@@ -298,16 +315,16 @@ function VillageScene({ plots }: { plots: PlotData[] }) {
         <planeGeometry args={[40, 40]} />
       </mesh>
 
-      <Island position={[-5, 0.01, 0]} radius={4.2} />
-      <Island position={[5.5, 0.01, 0]} radius={4.8} />
+      <Island position={[BLR_CENTER_X, 0.01, 0]} radius={5.5} />
+      <Island position={[WTF_CENTER_X, 0.01, 0]} radius={6.2} />
 
-      <Html position={[-5, 4.5, 0]} center style={{ pointerEvents: "none", zIndex: 0 }}>
+      <Html position={[BLR_CENTER_X, 5.5, 0]} center style={{ pointerEvents: "none", zIndex: 0 }}>
         <div className="text-center whitespace-nowrap opacity-70">
           <p className="text-white text-sm md:text-base font-bold tracking-tight">BLRxZo</p>
           <p className="text-[#d4af37] text-[9px] font-bold tracking-[0.15em] uppercase">Koramangala</p>
         </div>
       </Html>
-      <Html position={[5.5, 4.5, 0]} center style={{ pointerEvents: "none", zIndex: 0 }}>
+      <Html position={[WTF_CENTER_X, 5.5, 0]} center style={{ pointerEvents: "none", zIndex: 0 }}>
         <div className="text-center whitespace-nowrap opacity-70">
           <p className="text-white text-sm md:text-base font-bold tracking-tight">WTFxZo</p>
           <p className="text-[#d4af37] text-[9px] font-bold tracking-[0.15em] uppercase">Whitefield</p>
@@ -353,7 +370,7 @@ export function Village({ blr = [], wtf = [], syncedAt = null }: VillageProps) {
         <BlurFade inView delay={0.1} direction="up">
           <div className="text-center mb-8 md:mb-12">
             <span className="text-[10px] font-bold tracking-[0.3em] text-neutral-500 uppercase block mb-4">
-              The Village — Live
+              The Village · Live
             </span>
             <h2 className="text-3xl md:text-5xl font-light tracking-tight mb-4">
               Already inside the{" "}
@@ -408,7 +425,7 @@ export function Village({ blr = [], wtf = [], syncedAt = null }: VillageProps) {
             <div className="w-px h-8 bg-white/10" />
             <div>
               <p className="text-xl md:text-2xl font-bold shiny-gold tracking-tight">{plotsRemaining}</p>
-              <p className="text-[9px] font-bold tracking-[0.2em] text-neutral-500 uppercase mt-1">Plots remaining</p>
+              <p className="text-[9px] font-bold tracking-[0.2em] text-neutral-500 uppercase mt-1">Slots remaining</p>
             </div>
           </div>
           {syncedAt && (

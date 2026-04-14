@@ -10,9 +10,9 @@ interface MetaTagsProps {
   type?: string;
 }
 
-const TITLE = "Civilisation — India's first permanent hacker house.";
+const TITLE = "Zo House · India's first permanent hacker house";
 const DESCRIPTION =
-  "Two properties in Bangalore. 35 plots. Founders live, build, and compound here. Apply for the waitlist.";
+  "Two nodes in Bangalore. 35 slots. Founders live, build, and compound here. Apply for the waitlist.";
 const IMAGE =
   "https://cdn.zo.xyz/gallery/media/images/f959f43e-0d6e-4798-a7e2-01388bdf2bc7_20260414120415.svg";
 

@@ -5,8 +5,8 @@ import { HOUSE_MEDIA } from "../config/house-media";
 const STAGES = ["Idea", "Prototype", "Launched", "Growing"];
 const ROLES = ["Founder", "Engineer", "Designer", "Researcher", "Creator", "Operator"];
 const PROPERTIES: { value: string; label: string; sub: string }[] = [
-  { value: "WTFxZo", label: "WTFxZo", sub: "Whitefield · 20 plots" },
-  { value: "BLRxZo", label: "BLRxZo", sub: "Koramangala · 15 plots" },
+  { value: "WTFxZo", label: "WTFxZo", sub: "Whitefield · 20 slots" },
+  { value: "BLRxZo", label: "BLRxZo", sub: "Koramangala · 15 slots" },
   { value: "Either", label: "Either", sub: "Open to both" },
 ];
 
@@ -116,7 +116,7 @@ export function ApplyModal({ open, onClose }: ApplyModalProps) {
           {submitted ? (
             <div className="text-center py-24">
               <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#d4af37] mb-4">
-                The Civilisation
+                Zo House
               </p>
               <h2 className="text-4xl md:text-5xl font-medium tracking-tight mb-4 text-white">
                 You&apos;re{" "}
@@ -131,7 +131,7 @@ export function ApplyModal({ open, onClose }: ApplyModalProps) {
                 onClick={onClose}
                 className="text-sm text-neutral-500 hover:text-white transition-colors underline underline-offset-4"
               >
-                Back to The Civilisation
+                Back to Zo House
               </button>
             </div>
           ) : (
@@ -141,18 +141,18 @@ export function ApplyModal({ open, onClose }: ApplyModalProps) {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={HOUSE_MEDIA.applyBanner}
-                  alt="The Civilisation"
+                  alt="Zo House"
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 px-6 pb-6">
                   <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#d4af37] mb-1">
-                    The Civilisation · Application
+                    Zo House · Application
                   </p>
                   <h1 className="text-2xl md:text-4xl font-medium tracking-tight text-white">
                     Claim your{" "}
                     <span className="font-[family-name:var(--font-headline)] italic shiny-gold">
-                      plot.
+                      slot.
                     </span>
                   </h1>
                 </div>
@@ -286,7 +286,7 @@ export function ApplyModal({ open, onClose }: ApplyModalProps) {
                   </div>
                 </Field>
 
-                <Field label="Preferred property" required>
+                <Field label="Preferred node" required>
                   <div className="flex flex-wrap gap-2">
                     {PROPERTIES.map((p) => {
                       const selected = form.preferredProperty === p.value;
@@ -311,7 +311,7 @@ export function ApplyModal({ open, onClose }: ApplyModalProps) {
                   </div>
                 </Field>
 
-                <Field label="How did you hear about The Civilisation?">
+                <Field label="How did you hear about Zo House?">
                   <input
                     value={form.heardFrom}
                     onChange={(e) => update("heardFrom", e.target.value)}

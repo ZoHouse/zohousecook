@@ -78,7 +78,7 @@ export function ProgramAccordion() {
             <p className="text-neutral-400 text-base md:text-lg font-light max-w-xl mb-10">
               Founders live together in Bangalore. Monthly cohorts. Build
               alongside serious peers. The house doesn&apos;t reset when a
-              cohort ends — it compounds.
+              cohort ends. It compounds.
             </p>
 
             {/* Accordion */}
