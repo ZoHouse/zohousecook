@@ -1,6 +1,8 @@
 import React from "react";
 import { usePublicPassport } from "../../hooks/usePublicPassport";
 import { PassportPitch, ViewerState } from "./PassportPitch";
+import { ShareQuestButtons } from "./ShareQuestButtons";
+import { TierPill } from "./TierPill";
 
 interface PublicPassportViewProps {
   handle: string;
@@ -75,13 +77,16 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
           ) : (
             <AvatarFallback initial={initial} />
           )}
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-white">{data.custom_nickname}</h1>
+          <div className="text-center flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-white">{data.custom_nickname}</h1>
+              <TierPill state={data.state} />
+            </div>
             {data.full_name && (
-              <p className="text-white/60 text-sm mt-1">{data.full_name}</p>
+              <p className="text-white/60 text-sm">{data.full_name}</p>
             )}
             {(data.place_name || data.country) && (
-              <p className="text-white/40 text-xs mt-1">
+              <p className="text-white/40 text-xs">
                 {data.place_name && `from ${data.place_name}`}
                 {data.place_name && data.country && ", "}
                 {data.country}
@@ -204,6 +209,24 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {data.state === "locked" && (
+          <div className="mb-6 p-5 rounded-2xl bg-white/5 border border-white/10 text-center">
+            <p className="text-white text-sm font-semibold mb-1">
+              {handle}&apos;s passport is locked
+            </p>
+            <p className="text-white/50 text-xs">
+              They haven&apos;t completed onboarding yet. Drop in later to see
+              their stamps, badges, and tribe.
+            </p>
+          </div>
+        )}
+
+        {data.state === "unlocked_pro" && (
+          <div className="mb-6 p-5 rounded-2xl bg-white/5 border border-white/10">
+            <ShareQuestButtons handle={handle} />
           </div>
         )}
 
