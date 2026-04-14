@@ -1,10 +1,11 @@
 import type { AppProps } from "next/app";
 import Head from "next/head";
+import { ZoAuthProvider } from "../hooks/useZoAuth";
 import "../styles/globals.css";
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    <>
+    <ZoAuthProvider>
       <Head>
         <link
           rel="preconnect"
@@ -23,6 +24,6 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
       <Component {...pageProps} />
-    </>
+    </ZoAuthProvider>
   );
 }

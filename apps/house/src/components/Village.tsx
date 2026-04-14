@@ -203,7 +203,7 @@ function HouseModel({
         {isHovered && (
           <Html position={[0, 0.8, 0]} center>
             <a
-              href="/apply"
+              href="/?apply=1"
               className="block bg-[#0e0e0c]/95 backdrop-blur-xl border border-[#d4af37]/30 rounded-lg px-4 py-2.5 whitespace-nowrap shadow-2xl cursor-pointer hover:border-[#d4af37]/60 transition-colors"
             >
               <span className="text-[11px] font-bold tracking-[0.2em] uppercase text-[#d4af37]">

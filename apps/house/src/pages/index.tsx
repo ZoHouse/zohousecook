@@ -1,8 +1,9 @@
 import Image from "next/image";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { MetaTags } from "../components/common/MetaTags";
+import { ApplyModal } from "../components/ApplyModal";
 import {
   BlurFade,
   HyperText,
@@ -17,6 +18,7 @@ import {
 import { Village } from "../components/Village";
 import { HOUSE_MEDIA } from "../config/house-media";
 import { fetchResidents } from "../lib/residents";
+import { useZoAuth } from "../hooks/useZoAuth";
 
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
   // ISR-style: cache at edge for 5 minutes, match the sync cadence
@@ -56,6 +58,27 @@ export default function House({
   residents,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const { isLoggedIn, showLoginModal } = useZoAuth();
+  const [applyOpen, setApplyOpen] = useState(false);
+
+  const goToApply = () => {
+    if (isLoggedIn) {
+      setApplyOpen(true);
+    } else {
+      showLoginModal({ onSuccess: () => setApplyOpen(true) });
+    }
+  };
+
+  // Deep link: ?apply=1 (from /apply redirect or the empty-plot tooltip).
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (router.query.apply === "1") {
+      goToApply();
+      // Clean the URL without reloading.
+      router.replace("/", undefined, { shallow: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady, router.query.apply]);
   return (
     <HouseWrapper>
       <div
@@ -137,7 +160,7 @@ export default function House({
                 Is Recruiting
               </h1>
               <button
-                onClick={() => router.push("/apply")}
+                onClick={() => goToApply()}
                 className="hidden md:block bg-white text-black font-bold text-[11px] tracking-widest uppercase rounded-full px-10 py-3.5 hover:scale-[1.03] active:scale-95 transition-all duration-300 mx-auto"
               >
                 Apply Now
@@ -217,7 +240,7 @@ export default function House({
             </BlurFade>
             <BlurFade inView delay={0.25} direction="up">
               <button
-                onClick={() => router.push("/apply")}
+                onClick={() => goToApply()}
                 className="bg-white text-black font-bold text-[11px] tracking-widest uppercase rounded-full px-10 py-3.5 hover:scale-[1.03] active:scale-95 transition-all duration-300 mx-auto block"
               >
                 Apply Now
@@ -226,7 +249,9 @@ export default function House({
           </div>
         </section>
 
-        <MobileWaitlistBar />
+        <MobileWaitlistBar onApply={goToApply} />
+
+        <ApplyModal open={applyOpen} onClose={() => setApplyOpen(false)} />
 
         <footer className="bg-black py-20 pb-28 md:pb-20 px-8">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center w-full border-t border-white/5 pt-12">
