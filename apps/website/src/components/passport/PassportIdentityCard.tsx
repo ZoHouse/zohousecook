@@ -76,7 +76,7 @@ const PassportIdentityCard: React.FC<PassportIdentityCardProps> = ({
   const infoRows: Array<{ label: string; value: string }> = [];
   if (dob) infoRows.push({ label: "DOB", value: dob });
   if (gender) infoRows.push({ label: "GENDER", value: gender });
-  if (homeCity) infoRows.push({ label: "HOMECITY", value: homeCity });
+  if (homeCity) infoRows.push({ label: "HOMETOWN", value: homeCity });
   if (nationality) infoRows.push({ label: "NATIONALITY", value: nationality });
 
   return (

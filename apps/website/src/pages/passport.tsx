@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { GetServerSidePropsContext } from "next";
 import { useRouter } from "next/router";
 import { useAuth, useProfile } from "@zo/auth";
 import {
@@ -9,10 +10,40 @@ import {
   WhyPassportPlus,
 } from "../components/passport";
 import { SettingsModal } from "../components/passport/SettingsModal";
+import { PublicPassportView } from "../components/passport/PublicPassportView";
+import { ViewerState } from "../components/passport/PassportPitch";
 import { useMyXp } from "../hooks/useMyXp";
 import { useMyRoles } from "../hooks/useMyRoles";
+import { useCaptureReferrer } from "../hooks/useCaptureReferrer";
 
-export default function PassportPage() {
+function parseHandleFromAsPath(asPath: string): string | null {
+  const m = asPath.match(/^\/@([^/?#]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+function resolveViewerState(
+  isLoggedIn: boolean | null | undefined,
+  profile: { custom_nickname?: string | null; nickname?: string | null } | null | undefined,
+): ViewerState {
+  if (!isLoggedIn) return "logged_out";
+  const hasHandle = !!(profile?.custom_nickname || profile?.nickname);
+  if (!hasHandle) return "logged_in_no_passport";
+  return "free";
+}
+
+interface PassportPageProps {
+  handleFromUrl: string | null;
+}
+
+export async function getServerSideProps(
+  context: GetServerSidePropsContext,
+): Promise<{ props: PassportPageProps }> {
+  const reqUrl = context.req.url || "";
+  const handleFromUrl = parseHandleFromAsPath(reqUrl);
+  return { props: { handleFromUrl } };
+}
+
+export default function PassportPage({ handleFromUrl }: PassportPageProps) {
   const router = useRouter();
   const { isLoggedIn, showLoginModal } = useAuth();
   const { profile, isLoading } = useProfile();
@@ -25,11 +56,25 @@ export default function PassportPage() {
     profile?.nickname ||
     "";
 
+  const urlHandle = parseHandleFromAsPath(router.asPath) || handleFromUrl;
+  const isVisitorView = !!urlHandle && urlHandle !== handle;
+
+  useCaptureReferrer(isVisitorView ? urlHandle : null);
+
   useEffect(() => {
     if (router.asPath === "/passport" && isLoggedIn && handle) {
       router.replace(`/@${handle}`);
     }
   }, [router, isLoggedIn, handle]);
+
+  if (isVisitorView && urlHandle) {
+    return (
+      <PublicPassportView
+        handle={urlHandle}
+        viewerState={resolveViewerState(isLoggedIn, profile)}
+      />
+    );
+  }
 
   if (!isLoggedIn) {
     return (

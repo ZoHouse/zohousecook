@@ -988,7 +988,7 @@ function ProfileSection() {
     <section>
       <SectionHeader title="Profile" />
       <EditableRow label="Nickname" value={profile?.custom_nickname || ""} field="custom_nickname" onSave={handleSave} />
-      <EditableRow label="First name" value={profile?.first_name || ""} field="first_name" onSave={handleSave} />
+      <EditableRow label="Full name" value={profile?.first_name || ""} field="first_name" onSave={handleSave} />
       <EditableRow label="Middle name" value={profile?.middle_name || ""} field="middle_name" onSave={handleSave} />
       <EditableRow label="Last name" value={profile?.last_name || ""} field="last_name" onSave={handleSave} />
       <EditableRow label="Bio" value={profile?.bio || ""} field="bio" type="textarea" onSave={handleSave} />
