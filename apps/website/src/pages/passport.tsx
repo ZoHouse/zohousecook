@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { GetServerSidePropsContext } from "next";
+import Head from "next/head";
 import { useRouter } from "next/router";
 import { useAuth, useProfile } from "@zo/auth";
 import {
@@ -15,6 +16,58 @@ import { ViewerState } from "../components/passport/PassportPitch";
 import { useMyXp } from "../hooks/useMyXp";
 import { useMyRoles } from "../hooks/useMyRoles";
 import { useCaptureReferrer } from "../hooks/useCaptureReferrer";
+
+const PASSPORT_ENDPOINT = "https://api.nsfp.io.zo.xyz/api/v1/passport";
+
+interface PassportOg {
+  handle: string;
+  title: string;
+  description: string;
+  image: string | null;
+  url: string;
+}
+
+async function fetchPassportOg(
+  handle: string,
+  origin: string,
+): Promise<PassportOg | null> {
+  const nickname = handle.endsWith(".zo") ? handle : `${handle}.zo`;
+  try {
+    const res = await fetch(
+      `${PASSPORT_ENDPOINT}/${encodeURIComponent(nickname)}/`,
+      { headers: { accept: "application/json" } },
+    );
+    if (!res.ok) return null;
+    const raw = (await res.json()) as Record<string, unknown>;
+    const full = String(raw.full_name ?? "").trim();
+    const rank = String(raw.rank_title ?? "").trim();
+    const stats = (raw.stats as Record<string, unknown>) || {};
+    const destinations = Number(stats.destinations) || 0;
+    const stays = Number(stats.stays) || 0;
+    const tribe = Number(stats.tribe) || 0;
+
+    const displayName = full || handle;
+    const title = full
+      ? `${full} · ${nickname} on Zo World`
+      : `${nickname} on Zo World`;
+
+    const bits: string[] = [];
+    if (rank) bits.push(rank);
+    if (destinations > 0) bits.push(`${destinations} destination${destinations === 1 ? "" : "s"}`);
+    if (stays > 0) bits.push(`${stays} stay${stays === 1 ? "" : "s"}`);
+    if (tribe > 0) bits.push(`${tribe} fren${tribe === 1 ? "" : "s"}`);
+    const description =
+      bits.length > 0
+        ? `${bits.join(" · ")} · Citizen of Zo World`
+        : `${displayName} is a Citizen of Zo World. Unlock your Passport and join the tribe.`;
+
+    const image = String(raw.pfp_image ?? "").trim() || null;
+    const url = `${origin}/@${handle}`;
+    return { handle, title, description, image, url };
+  } catch {
+    return null;
+  }
+}
 
 function parseHandleFromAsPath(asPath: string): string | null {
   const m = asPath.match(/^\/@([^/?#]+)/);
@@ -33,6 +86,7 @@ function resolveViewerState(
 
 interface PassportPageProps {
   handleFromUrl: string | null;
+  og: PassportOg | null;
 }
 
 export async function getServerSideProps(
@@ -40,10 +94,21 @@ export async function getServerSideProps(
 ): Promise<{ props: PassportPageProps }> {
   const reqUrl = context.req.url || "";
   const handleFromUrl = parseHandleFromAsPath(reqUrl);
-  return { props: { handleFromUrl } };
+
+  let og: PassportOg | null = null;
+  if (handleFromUrl) {
+    const host = context.req.headers.host || "zo.xyz";
+    const proto =
+      (context.req.headers["x-forwarded-proto"] as string) ||
+      (host.startsWith("localhost") ? "http" : "https");
+    const origin = `${proto}://${host}`;
+    og = await fetchPassportOg(handleFromUrl, origin);
+  }
+
+  return { props: { handleFromUrl, og } };
 }
 
-export default function PassportPage({ handleFromUrl }: PassportPageProps) {
+export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
   const router = useRouter();
   const { isLoggedIn, showLoginModal } = useAuth();
   const { profile, isLoading } = useProfile();
@@ -69,10 +134,29 @@ export default function PassportPage({ handleFromUrl }: PassportPageProps) {
 
   if (isVisitorView && urlHandle) {
     return (
-      <PublicPassportView
-        handle={urlHandle}
-        viewerState={resolveViewerState(isLoggedIn, profile)}
-      />
+      <>
+        {og && (
+          <Head>
+            <title>{og.title}</title>
+            <meta name="title" content={og.title} />
+            <meta name="description" content={og.description} />
+            <meta property="og:type" content="profile" />
+            <meta property="og:url" content={og.url} />
+            <meta property="og:title" content={og.title} />
+            <meta property="og:description" content={og.description} />
+            {og.image && <meta property="og:image" content={og.image} />}
+            <meta property="twitter:card" content="summary_large_image" />
+            <meta property="twitter:url" content={og.url} />
+            <meta property="twitter:title" content={og.title} />
+            <meta property="twitter:description" content={og.description} />
+            {og.image && <meta property="twitter:image" content={og.image} />}
+          </Head>
+        )}
+        <PublicPassportView
+          handle={urlHandle}
+          viewerState={resolveViewerState(isLoggedIn, profile)}
+        />
+      </>
     );
   }
 
