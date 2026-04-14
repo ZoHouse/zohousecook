@@ -196,11 +196,13 @@ function HouseModel({
   onHover,
   onUnhover,
   isHovered,
+  onClaim,
 }: {
   plot: PlotData;
   onHover: () => void;
   onUnhover: () => void;
   isHovered: boolean;
+  onClaim?: () => void;
 }) {
   const s = plot.scale || 1;
 
@@ -219,14 +221,15 @@ function HouseModel({
         <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[0.02, 0.2, 1]} material={isHovered ? matPlotPlusHover : matPlotPlus} geometry={geoPlane} />
         {isHovered && (
           <Html position={[0, 0.8, 0]} center>
-            <a
-              href="/?apply=1"
+            <button
+              type="button"
+              onClick={() => onClaim?.()}
               className="block bg-[#0e0e0c]/95 backdrop-blur-xl border border-[#d4af37]/30 rounded-lg px-4 py-2.5 whitespace-nowrap shadow-2xl cursor-pointer hover:border-[#d4af37]/60 transition-colors"
             >
               <span className="text-[11px] font-bold tracking-[0.2em] uppercase text-[#d4af37]">
                 Claim your slot →
               </span>
-            </a>
+            </button>
           </Html>
         )}
       </group>
@@ -294,7 +297,7 @@ function StaticCamera() {
   return null;
 }
 
-function VillageScene({ plots }: { plots: PlotData[] }) {
+function VillageScene({ plots, onClaim }: { plots: PlotData[]; onClaim?: () => void }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const handleHover = useCallback((i: number) => setHoveredIndex(i), []);
   const handleUnhover = useCallback(() => setHoveredIndex(null), []);
@@ -346,6 +349,7 @@ function VillageScene({ plots }: { plots: PlotData[] }) {
           isHovered={hoveredIndex === i}
           onHover={() => handleHover(i)}
           onUnhover={handleUnhover}
+          onClaim={onClaim}
         />
       ))}
     </>
@@ -356,9 +360,10 @@ interface VillageProps {
   blr?: Resident[];
   wtf?: Resident[];
   syncedAt?: string | null;
+  onClaim?: () => void;
 }
 
-export function Village({ blr = [], wtf = [], syncedAt = null }: VillageProps) {
+export function Village({ blr = [], wtf = [], syncedAt = null, onClaim }: VillageProps) {
   const plots = useMemo(() => buildPlots(blr, wtf), [blr, wtf]);
   const blrConfirmed = blr.length;
   const wtfConfirmed = wtf.length;
@@ -393,7 +398,7 @@ export function Village({ blr = [], wtf = [], syncedAt = null }: VillageProps) {
             gl={{ antialias: true, powerPreference: "high-performance" }}
           >
             <Suspense fallback={null}>
-              <VillageScene plots={plots} />
+              <VillageScene plots={plots} onClaim={onClaim} />
             </Suspense>
           </Canvas>
 

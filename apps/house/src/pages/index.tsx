@@ -183,7 +183,7 @@ export default function House({
           </div>
         </section>
 
-        <Village blr={residents.blr} wtf={residents.wtf} syncedAt={residents.syncedAt} />
+        <Village blr={residents.blr} wtf={residents.wtf} syncedAt={residents.syncedAt} onClaim={goToApply} />
 
         <section className="relative bg-black">
           <TextReveal
