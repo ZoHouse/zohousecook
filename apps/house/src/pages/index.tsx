@@ -92,19 +92,6 @@ export default function House({
           <span className="text-xl font-black tracking-tighter text-white font-[family-name:var(--font-headline)] italic shiny-gold">
             Zo House
           </span>
-          <nav className="hidden md:flex items-center gap-6">
-            <a className="text-neutral-400 font-medium hover:text-white transition-colors duration-300 text-[13px] tracking-wide uppercase" href="#">
-              Home
-            </a>
-            <span className="text-neutral-700">&bull;</span>
-            <a className="text-neutral-400 font-medium hover:text-white transition-colors duration-300 text-[13px] tracking-wide uppercase" href="#">
-              How It Works
-            </a>
-            <span className="text-neutral-700">&bull;</span>
-            <a className="text-neutral-400 font-medium hover:text-white transition-colors duration-300 text-[13px] tracking-wide uppercase" href="#">
-              Philosophy
-            </a>
-          </nav>
           <ZoRadioPill />
         </header>
 
