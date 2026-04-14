@@ -8,6 +8,7 @@ import {
   HyperText,
   TextReveal,
   MissionHouses,
+  ZoRadioPill,
   MobileWaitlistBar,
   HouseWrapper,
   ProgramAccordion,
@@ -81,12 +82,7 @@ export default function House({
               Philosophy
             </a>
           </nav>
-          <a
-            href="/apply"
-            className="bg-white text-black font-bold text-[10px] tracking-widest uppercase rounded-full px-5 py-2 hover:scale-[1.03] active:scale-95 transition-all duration-300"
-          >
-            Apply
-          </a>
+          <ZoRadioPill />
         </header>
 
         {/* Hero Section */}
