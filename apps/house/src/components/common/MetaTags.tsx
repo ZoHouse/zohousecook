@@ -14,7 +14,7 @@ const TITLE = "Zo House · India's first permanent hacker house";
 const DESCRIPTION =
   "Two nodes in Bangalore. 35 slots. Founders live, build, and compound here. Apply for the waitlist.";
 const IMAGE =
-  "https://cdn.zo.xyz/gallery/media/images/42cfd9c7-c164-4831-b178-d94242b323e7_20260414193919.png";
+  "https://cdn.zo.xyz/gallery/media/images/d5a42fe5-cd0c-4e04-98fd-539a8b2b5369_20260414235233.jpg";
 
 export const MetaTags: React.FC<MetaTagsProps> = ({
   title = TITLE,
