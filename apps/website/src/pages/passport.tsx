@@ -20,6 +20,7 @@ import { fixAvatarUrl } from "../hooks/usePublicPassport";
 import { useMyXp } from "../hooks/useMyXp";
 import { useMyRoles } from "../hooks/useMyRoles";
 import { useCaptureReferrer } from "../hooks/useCaptureReferrer";
+import { identifyUser, trackActivity } from "../lib/analytics/trackActivity";
 
 const PASSPORT_ENDPOINT = "https://api.nsfp.io.zo.xyz/api/v1/passport";
 
@@ -141,6 +142,32 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
   const isVisitorView = !!urlHandle && urlHandle !== handle;
 
   useCaptureReferrer(isVisitorView ? urlHandle : null);
+
+  // Identify the current user in PostHog once their Zo PID is available.
+  // Idempotent — PostHog dedupes by distinct_id, so calling this on every
+  // profile mutation is safe.
+  useEffect(() => {
+    if (isLoggedIn && profile?.id) {
+      void identifyUser(String(profile.id), {
+        handle: profile.custom_nickname || profile.nickname || null,
+      });
+    }
+  }, [isLoggedIn, profile?.id, profile?.custom_nickname, profile?.nickname]);
+
+  // Fire passport_view exactly once per handle load. Both the visitor view
+  // (/@someone) and the private own-passport view (/passport or /@self)
+  // count — Erum needs to know total pageviews per handle, not just inbound
+  // traffic from strangers.
+  const viewedHandle = isVisitorView ? urlHandle : handle || null;
+  useEffect(() => {
+    if (!viewedHandle) return;
+    void trackActivity("passport_view", {
+      handle: viewedHandle,
+      is_own_passport: !isVisitorView,
+      is_logged_in: !!isLoggedIn,
+      referrer: typeof document !== "undefined" ? document.referrer || null : null,
+    });
+  }, [viewedHandle, isVisitorView, isLoggedIn]);
 
   useEffect(() => {
     if (router.asPath === "/passport" && isLoggedIn && handle) {
