@@ -63,6 +63,26 @@ interface Header extends HeadersDefaults {
   Authorization?: string;
 }
 
+/**
+ * Parse a persisted token-expiry value into a millisecond epoch timestamp.
+ *
+ * Accepts: numeric ms timestamps ("1745000000000"), numeric second
+ * timestamps ("1745000000"), and ISO date strings ("2026-04-22T12:00:00Z").
+ * Returns NaN for anything that can't be interpreted. The caller must
+ * Number.isFinite() check before comparing against Date.now().
+ */
+function parseTokenExpiry(raw: string | null | undefined): number {
+  if (!raw) return NaN;
+  const asNumber = Number(raw);
+  if (Number.isFinite(asNumber) && asNumber > 0) {
+    // Unix epoch in seconds crosses 1e10 around Nov 2286; anything smaller
+    // than 1e12 (year ~33688 in ms) must be seconds, not milliseconds.
+    return asNumber < 1e12 ? asNumber * 1000 : asNumber;
+  }
+  const asDate = new Date(raw).getTime();
+  return Number.isFinite(asDate) ? asDate : NaN;
+}
+
 interface AuthProviderProps {
   localKey: string;
   isLoginRequired?: boolean;
@@ -159,13 +179,21 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
       };
 
       if (isValidString(initialTokenExpiry)) {
-        const parsedDate = +new Date(initialTokenExpiry || "");
+        // valid_till can arrive from the server as either a numeric epoch
+        // timestamp (ms or s) or an ISO string. localStorage round-trips it
+        // as a string via String(validTill), so on refresh we must parse it
+        // back with a format-agnostic path. Previously we used
+        // `+new Date(initialTokenExpiry)` which silently returned NaN for
+        // pure-digit strings like "1745000000000" — NaN > now is false,
+        // so every refresh logged users out.
+        const parsedDate = parseTokenExpiry(initialTokenExpiry);
         const parsedUser = getUserIfExists(initialUser);
         if (
           isValidObject(parsedUser) &&
           isValidString(parsedUser?.id) &&
           isValidString(initialToken) &&
-          parsedDate > +new Date()
+          Number.isFinite(parsedDate) &&
+          parsedDate > Date.now()
         ) {
           customAxiosHeaders.Authorization = `Bearer ${initialToken}`;
           setTimeout(() => {
