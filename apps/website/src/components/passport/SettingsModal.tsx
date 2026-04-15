@@ -47,10 +47,21 @@ interface EditableRowProps {
   disabled?: boolean;
   onSave: (field: string, value: string) => Promise<void>;
   displayValue?: string;
+  /**
+   * Optional pre-save validation. Return null to allow commit, or a string
+   * to show as an error and block commit. Async allowed for API-backed
+   * checks (e.g. nickname availability).
+   */
+  validate?: (draft: string) => Promise<string | null> | string | null;
+  /**
+   * Transform the draft value before passing it to onSave (e.g. lowercase
+   * + strip non-alphanumeric + append ".zo" for nickname).
+   */
+  transform?: (draft: string) => string;
 }
 
 function EditableRow({
-  label, value, field, type = "text", options, disabled = false, onSave, displayValue,
+  label, value, field, type = "text", options, disabled = false, onSave, displayValue, validate, transform,
 }: EditableRowProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -66,7 +77,16 @@ function EditableRow({
     setSaving(true);
     setError(null);
     try {
-      await onSave(field, draft);
+      if (validate) {
+        const validationError = await validate(draft);
+        if (validationError) {
+          setError(validationError);
+          setSaving(false);
+          return;
+        }
+      }
+      const toSave = transform ? transform(draft) : draft;
+      await onSave(field, toSave);
       setEditing(false);
     } catch {
       setError("Could not save. Try again.");
@@ -957,6 +977,50 @@ function CulturesSection() {
   );
 }
 
+function validateNicknameShape(draft: string): string | null {
+  const clean = draft.toLowerCase().replace(/\.zo$/, "").replace(/[^a-z0-9]/g, "");
+  if (clean.length < 4 || clean.length > 16) {
+    return "Must be 4-16 alphanumeric characters";
+  }
+  return null;
+}
+
+async function checkNicknameAvailable(draft: string): Promise<string | null> {
+  const shapeErr = validateNicknameShape(draft);
+  if (shapeErr) return shapeErr;
+  const clean = draft.toLowerCase().replace(/\.zo$/, "").replace(/[^a-z0-9]/g, "");
+  const withZo = `${clean}.zo`;
+  try {
+    const res = await fetch(
+      `${process.env.API_BASE_URL || "https://api.io.zo.xyz"}/api/v1/profile/custom-nickname/available/?nickname=${withZo}`,
+    );
+    const data = await res.json();
+    if (!data.available) return `${withZo} is taken`;
+  } catch {
+    return "Could not check availability";
+  }
+  return null;
+}
+
+function nicknameTransform(draft: string): string {
+  const clean = draft.toLowerCase().replace(/\.zo$/, "").replace(/[^a-z0-9]/g, "");
+  return `${clean}.zo`;
+}
+
+function validateDob(draft: string): string | null {
+  if (!draft) return "Date of birth required";
+  const dob = new Date(draft);
+  if (isNaN(dob.getTime())) return "Invalid date";
+  const today = new Date();
+  if (dob > today) return "Cannot be a future date";
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthDiff = today.getMonth() - dob.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) age--;
+  if (age < 13) return "Must be at least 13 years old";
+  if (age > 120) return "Invalid date of birth";
+  return null;
+}
+
 function ProfileSection() {
   const { profile, updateProfile, refetchProfile } = useProfile();
 
@@ -989,12 +1053,26 @@ function ProfileSection() {
   return (
     <section>
       <SectionHeader title="Profile" />
-      <EditableRow label="Nickname" value={profile?.custom_nickname || ""} field="custom_nickname" onSave={handleSave} />
+      <EditableRow
+        label="Nickname"
+        value={profile?.custom_nickname || ""}
+        field="custom_nickname"
+        onSave={handleSave}
+        validate={checkNicknameAvailable}
+        transform={nicknameTransform}
+      />
       <EditableRow label="Full name" value={profile?.first_name || ""} field="first_name" onSave={handleSave} />
       <EditableRow label="Middle name" value={profile?.middle_name || ""} field="middle_name" onSave={handleSave} />
       <EditableRow label="Last name" value={profile?.last_name || ""} field="last_name" onSave={handleSave} />
       <EditableRow label="Bio" value={profile?.bio || ""} field="bio" type="textarea" onSave={handleSave} />
-      <EditableRow label="Date of birth" value={profile?.date_of_birth || ""} field="date_of_birth" type="date" onSave={handleSave} />
+      <EditableRow
+        label="Date of birth"
+        value={profile?.date_of_birth || ""}
+        field="date_of_birth"
+        type="date"
+        onSave={handleSave}
+        validate={validateDob}
+      />
       <EditableRow label="Gender" value={profile?.gender || ""} field="gender" type="select" options={genderOptions} displayValue={genderLabel} onSave={handleSave} />
       <EditableRow label="Body type" value={profile?.body_type || ""} field="body_type" type="select" options={bodyTypeOptions} displayValue={bodyLabel} onSave={handleSave} />
     </section>
