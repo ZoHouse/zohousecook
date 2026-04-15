@@ -254,7 +254,11 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
             <ReferralSection handle={handle} />
             {handle && (
               <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-                <ShareQuestButtons handle={handle} />
+                <ShareQuestButtons
+                  handle={handle}
+                  displayName={profile?.full_name || profile?.first_name || handle}
+                  avatarUrl={profile?.avatar?.image || profile?.pfp_image}
+                />
               </div>
             )}
             <WhyPassportPlus />

@@ -1,9 +1,16 @@
 import React, { useState } from "react";
 import { toast } from "sonner";
+import {
+  buildStoryCanvas,
+  shareStoryCanvas,
+} from "../../lib/passport/buildStoryCanvas";
+import { fixAvatarUrl } from "../../hooks/usePublicPassport";
 
 interface ShareQuestButtonsProps {
   handle: string;
   origin?: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
 }
 
 function linkFor(handle: string, origin?: string): string {
@@ -20,11 +27,20 @@ function openInNewTab(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-export function ShareQuestButtons({ handle, origin }: ShareQuestButtonsProps) {
+export function ShareQuestButtons({
+  handle,
+  origin,
+  displayName,
+  avatarUrl,
+}: ShareQuestButtonsProps) {
   const [copied, setCopied] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   const passportUrl = linkFor(handle, origin);
   const message = shareText(handle);
+  const fixedAvatar = fixAvatarUrl(avatarUrl || undefined) || null;
+  const resolvedName = displayName || handle;
+  const shareTitle = `${resolvedName}'s Zo Passport`;
 
   const copyLink = async () => {
     try {
@@ -37,13 +53,40 @@ export function ShareQuestButtons({ handle, origin }: ShareQuestButtonsProps) {
     }
   };
 
-  const shareToIgStory = () => {
-    // IG has no public "new story with URL tag" deep link. Best effort: open
-    // IG, let the user paste. On mobile this opens the app; on desktop the
-    // profile page. We also copy the passport URL so the user can paste the
-    // sticker after the camera opens.
-    copyLink();
-    openInNewTab("https://www.instagram.com/create/story/");
+  const shareToIgStory = async () => {
+    // Generate a branded 1080x1920 passport card and push it through the
+    // mobile share sheet (Instagram appears as a share target). Desktop
+    // falls back to PNG download + instructions to upload to IG.
+    if (generating) return;
+    setGenerating(true);
+    try {
+      const canvas = await buildStoryCanvas(
+        resolvedName,
+        handle,
+        passportUrl,
+        fixedAvatar,
+      );
+      const result = await shareStoryCanvas(canvas, shareTitle);
+      if (result.kind === "shared") {
+        toast.success("Shared to your story");
+      } else if (result.kind === "downloaded") {
+        // Also copy the URL so the user can paste it as an IG sticker
+        // after uploading the downloaded image.
+        try {
+          await navigator.clipboard.writeText(passportUrl);
+        } catch {
+          /* noop */
+        }
+        toast.success("Image downloaded — upload to Instagram Story");
+        openInNewTab("https://www.instagram.com/create/story/");
+      } else if (result.kind === "failed") {
+        toast.error("Could not generate story image");
+      }
+    } catch {
+      toast.error("Could not generate story image");
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const shareToWhatsApp = () => {
@@ -72,7 +115,11 @@ export function ShareQuestButtons({ handle, origin }: ShareQuestButtonsProps) {
       <div className="grid grid-cols-2 gap-2">
         <ShareButton label={copied ? "Copied ✓" : "Copy link"} onClick={copyLink} />
         <ShareButton label="Copy to IG bio" onClick={copyToIgBio} />
-        <ShareButton label="IG story" onClick={shareToIgStory} />
+        <ShareButton
+          label={generating ? "Building…" : "IG story"}
+          onClick={shareToIgStory}
+          disabled={generating}
+        />
         <ShareButton label="WhatsApp" onClick={shareToWhatsApp} />
         <ShareButton
           label="WhatsApp status"
@@ -92,15 +139,18 @@ function ShareButton({
   label,
   onClick,
   className = "",
+  disabled = false,
 }: {
   label: string;
   onClick: () => void;
   className?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`py-2.5 px-3 rounded-full bg-white/10 text-white text-xs font-medium border border-white/15 hover:bg-white/15 transition-colors ${className}`}
+      disabled={disabled}
+      className={`py-2.5 px-3 rounded-full bg-white/10 text-white text-xs font-medium border border-white/15 hover:bg-white/15 transition-colors disabled:opacity-50 disabled:cursor-wait ${className}`}
     >
       {label}
     </button>

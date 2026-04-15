@@ -119,7 +119,11 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
 
       {data.state === "unlocked_pro" && (
         <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-          <ShareQuestButtons handle={handle} />
+          <ShareQuestButtons
+            handle={handle}
+            displayName={displayName}
+            avatarUrl={data.avatar_image || data.pfp_image}
+          />
         </div>
       )}
 
