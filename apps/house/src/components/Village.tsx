@@ -4,6 +4,7 @@ import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { BlurFade } from "./helpers/house/BlurFade";
 import type { Resident } from "../lib/residents";
+import { track } from "../lib/analytics/track";
 
 const BLR_CAPACITY = 15;
 const WTF_CAPACITY = 20;
@@ -14,6 +15,8 @@ interface PlotData {
   isEmpty?: boolean;
   scale?: number;
   rotation?: number;
+  island: "blr" | "wtf";
+  slot_index: number;
 }
 
 const jitter = (i: number, salt: number) =>
@@ -47,6 +50,8 @@ function buildPlots(blr: Resident[], wtf: Resident[]): PlotData[] {
       isEmpty: !resident,
       scale: (resident ? 0.9 : 0.7) + jitter(i, 3) * 0.3,
       rotation: jitter(i, 4) * 2,
+      island: "blr" as const,
+      slot_index: i,
     };
   });
   const wtfPlots = Array.from({ length: WTF_CAPACITY }, (_, i) => {
@@ -61,6 +66,8 @@ function buildPlots(blr: Resident[], wtf: Resident[]): PlotData[] {
       isEmpty: !resident,
       scale: (resident ? 0.9 : 0.7) + jitter(i + 100, 3) * 0.3,
       rotation: jitter(i + 100, 4) * 2,
+      island: "wtf" as const,
+      slot_index: i,
     };
   });
   return [...blrPlots, ...wtfPlots];
@@ -202,8 +209,16 @@ function HouseModel({
   onHover: () => void;
   onUnhover: () => void;
   isHovered: boolean;
-  onClaim?: () => void;
+  onClaim?: (info: { island: "blr" | "wtf"; slot_index: number }) => void;
 }) {
+  const handleClaim = (p: PlotData) => {
+    track("village_slot_click", {
+      island: p.island,
+      slot_index: p.slot_index,
+      occupied: false,
+    });
+    onClaim?.({ island: p.island, slot_index: p.slot_index });
+  };
   const s = plot.scale || 1;
 
   if (plot.isEmpty) {
@@ -223,7 +238,7 @@ function HouseModel({
           <Html position={[0, 0.8, 0]} center>
             <button
               type="button"
-              onClick={() => onClaim?.()}
+              onClick={() => handleClaim(plot)}
               className="block bg-[#0e0e0c]/95 backdrop-blur-xl border border-[#d4af37]/30 rounded-lg px-4 py-2.5 whitespace-nowrap shadow-2xl cursor-pointer hover:border-[#d4af37]/60 transition-colors"
             >
               <span className="text-[11px] font-bold tracking-[0.2em] uppercase text-[#d4af37]">
@@ -297,7 +312,7 @@ function StaticCamera() {
   return null;
 }
 
-function VillageScene({ plots, onClaim }: { plots: PlotData[]; onClaim?: () => void }) {
+function VillageScene({ plots, onClaim }: { plots: PlotData[]; onClaim?: (info: { island: "blr" | "wtf"; slot_index: number }) => void }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const handleHover = useCallback((i: number) => setHoveredIndex(i), []);
   const handleUnhover = useCallback(() => setHoveredIndex(null), []);
@@ -360,7 +375,7 @@ interface VillageProps {
   blr?: Resident[];
   wtf?: Resident[];
   syncedAt?: string | null;
-  onClaim?: () => void;
+  onClaim?: (info: { island: "blr" | "wtf"; slot_index: number }) => void;
 }
 
 export function Village({ blr = [], wtf = [], syncedAt = null, onClaim }: VillageProps) {

@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRadioAutoplay } from "./HouseWrapper";
 import { useRadioSync } from "../../../hooks/useRadioSync";
+import { track } from "../../../lib/analytics/track";
 
 let ytApiLoaded = false;
 let ytApiReady = false;
@@ -86,10 +87,13 @@ export function ZoRadioPill() {
       playerRef.current?.pauseVideo?.();
       setPaused(true);
     } else if (isActive && paused) {
-      // Resume
+      // Resume (play)
+      track("zo_radio_play");
       playerRef.current?.playVideo?.();
       setPaused(false);
     } else if (status === "ready" || status === "prefetching") {
+      // Initial play
+      track("zo_radio_play");
       tuneIn();
     }
   }, [isActive, paused, status, tuneIn, playerRef]);

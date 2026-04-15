@@ -19,6 +19,8 @@ import { Village } from "../components/Village";
 import { HOUSE_MEDIA } from "../config/house-media";
 import { fetchResidents } from "../lib/residents";
 import { useZoAuth } from "../hooks/useZoAuth";
+import { useScrollMilestones } from "../hooks/useScrollMilestones";
+import { track } from "../lib/analytics/track";
 
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
   // ISR-style: cache at edge for 5 minutes, match the sync cadence
@@ -61,12 +63,24 @@ export default function House({
   const { isLoggedIn, showLoginModal } = useZoAuth();
   const [applyOpen, setApplyOpen] = useState(false);
 
+  useScrollMilestones();
+
   const goToApply = () => {
     if (isLoggedIn) {
       setApplyOpen(true);
     } else {
       showLoginModal({ onSuccess: () => setApplyOpen(true) });
     }
+  };
+
+  const handleHeroApply = () => {
+    track("cta_click", { placement: "hero", intent: "apply" });
+    goToApply();
+  };
+
+  const handleInlineApply = () => {
+    track("cta_click", { placement: "inline", intent: "apply" });
+    goToApply();
   };
 
   // Deep link: ?apply=1 (from /apply redirect or the empty-plot tooltip).
@@ -147,7 +161,7 @@ export default function House({
                 Is Recruiting
               </h1>
               <button
-                onClick={() => goToApply()}
+                onClick={handleHeroApply}
                 className="hidden md:block bg-white text-black font-bold text-[11px] tracking-widest uppercase rounded-full px-10 py-3.5 hover:scale-[1.03] active:scale-95 transition-all duration-300 mx-auto"
               >
                 Apply Now
@@ -170,7 +184,16 @@ export default function House({
           </div>
         </section>
 
-        <Village blr={residents.blr} wtf={residents.wtf} syncedAt={residents.syncedAt} onClaim={goToApply} />
+        <Village
+          blr={residents.blr}
+          wtf={residents.wtf}
+          syncedAt={residents.syncedAt}
+          onClaim={() => {
+            // village_slot_click already fired inside Village.tsx; do NOT also fire
+            // cta_click here. Empty-slot intent is wholly owned by Village.
+            goToApply();
+          }}
+        />
 
         <section className="relative bg-black">
           <TextReveal
@@ -217,7 +240,7 @@ export default function House({
             </BlurFade>
             <BlurFade inView delay={0.25} direction="up">
               <button
-                onClick={() => goToApply()}
+                onClick={handleInlineApply}
                 className="bg-white text-black font-bold text-[11px] tracking-widest uppercase rounded-full px-10 py-3.5 hover:scale-[1.03] active:scale-95 transition-all duration-300 mx-auto block"
               >
                 Apply Now
