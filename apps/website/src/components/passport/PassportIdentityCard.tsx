@@ -10,7 +10,7 @@ interface PassportIdentityCardProps {
   profile: any;
   myXp: any;
   roles: any;
-  onOpenSettings: () => void;
+  onOpenSettings?: () => void;
   onOpenShare?: () => void;
 }
 
@@ -253,25 +253,27 @@ const PassportIdentityCard: React.FC<PassportIdentityCardProps> = ({
             </span>
           </div>
 
-          {/* Settings Button */}
-          <button
-            onClick={onOpenSettings}
-            className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 rounded-xl py-3 transition-colors"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+          {/* Settings Button — owner only */}
+          {onOpenSettings && (
+            <button
+              onClick={onOpenSettings}
+              className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 rounded-xl py-3 transition-colors"
             >
-              <path
-                d="M6.5 1.5L6.9 3.1C6.3 3.3 5.8 3.6 5.3 4L3.8 3.3L2.3 5.9L3.6 6.9C3.5 7.3 3.5 7.7 3.6 8.1L2.3 9.1L3.8 11.7L5.3 11C5.8 11.4 6.3 11.7 6.9 11.9L6.5 13.5H9.5L9.1 11.9C9.7 11.7 10.2 11.4 10.7 11L12.2 11.7L13.7 9.1L12.4 8.1C12.5 7.7 12.5 7.3 12.4 6.9L13.7 5.9L12.2 3.3L10.7 4C10.2 3.6 9.7 3.3 9.1 3.1L9.5 1.5H6.5ZM8 5.5C9.4 5.5 10.5 6.6 10.5 8C10.5 9.4 9.4 10.5 8 10.5C6.6 10.5 5.5 9.4 5.5 8C5.5 6.6 6.6 5.5 8 5.5Z"
-                fill="white"
-              />
-            </svg>
-            <span className="text-white text-[14px] font-medium">Settings</span>
-          </button>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M6.5 1.5L6.9 3.1C6.3 3.3 5.8 3.6 5.3 4L3.8 3.3L2.3 5.9L3.6 6.9C3.5 7.3 3.5 7.7 3.6 8.1L2.3 9.1L3.8 11.7L5.3 11C5.8 11.4 6.3 11.7 6.9 11.9L6.5 13.5H9.5L9.1 11.9C9.7 11.7 10.2 11.4 10.7 11L12.2 11.7L13.7 9.1L12.4 8.1C12.5 7.7 12.5 7.3 12.4 6.9L13.7 5.9L12.2 3.3L10.7 4C10.2 3.6 9.7 3.3 9.1 3.1L9.5 1.5H6.5ZM8 5.5C9.4 5.5 10.5 6.6 10.5 8C10.5 9.4 9.4 10.5 8 10.5C6.6 10.5 5.5 9.4 5.5 8C5.5 6.6 6.6 5.5 8 5.5Z"
+                  fill="white"
+                />
+              </svg>
+              <span className="text-white text-[14px] font-medium">Settings</span>
+            </button>
+          )}
         </div>
       </GlowCard>
     </div>
