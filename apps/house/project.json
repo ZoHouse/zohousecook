@@ -1,0 +1,50 @@
+{
+  "name": "house",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/house",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/next:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/house",
+        "postcssConfig": "apps/house/postcss.config.js"
+      },
+      "configurations": {
+        "development": {
+          "outputPath": "apps/house"
+        },
+        "production": {}
+      }
+    },
+    "serve": {
+      "executor": "@nx/next:server",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "house:build",
+        "dev": true,
+        "port": 4210
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "house:build:development",
+          "dev": true
+        },
+        "production": {
+          "buildTarget": "house:build:production",
+          "dev": false
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["apps/house/**/*.{ts,tsx,js,jsx}"]
+      }
+    }
+  },
+  "tags": []
+}
