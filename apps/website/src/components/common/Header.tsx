@@ -53,7 +53,11 @@ const Header: React.FC<HeaderProps> = () => {
     if (isLoggedIn) {
       router.push("/passport");
     } else {
-      showLoginModal(undefined, "/passport");
+      // Return the user to where they clicked "Sign in" instead of always
+      // force-routing to /passport. Mirrors the ZoAuth redirectPath fix
+      // from e490ef9 which removed hardcoded router.push("/passport") at
+      // the end of the OTP + onboarding flows.
+      showLoginModal(undefined, router.asPath);
     }
   };
 
