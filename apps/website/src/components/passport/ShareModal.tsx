@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { fixAvatarUrl } from "../../hooks/usePublicPassport";
+import {
+  buildStoryCanvas,
+  isMobileDevice,
+} from "../../lib/passport/buildStoryCanvas";
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -7,125 +11,6 @@ interface ShareModalProps {
   handle: string;
   avatarUrl?: string | null;
   displayName?: string;
-}
-
-function isMobileDevice(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
-function loadImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = url;
-  });
-}
-
-async function buildStoryCanvas(
-  displayName: string,
-  handle: string,
-  profileUrl: string,
-  avatarUrl?: string | null,
-): Promise<HTMLCanvasElement> {
-  const W = 1080;
-  const H = 1920;
-  const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext("2d")!;
-
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, "#0d0d16");
-  bg.addColorStop(0.6, "#12082a");
-  bg.addColorStop(1, "#0a0a12");
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
-
-  const glow = ctx.createRadialGradient(W / 2, H * 0.42, 0, W / 2, H * 0.42, 700);
-  glow.addColorStop(0, "rgba(120,60,220,0.22)");
-  glow.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, H);
-
-  ctx.fillStyle = "rgba(255,255,255,0.35)";
-  ctx.font = "bold 52px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("ZO WORLD", W / 2, 220);
-
-  ctx.strokeStyle = "rgba(255,255,255,0.1)";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(W / 2 - 120, 260);
-  ctx.lineTo(W / 2 + 120, 260);
-  ctx.stroke();
-
-  const avatarSize = 360;
-  const avatarY = H * 0.32 - avatarSize / 2;
-
-  if (avatarUrl) {
-    try {
-      const img = await loadImage(avatarUrl);
-      const avatarX = (W - avatarSize) / 2;
-      const r = 48;
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.roundRect(avatarX, avatarY, avatarSize, avatarSize, r);
-      ctx.closePath();
-
-      ctx.fillStyle = "rgba(255,255,255,0.06)";
-      ctx.fill();
-
-      ctx.clip();
-      ctx.drawImage(img, avatarX, avatarY, avatarSize, avatarSize);
-      ctx.restore();
-
-      ctx.strokeStyle = "rgba(255,255,255,0.12)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.roundRect(avatarX, avatarY, avatarSize, avatarSize, r);
-      ctx.stroke();
-    } catch {
-      // avatar load failed (CORS / 404) — continue without it
-    }
-  }
-
-  const textStart = avatarUrl ? avatarY + avatarSize + 120 : H * 0.46;
-
-  ctx.fillStyle = "rgba(255,255,255,0.92)";
-  ctx.font = "bold 110px system-ui, sans-serif";
-  ctx.fillText("Zo Passport", W / 2, textStart);
-
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 88px system-ui, sans-serif";
-  ctx.fillText(displayName || handle, W / 2, textStart + 140);
-
-  ctx.fillStyle = "rgba(255,255,255,0.45)";
-  ctx.font = "52px system-ui, sans-serif";
-  ctx.fillText(handle.endsWith(".zo") ? handle : `${handle}.zo`, W / 2, textStart + 230);
-
-  const pillY = H - 280;
-  const pillW = 760;
-  const pillH = 90;
-  const pillX = (W - pillW) / 2;
-  const pillR = 45;
-  ctx.fillStyle = "rgba(255,255,255,0.07)";
-  ctx.beginPath();
-  ctx.roundRect(pillX, pillY, pillW, pillH, pillR);
-  ctx.fill();
-
-  ctx.fillStyle = "rgba(255,255,255,0.55)";
-  ctx.font = "38px monospace";
-  ctx.fillText(profileUrl.replace(/^https?:\/\//, ""), W / 2, pillY + 58);
-
-  ctx.fillStyle = "rgba(255,255,255,0.25)";
-  ctx.font = "40px system-ui, sans-serif";
-  ctx.fillText("Follow my journey →", W / 2, H - 140);
-
-  return canvas;
 }
 
 const ShareModal: React.FC<ShareModalProps> = ({
