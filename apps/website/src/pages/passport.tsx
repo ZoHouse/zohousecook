@@ -11,9 +11,11 @@ import {
   WhyPassportPlus,
 } from "../components/passport";
 import { SettingsModal } from "../components/passport/SettingsModal";
+import ShareModal from "../components/passport/ShareModal";
 import { PublicPassportView } from "../components/passport/PublicPassportView";
 import { ViewerState } from "../components/passport/PassportPitch";
 import { ShareQuestButtons } from "../components/passport/ShareQuestButtons";
+import { fixAvatarUrl } from "../hooks/usePublicPassport";
 import { useMyXp } from "../hooks/useMyXp";
 import { useMyRoles } from "../hooks/useMyRoles";
 import { useCaptureReferrer } from "../hooks/useCaptureReferrer";
@@ -62,7 +64,18 @@ async function fetchPassportOg(
         ? `${bits.join(" · ")} · Citizen of Zo World`
         : `${displayName} is a Citizen of Zo World. Unlock your Passport and join the tribe.`;
 
-    const image = String(raw.pfp_image ?? "").trim() || null;
+    // Prefer avatar_image (Zobu composite) once backend exposes it;
+    // otherwise fall back to pfp_image. Apply fixAvatarUrl so the og:image
+    // resolves against proxy.cdn.zo.xyz (nsfp.cdn.zo.xyz returns 403 and
+    // breaks the WhatsApp/Twitter unfurl thumbnail).
+    const rawImage =
+      (raw.avatar_image as string | undefined) ||
+      (raw.avatar_url as string | undefined) ||
+      (raw.avatar && typeof raw.avatar === "object"
+        ? ((raw.avatar as Record<string, unknown>).image as string | undefined)
+        : undefined) ||
+      (raw.pfp_image as string | undefined);
+    const image = fixAvatarUrl(rawImage ? String(rawImage).trim() : null);
     const url = `${origin}/@${handle}`;
     return { handle, title, description, image, url };
   } catch {
@@ -116,6 +129,7 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
   const { myXp } = useMyXp();
   const { roles } = useMyRoles();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const handle =
     profile?.custom_nickname?.replace(".zo", "") ||
@@ -197,6 +211,7 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
               myXp={myXp}
               roles={roles}
               onOpenSettings={() => setSettingsOpen(true)}
+              onOpenShare={() => setShareOpen(true)}
             />
           </div>
 
@@ -209,6 +224,7 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
                 myXp={myXp}
                 roles={roles}
                 onOpenSettings={() => setSettingsOpen(true)}
+                onOpenShare={() => setShareOpen(true)}
               />
             </div>
 
@@ -228,6 +244,14 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+
+      <ShareModal
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        handle={handle}
+        avatarUrl={profile?.avatar?.image || profile?.pfp_image}
+        displayName={profile?.full_name || profile?.first_name || handle}
       />
     </div>
   );

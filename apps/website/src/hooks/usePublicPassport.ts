@@ -8,6 +8,7 @@ export interface PublicPassport {
   handle: string;
   custom_nickname: string;
   full_name: string | null;
+  avatar_image: string | null;
   pfp_image: string | null;
   place_name: string | null;
   country: string | null;
@@ -32,6 +33,21 @@ function emptyToNull(s: unknown): string | null {
   if (s === null || s === undefined) return null;
   const trimmed = String(s).trim();
   return trimmed === "" ? null : trimmed;
+}
+
+// Mirror of fixAvatarUrl in PassportIdentityCard.tsx so public and private
+// views resolve the same IPFS / CDN quirks. Keep these in sync.
+// nsfp.cdn.zo.xyz returns 403 on direct public image access; proxy.cdn.zo.xyz
+// serves the same asset with 200. The passport public endpoint currently
+// returns pfp_image URLs under nsfp.cdn.zo.xyz, so this rewrite is
+// load-bearing for NFT avatars to render at all.
+export function fixAvatarUrl(url?: string | null): string | null {
+  if (!url || url.length === 0) return null;
+  if (url.startsWith("ipfs://"))
+    return url.replace("ipfs://", "https://ipfs.io/ipfs/");
+  return url
+    .replace("static.cdn.zo.xyz", "proxy.cdn.zo.xyz")
+    .replace("nsfp.cdn.zo.xyz", "proxy.cdn.zo.xyz");
 }
 
 function normaliseRoles(raw: unknown): PublicPassport["roles"] {
@@ -66,7 +82,19 @@ async function fetchPublicPassport(
     handle,
     custom_nickname: String(raw.custom_nickname ?? nickname),
     full_name: emptyToNull(raw.full_name),
-    pfp_image: emptyToNull(raw.pfp_image),
+    // Zo Zobu composite — matches profile.avatar.image on the private side.
+    // Field name candidates seen in the API: avatar_image, avatar_url,
+    // avatar.image nested. Accept any; backend is still finalising.
+    avatar_image: fixAvatarUrl(
+      emptyToNull(
+        raw.avatar_image ||
+          raw.avatar_url ||
+          (raw.avatar && typeof raw.avatar === "object"
+            ? (raw.avatar as Record<string, unknown>).image
+            : null),
+      ),
+    ),
+    pfp_image: fixAvatarUrl(emptyToNull(raw.pfp_image)),
     place_name: emptyToNull(raw.place_name),
     country: emptyToNull(raw.country),
     state: (raw.state as PassportLockState) || "",
