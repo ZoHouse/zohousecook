@@ -3,6 +3,7 @@ import { useAuth, useMutationApi, useProfile } from "@zo/auth";
 import { formatAddress } from "@zo/utils/web3";
 import React, { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import zomusicVideo from "../assets/videos/zomusic.mp4";
 
 import { getServerSideProps as getServerSidePropsType } from "next/dist/build/templates/pages";
 
@@ -67,7 +68,7 @@ const Music: React.FC<
         playsInline
         className="absolute inset-0 w-full h-full object-cover"
         style={{ transform: "scale(1.15)" }}
-        src="/zomusic.mp4"
+        src={zomusicVideo}
       />
       <MetaTags
         title={metaData?.title}
