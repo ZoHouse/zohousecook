@@ -48,6 +48,27 @@ const nextConfig = {
     ZOSTEL_APP_ID: process.env.ZOSTEL_APP_ID || "",
     API_BASE_URL_ZOSTEL: process.env.API_BASE_URL_ZOSTEL || "",
   },
+  async redirects() {
+    // /house and /house/* moved out of the website app to the standalone
+    // apps/house marketing app at zo.house. The old /house route served a
+    // stubbed apply form that never saved to any backend. Permanently
+    // redirect both zozozo.work/house and zo.xyz/house traffic to the
+    // live standalone app.
+    return [
+      {
+        source: "/house",
+        destination: "https://zo.house",
+        permanent: true,
+        basePath: false,
+      },
+      {
+        source: "/house/:path*",
+        destination: "https://zo.house/:path*",
+        permanent: true,
+        basePath: false,
+      },
+    ];
+  },
   async rewrites() {
     // Sub-app routing: proxy path-based routes to their respective Vercel deployments
     // In development, proxy to local ports. In production/staging, proxy to Vercel URLs.
