@@ -11,6 +11,7 @@ interface PassportIdentityCardProps {
   myXp: any;
   roles: any;
   onOpenSettings: () => void;
+  onOpenShare?: () => void;
 }
 
 function fixAvatarUrl(url?: string): string | undefined {
@@ -53,6 +54,7 @@ const PassportIdentityCard: React.FC<PassportIdentityCardProps> = ({
   myXp,
   roles,
   onOpenSettings,
+  onOpenShare,
 }) => {
   const rawAvatarUrl = profile?.avatar?.image || profile?.pfp_image;
   const avatarUrl = fixAvatarUrl(rawAvatarUrl);
@@ -82,6 +84,40 @@ const PassportIdentityCard: React.FC<PassportIdentityCardProps> = ({
   if (nationality) infoRows.push({ label: "NATIONALITY", value: nationality });
 
   return (
+    <div style={{ position: "relative", width: "100%" }}>
+      {/* Share button — outside GlowCard so it sits above the CitizenSeal stacking context */}
+      {onOpenShare && (
+        <button
+          onClick={onOpenShare}
+          aria-label="Share passport"
+          style={{
+            position: "absolute",
+            top: 16,
+            right: 16,
+            zIndex: 50,
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(255,255,255,0.13)",
+            border: "1px solid rgba(255,255,255,0.20)",
+            cursor: "pointer",
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke="rgba(255,255,255,0.9)" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round"
+          >
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+          </svg>
+        </button>
+      )}
     <GlowCard className="w-full pt-0 pb-6 px-6 relative" style={{ overflow: "visible" }}>
       <div className="flex flex-col gap-4">
         {/* Avatar + CitizenSeal */}
@@ -228,6 +264,7 @@ const PassportIdentityCard: React.FC<PassportIdentityCardProps> = ({
         </button>
       </div>
     </GlowCard>
+    </div>
   );
 };
 
