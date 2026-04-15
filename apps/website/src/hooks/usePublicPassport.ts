@@ -37,11 +37,17 @@ function emptyToNull(s: unknown): string | null {
 
 // Mirror of fixAvatarUrl in PassportIdentityCard.tsx so public and private
 // views resolve the same IPFS / CDN quirks. Keep these in sync.
+// nsfp.cdn.zo.xyz returns 403 on direct public image access; proxy.cdn.zo.xyz
+// serves the same asset with 200. The passport public endpoint currently
+// returns pfp_image URLs under nsfp.cdn.zo.xyz, so this rewrite is
+// load-bearing for NFT avatars to render at all.
 export function fixAvatarUrl(url?: string | null): string | null {
   if (!url || url.length === 0) return null;
   if (url.startsWith("ipfs://"))
     return url.replace("ipfs://", "https://ipfs.io/ipfs/");
-  return url.replace("static.cdn.zo.xyz", "proxy.cdn.zo.xyz");
+  return url
+    .replace("static.cdn.zo.xyz", "proxy.cdn.zo.xyz")
+    .replace("nsfp.cdn.zo.xyz", "proxy.cdn.zo.xyz");
 }
 
 function normaliseRoles(raw: unknown): PublicPassport["roles"] {

@@ -17,7 +17,9 @@ function Spinner({ size = 16 }: { size?: number }) {
 function fixAvatarUrl(url?: string): string | undefined {
   if (!url || url.length === 0) return undefined;
   if (url.startsWith("ipfs://")) return url.replace("ipfs://", "https://ipfs.io/ipfs/");
-  return url.replace("static.cdn.zo.xyz", "proxy.cdn.zo.xyz");
+  return url
+    .replace("static.cdn.zo.xyz", "proxy.cdn.zo.xyz")
+    .replace("nsfp.cdn.zo.xyz", "proxy.cdn.zo.xyz");
 }
 
 function formatAddress(addr?: string) {
