@@ -13,6 +13,7 @@ import {
 import { SettingsModal } from "../components/passport/SettingsModal";
 import ShareModal from "../components/passport/ShareModal";
 import { PublicPassportView } from "../components/passport/PublicPassportView";
+import { NewUserInvitedView } from "../components/passport/NewUserInvitedView";
 import { ViewerState } from "../components/passport/PassportPitch";
 import { ShareQuestButtons } from "../components/passport/ShareQuestButtons";
 import { fixAvatarUrl } from "../hooks/usePublicPassport";
@@ -148,6 +149,15 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
   }, [router, isLoggedIn, handle]);
 
   if (isVisitorView && urlHandle) {
+    // Pivot to "New User - Invited" view when the viewer is logged in but
+    // hasn't set up their own passport yet (no handle). OR when the backend
+    // has no entry for the URL handle (og === null means SSR fetch failed).
+    // Both cases benefit from the locked-wallet hero + creator CTA over the
+    // 2-col visitor view (which assumes a real passport exists on both sides).
+    const viewerIsNewUser = isLoggedIn && !handle;
+    const inviterMissing = !og;
+    const showNewUserInvited = viewerIsNewUser || inviterMissing;
+
     return (
       <>
         {og && (
@@ -167,10 +177,21 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
             {og.image && <meta property="twitter:image" content={og.image} />}
           </Head>
         )}
-        <PublicPassportView
-          handle={urlHandle}
-          viewerState={resolveViewerState(isLoggedIn, profile)}
-        />
+        {showNewUserInvited ? (
+          <NewUserInvitedView
+            inviterHandle={urlHandle}
+            inviterDisplayName={og?.title?.split(" · ")[0] || null}
+            inviterAvatarUrl={og?.image || null}
+            viewerHandle={profile?.custom_nickname || profile?.nickname || null}
+            viewerDisplayName={profile?.full_name || profile?.first_name || null}
+            viewerAvatarUrl={profile?.avatar?.image || profile?.pfp_image || null}
+          />
+        ) : (
+          <PublicPassportView
+            handle={urlHandle}
+            viewerState={resolveViewerState(isLoggedIn, profile)}
+          />
+        )}
       </>
     );
   }
