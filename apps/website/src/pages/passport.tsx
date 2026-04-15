@@ -11,6 +11,7 @@ import {
   WhyPassportPlus,
 } from "../components/passport";
 import { SettingsModal } from "../components/passport/SettingsModal";
+import ShareModal from "../components/passport/ShareModal";
 import { PublicPassportView } from "../components/passport/PublicPassportView";
 import { ViewerState } from "../components/passport/PassportPitch";
 import { ShareQuestButtons } from "../components/passport/ShareQuestButtons";
@@ -128,6 +129,7 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
   const { myXp } = useMyXp();
   const { roles } = useMyRoles();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const handle =
     profile?.custom_nickname?.replace(".zo", "") ||
@@ -209,6 +211,7 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
               myXp={myXp}
               roles={roles}
               onOpenSettings={() => setSettingsOpen(true)}
+              onOpenShare={() => setShareOpen(true)}
             />
           </div>
 
@@ -221,6 +224,7 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
                 myXp={myXp}
                 roles={roles}
                 onOpenSettings={() => setSettingsOpen(true)}
+                onOpenShare={() => setShareOpen(true)}
               />
             </div>
 
@@ -240,6 +244,14 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+
+      <ShareModal
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        handle={handle}
+        avatarUrl={profile?.avatar?.image || profile?.pfp_image}
+        displayName={profile?.full_name || profile?.first_name || handle}
       />
     </div>
   );
