@@ -42,6 +42,11 @@ export const MetaTags: React.FC<MetaTagsProps> = ({
       <meta property="og:title" content={title || TITLE} />
       <meta property="og:description" content={description || DESCRIPTION} />
       <meta property="og:image" content={image || IMAGE} />
+      <meta property="og:image:secure_url" content={image || IMAGE} />
+      <meta property="og:image:type" content="image/jpeg" />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="665" />
+      <meta property="og:image:alt" content="Zo House — India's first permanent hacker house" />
       <meta property="twitter:card" content="summary_large_image" />
       <meta property="twitter:url" content={url} />
       <meta property="twitter:title" content={title || TITLE} />
