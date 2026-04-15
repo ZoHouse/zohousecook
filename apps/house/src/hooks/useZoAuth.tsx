@@ -11,6 +11,7 @@ import { AuthUser, clearSession, loadSession, StoredSession } from "../lib/auth"
 import { LoginModal } from "../components/LoginModal";
 
 interface ShowLoginOptions {
+  intent?: "apply" | "waitlist"; // default "apply"
   onSuccess?: (session: StoredSession) => void;
 }
 
@@ -32,6 +33,7 @@ export function ZoAuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const onSuccessRef = useRef<((s: StoredSession) => void) | null>(null);
+  const intentRef = useRef<"apply" | "waitlist">("apply");
 
   useEffect(() => {
     const s = loadSession();
@@ -39,6 +41,7 @@ export function ZoAuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const showLoginModal = useCallback((opts?: ShowLoginOptions) => {
+    intentRef.current = opts?.intent ?? "apply";
     onSuccessRef.current = opts?.onSuccess ?? null;
     setModalOpen(true);
   }, []);
@@ -65,6 +68,7 @@ export function ZoAuthProvider({ children }: { children: React.ReactNode }) {
       {children}
       {modalOpen && (
         <LoginModal
+          intent={intentRef.current}
           onClose={() => setModalOpen(false)}
           onSuccess={handleSuccess}
         />

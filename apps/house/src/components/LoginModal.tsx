@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import { requestMobileOtp, StoredSession, verifyMobileOtp } from "../lib/auth";
+import { track } from "../lib/analytics/track";
+import { identifyOnOtpVerified } from "../lib/analytics/identify-chain";
 
 interface LoginModalProps {
+  intent?: "apply" | "waitlist"; // default "apply"
   onClose: () => void;
   onSuccess: (session: StoredSession) => void;
 }
 
-export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
+export function LoginModal({ intent = "apply", onClose, onSuccess }: LoginModalProps) {
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [countryCode, setCountryCode] = useState("91");
   const [mobile, setMobile] = useState("");
@@ -21,12 +24,22 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
       setError("Enter a valid phone number");
       return;
     }
+    track("otp_requested", { channel: intent, phone_country_code: countryCode });
     setLoading(true);
-    const res = await requestMobileOtp(mobile, countryCode);
+    let res: { ok: boolean; error?: string };
+    try {
+      res = await requestMobileOtp(mobile, countryCode);
+    } catch {
+      setLoading(false);
+      track("otp_failed", { channel: intent, error_code: "network" });
+      setError("Network error. Try again.");
+      return;
+    }
     setLoading(false);
     if (res.ok) {
       setStep("otp");
     } else {
+      track("otp_failed", { channel: intent, error_code: res.error || "request_failed" });
       setError(res.error || "Could not send OTP");
     }
   };
@@ -39,11 +52,31 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
       return;
     }
     setLoading(true);
-    const res = await verifyMobileOtp(mobile, countryCode, otp);
+    let res: { ok: boolean; error?: string; session?: StoredSession };
+    try {
+      res = await verifyMobileOtp(mobile, countryCode, otp);
+    } catch {
+      setLoading(false);
+      track("otp_failed", { channel: intent, error_code: "network" });
+      setError("Network error. Try again.");
+      return;
+    }
     setLoading(false);
     if (res.ok && res.session) {
+      const e164 = `+${countryCode}${mobile}`;
+      // Fire otp_verified FIRST so it always emits on successful OTP regardless
+      // of identity-write outcome.
+      track("otp_verified", { channel: intent });
+      try {
+        await identifyOnOtpVerified({ phone_e164: e164 });
+      } catch (err) {
+        // Identity write should never block login.
+        // eslint-disable-next-line no-console
+        console.warn("identifyOnOtpVerified failed", err);
+      }
       onSuccess(res.session);
     } else {
+      track("otp_failed", { channel: intent, error_code: res.error || "verify_failed" });
       setError(res.error || "Invalid OTP");
     }
   };
