@@ -5,6 +5,7 @@ import {
   shareStoryCanvas,
 } from "../../lib/passport/buildStoryCanvas";
 import { fixAvatarUrl } from "../../hooks/usePublicPassport";
+import { trackActivity } from "../../lib/analytics/trackActivity";
 
 interface ShareQuestButtonsProps {
   handle: string;
@@ -48,6 +49,7 @@ export function ShareQuestButtons({
       setCopied(true);
       toast.success("Passport link copied");
       setTimeout(() => setCopied(false), 2000);
+      void trackActivity("passport_share_quest_click", { handle, destination: "copy_link" });
     } catch {
       toast.error("Could not copy — select and copy manually");
     }
@@ -59,6 +61,7 @@ export function ShareQuestButtons({
     // falls back to PNG download + instructions to upload to IG.
     if (generating) return;
     setGenerating(true);
+    void trackActivity("passport_share_quest_click", { handle, destination: "ig_story" });
     try {
       const canvas = await buildStoryCanvas(
         resolvedName,
@@ -69,6 +72,7 @@ export function ShareQuestButtons({
       const result = await shareStoryCanvas(canvas, shareTitle);
       if (result.kind === "shared") {
         toast.success("Shared to your story");
+        void trackActivity("passport_ig_story_shared", { handle });
       } else if (result.kind === "downloaded") {
         // Also copy the URL so the user can paste it as an IG sticker
         // after uploading the downloaded image.
@@ -79,6 +83,7 @@ export function ShareQuestButtons({
         }
         toast.success("Image downloaded — upload to Instagram Story");
         openInNewTab("https://www.instagram.com/create/story/");
+        void trackActivity("passport_ig_story_download", { handle });
       } else if (result.kind === "failed") {
         toast.error("Could not generate story image");
       }
@@ -91,6 +96,7 @@ export function ShareQuestButtons({
 
   const shareToWhatsApp = () => {
     // wa.me share intent — message box prefilled with passport URL.
+    void trackActivity("passport_share_quest_click", { handle, destination: "whatsapp" });
     const text = encodeURIComponent(`${message}\n\n${passportUrl}`);
     openInNewTab(`https://wa.me/?text=${text}`);
   };
@@ -98,11 +104,13 @@ export function ShareQuestButtons({
   const shareToWhatsAppStatus = () => {
     // No direct "post to status" web intent exists. Copy link + open WhatsApp
     // so the user can attach it to a status from the mobile app.
+    void trackActivity("passport_share_quest_click", { handle, destination: "whatsapp_status" });
     copyLink();
     openInNewTab("https://web.whatsapp.com/");
   };
 
   const copyToIgBio = () => {
+    void trackActivity("passport_share_quest_click", { handle, destination: "ig_bio" });
     copyLink();
     openInNewTab("https://www.instagram.com/accounts/edit/");
   };
