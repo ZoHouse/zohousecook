@@ -11,11 +11,11 @@ export interface Identity {
 
 function uuidv4(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
+    return (crypto as Crypto).randomUUID();
   }
   // Fallback for older Safari / environments.
   const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
+  (crypto as Crypto).getRandomValues(bytes);
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
   const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(
