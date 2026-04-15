@@ -70,11 +70,15 @@ export function useRoom(slug?: string) {
 
   // Fetch room info from zostel API
   useEffect(() => {
-    if (!profile?.code || fetchedRef.current) return;
+    if (fetchedRef.current) return;
+    // Self view needs a logged-in profile. Visitor view (slug provided) works without auth.
+    if (!slug && !profile?.code) return;
     fetchedRef.current = true;
 
-    const endpoint = slug
-      ? `${LOBBY_API_BASE}/profile/api/v1/profile/lobby/${slug}/`
+    // Backend stores handles with .zo suffix; URL carries bare handle.
+    const normalizedSlug = slug ? (slug.endsWith(".zo") ? slug : `${slug}.zo`) : null;
+    const endpoint = normalizedSlug
+      ? `${LOBBY_API_BASE}/profile/api/v1/profile/lobby/${normalizedSlug}/`
       : `${LOBBY_API_BASE}/profile/api/v1/me/lobby/`;
 
     (async () => {
@@ -107,9 +111,10 @@ export function useRoom(slug?: string) {
   const [isConnected, setIsConnected] = useState(false);
   const socketTokenRef = useRef<string | null>(null);
 
-  // Connect WebSocket once we have the route
+  // Connect WebSocket once we have the route.
+  // Visitors (no profile) see static room data only — joining the socket requires auth.
   useEffect(() => {
-    if (!socketRoute) return;
+    if (!socketRoute || !profile?.code) return;
 
     const connectSocket = () => {
       const url = `${LOBBY_SOCKET_BASE}${socketRoute}${socketTokenRef.current ? '?' + socketTokenRef.current : ''}`;
@@ -153,7 +158,7 @@ export function useRoom(slug?: string) {
       socketRef.current?.close();
       socketRef.current = null;
     };
-  }, [socketRoute]);
+  }, [socketRoute, profile?.code]);
 
   // Handle incoming messages
   const handleMessage = useCallback((message: SocketMessage) => {
