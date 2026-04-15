@@ -250,7 +250,8 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
         isOpen={shareOpen}
         onClose={() => setShareOpen(false)}
         handle={handle}
-        displayName={profile?.custom_nickname || profile?.nickname}
+        avatarUrl={profile?.avatar?.image || profile?.pfp_image}
+        displayName={profile?.full_name || profile?.first_name || handle}
       />
     </div>
   );
