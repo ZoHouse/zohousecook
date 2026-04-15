@@ -33,9 +33,6 @@ const navigationLinks: NavigationLinksType = {
       },
     ],
   },
-  "/house": {
-    links: [],
-  },
 };
 
 export default navigationLinks;

@@ -396,7 +396,7 @@ const alumniPageData: AlumniPageData = {
   cta: {
     title: "Join the Movement",
     subtitle: "This is where India's next wave of builders lives, ships, and finds each other. The house is always on. The network keeps compounding. Your seat is open.",
-    primaryCta: { label: "Explore Zo House →", href: "/house" },
+    primaryCta: { label: "Explore Zo House →", href: "https://zo.house" },
     secondaryCta: { label: "Enter Dashboard", href: "/dashboard" },
   },
 };
