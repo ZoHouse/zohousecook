@@ -1,65 +1,75 @@
-import React from "react";
+import React, { useState } from "react";
+import { useRouter } from "next/router";
+import { useAuth } from "@zo/auth";
 import { usePublicPassport } from "../../hooks/usePublicPassport";
-import { PassportPitch, ViewerState } from "./PassportPitch";
+import { ViewerState } from "./PassportPitch";
 import { ShareQuestButtons } from "./ShareQuestButtons";
-import { TierPill } from "./TierPill";
+import ShareModal from "./ShareModal";
+import PassportIdentityCard from "./PassportIdentityCard";
+import PassportPlusUpsell from "./PassportPlusUpsell";
+import BookStaysPlaceholder from "./BookStaysPlaceholder";
 
 interface PublicPassportViewProps {
   handle: string;
   viewerState: ViewerState;
 }
 
-function StatCell({ label, value }: { label: string; value: number | string }) {
+type PublicData = NonNullable<ReturnType<typeof usePublicPassport>["data"]>;
+
+function displayNameFor(data: PublicData): string {
   return (
-    <div className="flex flex-col items-center gap-1 py-3 rounded-xl bg-white/5">
-      <span className="text-2xl font-bold text-white tabular-nums">{value}</span>
-      <span className="text-[10px] text-white/50 uppercase tracking-wider">{label}</span>
-    </div>
+    data.full_name ||
+    data.handle.charAt(0).toUpperCase() + data.handle.slice(1)
   );
 }
 
-function AvatarFallback({ initial }: { initial: string }) {
-  return (
-    <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center">
-      <span className="text-5xl font-bold text-white">{initial}</span>
-    </div>
-  );
+function primaryCtaCopy(state: ViewerState): string {
+  switch (state) {
+    case "logged_out":
+      return "Unlock Your Passport";
+    case "logged_in_no_passport":
+      return "Complete Your Passport";
+    case "free":
+    case "pro":
+      return "Go to My Passport";
+  }
 }
 
-function AvatarFrame({
-  src,
-  alt,
-  fallbackInitial,
-}: {
-  src: string | null;
-  alt: string;
-  fallbackInitial: string;
-}) {
-  if (!src) return <AvatarFallback initial={fallbackInitial} />;
-  return (
-    <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center overflow-hidden">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt}
-        className="w-full h-full object-contain"
-      />
-    </div>
-  );
+function adaptProfile(data: PublicData) {
+  return {
+    avatar: { image: data.avatar_image || data.pfp_image || "" },
+    pfp_image: data.pfp_image,
+    custom_nickname: data.custom_nickname,
+    nickname: data.handle,
+    full_name: data.full_name,
+    place_name: data.place_name,
+    city: data.place_name,
+    country: data.country ? { name: data.country } : undefined,
+    cultures: [],
+  };
 }
 
-function formatXp(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
-  return String(n);
+function adaptXp(data: PublicData) {
+  return {
+    xp: data.xp_total,
+    xpToNextTier: 0,
+    rankTitle: data.rank_title || "Citizen",
+    stats: {
+      destinations: data.stats.destinations,
+      properties: 0,
+    },
+  };
 }
 
-function displayNameFor(data: { full_name: string | null; custom_nickname: string; handle: string }): string {
-  return data.full_name || data.handle.charAt(0).toUpperCase() + data.handle.slice(1);
+function adaptRoles(data: PublicData) {
+  return { displayNames: data.roles.map((r) => r.label) };
 }
 
 export function PublicPassportView({ handle, viewerState }: PublicPassportViewProps) {
+  const router = useRouter();
+  const { showLoginModal } = useAuth();
   const { data, isLoading, isError } = usePublicPassport(handle);
+  const [shareOpen, setShareOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -83,172 +93,179 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
   }
 
   const displayName = displayNameFor(data);
-  const initial = displayName.charAt(0).toUpperCase();
+  const inviterFirstName =
+    (data.full_name || "").split(" ")[0] ||
+    data.handle.charAt(0).toUpperCase() + data.handle.slice(1);
+
+  const handlePrimary = () => {
+    if (viewerState === "logged_out") {
+      showLoginModal(undefined, "/passport");
+    } else {
+      router.push("/passport");
+    }
+  };
+
+  const passportCard = (
+    <div className="flex flex-col gap-5">
+      {/* Spacer so the avatar can overflow the top of the card */}
+      <div className="pt-14">
+        <PassportIdentityCard
+          profile={adaptProfile(data)}
+          myXp={adaptXp(data)}
+          roles={adaptRoles(data)}
+          onOpenShare={() => setShareOpen(true)}
+        />
+      </div>
+
+      {data.state === "unlocked_pro" && (
+        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+          <ShareQuestButtons handle={handle} />
+        </div>
+      )}
+
+      {data.stamps.length > 0 && (
+        <div>
+          <h2 className="text-[10px] text-white/40 uppercase tracking-wider mb-2">
+            Destination Stamps
+          </h2>
+          <div className="grid grid-cols-3 gap-2">
+            {data.stamps.map((stamp, i) => {
+              const s = stamp as { key?: string; label?: string };
+              return (
+                <div
+                  key={s.key || i}
+                  className="aspect-square rounded-xl bg-white/5 flex items-center justify-center p-2 text-center"
+                >
+                  <span className="text-[10px] text-white/80">{s.label || ""}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {data.badges.length > 0 && (
+        <div>
+          <h2 className="text-[10px] text-white/40 uppercase tracking-wider mb-2">Badges</h2>
+          <div className="flex flex-wrap gap-2">
+            {data.badges.map((badge, i) => {
+              const b = badge as { key?: string; label?: string };
+              return (
+                <span
+                  key={b.key || i}
+                  className="px-3 py-1 rounded-full bg-white/10 text-white text-xs"
+                >
+                  {b.label || ""}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {data.trophies.length > 0 && (
+        <div>
+          <h2 className="text-[10px] text-white/40 uppercase tracking-wider mb-2">
+            Season Champions
+          </h2>
+          <div className="flex gap-2">
+            {data.trophies.map((trophy, i) => {
+              const t = trophy as { season?: string; medal?: string };
+              return (
+                <span
+                  key={i}
+                  className="px-3 py-1 rounded-full bg-white/10 text-white text-xs capitalize"
+                >
+                  {t.medal || ""} {t.season ? `• ${t.season}` : ""}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {data.tribe_sample.length > 0 && (
+        <div>
+          <h2 className="text-[10px] text-white/40 uppercase tracking-wider mb-2">
+            Tribe ({data.stats.tribe})
+          </h2>
+          <div className="flex -space-x-2">
+            {data.tribe_sample.map((member, i) => {
+              const m = member as { handle?: string };
+              return (
+                <div
+                  key={m.handle || i}
+                  className="w-8 h-8 rounded-full bg-white/10 border-2 border-[#111]"
+                  title={m.handle || ""}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const pitchPanel = (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-white text-3xl xl:text-4xl font-bold leading-tight">
+          {inviterFirstName} has shared
+          <br />
+          their passport with you
+        </h1>
+        <p className="text-white/60 text-sm mt-3">
+          Join Zo World to earn XP, collect stamps, and unlock stays across
+          108+ Zostel properties.
+        </p>
+      </div>
+
+      <button
+        onClick={handlePrimary}
+        className="w-full sm:w-auto sm:self-start py-4 px-8 rounded-full bg-white text-black font-semibold text-base hover:bg-white/90 transition-colors"
+      >
+        {primaryCtaCopy(viewerState)}
+      </button>
+
+      {data.state === "locked" && (
+        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+          <p className="text-white text-sm font-semibold mb-1">
+            {displayName}&apos;s passport is locked
+          </p>
+          <p className="text-white/50 text-xs">
+            They haven&apos;t completed onboarding yet. Drop in later to see
+            their stamps, badges, and tribe.
+          </p>
+        </div>
+      )}
+
+      <BookStaysPlaceholder />
+
+      <PassportPlusUpsell
+        onBecomeMember={handlePrimary}
+        onUnlockAndGo={handlePrimary}
+      />
+    </div>
+  );
 
   return (
     <div className="flex-1 min-h-screen bg-[#111]">
-      <div className="max-w-md mx-auto px-4 pt-32 pb-16">
-        <div className="flex flex-col items-center gap-4 mb-6">
-          <AvatarFrame
-            src={data.avatar_image || data.pfp_image}
-            alt={displayName}
-            fallbackInitial={initial}
-          />
-          <div className="text-center flex flex-col items-center gap-2">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-white">{data.custom_nickname}</h1>
-              <TierPill state={data.state} />
-            </div>
-            {data.full_name && (
-              <p className="text-white/60 text-sm">{data.full_name}</p>
-            )}
-            {(data.place_name || data.country) && (
-              <p className="text-white/40 text-xs">
-                {data.place_name && `from ${data.place_name}`}
-                {data.place_name && data.country && ", "}
-                {data.country}
-              </p>
-            )}
+      <div className="max-w-[1280px] mx-auto px-4 pt-24 xl:pt-32 pb-16">
+        <div className="flex flex-col xl:flex-row xl:gap-10 gap-8">
+          <div className="w-full xl:w-[380px] xl:flex-shrink-0">
+            {passportCard}
           </div>
-          {data.roles.length > 0 && (
-            <div className="flex flex-wrap gap-2 justify-center">
-              {data.roles.map((role) => (
-                <span
-                  key={role.key}
-                  className="px-3 py-1 rounded-full bg-white/10 text-white text-xs"
-                >
-                  {role.label}
-                </span>
-              ))}
-            </div>
-          )}
+          <div className="flex-1 min-w-0">{pitchPanel}</div>
         </div>
-
-        {(data.rank_title || data.xp_total > 0) && (
-          <div className="mb-6 p-5 bg-white/5 rounded-2xl flex items-center justify-between">
-            <div>
-              <p className="text-[10px] text-white/40 uppercase tracking-wider">Passport Rank</p>
-              <p className="text-xl font-bold text-white mt-1">
-                {data.rank_title || "—"}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider">Total XP</p>
-              <p className="text-xl font-bold text-white tabular-nums mt-1">
-                {formatXp(data.xp_total)}
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-4 gap-2 mb-6">
-          <StatCell label="Stamps" value={data.stamps.length} />
-          <StatCell label="Stays" value={data.stats.stays} />
-          <StatCell label="Frens" value={data.stats.tribe} />
-          <StatCell label="Reels" value={data.stats.reels} />
-        </div>
-
-        {data.stamps.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-[10px] text-white/40 uppercase tracking-wider mb-2">
-              Destination Stamps
-            </h2>
-            <div className="grid grid-cols-3 gap-2">
-              {data.stamps.map((stamp, i) => {
-                const s = stamp as { key?: string; label?: string };
-                return (
-                  <div
-                    key={s.key || i}
-                    className="aspect-square rounded-xl bg-white/5 flex items-center justify-center p-2 text-center"
-                  >
-                    <span className="text-[10px] text-white/80">{s.label || ""}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {data.badges.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-[10px] text-white/40 uppercase tracking-wider mb-2">Badges</h2>
-            <div className="flex flex-wrap gap-2">
-              {data.badges.map((badge, i) => {
-                const b = badge as { key?: string; label?: string };
-                return (
-                  <span
-                    key={b.key || i}
-                    className="px-3 py-1 rounded-full bg-white/10 text-white text-xs"
-                  >
-                    {b.label || ""}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {data.trophies.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-[10px] text-white/40 uppercase tracking-wider mb-2">
-              Season Champions
-            </h2>
-            <div className="flex gap-2">
-              {data.trophies.map((trophy, i) => {
-                const t = trophy as { season?: string; medal?: string };
-                return (
-                  <span
-                    key={i}
-                    className="px-3 py-1 rounded-full bg-white/10 text-white text-xs capitalize"
-                  >
-                    {t.medal || ""} {t.season ? `• ${t.season}` : ""}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {data.tribe_sample.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-[10px] text-white/40 uppercase tracking-wider mb-2">
-              Tribe ({data.stats.tribe})
-            </h2>
-            <div className="flex -space-x-2">
-              {data.tribe_sample.map((member, i) => {
-                const m = member as { handle?: string };
-                return (
-                  <div
-                    key={m.handle || i}
-                    className="w-8 h-8 rounded-full bg-white/10 border-2 border-[#111]"
-                    title={m.handle || ""}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {data.state === "locked" && (
-          <div className="mb-6 p-5 rounded-2xl bg-white/5 border border-white/10 text-center">
-            <p className="text-white text-sm font-semibold mb-1">
-              {handle}&apos;s passport is locked
-            </p>
-            <p className="text-white/50 text-xs">
-              They haven&apos;t completed onboarding yet. Drop in later to see
-              their stamps, badges, and tribe.
-            </p>
-          </div>
-        )}
-
-        {data.state === "unlocked_pro" && (
-          <div className="mb-6 p-5 rounded-2xl bg-white/5 border border-white/10">
-            <ShareQuestButtons handle={handle} />
-          </div>
-        )}
-
-        <PassportPitch inviterHandle={handle} viewerState={viewerState} />
       </div>
+
+      <ShareModal
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        handle={handle}
+        avatarUrl={data.avatar_image || data.pfp_image}
+        displayName={displayName}
+      />
     </div>
   );
 }
