@@ -6,6 +6,7 @@ import { TopBar } from './TopBar';
 import { LobbyRoom } from './LobbyRoom';
 import { SideNavRail, type LobbyTab } from './SideNavRail';
 import { MapWidget } from './MapWidget';
+import { MapModal } from './MapModal';
 import { HeroStage } from './HeroStage';
 import { GhostVisitors } from './GhostVisitors';
 import { NextMilestoneSign } from './NextMilestoneSign';
@@ -20,6 +21,7 @@ export function PassportLobby() {
 
   const [tab, setTab] = useState<LobbyTab>('lobby');
   const [upsell, setUpsell] = useState<ProUpsellFeature | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
 
   if (!profile) return null;
 
@@ -47,7 +49,7 @@ export function PassportLobby() {
 
       {tab === 'lobby' ? (
         <LobbyRoom
-          mapWidget={<MapWidget />}
+          mapWidget={<MapWidget onOpen={() => setMapOpen(true)} />}
           sideNav={<SideNavRail active={tab} onChange={handleTabChange} />}
           hero={
             <HeroStage
@@ -70,6 +72,7 @@ export function PassportLobby() {
 
       <PassesDock onUpsell={openUpsell} />
       <ProUpsellModal feature={upsell} onClose={closeUpsell} />
+      <MapModal open={mapOpen} onClose={() => setMapOpen(false)} />
       </div>
     </div>
   );

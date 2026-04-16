@@ -7,7 +7,11 @@ mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
 // Zo House Koramangala, Bangalore
 const CENTER: [number, number] = [77.628, 12.934];
 
-export function MapWidget() {
+export interface MapWidgetProps {
+  onOpen?: () => void;
+}
+
+export function MapWidget({ onOpen }: MapWidgetProps) {
   const container = useRef<HTMLDivElement | null>(null);
   const map = useRef<mapboxgl.Map | null>(null);
 
@@ -33,6 +37,7 @@ export function MapWidget() {
         'border-radius: 50%',
         'background: #FF2F8E',
         'box-shadow: 0 0 0 3px rgba(255,47,142,0.35), 0 0 12px rgba(255,47,142,0.6)',
+        'pointer-events: none',
       ].join(';');
       new mapboxgl.Marker(el).setLngLat(CENTER).addTo(map.current);
     };
@@ -45,7 +50,7 @@ export function MapWidget() {
     };
   }, []);
 
-  return (
+  const content = (
     <div
       className="relative overflow-hidden"
       style={{
@@ -57,7 +62,7 @@ export function MapWidget() {
       }}
     >
       <div ref={container} style={{ position: 'absolute', inset: 0 }} />
-      {/* Subtle gradient overlay to match Figma's #F4F2F2 → #8E8D8D wash — keep it light so map stays visible */}
+      {/* Subtle gradient overlay — matches Figma wash without hiding map */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -66,6 +71,34 @@ export function MapWidget() {
         }}
         aria-hidden
       />
+      {/* Tappable hint — zoom icon bottom-right */}
+      {onOpen && (
+        <div
+          className="absolute bottom-1.5 right-1.5 w-5 h-5 rounded-md flex items-center justify-center pointer-events-none"
+          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+          aria-hidden
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
+            <polyline points="15 3 21 3 21 9" />
+            <polyline points="9 21 3 21 3 15" />
+            <line x1="21" y1="3" x2="14" y2="10" />
+            <line x1="3" y1="21" x2="10" y2="14" />
+          </svg>
+        </div>
+      )}
     </div>
+  );
+
+  if (!onOpen) return content;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label="Open Zo World map"
+      className="block transition-transform active:scale-95 hover:brightness-110"
+    >
+      {content}
+    </button>
   );
 }
