@@ -3,7 +3,6 @@ import { useAuth, useProfile, useMutationApi, useQueryApi } from "@zo/auth";
 import { ZoSpinner } from "../ui/ZoSpinner";
 import { GlassCard } from "../dashboard";
 import { useMyNfts } from "../../hooks/useMyNfts";
-import useInstagramConnect from "../../hooks/useInstagramConnect";
 
 // --- Helpers ---
 
@@ -538,17 +537,16 @@ function FounderNftsSection() {
 
 function SocialsSection() {
   const { profile } = useProfile();
-  const { isConnected: igConnected, account: igAccount, connect: connectIg, disconnect: disconnectIg } = useInstagramConnect();
 
   const socials = useMemo(() => {
     if (!profile?.socials) return [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (profile.socials as any[])
-      .filter((s) => s.category !== "instagram") // IG handled separately via Supabase
       .map((s) => ({
         category: s.category as string, link: s.link as string, verified: s.verified as boolean,
         handle: s.category === "twitter" ? s.link?.split(".com/")[1]
           : s.category === "telegram" ? s.link?.split(".me/")[1]
+          : s.category === "instagram" ? s.link?.split("instagram.com/")[1]?.replace(/\/$/, "")
           : s.category === "discord" ? "Connected" : s.link,
       }));
   }, [profile?.socials]);
@@ -583,60 +581,9 @@ function SocialsSection() {
           </div>
         ))}
 
-        {/* Instagram — from Supabase via useInstagramConnect */}
-        {igConnected && igAccount ? (
-          <div className={rowCls}>
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
-                style={{
-                  background: "linear-gradient(135deg, #833AB4, #E1306C, #F77737)",
-                }}
-              >
-                IG
-              </div>
-              <div>
-                <p className="text-[10px] text-dash-text-40">Instagram</p>
-                <p className="text-sm text-dash-text">@{igAccount.ig_username}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className={badgeVerified}>Verified</span>
-              <button
-                onClick={disconnectIg}
-                className="px-2 py-1 text-[10px] text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-dash-sm transition-colors"
-              >
-                Disconnect
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className={rowCls}>
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
-                style={{
-                  background: "linear-gradient(135deg, #833AB4, #E1306C, #F77737)",
-                }}
-              >
-                IG
-              </div>
-              <div>
-                <p className="text-[10px] text-dash-text-40">Instagram</p>
-                <p className="text-sm text-dash-text-50">Not connected</p>
-              </div>
-            </div>
-            <button
-              onClick={connectIg}
-              className="px-3 py-1 text-[10px] font-semibold text-white rounded-dash-sm transition-opacity hover:opacity-90"
-              style={{
-                background: "linear-gradient(135deg, #833AB4, #E1306C, #F77737)",
-              }}
-            >
-              Connect
-            </button>
-          </div>
-        )}
+        {/* Instagram UI removed — dashboard app is being sunset.
+            IG now lives in the website SettingsModal via useInstagramConnect hook
+            wired to Daya's Zo backend (api.nsfp.io.zo.xyz). */}
       </div>
     </GlassCard>
   );

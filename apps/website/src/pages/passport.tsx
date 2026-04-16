@@ -13,6 +13,7 @@ import {
 import StampsGrid from "../components/passport/StampsGrid";
 import { SettingsModal } from "../components/passport/SettingsModal";
 import ShareModal from "../components/passport/ShareModal";
+import { PassportLobby } from "../components/passport-lobby";
 import { PublicPassportView } from "../components/passport/PublicPassportView";
 import { NewUserInvitedView } from "../components/passport/NewUserInvitedView";
 import { ViewerState } from "../components/passport/PassportPitch";
@@ -245,74 +246,6 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
     );
   }
 
-  return (
-    <div className="flex-1 min-h-screen bg-[#111]">
-      <div className="max-w-[1280px] mx-auto px-4 pt-36 pb-32">
-        <div className="flex gap-6">
-          {/* Left column — Passport Card (desktop) */}
-          <div className="hidden xl:block w-[354px] flex-shrink-0 sticky top-6 self-start">
-            <PassportIdentityCard
-              profile={profile}
-              myXp={myXp}
-              roles={roles}
-              currentLocation={currentLocation}
-              onOpenSettings={() => setSettingsOpen(true)}
-              onOpenShare={() => setShareOpen(true)}
-            />
-          </div>
-
-          {/* Right column */}
-          <div className="flex-1 flex flex-col gap-5 min-w-0">
-            {/* Mobile passport card */}
-            <div className="xl:hidden">
-              <PassportIdentityCard
-                profile={profile}
-                myXp={myXp}
-                roles={roles}
-                currentLocation={currentLocation}
-                onOpenSettings={() => setSettingsOpen(true)}
-                onOpenShare={() => setShareOpen(true)}
-              />
-            </div>
-
-            {myXp?.destinationNames && myXp.destinationNames.length > 0 && (
-              <StampsGrid
-                stamps={myXp.destinationNames.map((name) => ({ name }))}
-              />
-            )}
-
-            <section id="pro" className="scroll-mt-16">
-              <PassportProCard />
-            </section>
-            <QuestsSection />
-            <ReferralSection handle={handle} />
-            {handle && (
-              <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-                <ShareQuestButtons
-                  handle={handle}
-                  displayName={profile?.full_name || profile?.first_name || handle}
-                  avatarUrl={profile?.avatar?.image || profile?.pfp_image}
-                />
-              </div>
-            )}
-            <WhyPassportPlus />
-          </div>
-        </div>
-      </div>
-
-      <SettingsModal
-        isOpen={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-      />
-
-      <ShareModal
-        isOpen={shareOpen}
-        onClose={() => setShareOpen(false)}
-        handle={handle}
-        avatarUrl={profile?.avatar?.image || profile?.pfp_image}
-        displayName={profile?.full_name || profile?.first_name || handle}
-      />
-    </div>
-  );
+  return <PassportLobby />;
 }
 // deploy 1775810158

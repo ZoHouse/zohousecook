@@ -501,13 +501,15 @@ function SocialsSection() {
         IG
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-white/90 truncate">@{igAccount.ig_username}</p>
+        <p className="text-sm text-white/90 truncate">@{igAccount.username}</p>
         <div className="flex items-center gap-2 mt-0.5">
           <span className="flex items-center gap-1 text-[11px]">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-            <span className="text-green-400">Verified</span>
+            <span className="text-green-400">Connected</span>
           </span>
-          <span className="text-[11px] text-white/50">Instagram</span>
+          {igAccount.account_type && (
+            <span className="text-[11px] text-white/50">{igAccount.account_type}</span>
+          )}
         </div>
       </div>
       <button onClick={disconnectIg} className="text-[11px] text-red-400 hover:text-red-300">

@@ -1,0 +1,126 @@
+import type { ReactNode } from 'react';
+import Image from 'next/image';
+import roomPerspective from '../../assets/passport-lobby/scene/room-perspective.svg';
+import pedestal from '../../assets/passport-lobby/scene/pedestal.svg';
+import progressBar from '../../assets/passport-lobby/scene/progress-bar.svg';
+
+export interface LobbyRoomProps {
+  sideNav: ReactNode;
+  hero: ReactNode;
+  ghostVisitors: ReactNode;
+  nextMilestone: ReactNode;
+  travelersPill: ReactNode;
+  activeQuest?: ReactNode;
+}
+
+/**
+ * Lobby scene — Fortnite-style lobby. Avatar center-stage, HUD around edges.
+ * Map access lives inside the side-nav rail (passed in via sideNav slot).
+ */
+export function LobbyRoom({ sideNav, hero, ghostVisitors, nextMilestone, travelersPill, activeQuest }: LobbyRoomProps) {
+  return (
+    <>
+      {/* MOBILE: compact 360px room */}
+      <div
+        className="relative md:hidden"
+        style={{
+          minHeight: 620,
+          background: '#111111',
+          backgroundImage:
+            'radial-gradient(ellipse 140% 35% at 50% 95%, rgba(50,48,40,0.5) 0%, transparent 100%), radial-gradient(ellipse 90% 20% at 50% 100%, rgba(30,28,22,0.9) 0%, transparent 100%)',
+        }}
+      >
+        <div className="absolute inset-0 pointer-events-none flex justify-center items-start pt-10" aria-hidden>
+          <Image
+            src={roomPerspective}
+            alt=""
+            width={507}
+            height={386}
+            style={{ width: '140%', height: 'auto', opacity: 0.55, marginLeft: '-20%' }}
+          />
+        </div>
+
+        <div className="absolute top-3 right-3 z-[10] flex flex-col items-end gap-1">
+          {sideNav}
+          <div className="mt-3 flex justify-center" style={{ width: 44 }}>{nextMilestone}</div>
+        </div>
+
+        <div className="relative z-[5] flex flex-col items-center pt-[36px] pb-4">
+          {hero}
+          <div style={{ marginTop: -6 }} aria-hidden>
+            <Image src={pedestal} alt="" width={179} height={65} style={{ width: 200, height: 'auto' }} />
+          </div>
+          <div style={{ marginTop: -12 }} aria-hidden>
+            <Image src={progressBar} alt="" width={113} height={6} style={{ width: 120, height: 'auto' }} />
+          </div>
+          {activeQuest && <div className="mt-4 flex justify-center w-full">{activeQuest}</div>}
+          <div className="mt-3 flex justify-center w-full">{travelersPill}</div>
+        </div>
+
+        <div className="absolute left-3 bottom-[40px] z-[4]">{ghostVisitors}</div>
+      </div>
+
+      {/* DESKTOP: immersive Fortnite-style lobby */}
+      <div
+        className="hidden md:block relative"
+        style={{
+          minHeight: 'calc(100vh - 120px)',
+          background: 'transparent',
+        }}
+      >
+        <div className="absolute inset-0 pointer-events-none flex justify-center items-start" aria-hidden>
+          <Image
+            src={roomPerspective}
+            alt=""
+            width={507}
+            height={386}
+            style={{
+              width: '100%',
+              maxWidth: 1200,
+              height: 'auto',
+              opacity: 0.55,
+              marginTop: '2%',
+            }}
+          />
+        </div>
+
+        {/* Floor spotlight glow */}
+        <div
+          aria-hidden
+          className="absolute pointer-events-none"
+          style={{
+            left: '50%',
+            top: '55%',
+            width: 600,
+            height: 300,
+            transform: 'translateX(-50%)',
+            background: 'radial-gradient(ellipse at center, rgba(167,217,33,0.08) 0%, rgba(255,47,142,0.05) 40%, transparent 70%)',
+            filter: 'blur(60px)',
+          }}
+        />
+
+        {/* HUD: Side nav — right edge, vertically centered. Includes Map button now. */}
+        <div className="absolute top-1/2 right-6 -translate-y-1/2 z-[10] flex flex-col items-center gap-6">
+          {sideNav}
+          <div className="opacity-60" style={{ width: 44 }}>{nextMilestone}</div>
+        </div>
+
+        {/* CENTER STAGE: hero card + pedestal + progress bar + quest + travelers */}
+        <div className="relative z-[5] flex flex-col items-center justify-center pt-[80px]" style={{ minHeight: 'calc(100vh - 260px)' }}>
+          {hero}
+          <div style={{ marginTop: 6 }} aria-hidden>
+            <Image src={pedestal} alt="" width={179} height={65} style={{ width: 260, height: 'auto' }} />
+          </div>
+          <div style={{ marginTop: -20 }} aria-hidden>
+            <Image src={progressBar} alt="" width={113} height={6} style={{ width: 160, height: 'auto' }} />
+          </div>
+          {activeQuest && <div className="mt-6">{activeQuest}</div>}
+          <div className="mt-3">{travelersPill}</div>
+        </div>
+
+        {/* HUD: ghost visitors — bottom-left */}
+        <div className="absolute left-8 bottom-24 z-[4]">{ghostVisitors}</div>
+      </div>
+    </>
+  );
+}

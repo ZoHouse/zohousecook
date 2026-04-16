@@ -45,7 +45,7 @@ const PassportNav: React.FC = () => {
           }}
         >
           {isConnected && account
-            ? `@${account.ig_username}`
+            ? `@${account.username}`
             : "Not Connected"}
         </span>
         <span className="w-6 h-6 bg-white rounded-md flex items-center justify-center">
