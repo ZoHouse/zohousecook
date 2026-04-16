@@ -5,39 +5,39 @@ import { PROPERTIES, type PropertyKind, type ZoProperty } from './properties';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
 
-// Per-kind visual treatment — taller/brighter pillars for Zo-branded, smaller for the wider Zostel chain.
-const KIND_STYLE: Record<PropertyKind, { color: string; accent: string; height: number; headSize: number; label: string }> = {
-  'zo-house':     { color: '#FF2F8E', accent: 'rgba(255,47,142,0.35)', height: 90, headSize: 34, label: 'Zo House' },
-  'zo-club':      { color: '#BA2553', accent: 'rgba(186,37,83,0.35)',  height: 80, headSize: 30, label: 'Zo Club' },
-  'zostel-plus':  { color: '#FEDD1E', accent: 'rgba(254,221,30,0.3)',  height: 64, headSize: 26, label: 'Zostel Plus' },
-  'zostel-homes': { color: '#A7D921', accent: 'rgba(167,217,33,0.3)',  height: 56, headSize: 24, label: 'Zostel Homes' },
-  'zostel':       { color: '#00BEA9', accent: 'rgba(0,190,169,0.3)',   height: 56, headSize: 24, label: 'Zostel' },
-  'other':        { color: '#2C67F6', accent: 'rgba(44,103,246,0.3)',  height: 48, headSize: 22, label: 'Partner' },
+// Per-kind visual treatment — compact pin-head markers that sit right on top of the building.
+const KIND_STYLE: Record<PropertyKind, { color: string; accent: string; headSize: number; stem: number; label: string }> = {
+  'zo-house':     { color: '#FF2F8E', accent: 'rgba(255,47,142,0.4)', headSize: 32, stem: 10, label: 'Zo House' },
+  'zo-club':      { color: '#BA2553', accent: 'rgba(186,37,83,0.4)',  headSize: 28, stem: 9,  label: 'Zo Club' },
+  'zostel-plus':  { color: '#FEDD1E', accent: 'rgba(254,221,30,0.35)', headSize: 24, stem: 8,  label: 'Zostel Plus' },
+  'zostel-homes': { color: '#A7D921', accent: 'rgba(167,217,33,0.35)', headSize: 22, stem: 7,  label: 'Zostel Homes' },
+  'zostel':       { color: '#00BEA9', accent: 'rgba(0,190,169,0.35)',  headSize: 22, stem: 7,  label: 'Zostel' },
+  'other':        { color: '#2C67F6', accent: 'rgba(44,103,246,0.35)', headSize: 20, stem: 6,  label: 'Partner' },
 };
 
 function buildPillarElement(property: ZoProperty): HTMLDivElement {
   const s = KIND_STYLE[property.kind];
-  const root = document.createElement('div');
-  root.style.cssText = `position:relative;width:${s.headSize + 10}px;height:${s.height + s.headSize + 10}px;pointer-events:auto;cursor:pointer;font-family:Rubik,sans-serif;`;
-
-  // Ground glow
-  const ground = document.createElement('div');
-  ground.style.cssText = `position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:${s.headSize + 24}px;height:12px;border-radius:50%;background:radial-gradient(ellipse at center, ${s.accent} 0%, transparent 70%);filter:blur(4px);`;
-
-  // Vertical beam
-  const beam = document.createElement('div');
-  beam.style.cssText = `position:absolute;left:50%;bottom:4px;transform:translateX(-50%);width:${s.kind === 'zo-house' || s.kind === 'zo-club' ? 3 : 2}px;height:${s.height}px;background:linear-gradient(180deg, ${s.color} 0%, ${s.color}00 100%);border-radius:2px;box-shadow:0 0 10px ${s.color}, 0 0 20px ${s.accent};`;
-  // Note: s.kind doesn't exist on the style object — fix: check property.kind directly
   const isZoBranded = property.kind === 'zo-house' || property.kind === 'zo-club';
-  beam.style.width = `${isZoBranded ? 3 : 2}px`;
+  const totalHeight = s.headSize + s.stem + 4; // stem + small tail
 
-  // Pin head
+  const root = document.createElement('div');
+  root.style.cssText = `position:relative;width:${s.headSize + 12}px;height:${totalHeight}px;pointer-events:auto;cursor:pointer;font-family:Rubik,sans-serif;`;
+
+  // Tiny ground dot at the coord position (the "tip" of the pin)
+  const tip = document.createElement('div');
+  tip.style.cssText = `position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:${s.color};box-shadow:0 0 6px ${s.color}, 0 0 12px ${s.accent};`;
+
+  // Short connector from tip up to pin head
+  const stem = document.createElement('div');
+  stem.style.cssText = `position:absolute;left:50%;bottom:4px;transform:translateX(-50%);width:${isZoBranded ? 2 : 1.5}px;height:${s.stem}px;background:linear-gradient(180deg, ${s.color} 0%, ${s.color}55 100%);`;
+
+  // Pin head — floats just above the tip by s.stem pixels
   const head = document.createElement('div');
-  head.style.cssText = `position:absolute;left:50%;top:0;transform:translateX(-50%);width:${s.headSize}px;height:${s.headSize}px;border-radius:50%;background:${s.color};border:2px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;font-size:${Math.max(8, s.headSize * 0.3)}px;font-weight:700;letter-spacing:0.02em;box-shadow:0 0 0 4px ${s.accent}, 0 6px 16px rgba(0,0,0,0.5);`;
+  head.style.cssText = `position:absolute;left:50%;top:0;transform:translateX(-50%);width:${s.headSize}px;height:${s.headSize}px;border-radius:50%;background:${s.color};border:2px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;font-size:${Math.max(8, s.headSize * 0.32)}px;font-weight:700;letter-spacing:0.02em;box-shadow:0 0 0 3px ${s.accent}, 0 4px 10px rgba(0,0,0,0.5);`;
   head.textContent = isZoBranded ? '\\z/' : '•';
 
-  root.appendChild(ground);
-  root.appendChild(beam);
+  root.appendChild(tip);
+  root.appendChild(stem);
   root.appendChild(head);
   return root;
 }
@@ -127,8 +127,9 @@ export function MapModal({ open, onClose }: MapModalProps) {
         const coords: [number, number] = [property.lng + jitter[0], property.lat + jitter[1]];
 
         const el = buildPillarElement(property);
+        const ks = KIND_STYLE[property.kind];
         const popup = new mapboxgl.Popup({
-          offset: [0, -(KIND_STYLE[property.kind].height + 20)],
+          offset: [0, -(ks.headSize + ks.stem + 8)],
           closeButton: true,
           className: 'zo-map-popup',
           maxWidth: '260px',
