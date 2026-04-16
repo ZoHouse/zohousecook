@@ -20,115 +20,188 @@ const BADGE_TYPES: Array<{ slug: string; type: 'creator' | 'tribebuilder' }> = [
   { slug: 'tribemaker', type: 'tribebuilder' },
 ];
 
-/** Compact stamp tile — 56×56 on mobile, slightly larger on desktop */
+// ─── Country Achievement Cards (ported from dashboard/Achievements.tsx) ───
+const COUNTRY_CARDS = [
+  { id: 'india', name: 'India', src: 'https://proxy.cdn.zo.xyz/gallery/media/images/69a9f6b1-4525-407e-bf18-ba9b7135b6f8_20260402195357.gif', region: 'Asia', desc: 'Explored destinations across incredible India.' },
+  { id: 'spain', name: 'Spain', src: 'https://proxy.cdn.zo.xyz/gallery/media/images/da7a6462-14cf-4cb8-800c-68e43c213361_20260402195357.gif', region: 'Europe', desc: 'Vibrant culture, tapas, and beaches across España.' },
+  { id: 'france', name: 'France', src: 'https://proxy.cdn.zo.xyz/gallery/media/images/30d9e47f-9dbc-415e-a3ef-6466baaff9a7_20260402195358.gif', region: 'Europe', desc: 'Paris to Provence, the heart of France.' },
+  { id: 'japan', name: 'Japan', src: 'https://proxy.cdn.zo.xyz/gallery/media/images/614b347d-304e-4e10-9853-b333963b9d2a_20260402195358.gif', region: 'Asia', desc: 'Ancient temples, neon cities, zen gardens.' },
+  { id: 'russia', name: 'Russia', src: 'https://proxy.cdn.zo.xyz/gallery/media/images/69ef718c-2104-4325-bdc5-007035a11864_20260402195359.gif', region: 'Europe', desc: 'Moscow to Siberia — the world\'s largest country.' },
+  { id: 'el-salvador', name: 'El Salvador', src: 'https://proxy.cdn.zo.xyz/gallery/media/images/52c22b1c-1938-45b7-82f2-1e0502942d01_20260402195359.gif', region: 'Americas', desc: 'Volcanoes, surf, and the first Bitcoin nation.' },
+];
+
+const TRIP_COUNTRY_MAP: Record<string, string> = {
+  japan: 'japan', bali: 'india', nepal: 'india', bhutan: 'india',
+};
+const INDIA_KEYWORDS = [
+  'spiti', 'ladakh', 'kashmir', 'kedarnath', 'sikkim', 'arunachal', 'meghalaya',
+  'kerala', 'kareri', 'tirthan', 'mcleodganj', 'triund', 'darjeeling', 'chopta',
+  'tungnath', 'chikkamagaluru', 'auli', 'yulla kanda',
+];
+
+function getUnlockedCountries(destinations: string[], trips: string[]): Set<string> {
+  const countries = new Set<string>();
+  if (destinations.length > 0) countries.add('india');
+  for (const trip of trips) {
+    const lower = trip.toLowerCase();
+    for (const [kw, c] of Object.entries(TRIP_COUNTRY_MAP)) {
+      if (lower.includes(kw)) countries.add(c);
+    }
+    if (INDIA_KEYWORDS.some((k) => lower.includes(k))) countries.add('india');
+  }
+  return countries;
+}
+
+// ─── Sub-components ───
+
 function StampTile({ name }: { name: string }) {
   const url = stampUrlFor(name);
   const [failed, setFailed] = useState(false);
-
   return (
-    <div
-      className="flex flex-col items-center gap-1"
-      style={{ width: 64 }}
-    >
+    <div className="flex flex-col items-center gap-1" style={{ width: 64 }}>
       <div
         className="flex items-center justify-center overflow-hidden"
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: 12,
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.06)',
-        }}
+        style={{ width: 56, height: 56, borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
       >
         {url && !failed ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={url}
-            alt={name}
-            className="w-10 h-10 object-contain"
-            onError={() => setFailed(true)}
-            referrerPolicy="no-referrer"
-          />
+          <img src={url} alt={name} className="w-10 h-10 object-contain" onError={() => setFailed(true)} referrerPolicy="no-referrer" />
         ) : (
-          <span className="text-[10px] text-white/60 text-center leading-tight px-1">
-            {name.slice(0, 8)}
-          </span>
+          <span className="text-[10px] text-white/60 text-center leading-tight px-1">{name.slice(0, 8)}</span>
         )}
       </div>
-      <span className="text-[9px] text-white/50 text-center leading-tight truncate w-full">
-        {name}
-      </span>
+      <span className="text-[9px] text-white/50 text-center leading-tight truncate w-full">{name}</span>
     </div>
   );
 }
 
-/** Stat bento card — compact glass tile showing a number + label */
 function StatCard({ value, label, icon }: { value: number; label: string; icon: string }) {
   return (
     <div
-      className="flex-1 min-w-[90px] flex flex-col items-center justify-center gap-1 py-4"
-      style={{
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: 14,
-      }}
+      className="flex-1 min-w-[70px] flex flex-col items-center justify-center gap-0.5 py-3"
+      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14 }}
     >
-      <span className="text-lg" aria-hidden>{icon}</span>
-      <span className="text-white text-xl font-bold">{value}</span>
-      <span className="text-[10px] text-white/45 uppercase tracking-wider font-medium">{label}</span>
+      <span className="text-base" aria-hidden>{icon}</span>
+      <span className="text-white text-lg font-bold">{value}</span>
+      <span className="text-[9px] text-white/45 uppercase tracking-wider font-medium">{label}</span>
     </div>
   );
 }
 
-/** Section header with count chip */
 function SectionHead({ title, count }: { title: string; count: number }) {
   return (
     <div className="flex items-center gap-2 mb-3">
       <span className="text-[10px] text-white/40 uppercase tracking-widest font-medium">{title}</span>
-      <span
-        className="text-[9px] text-white/60 font-medium"
-        style={{
-          padding: '1px 7px',
-          borderRadius: 99,
-          background: 'rgba(255,255,255,0.06)',
-          border: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
-        {count}
-      </span>
+      <span className="text-[9px] text-white/60 font-medium" style={{ padding: '1px 7px', borderRadius: 99, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.06)' }}>{count}</span>
     </div>
   );
 }
 
-/** Culture / country pill */
-function CultureTile({ name, icon }: { name: string; icon?: string }) {
+/** Country achievement card — small bento tile, grayed when locked */
+function CountryCard({
+  card,
+  isUnlocked,
+  onTap,
+}: {
+  card: (typeof COUNTRY_CARDS)[0];
+  isUnlocked: boolean;
+  onTap: () => void;
+}) {
   return (
-    <span
-      className="inline-flex items-center gap-1.5 text-[11px] font-medium text-white/80"
+    <button
+      onClick={onTap}
+      className="relative overflow-hidden text-left transition-transform active:scale-95"
       style={{
-        padding: '5px 12px',
-        borderRadius: 999,
-        background: 'rgba(255,255,255,0.05)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        width: 90,
+        aspectRatio: '3 / 4',
+        borderRadius: 12,
+        border: isUnlocked ? '1.5px solid rgba(167,217,33,0.35)' : '1px solid rgba(255,255,255,0.06)',
+        flexShrink: 0,
       }}
     >
-      {icon && <span>{icon}</span>}
-      {name}
-    </span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={card.src}
+        alt={card.name}
+        className={`w-full h-full object-cover ${isUnlocked ? '' : 'grayscale opacity-30'}`}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5">
+        <p className="text-[9px] font-medium text-white truncate">{card.name}</p>
+        {isUnlocked && <p className="text-[7px] text-[#A7D921] font-bold">Unlocked</p>}
+      </div>
+      {!isUnlocked && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-sm opacity-60">🔒</span>
+        </div>
+      )}
+    </button>
   );
 }
 
+/** Country detail modal */
+function CountryModal({
+  card,
+  isUnlocked,
+  onClose,
+}: {
+  card: (typeof COUNTRY_CARDS)[0];
+  isUnlocked: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+      <div className="relative max-w-xs w-full" onClick={(e) => e.stopPropagation()}>
+        <div className={`relative rounded-2xl overflow-hidden border-2 ${isUnlocked ? 'border-[#A7D921]/40' : 'border-white/10'}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={card.src} alt={card.name} className={`w-full aspect-[3/4] object-cover ${isUnlocked ? '' : 'grayscale opacity-50'}`} />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+          {!isUnlocked && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-full bg-black/50 border border-white/20 flex items-center justify-center">
+                <span className="text-2xl">🔒</span>
+              </div>
+            </div>
+          )}
+          <div className="absolute bottom-0 left-0 right-0 p-5">
+            <span
+              className="inline-block px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded-full mb-3"
+              style={{
+                color: isUnlocked ? '#A7D921' : 'rgba(255,255,255,0.5)',
+                background: isUnlocked ? 'rgba(167,217,33,0.2)' : 'rgba(255,255,255,0.1)',
+                border: `1px solid ${isUnlocked ? 'rgba(167,217,33,0.3)' : 'rgba(255,255,255,0.1)'}`,
+              }}
+            >
+              {isUnlocked ? 'Unlocked' : 'Locked'}
+            </span>
+            <h2 className="text-xl font-bold text-white mb-1">{card.name}</h2>
+            <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2">{card.region}</p>
+            <p className="text-xs text-white/70 leading-relaxed">{card.desc}</p>
+            {!isUnlocked && (
+              <p className="text-[10px] text-white/40 mt-3 italic">Visit a Zostel or take a Zo Trip to {card.name} to unlock</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main ───
+
 export function BadgesSection({ roles, rolesLoading, myXp, profile }: BadgesSectionProps) {
-  const earnedBadges = roles
-    ? BADGE_TYPES.filter((b) => roles.hasRole(b.slug))
-    : [];
+  const [selectedCountry, setSelectedCountry] = useState<(typeof COUNTRY_CARDS)[0] | null>(null);
+
+  const earnedBadges = roles ? BADGE_TYPES.filter((b) => roles.hasRole(b.slug)) : [];
   const allRoleNames = roles?.displayNames ?? [];
 
   const destinations = myXp?.destinationNames ?? [];
   const zostels = myXp?.zostelNames ?? [];
   const trips = myXp?.tripDestinations ?? [];
 
-  // Country from profile
+  const unlockedCountries = getUnlockedCountries(destinations, trips);
+
   const nationality = profile?.country?.name as string | undefined;
   const countryFlag = profile?.country?.flag as string | undefined;
 
@@ -156,42 +229,47 @@ export function BadgesSection({ roles, rolesLoading, myXp, profile }: BadgesSect
           {/* Stat bento row */}
           {hasStats && (
             <div className="flex gap-2">
-              {(stats.destinations > 0 || destinations.length > 0) && (
-                <StatCard value={Math.max(stats.destinations, destinations.length)} label="Cities" icon="🏙️" />
-              )}
+              {(stats.destinations > 0 || destinations.length > 0) && <StatCard value={Math.max(stats.destinations, destinations.length)} label="Cities" icon="🏙️" />}
               {stats.properties > 0 && <StatCard value={stats.properties} label="Nodes" icon="🏠" />}
               {stats.nights > 0 && <StatCard value={stats.nights} label="Nights" icon="🌙" />}
               {stats.trips > 0 && <StatCard value={stats.trips} label="Trips" icon="✈️" />}
             </div>
           )}
 
-          {/* Countries Unlocked */}
-          {nationality && (
-            <div>
-              <SectionHead title="Countries Unlocked" count={1} />
-              <div className="flex flex-wrap gap-2">
-                <CultureTile name={nationality} icon={countryFlag} />
-              </div>
+          {/* Countries — achievement cards from dashboard */}
+          <div>
+            <SectionHead title="Countries Unlocked" count={unlockedCountries.size} />
+            <div className="flex flex-wrap gap-2">
+              {COUNTRY_CARDS.map((card) => (
+                <CountryCard
+                  key={card.id}
+                  card={card}
+                  isUnlocked={unlockedCountries.has(card.id)}
+                  onTap={() => setSelectedCountry(card)}
+                />
+              ))}
             </div>
-          )}
+            {nationality && (
+              <div className="mt-3 flex items-center gap-1.5 text-[11px] text-white/50">
+                {countryFlag && <span>{countryFlag}</span>}
+                <span>Nationality: {nationality}</span>
+              </div>
+            )}
+          </div>
 
           {/* Cities Unlocked */}
           {destinations.length > 0 && (
             <div>
               <SectionHead title="Cities Unlocked" count={destinations.length} />
-              <div className="flex flex-wrap gap-3">
-                {destinations.map((name, i) => <StampTile key={`dest-${i}`} name={name} />)}
-              </div>
+              <div className="flex flex-wrap gap-3">{destinations.map((name, i) => <StampTile key={`d-${i}`} name={name} />)}</div>
             </div>
           )}
 
-          {/* Nodes Unlocked (Zostels stayed at) */}
+          {/* Nodes Unlocked */}
           {zostels.length > 0 && (
             <div>
               <SectionHead title="Nodes Unlocked" count={zostels.length} />
-              <div className="flex flex-wrap gap-3">
-                {zostels.map((name, i) => <StampTile key={`zos-${i}`} name={name} />)}
-              </div>
+              <div className="flex flex-wrap gap-3">{zostels.map((name, i) => <StampTile key={`z-${i}`} name={name} />)}</div>
             </div>
           )}
 
@@ -199,9 +277,7 @@ export function BadgesSection({ roles, rolesLoading, myXp, profile }: BadgesSect
           {trips.length > 0 && (
             <div>
               <SectionHead title="Trip Destinations" count={trips.length} />
-              <div className="flex flex-wrap gap-3">
-                {trips.map((name, i) => <StampTile key={`trip-${i}`} name={name} />)}
-              </div>
+              <div className="flex flex-wrap gap-3">{trips.map((name, i) => <StampTile key={`t-${i}`} name={name} />)}</div>
             </div>
           )}
 
@@ -209,35 +285,30 @@ export function BadgesSection({ roles, rolesLoading, myXp, profile }: BadgesSect
           {earnedBadges.length > 0 && (
             <div>
               <SectionHead title="Role Badges" count={earnedBadges.length} />
-              <div className="flex flex-wrap gap-2">
-                {earnedBadges.map((b) => <RoleBadge key={b.slug} type={b.type} />)}
-              </div>
+              <div className="flex flex-wrap gap-2">{earnedBadges.map((b) => <RoleBadge key={b.slug} type={b.type} />)}</div>
             </div>
           )}
 
-          {/* Active roles as pills */}
+          {/* Active roles */}
           {allRoleNames.length > 0 && (
             <div>
               <SectionHead title="Active Roles" count={allRoleNames.length} />
               <div className="flex flex-wrap gap-2">
                 {allRoleNames.map((name) => (
-                  <span
-                    key={name}
-                    className="text-[11px] font-medium text-white/75"
-                    style={{
-                      padding: '4px 12px',
-                      borderRadius: 999,
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.07)',
-                    }}
-                  >
-                    {name}
-                  </span>
+                  <span key={name} className="text-[11px] font-medium text-white/75" style={{ padding: '4px 12px', borderRadius: 999, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}>{name}</span>
                 ))}
               </div>
             </div>
           )}
         </div>
+      )}
+
+      {selectedCountry && (
+        <CountryModal
+          card={selectedCountry}
+          isUnlocked={unlockedCountries.has(selectedCountry.id)}
+          onClose={() => setSelectedCountry(null)}
+        />
       )}
     </div>
   );
