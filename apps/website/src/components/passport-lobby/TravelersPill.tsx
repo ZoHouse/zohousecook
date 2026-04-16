@@ -14,10 +14,10 @@ const GRADIENT_GLASS_BORDER =
   'linear-gradient(180deg, rgba(70,70,70,0.8) 0%, rgba(172,172,172,0.2) 100%)';
 
 const AVATARS = [
-  { size: 17, color: '#2C67F6', src: t1 },
-  { size: 22, color: '#2C67F6', src: t1 },
-  { size: 19, color: '#00BEA9', src: t2 },
-  { size: 25, color: '#BA2553', src: t3 },
+  { size: 26, color: '#2C67F6', src: t1, offset: 0 },
+  { size: 30, color: '#00BEA9', src: t2, offset: -10 },
+  { size: 26, color: '#FEDD1E', src: t1, offset: -10 },
+  { size: 30, color: '#BA2553', src: t3, offset: -10 },
 ];
 
 export function TravelersPill({ count = 14 }: TravelersPillProps) {
@@ -25,18 +25,17 @@ export function TravelersPill({ count = 14 }: TravelersPillProps) {
     <div
       className={`flex items-center text-white ${rubikClassName}`}
       style={{
-        width: 180,
-        height: 36,
-        padding: '4px 12px 4px 6px',
-        borderRadius: 16,
+        padding: '6px 18px 6px 8px',
+        borderRadius: 999,
         border: '1.5px solid transparent',
-        gap: 8,
+        gap: 12,
         backgroundImage: `${GRADIENT_GLASS_BG}, ${GRADIENT_GLASS_BORDER}`,
         backgroundOrigin: 'border-box',
         backgroundClip: 'padding-box, border-box',
+        boxShadow: '0 6px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
       }}
     >
-      <div className="flex items-end" aria-hidden>
+      <div className="flex items-center" aria-hidden>
         {AVATARS.map((av, i) => (
           <div
             key={i}
@@ -44,20 +43,33 @@ export function TravelersPill({ count = 14 }: TravelersPillProps) {
             style={{
               width: av.size,
               height: av.size,
-              border: `1.5px solid ${av.color}`,
-              opacity: 0.92,
-              marginLeft: i > 0 ? -5 : 0,
-              filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.5))',
+              border: `2px solid ${av.color}`,
+              marginLeft: av.offset,
+              filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.55))',
               flexShrink: 0,
+              background: '#111',
+              zIndex: AVATARS.length - i,
+              position: 'relative',
             }}
           >
-            <Image src={av.src} alt="" width={av.size} height={av.size} className="w-full h-full object-cover" />
+            <Image
+              src={av.src}
+              alt=""
+              width={av.size}
+              height={av.size}
+              className="w-full h-full object-cover"
+            />
           </div>
         ))}
       </div>
-      <span style={{ fontSize: 11, fontWeight: 400, textAlign: 'left', whiteSpace: 'nowrap', flex: 1 }}>
-        {count} Travellers around
-      </span>
+      <div className="flex flex-col items-start leading-tight">
+        <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>
+          {count} Travellers
+        </span>
+        <span style={{ fontSize: 10, fontWeight: 400, color: 'rgba(255,255,255,0.55)', whiteSpace: 'nowrap' }}>
+          around Bangalore
+        </span>
+      </div>
     </div>
   );
 }
