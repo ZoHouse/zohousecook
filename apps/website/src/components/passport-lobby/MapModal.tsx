@@ -65,6 +65,19 @@ export function MapModal({ open, onClose }: MapModalProps) {
   const container = useRef<HTMLDivElement | null>(null);
   const map = useRef<mapboxgl.Map | null>(null);
 
+  const showAll = () => {
+    if (!map.current) return;
+    const bounds = new mapboxgl.LngLatBounds();
+    PROPERTIES.forEach((p) => bounds.extend([p.lng, p.lat]));
+    map.current.fitBounds(bounds, {
+      padding: { top: 100, bottom: 100, left: 80, right: 80 },
+      pitch: 35,
+      bearing: 0,
+      duration: 1400,
+      maxZoom: 5,
+    });
+  };
+
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -79,7 +92,7 @@ export function MapModal({ open, onClose }: MapModalProps) {
     if (!mapboxgl.accessToken) return;
 
     // Open zoomed-in on BLRxZo (primary property) so 3D buildings + skyline read immediately.
-    // Users navigate to other properties by tapping their pillars.
+    // Users navigate to other properties by tapping their pillars, or "Show all" to fit the planet.
     const primary = PROPERTIES.find((p) => p.id === '9XWJCC93') ?? PROPERTIES[0];
 
     map.current = new mapboxgl.Map({
@@ -92,6 +105,7 @@ export function MapModal({ open, onClose }: MapModalProps) {
       interactive: true,
       attributionControl: false,
       antialias: true,
+      projection: { name: 'globe' },
     });
 
     map.current.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'bottom-right');
@@ -214,13 +228,17 @@ export function MapModal({ open, onClose }: MapModalProps) {
           </svg>
         </button>
 
-        <div
-          className="absolute top-3 left-3 z-10 px-3 py-2 rounded-full backdrop-blur-sm border border-white/10 flex items-center gap-2"
+        <button
+          type="button"
+          onClick={showAll}
+          className="absolute top-3 left-3 z-10 px-3 py-2 rounded-full backdrop-blur-sm border border-white/10 flex items-center gap-2 transition-all hover:bg-black/85 active:scale-95"
           style={{ background: 'rgba(0,0,0,0.7)' }}
+          aria-label="Frame all Zo properties on the map"
         >
           <span className="w-2 h-2 rounded-full bg-[#FF2F8E] animate-pulse" aria-hidden />
           <span className="text-white text-sm font-medium">Zo World · {PROPERTIES.length} properties</span>
-        </div>
+          <span className="text-white/50 text-xs ml-1">·&nbsp;view all</span>
+        </button>
 
         <div
           ref={container}
