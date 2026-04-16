@@ -13,6 +13,7 @@ import { NextMilestoneSign } from './NextMilestoneSign';
 import { TravelersPill } from './TravelersPill';
 import { PassesDock } from './PassesDock';
 import { StubSection } from './StubSection';
+import { ActiveQuestCard } from './ActiveQuestCard';
 import { ProUpsellModal, type ProUpsellFeature } from '../pro';
 
 export function PassportLobby() {
@@ -63,6 +64,7 @@ export function PassportLobby() {
           ghostVisitors={<GhostVisitors />}
           nextMilestone={<NextMilestoneSign />}
           travelersPill={<TravelersPill />}
+          activeQuest={<ActiveQuestCard onTap={() => openUpsell('dailies')} />}
         />
       ) : tab === 'dailies' ? (
         <StubSection feature="dailies" title="Dailies" onUpsell={openUpsell} />
