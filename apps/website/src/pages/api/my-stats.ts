@@ -112,8 +112,14 @@ async function fetchZostelBookings(
     'vythiri': 'Wayanad',
   };
 
-  function resolveCity(raw: string): string {
+  // Garbage property names from closed/test/renamed operators — skip entirely
+  const IGNORE_DESTINATIONS = new Set([
+    'old', 'double old', 'alleppeyyy', 'aurangabaddd', 'test',
+  ]);
+
+  function resolveCity(raw: string): string | null {
     const lower = raw.toLowerCase().trim();
+    if (IGNORE_DESTINATIONS.has(lower)) return null;
     return CITY_ALIASES[lower] ?? raw;
   }
 
@@ -129,12 +135,14 @@ async function fetchZostelBookings(
     if (b.operator?.name) {
       const name = b.operator.name;
       const parenMatch = name.match(/\(([^)]+)\)/);
+      let city: string | null = null;
       if (parenMatch) {
-        destinationSet.add(resolveCity(parenMatch[1].trim()));
+        city = resolveCity(parenMatch[1].trim());
       } else {
         const parts = name.split(/\s+/);
-        if (parts.length > 1) destinationSet.add(resolveCity(parts[parts.length - 1]));
+        if (parts.length > 1) city = resolveCity(parts[parts.length - 1]);
       }
+      if (city) destinationSet.add(city);
     }
   }
 
