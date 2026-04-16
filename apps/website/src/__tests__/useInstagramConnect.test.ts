@@ -76,8 +76,9 @@ describe("useInstagramConnect", () => {
     // (which is the expected dev behavior — it's baked at Next build time).
     const href = window.location.href;
     if (href) {
-      expect(href).toContain("api.instagram.com/oauth/authorize");
+      expect(href).toContain("www.instagram.com/oauth/authorize");
       expect(href).toContain("response_type=code");
+      expect(href).toContain("scope=instagram_business_basic");
     } else {
       // Env var was stripped by Next babel preset at build time; connect() fell back
       // to toast.error("Instagram not configured"). This is acceptable in test env.

@@ -93,13 +93,19 @@ export default function useInstagramConnect(): UseInstagramConnectReturn {
       return;
     }
     const redirectUri = `${APP_URL}/oauth/instagram/callback`;
+    // Instagram Business Login (new API; Basic Display was deprecated Dec 2024).
+    // Scopes: `instagram_business_basic` is the minimum for identity + username.
+    // Add `instagram_business_content_publish` / `_manage_messages` / `_manage_comments`
+    // later if quest features need them — narrower scope = faster user approval.
     const params = new URLSearchParams({
+      enable_fb_login: "0",
+      force_authentication: "1",
       client_id: IG_APP_ID,
       redirect_uri: redirectUri,
-      scope: "user_profile,user_media",
       response_type: "code",
+      scope: "instagram_business_basic",
     });
-    window.location.href = `https://api.instagram.com/oauth/authorize?${params}`;
+    window.location.href = `https://www.instagram.com/oauth/authorize?${params}`;
   }, [profile]);
 
   const disconnect = useCallback(async () => {
