@@ -83,6 +83,12 @@ export function NewUserInvitedView({
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = "rgba(212, 175, 55, 0.08)";
                 }}
+                onFocus={(e) => {
+                  e.currentTarget.style.background = "rgba(212, 175, 55, 0.15)";
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.background = "rgba(212, 175, 55, 0.08)";
+                }}
               >
                 Get Pro Passport
               </button>
