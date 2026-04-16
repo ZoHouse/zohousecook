@@ -15,15 +15,25 @@ const KIND_STYLE: Record<PropertyKind, { color: string; accent: string; headSize
   'other':        { color: '#2C67F6', accent: 'rgba(44,103,246,0.35)', headSize: 20, stem: 6,  label: 'Partner' },
 };
 
-function buildPillarElement(property: ZoProperty): HTMLDivElement {
+/**
+ * Returns { outer, inner } — Mapbox applies `transform: translate(x,y)` to the outer
+ * element to position the marker at its lng/lat. We write our own `transform: scale()`
+ * to the inner element so our styling never clobbers Mapbox's positioning.
+ */
+function buildPillarElement(property: ZoProperty): { outer: HTMLDivElement; inner: HTMLDivElement } {
   const s = KIND_STYLE[property.kind];
   const isZoBranded = property.kind === 'zo-house' || property.kind === 'zo-club';
-  const totalHeight = s.headSize + s.stem + 4; // stem + small tail
+  const totalHeight = s.headSize + s.stem + 4;
 
-  const root = document.createElement('div');
-  root.style.cssText = `position:relative;width:${s.headSize + 12}px;height:${totalHeight}px;pointer-events:auto;cursor:pointer;font-family:Rubik,sans-serif;`;
+  // Outer: Mapbox-managed container. NEVER set `transform` here.
+  const outer = document.createElement('div');
+  outer.style.cssText = `width:${s.headSize + 12}px;height:${totalHeight}px;pointer-events:auto;cursor:pointer;`;
 
-  // Tiny ground dot at the coord position (the "tip" of the pin)
+  // Inner: our scalable pillar content.
+  const inner = document.createElement('div');
+  inner.style.cssText = `position:relative;width:100%;height:100%;transform-origin:bottom center;transition:transform 120ms ease-out;font-family:Rubik,sans-serif;`;
+
+  // Tiny ground dot (the "tip" pinned to the lat/lng)
   const tip = document.createElement('div');
   tip.style.cssText = `position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:${s.color};box-shadow:0 0 6px ${s.color}, 0 0 12px ${s.accent};`;
 
@@ -31,15 +41,16 @@ function buildPillarElement(property: ZoProperty): HTMLDivElement {
   const stem = document.createElement('div');
   stem.style.cssText = `position:absolute;left:50%;bottom:4px;transform:translateX(-50%);width:${isZoBranded ? 2 : 1.5}px;height:${s.stem}px;background:linear-gradient(180deg, ${s.color} 0%, ${s.color}55 100%);`;
 
-  // Pin head — floats just above the tip by s.stem pixels
+  // Pin head — floats just above the tip
   const head = document.createElement('div');
   head.style.cssText = `position:absolute;left:50%;top:0;transform:translateX(-50%);width:${s.headSize}px;height:${s.headSize}px;border-radius:50%;background:${s.color};border:2px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;font-size:${Math.max(8, s.headSize * 0.32)}px;font-weight:700;letter-spacing:0.02em;box-shadow:0 0 0 3px ${s.accent}, 0 4px 10px rgba(0,0,0,0.5);`;
   head.textContent = isZoBranded ? '\\z/' : '•';
 
-  root.appendChild(tip);
-  root.appendChild(stem);
-  root.appendChild(head);
-  return root;
+  inner.appendChild(tip);
+  inner.appendChild(stem);
+  inner.appendChild(head);
+  outer.appendChild(inner);
+  return { outer, inner };
 }
 
 function buildPopupHTML(property: ZoProperty): string {
@@ -131,16 +142,37 @@ export function MapModal({ open, onClose }: MapModalProps) {
 
     // Track all markers so we can hide all-but-focused when zoomed in close.
     // Threshold: zoom ≥ HIDE_OTHERS_ZOOM → only the focused property's marker is visible.
-    const markerEntries: Array<{ id: string; el: HTMLDivElement; marker: mapboxgl.Marker }> = [];
+    const markerEntries: Array<{ id: string; outer: HTMLDivElement; inner: HTMLDivElement; marker: mapboxgl.Marker }> = [];
     let focusedId: string | null = null;
     const HIDE_OTHERS_ZOOM = 14;
 
-    const updateMarkerVisibility = () => {
+    const syncMarkers = () => {
       if (!map.current) return;
       const zoom = map.current.getZoom();
+
+      // Scale pin contents (NOT the outer Mapbox-managed div)
+      // Ramp 0.32 at zoom 2 → 1.0 at zoom 14
+      const scale = Math.max(0.32, Math.min(1, 0.32 + (zoom - 2) * 0.057));
+
+      // At low zoom (<8), collapse duplicate city-centroid pins to one per 0.1° cell
+      const suppressClusters = zoom < 8;
+      const seenCell = new Set<string>();
+
       const hideOthers = zoom >= HIDE_OTHERS_ZOOM && focusedId !== null;
+
       for (const entry of markerEntries) {
-        entry.el.style.display = hideOthers && entry.id !== focusedId ? 'none' : '';
+        entry.inner.style.transform = `scale(${scale})`;
+
+        let clusterHidden = false;
+        if (suppressClusters) {
+          const ll = entry.marker.getLngLat();
+          const cell = `${ll.lat.toFixed(1)},${ll.lng.toFixed(1)}`;
+          if (seenCell.has(cell)) clusterHidden = true;
+          else seenCell.add(cell);
+        }
+
+        const focusHidden = hideOthers && entry.id !== focusedId;
+        entry.outer.style.display = clusterHidden || focusHidden ? 'none' : '';
       }
     };
 
@@ -156,11 +188,12 @@ export function MapModal({ open, onClose }: MapModalProps) {
 
         const jitter = n === 0
           ? [0, 0]
-          // Spread in a tight spiral, ~30m per step — invisible at country zoom, distinguishable at city
-          : [Math.cos(n * 2.4) * 0.0003 * n, Math.sin(n * 2.4) * 0.0003 * n];
+          // Tight spiral, ~10m radius increments — imperceptible at country zoom,
+          // distinguishable once you zoom past the city level.
+          : [Math.cos(n * 2.4) * 0.0001 * (1 + n * 0.3), Math.sin(n * 2.4) * 0.0001 * (1 + n * 0.3)];
         const coords: [number, number] = [property.lng + jitter[0], property.lat + jitter[1]];
 
-        const el = buildPillarElement(property);
+        const { outer, inner } = buildPillarElement(property);
         const ks = KIND_STYLE[property.kind];
         const popup = new mapboxgl.Popup({
           offset: [0, -(ks.headSize + ks.stem + 8)],
@@ -169,12 +202,12 @@ export function MapModal({ open, onClose }: MapModalProps) {
           maxWidth: '260px',
         }).setHTML(buildPopupHTML(property));
 
-        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+        const marker = new mapboxgl.Marker({ element: outer, anchor: 'bottom' })
           .setLngLat(coords)
           .setPopup(popup)
           .addTo(map.current!);
 
-        markerEntries.push({ id: property.id, el, marker });
+        markerEntries.push({ id: property.id, outer, inner, marker });
 
         // Tap/click the pillar → fly the camera in for a close-up 3D view.
         const flyToProperty = () => {
@@ -190,8 +223,8 @@ export function MapModal({ open, onClose }: MapModalProps) {
             essential: true,
           });
         };
-        el.addEventListener('click', flyToProperty);
-        el.style.touchAction = 'manipulation';
+        outer.addEventListener('click', flyToProperty);
+        outer.style.touchAction = 'manipulation';
       });
 
       // If user pans/zooms away from focus, clear focus so all markers return
@@ -202,15 +235,16 @@ export function MapModal({ open, onClose }: MapModalProps) {
         }
       };
 
+      map.current.on('zoom', syncMarkers);
       map.current.on('zoomend', () => {
         clearFocusIfAway();
-        updateMarkerVisibility();
+        syncMarkers();
       });
-      map.current.on('moveend', updateMarkerVisibility);
+      map.current.on('moveend', syncMarkers);
 
-      // Initial visibility — we open zoomed in on BLRxZo, so mark it focused.
+      // Initial sync — we open zoomed in on BLRxZo, so mark it focused.
       focusedId = primary.id;
-      updateMarkerVisibility();
+      syncMarkers();
 
       // Ambient slow rotate around the current center — disable once user interacts
       let bearing = -18;
