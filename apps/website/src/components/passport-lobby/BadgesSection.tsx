@@ -214,7 +214,7 @@ export function BadgesSection({ roles, rolesLoading, myXp, profile }: BadgesSect
   const hasAnything = earnedBadges.length > 0 || allRoleNames.length > 0 || destinations.length > 0 || zostels.length > 0 || trips.length > 0 || hasStats || !!nationality;
 
   return (
-    <div className={`px-4 md:px-8 py-6 max-w-[600px] mx-auto ${rubikClassName}`}>
+    <div className={`px-4 md:px-8 py-6 pb-36 md:pb-44 max-w-[600px] mx-auto ${rubikClassName}`}>
       <div className={`text-xl font-bold text-white mb-0.5 ${syneClassName}`}>Badges</div>
       <div className="text-[11px] text-white/40 mb-6">Earned through your journey in Zo World</div>
 

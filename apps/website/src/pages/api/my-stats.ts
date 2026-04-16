@@ -94,6 +94,7 @@ async function fetchZostelBookings(
   let nights = 0;
   let spend = 0;
   const propertySet = new Set<string>();
+  const propertyNameMap = new Map<string, string>();
   const destinationSet = new Set<string>();
 
   // Neighborhoods → parent city. Prevents Koramangala/Whitefield/Indiranagar
@@ -138,6 +139,8 @@ async function fetchZostelBookings(
     }
     if (b.paid_amount) spend += Number(b.paid_amount) || 0;
     if (b.operator?.code) propertySet.add(b.operator.code);
+    // Also track the human-readable name for display in badges
+    if (b.operator?.name) propertyNameMap.set(b.operator.code, b.operator.name);
     if (b.operator?.name) {
       const name = b.operator.name;
       const parenMatch = name.match(/\(([^)]+)\)/);
@@ -155,6 +158,7 @@ async function fetchZostelBookings(
   return {
     nights,
     properties: [...propertySet],
+    propertyNames: [...propertySet].map((code) => propertyNameMap.get(code) ?? code),
     destinations: [...destinationSet].sort(),
     spend,
   };
@@ -287,7 +291,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       createdAt: profile.createdAt,
       tribeMembers: [],
       destinationNames: stays.destinations,
-      zostelNames: stays.properties,
+      zostelNames: stays.propertyNames,
       tripDestinations: trips.tripDestinations,
       stats: {
         nights: stays.nights,
