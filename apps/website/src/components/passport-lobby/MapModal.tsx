@@ -31,14 +31,30 @@ export function MapModal({ open, onClose }: MapModalProps) {
 
     map.current = new mapboxgl.Map({
       container: container.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
+      style: 'mapbox://styles/mapbox/standard',
       center: CENTER,
-      zoom: 13,
+      zoom: 15.5,
+      pitch: 62,
+      bearing: -18,
       interactive: true,
       attributionControl: false,
+      antialias: true,
     });
 
-    map.current.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+    map.current.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'bottom-right');
+
+    map.current.on('style.load', () => {
+      if (!map.current) return;
+      // Mapbox Standard style supports runtime "lightPreset" config — set to night for dark vibe
+      try {
+        map.current.setConfigProperty('basemap', 'lightPreset', 'dusk');
+        map.current.setConfigProperty('basemap', 'showPointOfInterestLabels', true);
+        map.current.setConfigProperty('basemap', 'showTransitLabels', false);
+        map.current.setConfigProperty('basemap', 'show3dObjects', true);
+      } catch {
+        // Older style versions may not support setConfigProperty — silently ignore
+      }
+    });
 
     map.current.on('load', () => {
       if (!map.current) return;
@@ -56,10 +72,24 @@ export function MapModal({ open, onClose }: MapModalProps) {
       new mapboxgl.Marker(el)
         .setLngLat(CENTER)
         .setPopup(
-          new mapboxgl.Popup({ offset: 16, closeButton: false })
-            .setHTML('<div style="font-family: Rubik, sans-serif; padding: 4px 2px;"><b>BLRxZo</b><br/><small style="color:#666">Koramangala, Bangalore</small></div>')
+          new mapboxgl.Popup({ offset: 16, closeButton: false }).setHTML(
+            '<div style="font-family: Rubik, sans-serif; padding: 4px 2px;"><b>BLRxZo</b><br/><small style="color:#666">Koramangala, Bangalore</small></div>'
+          )
         )
         .addTo(map.current);
+
+      // Subtle rotation animation for that "alive 3D scene" feel
+      let bearing = -18;
+      const rotate = setInterval(() => {
+        if (!map.current) {
+          clearInterval(rotate);
+          return;
+        }
+        bearing += 0.05;
+        map.current.setBearing(bearing);
+      }, 80);
+
+      map.current.once('remove', () => clearInterval(rotate));
     });
 
     return () => {
