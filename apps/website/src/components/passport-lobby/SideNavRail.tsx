@@ -2,7 +2,7 @@ import Image from 'next/image';
 import type { StaticImageData } from 'next/image';
 import { rubikClassName } from '../utils/font';
 import wifiIcon from '../../assets/passport-lobby/icons/wifi.svg';
-import laundryIcon from '../../assets/passport-lobby/icons/laundry.png';
+import dailiesIcon from '../../assets/passport-lobby/icons/dailies.svg';
 import shieldIcon from '../../assets/passport-lobby/icons/shield.svg';
 import mapIcon from '../../assets/passport-lobby/icons/map.svg';
 
@@ -18,7 +18,7 @@ type IconSrc = string | StaticImageData;
 
 const TABS: Array<{ key: LobbyTab; label: string; icon: IconSrc }> = [
   { key: 'lobby', label: 'Lobby', icon: wifiIcon as IconSrc },
-  { key: 'dailies', label: 'Dailies', icon: laundryIcon as IconSrc },
+  { key: 'dailies', label: 'Dailies', icon: dailiesIcon as IconSrc },
   { key: 'badges', label: 'Badges', icon: shieldIcon as IconSrc },
 ];
 
