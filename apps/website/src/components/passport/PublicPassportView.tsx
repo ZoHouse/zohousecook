@@ -8,6 +8,7 @@ import ShareModal from "./ShareModal";
 import PassportIdentityCard from "./PassportIdentityCard";
 import PassportPlusUpsell from "./PassportPlusUpsell";
 import BookStaysPlaceholder from "./BookStaysPlaceholder";
+import StampsGrid from "./StampsGrid";
 
 interface PublicPassportViewProps {
   handle: string;
@@ -127,26 +128,14 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
         </div>
       )}
 
-      {data.stamps.length > 0 && (
-        <div>
-          <h2 className="text-[10px] text-white/40 uppercase tracking-wider mb-2">
-            Destination Stamps
-          </h2>
-          <div className="grid grid-cols-3 gap-2">
-            {data.stamps.map((stamp, i) => {
-              const s = stamp as { key?: string; label?: string };
-              return (
-                <div
-                  key={s.key || i}
-                  className="aspect-square rounded-xl bg-white/5 flex items-center justify-center p-2 text-center"
-                >
-                  <span className="text-[10px] text-white/80">{s.label || ""}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <StampsGrid
+        stamps={data.stamps
+          .map((stamp) => {
+            const s = stamp as { key?: string; label?: string; image_url?: string };
+            return { name: s.label || "", imageUrl: s.image_url || null };
+          })
+          .filter((s) => s.name)}
+      />
 
       {data.badges.length > 0 && (
         <div>

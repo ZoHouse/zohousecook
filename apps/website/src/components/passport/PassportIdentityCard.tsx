@@ -10,6 +10,7 @@ interface PassportIdentityCardProps {
   profile: any;
   myXp: any;
   roles: any;
+  currentLocation?: string | null;
   onOpenSettings?: () => void;
   onOpenShare?: () => void;
 }
@@ -53,6 +54,7 @@ const PassportIdentityCard: React.FC<PassportIdentityCardProps> = ({
   profile,
   myXp,
   roles,
+  currentLocation,
   onOpenSettings,
   onOpenShare,
 }) => {
@@ -81,6 +83,7 @@ const PassportIdentityCard: React.FC<PassportIdentityCardProps> = ({
   if (dob) infoRows.push({ label: "DOB", value: dob });
   if (gender) infoRows.push({ label: "GENDER", value: gender });
   if (homeCity) infoRows.push({ label: "HOMETOWN", value: homeCity });
+  if (currentLocation) infoRows.push({ label: "CURRENT", value: currentLocation });
   if (nationality) infoRows.push({ label: "NATIONALITY", value: nationality });
 
   return (

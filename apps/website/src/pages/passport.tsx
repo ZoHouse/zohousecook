@@ -10,6 +10,7 @@ import {
   ReferralSection,
   WhyPassportPlus,
 } from "../components/passport";
+import StampsGrid from "../components/passport/StampsGrid";
 import { SettingsModal } from "../components/passport/SettingsModal";
 import ShareModal from "../components/passport/ShareModal";
 import { PublicPassportView } from "../components/passport/PublicPassportView";
@@ -19,6 +20,7 @@ import { ShareQuestButtons } from "../components/passport/ShareQuestButtons";
 import { fixAvatarUrl } from "../hooks/usePublicPassport";
 import { useMyXp } from "../hooks/useMyXp";
 import { useMyRoles } from "../hooks/useMyRoles";
+import { useWhereabouts } from "../hooks/useWhereabouts";
 import { useCaptureReferrer } from "../hooks/useCaptureReferrer";
 import { identifyUser, trackActivity } from "../lib/analytics/trackActivity";
 
@@ -130,6 +132,8 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
   const { profile, isLoading } = useProfile();
   const { myXp } = useMyXp();
   const { roles } = useMyRoles();
+  const { whereabouts } = useWhereabouts();
+  const currentLocation = whereabouts?.place_name || null;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
@@ -258,6 +262,7 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
               profile={profile}
               myXp={myXp}
               roles={roles}
+              currentLocation={currentLocation}
               onOpenSettings={() => setSettingsOpen(true)}
               onOpenShare={() => setShareOpen(true)}
             />
@@ -271,10 +276,17 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
                 profile={profile}
                 myXp={myXp}
                 roles={roles}
+                currentLocation={currentLocation}
                 onOpenSettings={() => setSettingsOpen(true)}
                 onOpenShare={() => setShareOpen(true)}
               />
             </div>
+
+            {myXp?.destinationNames && myXp.destinationNames.length > 0 && (
+              <StampsGrid
+                stamps={myXp.destinationNames.map((name) => ({ name }))}
+              />
+            )}
 
             <PassportProCard />
             <QuestsSection />
