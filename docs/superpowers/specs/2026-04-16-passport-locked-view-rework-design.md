@@ -162,7 +162,9 @@ interface NewUserInvitedViewProps {
 }
 ```
 
-All inviter-* and viewer-* props are removed. The `fixAvatarUrl` import stays (still used by the chain-inviter footer). The `useState` for the "Copied!" indicator is removed (no copy button). `passportInWalletImg` import is unchanged.
+All inviter-* and viewer-* props are removed. The `fixAvatarUrl` import stays (still used by the chain-inviter footer). The `useState` for the "Copied!" indicator is removed (no copy button), and the `useState` import from `react` should be dropped with it. `passportInWalletImg` import is unchanged.
+
+The `RoleChip` helper component (current lines 19–33) becomes dead code and must be deleted along with the top inviter card. Locals that die with the removed sections: `displayName`, `viewerLink`, `handleCopyLink`, `handleConnectIG`, `inviterAvatar`, `viewerAvatar`, `copied`, `setCopied`.
 
 ### Caller update (`passport.tsx` line 211–219)
 
