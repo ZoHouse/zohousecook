@@ -113,27 +113,23 @@ export function LobbyRoom({ mapWidget, sideNav, hero, ghostVisitors, nextMilesto
           <div className="opacity-60" style={{ width: 44 }}>{nextMilestone}</div>
         </div>
 
-        {/* CENTER STAGE: big hero + pedestal */}
-        <div className="relative z-[5] flex flex-col items-center justify-center pt-[60px]" style={{ minHeight: 'calc(100vh - 240px)' }}>
-          <div className="scale-[1.35] lg:scale-[1.55] origin-center transition-transform">
-            {hero}
+        {/* CENTER STAGE: hero card + pedestal + progress bar */}
+        <div className="relative z-[5] flex flex-col items-center justify-center pt-[80px]" style={{ minHeight: 'calc(100vh - 260px)' }}>
+          {hero}
+          <div style={{ marginTop: 6 }} aria-hidden>
+            <Image src={pedestal} alt="" width={179} height={65} style={{ width: 260, height: 'auto' }} />
           </div>
-          <div style={{ marginTop: -8 }} aria-hidden>
-            <Image src={pedestal} alt="" width={179} height={65} style={{ width: 340, height: 'auto' }} />
+          <div style={{ marginTop: -20 }} aria-hidden>
+            <Image src={progressBar} alt="" width={113} height={6} style={{ width: 160, height: 'auto' }} />
           </div>
-          <div style={{ marginTop: -18 }} aria-hidden>
-            <Image src={progressBar} alt="" width={113} height={6} style={{ width: 200, height: 'auto' }} />
-          </div>
-        </div>
-
-        {/* BOTTOM HUD: Active quest (left) + Travelers (right) */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[8] flex items-center gap-6 w-full justify-center px-8">
-          {activeQuest && <div>{activeQuest}</div>}
-          {travelersPill}
+          {/* Active quest tucked under the pedestal */}
+          {activeQuest && <div className="mt-6">{activeQuest}</div>}
+          {/* Travelers pill below the quest */}
+          <div className="mt-3">{travelersPill}</div>
         </div>
 
         {/* HUD: ghost visitors — bottom-left */}
-        <div className="absolute left-8 bottom-8 z-[4]">{ghostVisitors}</div>
+        <div className="absolute left-8 bottom-24 z-[4]">{ghostVisitors}</div>
       </div>
     </>
   );

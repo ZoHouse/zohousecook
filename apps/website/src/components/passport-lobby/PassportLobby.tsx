@@ -81,13 +81,13 @@ export function PassportLobby() {
         }}
       />
 
-      {/* Wordmark — desktop only, top-left corner of the page */}
+      {/* Wordmark — desktop only, bottom-left to avoid collision with Map HUD */}
       <div
         aria-hidden
-        className="hidden md:flex absolute top-6 left-8 z-20 items-center gap-3 pointer-events-none"
+        className="hidden md:flex fixed bottom-6 left-6 z-20 items-center gap-3 pointer-events-none"
       >
         <span
-          className="w-9 h-9 rounded-md flex items-center justify-center text-sm font-bold"
+          className="w-8 h-8 rounded-md flex items-center justify-center text-xs font-bold"
           style={{
             background: 'linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)',
             border: '1px solid rgba(255,255,255,0.08)',
@@ -97,8 +97,8 @@ export function PassportLobby() {
           \z/
         </span>
         <div className="flex flex-col leading-tight">
-          <span className="text-white text-base font-medium">Zo World</span>
-          <span className="text-white/40 text-[11px]">Follow Your Heart</span>
+          <span className="text-white/80 text-sm font-medium">Zo World</span>
+          <span className="text-white/35 text-[10px]">Follow Your Heart</span>
         </div>
       </div>
 
