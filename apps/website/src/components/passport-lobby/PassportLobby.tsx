@@ -5,7 +5,6 @@ import { useMyXp } from '../../hooks/useMyXp';
 import { TopBar } from './TopBar';
 import { LobbyRoom } from './LobbyRoom';
 import { SideNavRail, type LobbyTab } from './SideNavRail';
-import { MapWidget } from './MapWidget';
 import { MapModal } from './MapModal';
 import { HeroStage } from './HeroStage';
 import { GhostVisitors } from './GhostVisitors';
@@ -108,8 +107,7 @@ export function PassportLobby() {
 
         {tab === 'lobby' ? (
           <LobbyRoom
-            mapWidget={<MapWidget onOpen={() => setMapOpen(true)} />}
-            sideNav={<SideNavRail active={tab} onChange={handleTabChange} />}
+            sideNav={<SideNavRail active={tab} onChange={handleTabChange} onOpenMap={() => setMapOpen(true)} />}
             hero={
               <HeroStage
                 tier="free"

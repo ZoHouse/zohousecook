@@ -5,7 +5,6 @@ import pedestal from '../../assets/passport-lobby/scene/pedestal.svg';
 import progressBar from '../../assets/passport-lobby/scene/progress-bar.svg';
 
 export interface LobbyRoomProps {
-  mapWidget: ReactNode;
   sideNav: ReactNode;
   hero: ReactNode;
   ghostVisitors: ReactNode;
@@ -15,12 +14,10 @@ export interface LobbyRoomProps {
 }
 
 /**
- * Lobby scene — a Fortnite-style lobby. Avatar center-stage, HUD around edges.
- *
- * Mobile (<md): compact 360px absolute-positioned room.
- * Desktop (≥md): full viewport immersive scene, avatar is the star, elements hug the edges.
+ * Lobby scene — Fortnite-style lobby. Avatar center-stage, HUD around edges.
+ * Map access lives inside the side-nav rail (passed in via sideNav slot).
  */
-export function LobbyRoom({ mapWidget, sideNav, hero, ghostVisitors, nextMilestone, travelersPill, activeQuest }: LobbyRoomProps) {
+export function LobbyRoom({ sideNav, hero, ghostVisitors, nextMilestone, travelersPill, activeQuest }: LobbyRoomProps) {
   return (
     <>
       {/* MOBILE: compact 360px room */}
@@ -43,13 +40,12 @@ export function LobbyRoom({ mapWidget, sideNav, hero, ghostVisitors, nextMilesto
           />
         </div>
 
-        <div className="absolute top-3 left-3 z-[10]">{mapWidget}</div>
         <div className="absolute top-3 right-3 z-[10] flex flex-col items-end gap-1">
           {sideNav}
           <div className="mt-3 flex justify-center" style={{ width: 44 }}>{nextMilestone}</div>
         </div>
 
-        <div className="relative z-[5] flex flex-col items-center pt-[78px] pb-4">
+        <div className="relative z-[5] flex flex-col items-center pt-[36px] pb-4">
           {hero}
           <div style={{ marginTop: -6 }} aria-hidden>
             <Image src={pedestal} alt="" width={179} height={65} style={{ width: 200, height: 'auto' }} />
@@ -72,7 +68,6 @@ export function LobbyRoom({ mapWidget, sideNav, hero, ghostVisitors, nextMilesto
           background: 'transparent',
         }}
       >
-        {/* Full-bleed perspective scene */}
         <div className="absolute inset-0 pointer-events-none flex justify-center items-start" aria-hidden>
           <Image
             src={roomPerspective}
@@ -104,16 +99,13 @@ export function LobbyRoom({ mapWidget, sideNav, hero, ghostVisitors, nextMilesto
           }}
         />
 
-        {/* HUD: Map — top-left */}
-        <div className="absolute top-6 left-6 z-[10]">{mapWidget}</div>
-
-        {/* HUD: Side nav — right edge, vertically centered */}
+        {/* HUD: Side nav — right edge, vertically centered. Includes Map button now. */}
         <div className="absolute top-1/2 right-6 -translate-y-1/2 z-[10] flex flex-col items-center gap-6">
           {sideNav}
           <div className="opacity-60" style={{ width: 44 }}>{nextMilestone}</div>
         </div>
 
-        {/* CENTER STAGE: hero card + pedestal + progress bar */}
+        {/* CENTER STAGE: hero card + pedestal + progress bar + quest + travelers */}
         <div className="relative z-[5] flex flex-col items-center justify-center pt-[80px]" style={{ minHeight: 'calc(100vh - 260px)' }}>
           {hero}
           <div style={{ marginTop: 6 }} aria-hidden>
@@ -122,9 +114,7 @@ export function LobbyRoom({ mapWidget, sideNav, hero, ghostVisitors, nextMilesto
           <div style={{ marginTop: -20 }} aria-hidden>
             <Image src={progressBar} alt="" width={113} height={6} style={{ width: 160, height: 'auto' }} />
           </div>
-          {/* Active quest tucked under the pedestal */}
           {activeQuest && <div className="mt-6">{activeQuest}</div>}
-          {/* Travelers pill below the quest */}
           <div className="mt-3">{travelersPill}</div>
         </div>
 
