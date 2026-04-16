@@ -3,8 +3,6 @@ export { Pedestal } from './Pedestal';
 export type { PedestalProps } from './Pedestal';
 export { XpProgressBar } from './XpProgressBar';
 export type { XpProgressBarProps } from './XpProgressBar';
-export { XpPill } from './XpPill';
-export type { XpPillProps } from './XpPill';
 export { RankPill } from './RankPill';
 export type { RankPillProps } from './RankPill';
 export { MapWidget } from './MapWidget';
