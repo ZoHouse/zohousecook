@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useProfile } from '@zo/auth';
 import { useMyXp } from '../../hooks/useMyXp';
 import useInstagramConnect from '../../hooks/useInstagramConnect';
+import { toast } from 'sonner';
 
 import { TopBar } from './TopBar';
 import { LobbyRoom } from './LobbyRoom';
@@ -50,6 +51,17 @@ export function PassportLobby() {
     }
     setTab(next);
   };
+
+  const handleShare = useCallback(async () => {
+    const url = `${window.location.origin}/@${handle}`;
+    const shareData = { title: `${handle} · Zo World`, text: 'Check out my Zo Passport', url };
+    if (navigator.share) {
+      try { await navigator.share(shareData); } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast.success('Profile link copied!');
+    }
+  }, [handle]);
 
   // Quest tap: if IG not connected → show IG connect modal. If connected → dailies upsell.
   const handleQuestTap = () => {
@@ -133,7 +145,7 @@ export function PassportLobby() {
             hero={
               <HeroStage
                 tier="free"
-                citizenProps={{ handle, displayName: handle, avatarUrl, xpTotal, rankTitle }}
+                citizenProps={{ handle, displayName: handle, avatarUrl, xpTotal, rankTitle, onShare: handleShare }}
                 xpInLevel={0}
                 xpLevelTotal={0}
                 onUpsell={() => openUpsell('3d-avatar')}

@@ -12,6 +12,7 @@ export interface CitizenCardProps {
   /** Kept in the interface for future binding; not rendered in the current card. */
   rankTitle?: string;
   onUpsell: () => void;
+  onShare?: () => void;
 }
 
 const GRADIENT_PRIVATE_CARD = 'linear-gradient(180deg, #292929 0%, #000000 100%)';
@@ -19,7 +20,7 @@ const CARD_RADIUS = 20;
 const MAX_TILT = 10; // degrees
 const HOVER_LIFT = 8; // translateZ
 
-export function CitizenCard({ displayName, avatarUrl, onUpsell }: CitizenCardProps) {
+export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare }: CitizenCardProps) {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [tilt, setTilt] = useState<{
     rx: number;
@@ -166,6 +167,34 @@ export function CitizenCard({ displayName, avatarUrl, onUpsell }: CitizenCardPro
               mixBlendMode: 'overlay',
             }}
           />
+        )}
+
+        {/* Share button — top-left corner */}
+        {onShare && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onShare();
+            }}
+            aria-label="Share profile"
+            className="absolute top-3 left-3 z-10 flex items-center justify-center transition-all hover:bg-white/20 active:scale-90"
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 8,
+              background: 'rgba(0,0,0,0.45)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              transform: 'translateZ(30px)',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+              <polyline points="16 6 12 2 8 6" />
+              <line x1="12" y1="2" x2="12" y2="15" />
+            </svg>
+          </button>
         )}
 
         {/* Avatar portrait */}
