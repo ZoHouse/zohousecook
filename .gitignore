@@ -74,3 +74,7 @@ demo-task-def.json
 # Claude Code session memory (local SQLite DB)
 .claude/memory.db
 .vercel
+
+# Figma reference exports (big, reference-only; source of truth is Figma itself)
+apps/website/src/assets/figma-ref/
+docs/superpowers/specs/figma-passport-avatar/
