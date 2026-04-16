@@ -147,7 +147,7 @@ export function PassportLobby() {
         ) : tab === 'dailies' ? (
           <StubSection feature="dailies" title="Dailies" onUpsell={openUpsell} />
         ) : (
-          <BadgesSection roles={roles} rolesLoading={rolesLoading} myXp={myXp} profile={profile} />
+          <BadgesSection roles={roles} rolesLoading={rolesLoading} myXp={myXp} profile={profile} onBack={() => setTab('lobby')} />
         )}
 
         <PassesDock onUpsell={openUpsell} />

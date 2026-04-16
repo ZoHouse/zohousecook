@@ -13,6 +13,7 @@ export interface BadgesSectionProps {
   rolesLoading: boolean;
   myXp: MyXpData | null;
   profile: ProfileData | null;
+  onBack: () => void;
 }
 
 const BADGE_TYPES: Array<{ slug: string; type: 'creator' | 'tribebuilder' }> = [
@@ -194,7 +195,7 @@ function CountryModal({
 
 // ─── Main ───
 
-export function BadgesSection({ roles, rolesLoading, myXp, profile }: BadgesSectionProps) {
+export function BadgesSection({ roles, rolesLoading, myXp, profile, onBack }: BadgesSectionProps) {
   const [selectedCountry, setSelectedCountry] = useState<(typeof COUNTRY_CARDS)[0] | null>(null);
 
   const earnedBadges = roles ? BADGE_TYPES.filter((b) => roles.hasRole(b.slug)) : [];
@@ -215,6 +216,16 @@ export function BadgesSection({ roles, rolesLoading, myXp, profile }: BadgesSect
 
   return (
     <div className={`px-4 md:px-8 py-6 pb-36 md:pb-44 max-w-[600px] mx-auto ${rubikClassName}`}>
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 mb-4 text-white/50 hover:text-white transition-colors"
+        style={{ fontSize: 12, fontWeight: 500 }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <path d="M19 12H5" /><path d="M12 19l-7-7 7-7" />
+        </svg>
+        Back to Lobby
+      </button>
       <div className={`text-xl font-bold text-white mb-0.5 ${syneClassName}`}>Badges</div>
       <div className="text-[11px] text-white/40 mb-6">Earned through your journey in Zo World</div>
 
