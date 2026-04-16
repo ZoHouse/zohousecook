@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useProfile } from '@zo/auth';
 import { useMyXp } from '../../hooks/useMyXp';
+import useInstagramConnect from '../../hooks/useInstagramConnect';
 
 import { TopBar } from './TopBar';
 import { LobbyRoom } from './LobbyRoom';
@@ -19,6 +20,7 @@ import { SettingsModal } from '../passport/SettingsModal';
 export function PassportLobby() {
   const { profile } = useProfile();
   const { myXp } = useMyXp();
+  const ig = useInstagramConnect();
 
   const [tab, setTab] = useState<LobbyTab>('lobby');
   const [upsell, setUpsell] = useState<ProUpsellFeature | null>(null);
@@ -42,6 +44,18 @@ export function PassportLobby() {
       return;
     }
     setTab(next);
+  };
+
+  // Active Quest flow (per Erum PRD): step 1 is "Link IG".
+  // If not connected → redirect to Meta OAuth (connect() in the hook).
+  // If connected → fall through to the quest dailies upsell until the full quest
+  //   submission UI is built.
+  const handleQuestTap = () => {
+    if (!ig.isConnected) {
+      ig.connect();
+      return;
+    }
+    openUpsell('dailies');
   };
 
   return (
@@ -120,7 +134,7 @@ export function PassportLobby() {
             ghostVisitors={<GhostVisitors />}
             nextMilestone={<NextMilestoneSign />}
             travelersPill={<TravelersPill />}
-            activeQuest={<ActiveQuestCard onTap={() => openUpsell('dailies')} />}
+            activeQuest={<ActiveQuestCard onTap={handleQuestTap} requiresInstagram={!ig.isConnected} />}
           />
         ) : tab === 'dailies' ? (
           <StubSection feature="dailies" title="Dailies" onUpsell={openUpsell} />
