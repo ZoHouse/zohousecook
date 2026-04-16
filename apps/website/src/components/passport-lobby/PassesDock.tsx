@@ -1,32 +1,28 @@
-import Image from 'next/image';
-import quest from '../../assets/pass-quest.png';
-import earn from '../../assets/pass-earn.png';
-import create from '../../assets/pass-create.png';
-import host from '../../assets/pass-host.png';
 import type { ProUpsellFeature } from '../pro';
 
 export interface PassesDockProps { onUpsell: (feature: ProUpsellFeature) => void }
 
-const TILES: Array<{ feature: ProUpsellFeature; label: string; src: typeof quest }> = [
-  { feature: 'quest-pass', label: 'Quest', src: quest },
-  { feature: 'earn-pass', label: 'Earn', src: earn },
-  { feature: 'create-pass', label: 'Create', src: create },
-  { feature: 'host-pass', label: 'Host', src: host },
+const TILES: Array<{ feature: ProUpsellFeature; label: string; gradient: string; emoji: string }> = [
+  { feature: 'quest-pass', label: 'Quest', gradient: 'linear-gradient(135deg, #2d2410 0%, #1a1608 100%)', emoji: '📜' },
+  { feature: 'earn-pass', label: 'Earn', gradient: 'linear-gradient(135deg, #0f2d14 0%, #0a1a0c 100%)', emoji: '💵' },
+  { feature: 'create-pass', label: 'Create', gradient: 'linear-gradient(135deg, #1a1030 0%, #0f0a1a 100%)', emoji: '🎨' },
+  { feature: 'host-pass', label: 'Host', gradient: 'linear-gradient(135deg, #2d1020 0%, #1a0a14 100%)', emoji: '🏴' },
 ];
 
 export function PassesDock({ onUpsell }: PassesDockProps) {
   return (
-    <div className="px-3 py-3 bg-[#0a0a0a]">
-      <div className="grid grid-cols-4 gap-1.5">
+    <div className="px-4 py-4">
+      <div className="grid grid-cols-4 gap-2">
         {TILES.map((tile) => (
           <button
             key={tile.feature}
             onClick={() => onUpsell(tile.feature)}
-            className="bg-neutral-900 border border-neutral-800 rounded-xl p-2 flex flex-col items-center gap-1 text-white text-[10px] font-semibold"
+            className="rounded-xl flex flex-col items-center justify-center gap-1.5 py-4 px-2 border border-white/[0.06] transition-transform active:scale-95"
+            style={{ background: tile.gradient }}
           >
-            <Image src={tile.src} alt="" width={28} height={28} />
-            {tile.label}
-            <span className="text-neutral-500 text-[8px] font-normal">Apply</span>
+            <span className="text-2xl">{tile.emoji}</span>
+            <span className="text-white text-[11px] font-semibold">{tile.label}</span>
+            <span className="text-neutral-500 text-[9px]">Apply</span>
           </button>
         ))}
       </div>

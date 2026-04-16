@@ -22,7 +22,7 @@ export function RankPill({ rank, avatarUrl }: RankPillProps) {
         style={avatarUrl ? { backgroundImage: `url(${avatarUrl})` } : undefined}
         aria-hidden
       />
-      <span className="text-sm font-medium">#{rank}</span>
+      <span className="text-sm font-medium">#{rank || '—'}</span>
     </div>
   );
 }
