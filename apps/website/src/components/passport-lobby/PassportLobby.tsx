@@ -15,6 +15,7 @@ import { PassesDock } from './PassesDock';
 import { StubSection } from './StubSection';
 import { ActiveQuestCard } from './ActiveQuestCard';
 import { ProUpsellModal, type ProUpsellFeature } from '../pro';
+import { SettingsModal } from '../passport/SettingsModal';
 
 export function PassportLobby() {
   const { profile } = useProfile();
@@ -23,6 +24,7 @@ export function PassportLobby() {
   const [tab, setTab] = useState<LobbyTab>('lobby');
   const [upsell, setUpsell] = useState<ProUpsellFeature | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   if (!profile) return null;
 
@@ -46,7 +48,7 @@ export function PassportLobby() {
   return (
     <div className="min-h-screen bg-[#111111] text-white">
       <div className="max-w-[360px] mx-auto relative" style={{ background: '#111111', minHeight: '100vh' }}>
-      <TopBar xp={xpTotal} rank={rank} avatarUrl={avatarUrl} />
+      <TopBar xp={xpTotal} rank={rank} avatarUrl={avatarUrl} onOpenSettings={() => setSettingsOpen(true)} />
 
       {tab === 'lobby' ? (
         <LobbyRoom
@@ -75,6 +77,7 @@ export function PassportLobby() {
       <PassesDock onUpsell={openUpsell} />
       <ProUpsellModal feature={upsell} onClose={closeUpsell} />
       <MapModal open={mapOpen} onClose={() => setMapOpen(false)} />
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       </div>
     </div>
   );

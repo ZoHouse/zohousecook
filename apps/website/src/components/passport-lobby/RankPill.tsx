@@ -4,15 +4,28 @@ export interface RankPillProps {
   rank: number;
   xp: number;
   avatarUrl?: string;
+  onClick?: () => void;
 }
 
 const GRADIENT_PASSPORT_BORDER =
   'linear-gradient(138deg, #A7D921 0%, #DCFF80 4%, #3C4B14 55%, #587312 76%, #89B020 95%)';
 
-export function RankPill({ rank, xp, avatarUrl }: RankPillProps) {
+export function RankPill({ rank, xp, avatarUrl, onClick }: RankPillProps) {
+  const Wrapper = onClick ? 'button' : 'div';
+  const wrapperProps = onClick
+    ? {
+        type: 'button' as const,
+        onClick,
+        'aria-label': 'Open profile settings',
+      }
+    : {};
+
   return (
-    <div
-      className={`inline-flex items-center text-white ${rubikClassName}`}
+    <Wrapper
+      {...wrapperProps}
+      className={`inline-flex items-center text-white ${rubikClassName} ${
+        onClick ? 'transition-transform active:scale-95 hover:brightness-110 cursor-pointer' : ''
+      }`}
       style={{
         gap: 10,
         padding: '4px 16px 4px 4px',
@@ -45,6 +58,6 @@ export function RankPill({ rank, xp, avatarUrl }: RankPillProps) {
           {xp.toLocaleString()}
         </span>
       </div>
-    </div>
+    </Wrapper>
   );
 }
