@@ -109,8 +109,8 @@ export function MapModal({ open, onClose }: MapModalProps) {
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-[420px] mx-4"
-        style={{ height: '85vh', maxHeight: 760 }}
+        className="relative w-full max-w-[420px] md:max-w-[min(90vw,1280px)] mx-4 md:mx-8"
+        style={{ height: '85vh', maxHeight: 900 }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
