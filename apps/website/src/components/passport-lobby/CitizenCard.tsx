@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Avatar2D } from './Avatar2D';
 import { XpProgressBar } from './XpProgressBar';
+import { rubikClassName, syneClassName } from '../utils/font';
 
 const THRESHOLDS = [
   { min: 20000, label: 'Legend' },
@@ -32,6 +33,8 @@ export interface CitizenCardProps {
   onUpsell: () => void;
 }
 
+const GRADIENT_PRIVATE_CARD = 'linear-gradient(180deg, #292929 0%, #000000 100%)';
+
 export function CitizenCard({ handle: _handle, displayName, avatarUrl, xpTotal, rankTitle, onUpsell }: CitizenCardProps) {
   const tier = getTierInfo(xpTotal);
   return (
@@ -40,23 +43,33 @@ export function CitizenCard({ handle: _handle, displayName, avatarUrl, xpTotal, 
       tabIndex={0}
       onClick={onUpsell}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onUpsell(); } }}
-      className="w-[240px] text-left cursor-pointer"
+      className={`text-left cursor-pointer ${rubikClassName}`}
       style={{
-        background: 'linear-gradient(180deg, #1a1a1a 0%, #141414 100%)',
-        borderRadius: '18px',
-        padding: '14px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
-        border: '1px solid rgba(255,255,255,0.06)',
+        width: 236,
+        background: GRADIENT_PRIVATE_CARD,
+        borderRadius: 24,
+        padding: 16,
+        backdropFilter: 'blur(120px)',
+        WebkitBackdropFilter: 'blur(120px)',
+        boxShadow: '0px 4px 4px rgba(0,0,0,0.25), inset 0px 1.93px 7.71px rgba(255,255,255,0.25)',
       }}
     >
-      {/* Avatar portrait — takes ~60% height */}
-      <div className="mb-2" style={{ borderRadius: '12px', overflow: 'hidden' }}>
+      {/* Avatar portrait — 128×128 per spec */}
+      <div style={{ borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
         <Avatar2D avatarUrl={avatarUrl} displayName={displayName} />
       </div>
 
-      {/* Name + subtitle */}
-      <div className="text-white text-base font-semibold leading-tight">{displayName}</div>
-      <div className="text-neutral-500 text-[11px] mb-2">Citizen of Zo World</div>
+      {/* Name — Syne 700, 24px */}
+      <div
+        className={syneClassName}
+        style={{ fontSize: 24, fontWeight: 700, color: '#FFFFFF', lineHeight: '1.2em', marginBottom: 2 }}
+      >
+        {displayName}
+      </div>
+      {/* Subtitle — Rubik 400, 14px, 55% opacity */}
+      <div style={{ fontSize: 12, fontWeight: 400, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.01em', marginBottom: 10 }}>
+        Citizen of Zo World
+      </div>
 
       {/* XP + rank badge */}
       <div
@@ -64,30 +77,35 @@ export function CitizenCard({ handle: _handle, displayName, avatarUrl, xpTotal, 
         style={{ borderTop: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
       >
         <span
-          className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
-          style={{ background: 'radial-gradient(circle at 30% 30%, #FEDD1E, #F1563F 70%)' }}
+          className="rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+          style={{ width: 24, height: 24, background: 'radial-gradient(circle at 30% 30%, #FEDD1E, #F1563F 70%)' }}
           aria-hidden
         >
           ★
         </span>
         <div className="flex flex-col leading-tight min-w-0">
-          <span className="text-white text-[13px] font-semibold">{xpTotal.toLocaleString()} XP</span>
-          <span className="text-[10px] font-bold tracking-wider uppercase" style={{ color: '#FEDD1E' }}>{rankTitle}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF' }}>{xpTotal.toLocaleString()} XP</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#FEDD1E', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            {rankTitle}
+          </span>
         </div>
       </div>
 
       {/* Progress bar */}
-      <div className="flex justify-between text-[9px] mb-1">
-        <span style={{ color: '#6fc4e0' }}>Traveller Level {tier.level}</span>
-        <span className="text-neutral-500">{tier.xpInLevel}/{tier.xpLevelTotal || '∞'}</span>
+      <div className="flex justify-between" style={{ fontSize: 9, marginBottom: 4 }}>
+        <span style={{ color: '#6fc4e0' }}>Level {tier.level} · {tier.label}</span>
+        <span style={{ color: 'rgba(255,255,255,0.4)' }}>{tier.xpInLevel.toLocaleString()}/{tier.xpLevelTotal ? tier.xpLevelTotal.toLocaleString() : '∞'}</span>
       </div>
-      <XpProgressBar current={tier.xpInLevel} max={tier.xpLevelTotal || 1} className="mb-1.5" />
+      <XpProgressBar current={tier.xpInLevel} max={tier.xpLevelTotal || 1} />
 
       {/* Leaderboard link */}
-      <div className="flex justify-between items-center text-[9px]">
-        <span className="text-neutral-600">{tier.xpLevelTotal ? `${tier.xpLevelTotal - tier.xpInLevel} XP to enter Top 5000` : ''}</span>
-        <Link href="/leaderboard" className="text-lime-400 font-medium" onClick={(e) => e.stopPropagation()}>
-          Leaderboard
+      <div className="flex justify-end items-center" style={{ marginTop: 6, fontSize: 10 }}>
+        <Link
+          href="/leaderboard"
+          style={{ color: '#A7D921', fontWeight: 500 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          Leaderboard →
         </Link>
       </div>
     </div>

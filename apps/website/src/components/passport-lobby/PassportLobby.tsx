@@ -42,7 +42,7 @@ export function PassportLobby() {
 
   return (
     <div className="min-h-screen bg-[#111111] text-white">
-    <div className="max-w-[360px] mx-auto bg-[#111111] min-h-screen relative">
+      <div className="max-w-[360px] mx-auto relative" style={{ background: '#111111', minHeight: '100vh' }}>
       <TopBar xp={xpTotal} rank={rank} avatarUrl={avatarUrl} />
 
       {tab === 'lobby' ? (
@@ -70,7 +70,7 @@ export function PassportLobby() {
 
       <PassesDock onUpsell={openUpsell} />
       <ProUpsellModal feature={upsell} onClose={closeUpsell} />
-    </div>
+      </div>
     </div>
   );
 }
