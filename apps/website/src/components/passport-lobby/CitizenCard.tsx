@@ -45,17 +45,17 @@ export function CitizenCard({ handle: _handle, displayName, avatarUrl, xpTotal, 
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onUpsell(); } }}
       className={`text-left cursor-pointer ${rubikClassName}`}
       style={{
-        width: 236,
+        width: 200,
         background: GRADIENT_PRIVATE_CARD,
-        borderRadius: 24,
-        padding: 16,
+        borderRadius: 20,
+        padding: 12,
         backdropFilter: 'blur(120px)',
         WebkitBackdropFilter: 'blur(120px)',
         boxShadow: '0px 4px 4px rgba(0,0,0,0.25), inset 0px 1.93px 7.71px rgba(255,255,255,0.25)',
       }}
     >
-      {/* Avatar portrait — 128×128 per spec */}
-      <div style={{ borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
+      {/* Avatar portrait */}
+      <div style={{ borderRadius: 12, overflow: 'hidden', marginBottom: 10, width: 176, height: 176 }}>
         <Avatar2D avatarUrl={avatarUrl} displayName={displayName} />
       </div>
 

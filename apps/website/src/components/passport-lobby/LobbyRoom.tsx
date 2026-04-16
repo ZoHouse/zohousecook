@@ -1,4 +1,8 @@
 import type { ReactNode } from 'react';
+import Image from 'next/image';
+import roomPerspective from '../../assets/passport-lobby/scene/room-perspective.svg';
+import pedestal from '../../assets/passport-lobby/scene/pedestal.svg';
+import progressBar from '../../assets/passport-lobby/scene/progress-bar.svg';
 
 export interface LobbyRoomProps {
   mapWidget: ReactNode;
@@ -11,36 +15,57 @@ export interface LobbyRoomProps {
 
 export function LobbyRoom({ mapWidget, sideNav, hero, ghostVisitors, nextMilestone, travelersPill }: LobbyRoomProps) {
   return (
-    <div
-      className="relative"
-      style={{
-        minHeight: '580px',
-        background: '#0a0a0a',
-        backgroundImage: [
-          'linear-gradient(76deg, transparent 46%, rgba(255,255,255,0.07) 49.5%, rgba(255,255,255,0.07) 50.5%, transparent 54%)',
-          'linear-gradient(104deg, transparent 46%, rgba(255,255,255,0.07) 49.5%, rgba(255,255,255,0.07) 50.5%, transparent 54%)',
-          'linear-gradient(90deg, transparent 49.7%, rgba(255,255,255,0.03) 50%, transparent 50.3%)',
-          'radial-gradient(ellipse 140% 35% at 50% 95%, rgba(50,48,40,0.5) 0%, transparent 100%)',
-          'radial-gradient(ellipse 90% 20% at 50% 100%, rgba(30,28,22,0.9) 0%, transparent 100%)',
-        ].join(', '),
-      }}
-    >
-      {/* Map widget — top left */}
-      <div className="absolute top-4 left-4 z-10">{mapWidget}</div>
-
-      {/* Side nav — right edge */}
-      <div className="absolute top-4 right-2 z-10 flex flex-col items-end gap-1">
-        {sideNav}
-        <div className="mt-4">{nextMilestone}</div>
+    <div className="relative" style={{ minHeight: 600, background: '#111111', overflow: 'hidden' }}>
+      {/* Room perspective SVG — the actual 3D scene gradient lines */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+          paddingTop: 40,
+        }}
+        aria-hidden
+      >
+        <Image
+          src={roomPerspective}
+          alt=""
+          width={507}
+          height={386}
+          style={{
+            width: '140%',
+            maxWidth: 'none',
+            height: 'auto',
+            opacity: 0.55,
+            marginLeft: '-20%',
+          }}
+        />
       </div>
 
-      {/* Hero citizen card — centered */}
-      <div className="flex justify-center pt-[80px] pb-[90px] relative z-[5]">
+      {/* Map widget — top left (above scene) */}
+      <div className="absolute top-3 left-3 z-[10]">{mapWidget}</div>
+
+      {/* Side nav — right edge */}
+      <div className="absolute top-3 right-3 z-[10] flex flex-col items-end gap-1">
+        {sideNav}
+        <div className="mt-3 flex justify-center" style={{ width: 44 }}>{nextMilestone}</div>
+      </div>
+
+      {/* Hero + pedestal stack — centered */}
+      <div className="relative z-[5] flex flex-col items-center" style={{ paddingTop: 78, paddingBottom: 90 }}>
         {hero}
+        {/* Pedestal platform directly under the card */}
+        <div style={{ marginTop: -6, display: 'flex', justifyContent: 'center', width: '100%' }} aria-hidden>
+          <Image src={pedestal} alt="" width={179} height={65} style={{ width: 200, height: 'auto' }} />
+        </div>
+        {/* Progress bar below the pedestal */}
+        <div style={{ marginTop: -12, display: 'flex', justifyContent: 'center', width: '100%' }} aria-hidden>
+          <Image src={progressBar} alt="" width={113} height={6} style={{ width: 120, height: 'auto' }} />
+        </div>
       </div>
 
       {/* Ghost visitors — bottom left */}
-      <div className="absolute left-5 bottom-[70px] z-[4]">{ghostVisitors}</div>
+      <div className="absolute left-3 bottom-[80px] z-[4]">{ghostVisitors}</div>
 
       {/* Travelers pill — centered at bottom */}
       <div className="absolute left-1/2 bottom-5 -translate-x-1/2 z-[6]">{travelersPill}</div>
