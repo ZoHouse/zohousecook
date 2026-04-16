@@ -76,6 +76,11 @@ export function MapModal({ open, onClose }: MapModalProps) {
       duration: 1400,
       maxZoom: 5,
     });
+    // Zooming out past the focus threshold will also clear focus via `zoomend`,
+    // but fire the `zoom` event manually in case we fit within threshold.
+    map.current.once('moveend', () => {
+      // Brief trigger — moveend will call updateMarkerVisibility which re-evaluates focus
+    });
   };
 
   useEffect(() => {
@@ -124,6 +129,21 @@ export function MapModal({ open, onClose }: MapModalProps) {
       }
     });
 
+    // Track all markers so we can hide all-but-focused when zoomed in close.
+    // Threshold: zoom ≥ HIDE_OTHERS_ZOOM → only the focused property's marker is visible.
+    const markerEntries: Array<{ id: string; el: HTMLDivElement; marker: mapboxgl.Marker }> = [];
+    let focusedId: string | null = null;
+    const HIDE_OTHERS_ZOOM = 14;
+
+    const updateMarkerVisibility = () => {
+      if (!map.current) return;
+      const zoom = map.current.getZoom();
+      const hideOthers = zoom >= HIDE_OTHERS_ZOOM && focusedId !== null;
+      for (const entry of markerEntries) {
+        entry.el.style.display = hideOthers && entry.id !== focusedId ? 'none' : '';
+      }
+    };
+
     map.current.on('load', () => {
       if (!map.current) return;
 
@@ -154,10 +174,12 @@ export function MapModal({ open, onClose }: MapModalProps) {
           .setPopup(popup)
           .addTo(map.current!);
 
+        markerEntries.push({ id: property.id, el, marker });
+
         // Tap/click the pillar → fly the camera in for a close-up 3D view.
-        // Mapbox's default marker click still toggles the popup; this just adds motion.
         const flyToProperty = () => {
           if (!map.current) return;
+          focusedId = property.id;
           map.current.flyTo({
             center: coords,
             zoom: 16,
@@ -169,11 +191,26 @@ export function MapModal({ open, onClose }: MapModalProps) {
           });
         };
         el.addEventListener('click', flyToProperty);
-        // Improve tap-target size on touch devices without affecting visual size
         el.style.touchAction = 'manipulation';
-        // Unused but useful later if we want keyboard navigation
-        void marker;
       });
+
+      // If user pans/zooms away from focus, clear focus so all markers return
+      const clearFocusIfAway = () => {
+        if (!map.current || !focusedId) return;
+        if (map.current.getZoom() < HIDE_OTHERS_ZOOM - 1) {
+          focusedId = null;
+        }
+      };
+
+      map.current.on('zoomend', () => {
+        clearFocusIfAway();
+        updateMarkerVisibility();
+      });
+      map.current.on('moveend', updateMarkerVisibility);
+
+      // Initial visibility — we open zoomed in on BLRxZo, so mark it focused.
+      focusedId = primary.id;
+      updateMarkerVisibility();
 
       // Ambient slow rotate around the current center — disable once user interacts
       let bearing = -18;
