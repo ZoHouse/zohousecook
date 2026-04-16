@@ -78,16 +78,17 @@ export function MapModal({ open, onClose }: MapModalProps) {
     if (!open || !container.current || map.current) return;
     if (!mapboxgl.accessToken) return;
 
-    // Frame the Zo Houses first (primary view) — users zoom out to see Zostels worldwide.
-    const zoHouses = PROPERTIES.filter((p) => p.kind === 'zo-house' || p.kind === 'zo-club');
-    const framingBounds = new mapboxgl.LngLatBounds();
-    (zoHouses.length > 0 ? zoHouses : PROPERTIES).forEach((p) => framingBounds.extend([p.lng, p.lat]));
+    // Open zoomed-in on BLRxZo (primary property) so 3D buildings + skyline read immediately.
+    // Users navigate to other properties by tapping their pillars.
+    const primary = PROPERTIES.find((p) => p.id === '9XWJCC93') ?? PROPERTIES[0];
 
     map.current = new mapboxgl.Map({
       container: container.current,
       style: 'mapbox://styles/mapbox/standard',
-      bounds: framingBounds,
-      fitBoundsOptions: { padding: 120, pitch: 50, bearing: -12, maxZoom: 12 },
+      center: [primary.lng, primary.lat],
+      zoom: 16.2,
+      pitch: 72,
+      bearing: -18,
       interactive: true,
       attributionControl: false,
       antialias: true,
@@ -133,20 +134,47 @@ export function MapModal({ open, onClose }: MapModalProps) {
           maxWidth: '260px',
         }).setHTML(buildPopupHTML(property));
 
-        new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
           .setLngLat(coords)
           .setPopup(popup)
           .addTo(map.current!);
+
+        // Tap/click the pillar → fly the camera in for a close-up 3D view.
+        // Mapbox's default marker click still toggles the popup; this just adds motion.
+        const flyToProperty = () => {
+          if (!map.current) return;
+          map.current.flyTo({
+            center: coords,
+            zoom: 16,
+            pitch: 62,
+            bearing: map.current.getBearing(),
+            speed: 1.4,
+            curve: 1.6,
+            essential: true,
+          });
+        };
+        el.addEventListener('click', flyToProperty);
+        // Improve tap-target size on touch devices without affecting visual size
+        el.style.touchAction = 'manipulation';
+        // Unused but useful later if we want keyboard navigation
+        void marker;
       });
 
-      // Slow auto-rotate for ambient motion
-      let bearing = -12;
+      // Ambient slow rotate around the current center — disable once user interacts
+      let bearing = -18;
+      let userInteracted = false;
+      const markInteracted = () => { userInteracted = true; };
+      map.current.on('mousedown', markInteracted);
+      map.current.on('touchstart', markInteracted);
+      map.current.on('dragstart', markInteracted);
+
       const rotate = setInterval(() => {
         if (!map.current) {
           clearInterval(rotate);
           return;
         }
-        bearing += 0.03;
+        if (userInteracted) return;
+        bearing += 0.015;
         map.current.setBearing(bearing);
       }, 80);
 
