@@ -96,6 +96,27 @@ async function fetchZostelBookings(
   const propertySet = new Set<string>();
   const destinationSet = new Set<string>();
 
+  // Neighborhoods → parent city. Prevents Koramangala/Whitefield/Indiranagar
+  // from showing as separate "cities" when they're all Bangalore.
+  const CITY_ALIASES: Record<string, string> = {
+    'koramangala': 'Bangalore',
+    'whitefield': 'Bangalore',
+    'indiranagar': 'Bangalore',
+    'hsr layout': 'Bangalore',
+    'rajgundha': 'Barot',
+    'mohanchatti': 'Rishikesh',
+    'stok': 'Leh',
+    'naina range': 'Nainital',
+    'karapuzha': 'Wayanad',
+    'thirunelly': 'Wayanad',
+    'vythiri': 'Wayanad',
+  };
+
+  function resolveCity(raw: string): string {
+    const lower = raw.toLowerCase().trim();
+    return CITY_ALIASES[lower] ?? raw;
+  }
+
   for (const b of valid) {
     if (b.checkin && b.checkout) {
       const ci = new Date(b.checkin);
@@ -109,10 +130,10 @@ async function fetchZostelBookings(
       const name = b.operator.name;
       const parenMatch = name.match(/\(([^)]+)\)/);
       if (parenMatch) {
-        destinationSet.add(parenMatch[1].trim());
+        destinationSet.add(resolveCity(parenMatch[1].trim()));
       } else {
         const parts = name.split(/\s+/);
-        if (parts.length > 1) destinationSet.add(parts[parts.length - 1]);
+        if (parts.length > 1) destinationSet.add(resolveCity(parts[parts.length - 1]));
       }
     }
   }
