@@ -45,13 +45,13 @@ function buildPillarElement(property: ZoProperty): HTMLDivElement {
 function buildPopupHTML(property: ZoProperty): string {
   const s = KIND_STYLE[property.kind];
   return `
-    <div style="font-family:Rubik,sans-serif;padding:2px;min-width:180px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-        <span style="width:24px;height:24px;border-radius:50%;background:${s.color};display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;flex-shrink:0;">${property.kind === 'zo-house' || property.kind === 'zo-club' ? '\\z/' : '•'}</span>
-        <div style="font-size:14px;font-weight:600;color:#111;">${property.name}</div>
+    <div style="font-family:Rubik,sans-serif;padding:4px 8px;min-width:180px;color:#fff;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="width:28px;height:28px;border-radius:50%;background:${s.color};display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;flex-shrink:0;box-shadow:0 0 0 3px ${s.accent};">${property.kind === 'zo-house' || property.kind === 'zo-club' ? '\\z/' : '•'}</span>
+        <div style="font-size:15px;font-weight:600;color:#fff;line-height:1.2;">${property.name}</div>
       </div>
-      <div style="font-size:11px;color:#666;margin-bottom:6px;">${property.destination}</div>
-      <div style="font-size:10px;color:${s.color};font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">${s.label}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.55);margin-bottom:8px;letter-spacing:0.01em;">${property.destination}</div>
+      <div style="display:inline-block;font-size:9px;color:${s.color};font-weight:700;text-transform:uppercase;letter-spacing:0.1em;padding:3px 8px;border-radius:99px;background:${s.accent};border:1px solid ${s.color}30;">${s.label}</div>
     </div>
   `;
 }
@@ -227,6 +227,45 @@ export function MapModal({ open, onClose }: MapModalProps) {
           style={{ borderRadius: 24, border: '1px solid rgba(255,255,255,0.1)' }}
         />
       </div>
+
+      <style jsx global>{`
+        /* Glass-style Mapbox popup — matches TravelersPill treatment */
+        .mapboxgl-popup.zo-map-popup .mapboxgl-popup-content {
+          padding: 12px 14px;
+          border-radius: 16px;
+          background: linear-gradient(
+            157deg,
+            rgba(52, 52, 52, 0.85) 3%,
+            rgba(66, 65, 65, 0.85) 14%,
+            rgba(32, 32, 32, 0.9) 52%,
+            rgba(48, 48, 48, 0.85) 100%
+          );
+          border: 1.5px solid transparent;
+          background-clip: padding-box;
+          box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.6),
+            0 0 0 1px rgba(255, 255, 255, 0.08),
+            inset 0 1px 0 rgba(255, 255, 255, 0.08);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          color: #fff;
+        }
+        .mapboxgl-popup.zo-map-popup .mapboxgl-popup-close-button {
+          color: rgba(255, 255, 255, 0.55);
+          font-size: 20px;
+          padding: 4px 8px;
+          right: 2px;
+          top: 2px;
+        }
+        .mapboxgl-popup.zo-map-popup .mapboxgl-popup-close-button:hover {
+          color: #fff;
+          background: transparent;
+        }
+        .mapboxgl-popup.zo-map-popup .mapboxgl-popup-tip {
+          border-top-color: rgba(32, 32, 32, 0.9);
+          border-bottom-color: rgba(52, 52, 52, 0.85);
+        }
+      `}</style>
     </div>
   );
 }

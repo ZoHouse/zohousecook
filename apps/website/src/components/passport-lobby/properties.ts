@@ -1,7 +1,7 @@
 // Auto-generated from zo-nsfp RDS on 2026-04-16.
 // Source: bookings_operator JOIN zoworld_destination.
 // Regenerate via `docs/superpowers/plans/2026-04-16-passport-avatar-frame-figma.md` or the /zodb skill.
-// Overrides applied for: V8RPGVH7 (DXB coords fix), 9XWJCC93 (Koramangala fine-grain), WRJ2RMX2 (Bangalore fine-grain), WTFXZO (manual add).
+// Overrides applied for: V8RPGVH7 (DXB coords fix), 9XWJCC93 (Koramangala fine-grain), WTFXZO (manual add). Zo Club House deleted.
 
 export type PropertyKind = 'zo-house' | 'zo-club' | 'zostel-plus' | 'zostel-homes' | 'zostel' | 'other';
 
@@ -46,14 +46,6 @@ export const PROPERTIES: ZoProperty[] = [
     "lat": 12.9716,
     "lng": 77.7481,
     "kind": "zo-house"
-  },
-  {
-    "id": "WRJ2RMX2",
-    "lat": 12.928,
-    "lng": 77.64,
-    "kind": "zo-club",
-    "name": "Zo Club House",
-    "destination": "Bangalore"
   },
   {
     "id": "BIRH138",
