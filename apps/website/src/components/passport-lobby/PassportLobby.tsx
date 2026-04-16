@@ -134,7 +134,7 @@ export function PassportLobby() {
       </div>
 
       {/* Mobile: 360px column. Desktop: full viewport immersive lobby. */}
-      <div className="relative mx-auto w-full max-w-[360px] md:max-w-none md:px-0">
+      <div className="relative mx-auto w-full md:max-w-none md:px-0">
         <TopBar xp={xpTotal} rank={rank} avatarUrl={avatarUrl} onOpenSettings={() => setSettingsOpen(true)} />
 
         {tab === 'lobby' ? (
