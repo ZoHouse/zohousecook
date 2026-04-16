@@ -58,20 +58,25 @@ function StampTile({ name }: { name: string }) {
   const url = stampUrlFor(name);
   const [failed, setFailed] = useState(false);
   return (
-    <div className="flex flex-col items-center gap-1" style={{ width: 64 }}>
+    <button className="flex flex-col items-center gap-1.5 transition-transform active:scale-95 w-full">
       <div
-        className="flex items-center justify-center overflow-hidden"
-        style={{ width: 56, height: 56, borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
+        className="w-full aspect-square flex items-center justify-center overflow-hidden"
+        style={{
+          borderRadius: 16,
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+        }}
       >
         {url && !failed ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt={name} className="w-10 h-10 object-contain" onError={() => setFailed(true)} referrerPolicy="no-referrer" />
+          <img src={url} alt={name} className="w-3/5 h-3/5 object-contain" onError={() => setFailed(true)} referrerPolicy="no-referrer" />
         ) : (
-          <span className="text-[10px] text-white/60 text-center leading-tight px-1">{name.slice(0, 8)}</span>
+          <span className="text-xs text-white/60 text-center leading-tight px-2">{name}</span>
         )}
       </div>
-      <span className="text-[9px] text-white/50 text-center leading-tight truncate w-full">{name}</span>
-    </div>
+      <span className="text-[10px] text-white/55 text-center leading-tight truncate w-full">{name}</span>
+    </button>
   );
 }
 
@@ -110,13 +115,12 @@ function CountryCard({
   return (
     <button
       onClick={onTap}
-      className="relative overflow-hidden text-left transition-transform active:scale-95"
+      className="relative overflow-hidden text-left transition-transform active:scale-95 flex-1 min-w-0"
       style={{
-        width: 90,
         aspectRatio: '3 / 4',
-        borderRadius: 12,
+        borderRadius: 14,
         border: isUnlocked ? '1.5px solid rgba(167,217,33,0.35)' : '1px solid rgba(255,255,255,0.06)',
-        flexShrink: 0,
+        boxShadow: isUnlocked ? '0 4px 12px rgba(167,217,33,0.1)' : '0 2px 8px rgba(0,0,0,0.2)',
       }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -239,7 +243,7 @@ export function BadgesSection({ roles, rolesLoading, myXp, profile }: BadgesSect
           {/* Countries — achievement cards from dashboard */}
           <div>
             <SectionHead title="Countries Unlocked" count={unlockedCountries.size} />
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {COUNTRY_CARDS.map((card) => (
                 <CountryCard
                   key={card.id}
@@ -261,7 +265,7 @@ export function BadgesSection({ roles, rolesLoading, myXp, profile }: BadgesSect
           {destinations.length > 0 && (
             <div>
               <SectionHead title="Cities Unlocked" count={destinations.length} />
-              <div className="flex flex-wrap gap-3">{destinations.map((name, i) => <StampTile key={`d-${i}`} name={name} />)}</div>
+              <div className="grid grid-cols-3 gap-3">{destinations.map((name, i) => <StampTile key={`d-${i}`} name={name} />)}</div>
             </div>
           )}
 
@@ -269,7 +273,7 @@ export function BadgesSection({ roles, rolesLoading, myXp, profile }: BadgesSect
           {zostels.length > 0 && (
             <div>
               <SectionHead title="Nodes Unlocked" count={zostels.length} />
-              <div className="flex flex-wrap gap-3">{zostels.map((name, i) => <StampTile key={`z-${i}`} name={name} />)}</div>
+              <div className="grid grid-cols-3 gap-3">{zostels.map((name, i) => <StampTile key={`z-${i}`} name={name} />)}</div>
             </div>
           )}
 
@@ -277,7 +281,7 @@ export function BadgesSection({ roles, rolesLoading, myXp, profile }: BadgesSect
           {trips.length > 0 && (
             <div>
               <SectionHead title="Trip Destinations" count={trips.length} />
-              <div className="flex flex-wrap gap-3">{trips.map((name, i) => <StampTile key={`t-${i}`} name={name} />)}</div>
+              <div className="grid grid-cols-3 gap-3">{trips.map((name, i) => <StampTile key={`t-${i}`} name={name} />)}</div>
             </div>
           )}
 
