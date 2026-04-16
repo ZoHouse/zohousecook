@@ -110,16 +110,22 @@ async function fetchZostelBookings(
     'karapuzha': 'Wayanad',
     'thirunelly': 'Wayanad',
     'vythiri': 'Wayanad',
+    'old manali': 'Manali',
+    'goshal road': 'Manali',
+    'pangan': 'Manali',
   };
 
-  // Garbage property names from closed/test/renamed operators — skip entirely
-  const IGNORE_DESTINATIONS = new Set([
-    'old', 'double old', 'alleppeyyy', 'aurangabaddd', 'test',
-  ]);
+  // Garbage property names from closed/test/renamed operators — skip entirely.
+  // Checked as substring match so "Double Old" catches "Double Old Manali" etc.
+  const IGNORE_SUBSTRINGS = ['double old', 'alleppeyyy', 'aurangabaddd', 'test '];
+
+  // Also exact-match these
+  const IGNORE_EXACT = new Set(['old', 'test']);
 
   function resolveCity(raw: string): string | null {
     const lower = raw.toLowerCase().trim();
-    if (IGNORE_DESTINATIONS.has(lower)) return null;
+    if (IGNORE_EXACT.has(lower)) return null;
+    if (IGNORE_SUBSTRINGS.some((s) => lower.includes(s))) return null;
     return CITY_ALIASES[lower] ?? raw;
   }
 
