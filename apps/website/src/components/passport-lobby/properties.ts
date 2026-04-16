@@ -20,8 +20,8 @@ export const PROPERTIES: ZoProperty[] = [
     "lat": 12.9351,
     "lng": 77.622,
     "kind": "zo-house",
-    "name": "Zo House BLR",
-    "destination": "Koramangala · Bangalore"
+    "name": "BLRxZo",
+    "destination": "Bangalore"
   },
   {
     "id": "V8RPGVH7",
@@ -41,8 +41,8 @@ export const PROPERTIES: ZoProperty[] = [
   },
   {
     "id": "WTFXZO",
-    "name": "Zo House WTF",
-    "destination": "Whitefield · Bangalore",
+    "name": "WTFxZo",
+    "destination": "Bangalore",
     "lat": 12.9716,
     "lng": 77.7481,
     "kind": "zo-house"
