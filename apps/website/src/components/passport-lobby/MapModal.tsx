@@ -1,106 +1,57 @@
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef } from 'react';
+import { PROPERTIES, type PropertyKind, type ZoProperty } from './properties';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
 
-type PropertyKind = 'zo-house' | 'zostel' | 'zo-cafe';
-
-interface ZoProperty {
-  id: string;
-  name: string;
-  subtitle: string;
-  kind: PropertyKind;
-  coords: [number, number]; // [lng, lat]
-  color: string;
-  accent: string;
-}
-
-// Zo ecosystem properties — extend this list as we plot more.
-const PROPERTIES: ZoProperty[] = [
-  {
-    id: 'blrxzo',
-    name: 'BLRxZo',
-    subtitle: 'Koramangala · Bangalore',
-    kind: 'zo-house',
-    coords: [77.628, 12.934],
-    color: '#FF2F8E',
-    accent: 'rgba(255,47,142,0.35)',
-  },
-  {
-    id: 'wtfxzo',
-    name: 'WTFxZo',
-    subtitle: 'Whitefield · Bangalore',
-    kind: 'zo-house',
-    coords: [77.7481, 12.9716],
-    color: '#A7D921',
-    accent: 'rgba(167,217,33,0.35)',
-  },
-];
+// Per-kind visual treatment — taller/brighter pillars for Zo-branded, smaller for the wider Zostel chain.
+const KIND_STYLE: Record<PropertyKind, { color: string; accent: string; height: number; headSize: number; label: string }> = {
+  'zo-house':     { color: '#FF2F8E', accent: 'rgba(255,47,142,0.35)', height: 90, headSize: 34, label: 'Zo House' },
+  'zo-club':      { color: '#BA2553', accent: 'rgba(186,37,83,0.35)',  height: 80, headSize: 30, label: 'Zo Club' },
+  'zostel-plus':  { color: '#FEDD1E', accent: 'rgba(254,221,30,0.3)',  height: 64, headSize: 26, label: 'Zostel Plus' },
+  'zostel-homes': { color: '#A7D921', accent: 'rgba(167,217,33,0.3)',  height: 56, headSize: 24, label: 'Zostel Homes' },
+  'zostel':       { color: '#00BEA9', accent: 'rgba(0,190,169,0.3)',   height: 56, headSize: 24, label: 'Zostel' },
+  'other':        { color: '#2C67F6', accent: 'rgba(44,103,246,0.3)',  height: 48, headSize: 22, label: 'Partner' },
+};
 
 function buildPillarElement(property: ZoProperty): HTMLDivElement {
+  const s = KIND_STYLE[property.kind];
   const root = document.createElement('div');
-  root.style.cssText = 'position:relative;width:44px;height:120px;pointer-events:auto;cursor:pointer;font-family:Rubik,sans-serif;';
+  root.style.cssText = `position:relative;width:${s.headSize + 10}px;height:${s.height + s.headSize + 10}px;pointer-events:auto;cursor:pointer;font-family:Rubik,sans-serif;`;
 
-  root.innerHTML = `
-    <!-- Ground glow (ellipse at base) -->
-    <div style="
-      position:absolute;left:50%;bottom:0;transform:translateX(-50%);
-      width:64px;height:16px;border-radius:50%;
-      background:radial-gradient(ellipse at center, ${property.accent} 0%, transparent 70%);
-      filter:blur(4px);
-    "></div>
+  // Ground glow
+  const ground = document.createElement('div');
+  ground.style.cssText = `position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:${s.headSize + 24}px;height:12px;border-radius:50%;background:radial-gradient(ellipse at center, ${s.accent} 0%, transparent 70%);filter:blur(4px);`;
 
-    <!-- Pillar body (vertical beam rising from ground) -->
-    <div style="
-      position:absolute;left:50%;bottom:4px;transform:translateX(-50%);
-      width:4px;height:84px;
-      background:linear-gradient(180deg, ${property.color} 0%, ${property.color}00 100%);
-      border-radius:2px;
-      box-shadow:0 0 14px ${property.color}, 0 0 28px ${property.accent};
-    "></div>
+  // Vertical beam
+  const beam = document.createElement('div');
+  beam.style.cssText = `position:absolute;left:50%;bottom:4px;transform:translateX(-50%);width:${s.kind === 'zo-house' || s.kind === 'zo-club' ? 3 : 2}px;height:${s.height}px;background:linear-gradient(180deg, ${s.color} 0%, ${s.color}00 100%);border-radius:2px;box-shadow:0 0 10px ${s.color}, 0 0 20px ${s.accent};`;
+  // Note: s.kind doesn't exist on the style object — fix: check property.kind directly
+  const isZoBranded = property.kind === 'zo-house' || property.kind === 'zo-club';
+  beam.style.width = `${isZoBranded ? 3 : 2}px`;
 
-    <!-- Pin head (circular badge at the top) -->
-    <div style="
-      position:absolute;left:50%;top:0;transform:translateX(-50%);
-      width:36px;height:36px;border-radius:50%;
-      background:${property.color};
-      border:2px solid #fff;
-      display:flex;align-items:center;justify-content:center;
-      color:#fff;font-size:10px;font-weight:700;letter-spacing:0.02em;
-      box-shadow:0 0 0 6px ${property.accent}, 0 8px 20px rgba(0,0,0,0.55);
-      animation:pulse-${property.id} 2.4s ease-in-out infinite;
-    ">
-      ${property.kind === 'zo-house' ? '\\z/' : '•'}
-    </div>
+  // Pin head
+  const head = document.createElement('div');
+  head.style.cssText = `position:absolute;left:50%;top:0;transform:translateX(-50%);width:${s.headSize}px;height:${s.headSize}px;border-radius:50%;background:${s.color};border:2px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;font-size:${Math.max(8, s.headSize * 0.3)}px;font-weight:700;letter-spacing:0.02em;box-shadow:0 0 0 4px ${s.accent}, 0 6px 16px rgba(0,0,0,0.5);`;
+  head.textContent = isZoBranded ? '\\z/' : '•';
 
-    <style>
-      @keyframes pulse-${property.id} {
-        0%, 100% { box-shadow:0 0 0 6px ${property.accent}, 0 8px 20px rgba(0,0,0,0.55); }
-        50%      { box-shadow:0 0 0 12px ${property.accent.replace(/,[\s\d.]+\)$/, ',0.15)')}, 0 8px 20px rgba(0,0,0,0.55); }
-      }
-    </style>
-  `;
-
+  root.appendChild(ground);
+  root.appendChild(beam);
+  root.appendChild(head);
   return root;
 }
 
 function buildPopupHTML(property: ZoProperty): string {
+  const s = KIND_STYLE[property.kind];
   return `
     <div style="font-family:Rubik,sans-serif;padding:2px;min-width:180px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-        <span style="
-          width:24px;height:24px;border-radius:50%;
-          background:${property.color};
-          display:flex;align-items:center;justify-content:center;
-          color:#fff;font-size:9px;font-weight:700;flex-shrink:0;
-        ">\\z/</span>
+        <span style="width:24px;height:24px;border-radius:50%;background:${s.color};display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;flex-shrink:0;">${property.kind === 'zo-house' || property.kind === 'zo-club' ? '\\z/' : '•'}</span>
         <div style="font-size:14px;font-weight:600;color:#111;">${property.name}</div>
       </div>
-      <div style="font-size:11px;color:#666;margin-bottom:6px;">${property.subtitle}</div>
-      <div style="font-size:10px;color:${property.color};font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">
-        ${property.kind === 'zo-house' ? 'Zo House' : property.kind === 'zostel' ? 'Zostel' : 'Zo Cafe'}
-      </div>
+      <div style="font-size:11px;color:#666;margin-bottom:6px;">${property.destination}</div>
+      <div style="font-size:10px;color:${s.color};font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">${s.label}</div>
     </div>
   `;
 }
@@ -127,15 +78,16 @@ export function MapModal({ open, onClose }: MapModalProps) {
     if (!open || !container.current || map.current) return;
     if (!mapboxgl.accessToken) return;
 
-    // Compute bounds that frame all properties
-    const bounds = new mapboxgl.LngLatBounds();
-    PROPERTIES.forEach((p) => bounds.extend(p.coords));
+    // Frame the Zo Houses first (primary view) — users zoom out to see Zostels worldwide.
+    const zoHouses = PROPERTIES.filter((p) => p.kind === 'zo-house' || p.kind === 'zo-club');
+    const framingBounds = new mapboxgl.LngLatBounds();
+    (zoHouses.length > 0 ? zoHouses : PROPERTIES).forEach((p) => framingBounds.extend([p.lng, p.lat]));
 
     map.current = new mapboxgl.Map({
       container: container.current,
       style: 'mapbox://styles/mapbox/standard',
-      bounds,
-      fitBoundsOptions: { padding: 120, pitch: 55, bearing: -15, maxZoom: 14 },
+      bounds: framingBounds,
+      fitBoundsOptions: { padding: 120, pitch: 50, bearing: -12, maxZoom: 12 },
       interactive: true,
       attributionControl: false,
       antialias: true,
@@ -147,7 +99,9 @@ export function MapModal({ open, onClose }: MapModalProps) {
       if (!map.current) return;
       try {
         map.current.setConfigProperty('basemap', 'lightPreset', 'dusk');
-        map.current.setConfigProperty('basemap', 'showPointOfInterestLabels', true);
+        map.current.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
+        map.current.setConfigProperty('basemap', 'showPlaceLabels', true);
+        map.current.setConfigProperty('basemap', 'showRoadLabels', false);
         map.current.setConfigProperty('basemap', 'showTransitLabels', false);
         map.current.setConfigProperty('basemap', 'show3dObjects', true);
       } catch {
@@ -158,29 +112,41 @@ export function MapModal({ open, onClose }: MapModalProps) {
     map.current.on('load', () => {
       if (!map.current) return;
 
+      // Jitter properties that share exact coords (city centroids) so pins don't stack
+      const seen = new Map<string, number>();
       PROPERTIES.forEach((property) => {
+        const key = `${property.lat.toFixed(4)},${property.lng.toFixed(4)}`;
+        const n = seen.get(key) ?? 0;
+        seen.set(key, n + 1);
+
+        const jitter = n === 0
+          ? [0, 0]
+          // Spread in a tight spiral, ~30m per step — invisible at country zoom, distinguishable at city
+          : [Math.cos(n * 2.4) * 0.0003 * n, Math.sin(n * 2.4) * 0.0003 * n];
+        const coords: [number, number] = [property.lng + jitter[0], property.lat + jitter[1]];
+
         const el = buildPillarElement(property);
         const popup = new mapboxgl.Popup({
-          offset: [0, -100],
+          offset: [0, -(KIND_STYLE[property.kind].height + 20)],
           closeButton: true,
           className: 'zo-map-popup',
           maxWidth: '260px',
         }).setHTML(buildPopupHTML(property));
 
         new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-          .setLngLat(property.coords)
+          .setLngLat(coords)
           .setPopup(popup)
           .addTo(map.current!);
       });
 
       // Slow auto-rotate for ambient motion
-      let bearing = -15;
+      let bearing = -12;
       const rotate = setInterval(() => {
         if (!map.current) {
           clearInterval(rotate);
           return;
         }
-        bearing += 0.04;
+        bearing += 0.03;
         map.current.setBearing(bearing);
       }, 80);
 
@@ -208,7 +174,6 @@ export function MapModal({ open, onClose }: MapModalProps) {
         style={{ height: '85vh', maxHeight: 900 }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button */}
         <button
           onClick={onClose}
           aria-label="Close map"
@@ -220,7 +185,6 @@ export function MapModal({ open, onClose }: MapModalProps) {
           </svg>
         </button>
 
-        {/* Title card */}
         <div
           className="absolute top-3 left-3 z-10 px-3 py-2 rounded-full backdrop-blur-sm border border-white/10 flex items-center gap-2"
           style={{ background: 'rgba(0,0,0,0.7)' }}
