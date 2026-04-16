@@ -30,3 +30,5 @@ export { StubSection } from './StubSection';
 export type { StubSectionProps } from './StubSection';
 export { ActiveQuestCard } from './ActiveQuestCard';
 export type { ActiveQuestCardProps } from './ActiveQuestCard';
+export { BorderBeam } from './BorderBeam';
+export type { BorderBeamProps } from './BorderBeam';

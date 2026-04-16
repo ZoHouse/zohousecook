@@ -24,7 +24,7 @@ export function LobbyRoom({
   activeQuest,
 }: LobbyRoomProps) {
   return (
-    <div className="relative" style={{ minHeight: 680, background: '#111111', overflow: 'hidden' }}>
+    <div className="relative" style={{ minHeight: 620, background: '#111111', overflow: 'hidden' }}>
       {/* Room perspective backdrop */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -60,8 +60,8 @@ export function LobbyRoom({
         <div className="mt-3 flex justify-center" style={{ width: 44 }}>{nextMilestone}</div>
       </div>
 
-      {/* Hero + pedestal + quest card stack — centered */}
-      <div className="relative z-[5] flex flex-col items-center" style={{ paddingTop: 78, paddingBottom: 100 }}>
+      {/* Hero + pedestal + quest card + travelers pill stack — centered */}
+      <div className="relative z-[5] flex flex-col items-center" style={{ paddingTop: 78, paddingBottom: 16 }}>
         {hero}
         {/* Pedestal directly under the card */}
         <div style={{ marginTop: -6, display: 'flex', justifyContent: 'center', width: '100%' }} aria-hidden>
@@ -71,19 +71,20 @@ export function LobbyRoom({
         <div style={{ marginTop: -12, display: 'flex', justifyContent: 'center', width: '100%' }} aria-hidden>
           <Image src={progressBar} alt="" width={113} height={6} style={{ width: 120, height: 'auto' }} />
         </div>
-        {/* Active quest — between pedestal and travelers pill */}
+        {/* Active quest card */}
         {activeQuest && (
-          <div style={{ marginTop: 18, display: 'flex', justifyContent: 'center', width: '100%' }}>
+          <div style={{ marginTop: 14, display: 'flex', justifyContent: 'center', width: '100%' }}>
             {activeQuest}
           </div>
         )}
+        {/* Travelers pill — now in flow, just below the quest card */}
+        <div style={{ marginTop: 10, display: 'flex', justifyContent: 'center', width: '100%' }}>
+          {travelersPill}
+        </div>
       </div>
 
-      {/* Ghost visitors — bottom left */}
-      <div className="absolute left-3 bottom-[80px] z-[4]">{ghostVisitors}</div>
-
-      {/* Travelers pill — centered at bottom */}
-      <div className="absolute left-1/2 bottom-5 -translate-x-1/2 z-[6]">{travelersPill}</div>
+      {/* Ghost visitors — bottom left, absolute */}
+      <div className="absolute left-3 bottom-[40px] z-[4]">{ghostVisitors}</div>
     </div>
   );
 }
