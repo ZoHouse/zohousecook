@@ -177,7 +177,7 @@ export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare 
               onShare();
             }}
             aria-label="Share profile"
-            className="absolute top-3 left-3 z-10 flex items-center justify-center transition-all hover:bg-white/20 active:scale-90"
+            className="absolute top-3 right-3 z-10 flex items-center justify-center transition-all hover:bg-white/20 active:scale-90"
             style={{
               width: 30,
               height: 30,
