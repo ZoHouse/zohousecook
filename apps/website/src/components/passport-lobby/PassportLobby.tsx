@@ -19,6 +19,7 @@ import { InstagramConnectModal } from './InstagramConnectModal';
 import { BadgesSection } from './BadgesSection';
 import { ProUpsellModal, type ProUpsellFeature } from '../pro';
 import { SettingsModal } from '../passport/SettingsModal';
+import ShareModal from '../passport/ShareModal';
 import { useMyRoles } from '../../hooks/useMyRoles';
 
 export function PassportLobby() {
@@ -32,6 +33,7 @@ export function PassportLobby() {
   const [mapOpen, setMapOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [igModalOpen, setIgModalOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   if (!profile) return null;
 
@@ -52,15 +54,11 @@ export function PassportLobby() {
     setTab(next);
   };
 
-  const handleShare = useCallback(async () => {
+  const handleShare = useCallback(() => {
+    // Copy link + open the full share modal (IG story, X, copy link etc)
     const url = `${window.location.origin}/@${handle}`;
-    const shareData = { title: `${handle} · Zo World`, text: 'Check out my Zo Passport', url };
-    if (navigator.share) {
-      try { await navigator.share(shareData); } catch { /* user cancelled */ }
-    } else {
-      await navigator.clipboard.writeText(url);
-      toast.success('Profile link copied!');
-    }
+    navigator.clipboard.writeText(url).then(() => toast.success('Profile link copied!')).catch(() => {});
+    setShareOpen(true);
   }, [handle]);
 
   // Quest tap: if IG not connected → show IG connect modal. If connected → dailies upsell.
@@ -169,6 +167,7 @@ export function PassportLobby() {
       <MapModal open={mapOpen} onClose={() => setMapOpen(false)} />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <InstagramConnectModal open={igModalOpen} onClose={() => setIgModalOpen(false)} onConnect={handleIgConnect} />
+      <ShareModal isOpen={shareOpen} onClose={() => setShareOpen(false)} handle={handle} avatarUrl={avatarUrl} displayName={handle} />
     </div>
   );
 }
