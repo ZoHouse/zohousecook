@@ -1,7 +1,20 @@
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/router";
+import { useCallback, useMemo } from "react";
 import { useProfile } from "@zo/auth";
 import { toast } from "sonner";
+
+/**
+ * Stub hook — the full IG Connect flow is being rewritten against Daya's
+ * new Zo backend. See `docs/superpowers/plans/2026-04-16-instagram-connect-v2.md`
+ * for the implementation plan (held until passport lobby PR merges).
+ *
+ * For now:
+ * - Reads IG state from `profile.socials` (category === "instagram") so
+ *   users who already connected via the legacy dashboard flow see their
+ *   account here.
+ * - `connect()` shows a "coming soon" toast (no more broken redirect to
+ *   /api/auth/instagram/* routes that don't exist in the website app).
+ * - `disconnect()` is a no-op toast.
+ */
 
 export interface InstagramAccount {
   ig_username: string;
@@ -23,90 +36,55 @@ interface UseInstagramConnectReturn {
 
 export default function useInstagramConnect(): UseInstagramConnectReturn {
   const { profile } = useProfile();
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [account, setAccount] = useState<InstagramAccount | null>(null);
 
-  const zoUserCode = profile?.code as string | undefined;
-  const basePath = router.basePath || "";
-
-  const fetchStatus = useCallback(async () => {
-    if (!zoUserCode) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const res = await fetch(
-        `${basePath}/api/auth/instagram/status?zo_user_code=${encodeURIComponent(zoUserCode)}`
-      );
-      const data = await res.json();
-      setAccount(data.connected ? data.account : null);
-    } catch {
-      setAccount(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [zoUserCode, basePath]);
-
-  // Fetch on mount and when zoUserCode changes
-  useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
-
-  // Handle query params from OAuth redirect
-  useEffect(() => {
-    if (router.query.ig_connected === "true") {
-      toast.success("Instagram connected!");
-      fetchStatus();
-      const { ig_connected: _ig_connected, ...rest } = router.query;
-      router.replace({ pathname: router.pathname, query: rest }, undefined, {
-        shallow: true,
-      });
-    }
-    if (router.query.ig_error) {
-      toast.error(`Instagram: ${router.query.ig_error}`);
-      const { ig_error: _ig_error, ...rest } = router.query;
-      router.replace({ pathname: router.pathname, query: rest }, undefined, {
-        shallow: true,
-      });
-    }
-  }, [router.query.ig_connected, router.query.ig_error]); // eslint-disable-line react-hooks/exhaustive-deps
+  const account = useMemo<InstagramAccount | null>(() => {
+    if (!profile?.socials) return null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ig = (profile.socials as any[]).find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (s: any) => s?.category === "instagram"
+    );
+    if (!ig) return null;
+    const username = ig.link
+      ? String(ig.link).replace(/.*instagram\.com\//i, "").replace(/\/$/, "")
+      : "";
+    return {
+      ig_username: username,
+      display_name: username,
+      followers_count: 0,
+      profile_picture_url: null,
+      biography: null,
+      connected_at: "",
+    };
+  }, [profile?.socials]);
 
   const connect = useCallback(() => {
-    if (!zoUserCode) {
+    if (!profile) {
       toast.error("Please log in first");
       return;
     }
-    window.location.href = `${basePath}/api/auth/instagram?zo_user_code=${encodeURIComponent(zoUserCode)}`;
-  }, [zoUserCode, basePath]);
+    toast("Instagram Connect is rolling out soon", {
+      description:
+        "We're rebuilding IG OAuth on our new backend. Get early access by upgrading to Pro.",
+    });
+  }, [profile]);
 
   const disconnect = useCallback(async () => {
-    if (!zoUserCode) return;
+    toast("Not available yet", {
+      description: "Reconnect will be live once IG v2 ships.",
+    });
+  }, []);
 
-    try {
-      const res = await fetch(`${basePath}/api/auth/instagram/disconnect`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ zo_user_code: zoUserCode }),
-      });
-      if (res.ok) {
-        setAccount(null);
-        toast.success("Instagram disconnected");
-      } else {
-        toast.error("Failed to disconnect");
-      }
-    } catch {
-      toast.error("Failed to disconnect");
-    }
-  }, [zoUserCode, basePath]);
+  const refetch = useCallback(() => {
+    // No-op — status comes from profile.socials which refetches via useProfile
+  }, []);
 
   return {
-    isLoading,
+    isLoading: false,
     isConnected: account !== null,
     account,
     connect,
     disconnect,
-    refetch: fetchStatus,
+    refetch,
   };
 }
