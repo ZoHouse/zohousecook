@@ -1,1 +1,18 @@
 export { PassportLobby } from './PassportLobby';
+export { Pedestal } from './Pedestal';
+export type { PedestalProps } from './Pedestal';
+export { XpProgressBar } from './XpProgressBar';
+export type { XpProgressBarProps } from './XpProgressBar';
+export { XpPill } from './XpPill';
+export type { XpPillProps } from './XpPill';
+export { RankPill } from './RankPill';
+export type { RankPillProps } from './RankPill';
+export { MapWidget } from './MapWidget';
+export { GhostVisitors } from './GhostVisitors';
+export { NextMilestoneSign } from './NextMilestoneSign';
+export { TravelersPill } from './TravelersPill';
+export type { TravelersPillProps } from './TravelersPill';
+export { Avatar2D } from './Avatar2D';
+export type { Avatar2DProps } from './Avatar2D';
+export { SideNavRail } from './SideNavRail';
+export type { SideNavRailProps, LobbyTab } from './SideNavRail';
