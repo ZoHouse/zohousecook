@@ -46,7 +46,7 @@ describe("Instagram OAuth callback", () => {
     });
 
     const { default: CallbackPage } = await import(
-      "../pages/oauth/instagram/callback"
+      "../pages/auth/instagram"
     );
     render(<CallbackPage />);
 
@@ -71,7 +71,7 @@ describe("Instagram OAuth callback", () => {
     });
 
     const { default: CallbackPage } = await import(
-      "../pages/oauth/instagram/callback"
+      "../pages/auth/instagram"
     );
     render(<CallbackPage />);
 

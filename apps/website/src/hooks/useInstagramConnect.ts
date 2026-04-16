@@ -92,7 +92,7 @@ export default function useInstagramConnect(): UseInstagramConnectReturn {
       toast.error("Instagram not configured");
       return;
     }
-    const redirectUri = `${APP_URL}/oauth/instagram/callback`;
+    const redirectUri = `${APP_URL}/auth/instagram`;
     // Instagram Business Login (new API; Basic Display was deprecated Dec 2024).
     // Scopes: `instagram_business_basic` is the minimum for identity + username.
     // Add `instagram_business_content_publish` / `_manage_messages` / `_manage_comments`
