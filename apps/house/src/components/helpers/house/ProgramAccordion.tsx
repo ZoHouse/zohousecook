@@ -65,24 +65,53 @@ export function ProgramAccordion() {
       style={{ height: `${(items.length + 1) * 100}vh` }}
       className="relative"
     >
-      <div className="sticky top-0 h-screen flex items-center px-8 md:px-28 bg-black z-10">
-        <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row gap-8 md:gap-16">
+      <div className="sticky top-0 h-screen flex items-center px-6 md:px-28 bg-black z-10 overflow-hidden">
+        <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row gap-4 md:gap-16">
           {/* Left - text + accordion */}
           <div className="md:w-1/2 flex flex-col justify-center">
-            <h2 className="text-4xl md:text-5xl font-light mb-4 tracking-tight">
+            <h2 className="text-2xl md:text-5xl font-light mb-2 md:mb-4 tracking-tight">
               India&apos;s first permanent{" "}
               <span className="font-[family-name:var(--font-headline)] italic font-normal shiny-gold">
                 hacker house.
               </span>
             </h2>
-            <p className="text-neutral-400 text-base md:text-lg font-light max-w-xl mb-10">
+            <p className="text-neutral-400 text-sm md:text-lg font-light max-w-xl mb-4 md:mb-10">
               Founders live together in Bangalore. Monthly cohorts. Build
               alongside serious peers. The house doesn&apos;t reset when a
               cohort ends. It compounds.
             </p>
 
-            {/* Accordion */}
-            <div className="flex flex-col">
+            {/* Mobile: single active item */}
+            <div className="md:hidden">
+              <div className="border-t border-b border-white/10 py-3">
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="text-xs font-mono text-[#c9a84c]">
+                    0{activeIndex + 1}
+                  </span>
+                  <h3 className="text-base font-bold tracking-tight uppercase text-white">
+                    {items[activeIndex].title}
+                  </h3>
+                </div>
+                <p className="text-neutral-400 text-xs font-light leading-relaxed pl-8">
+                  {items[activeIndex].description}
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-2 mt-3">
+                {items.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setActiveIndex(i)}
+                    className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                      i === activeIndex ? "bg-[#c9a84c]" : "bg-neutral-700"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Desktop: full accordion */}
+            <div className="hidden md:flex flex-col">
               {items.map((item, i) => {
                 const isActive = i === activeIndex;
                 return (
@@ -91,7 +120,7 @@ export function ProgramAccordion() {
                     className="border-t border-white/10 last:border-b cursor-pointer"
                     onClick={() => setActiveIndex(i)}
                   >
-                    <div className="flex items-center justify-between py-4 md:py-5">
+                    <div className="flex items-center justify-between py-5">
                       <div className="flex items-center gap-4">
                         <span
                           className={`text-xs font-mono transition-colors duration-300 ${
@@ -101,7 +130,7 @@ export function ProgramAccordion() {
                           0{i + 1}
                         </span>
                         <h3
-                          className={`text-lg md:text-xl font-bold tracking-tight uppercase transition-colors duration-300 ${
+                          className={`text-xl font-bold tracking-tight uppercase transition-colors duration-300 ${
                             isActive ? "text-white" : "text-neutral-500"
                           }`}
                         >
@@ -110,7 +139,7 @@ export function ProgramAccordion() {
                       </div>
                       <div className="flex items-center gap-4">
                         <span
-                          className={`text-[10px] font-bold tracking-[0.2em] uppercase transition-colors duration-300 hidden md:block ${
+                          className={`text-[10px] font-bold tracking-[0.2em] uppercase transition-colors duration-300 ${
                             isActive ? "text-[#c9a84c]" : "text-neutral-600"
                           }`}
                         >
@@ -153,9 +182,9 @@ export function ProgramAccordion() {
             </div>
           </div>
 
-          {/* Right - image */}
+          {/* Right - video */}
           <div className="md:w-1/2 flex items-center justify-center">
-            <div className="relative w-full aspect-[3/4] max-h-[75vh] rounded-2xl overflow-hidden border border-white/10">
+            <div className="relative w-full aspect-[4/3] md:aspect-[3/4] max-h-[35vh] md:max-h-[75vh] rounded-2xl overflow-hidden border border-white/10">
               {items.map((item, i) => (
                 <div
                   key={item.title}

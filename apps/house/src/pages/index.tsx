@@ -8,7 +8,6 @@ import {
   BlurFade,
   HyperText,
   TextReveal,
-  MissionHouses,
   ZoRadioPill,
   MobileWaitlistBar,
   HouseWrapper,
@@ -124,7 +123,7 @@ export default function House({
             <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
           </div>
           <BlurFade inView delay={0.2} direction="up">
-            <div className="relative z-10 text-center px-6 max-w-5xl pt-32">
+            <div className="relative z-10 text-center px-6 max-w-5xl pt-16 md:pt-32">
               <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-8">
                 <div className="flex -space-x-3">
                   <Image
@@ -211,8 +210,6 @@ export default function House({
 
         <TrackRecordScroll />
 
-        <MissionHouses />
-
         {/* CTA Section */}
         <section className="relative min-h-[716px] w-full flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0 z-0">
@@ -253,8 +250,8 @@ export default function House({
 
         <ApplyModal open={applyOpen} onClose={() => setApplyOpen(false)} />
 
-        <footer className="bg-black py-20 pb-28 md:pb-20 px-8">
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center w-full border-t border-white/5 pt-12">
+        <footer className="bg-black py-4 pb-28 md:pb-4 px-8">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center w-full border-t border-white/5 pt-4">
             <div className="mb-8 md:mb-0 text-center md:text-left">
               <span className="text-lg font-black text-white font-[family-name:var(--font-headline)] italic shiny-gold">
                 Zo House

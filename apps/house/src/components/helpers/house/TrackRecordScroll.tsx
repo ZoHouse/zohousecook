@@ -116,9 +116,7 @@ export function TrackRecordScroll() {
 
         {/* Text content */}
         <div className="relative z-[2] h-full flex flex-col justify-center px-8 md:px-28 max-w-2xl">
-          <span className="text-[10px] font-bold tracking-[0.3em] text-neutral-400 uppercase mb-4">
-            Track Record
-          </span>
+          
           <h2 className="text-3xl md:text-5xl font-light tracking-tight mb-8">
             We&apos;ve done this before.
             <br />
