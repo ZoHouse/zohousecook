@@ -9,6 +9,7 @@ import {
   HyperText,
   TextReveal,
   ZoRadioPill,
+  AsSeenOn,
   MobileWaitlistBar,
   HouseWrapper,
   ProgramAccordion,
@@ -209,6 +210,8 @@ export default function House({
         </section>
 
         <TrackRecordScroll />
+
+        <AsSeenOn />
 
         {/* CTA Section */}
         <section className="relative min-h-[716px] w-full flex items-center justify-center overflow-hidden">

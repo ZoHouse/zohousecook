@@ -10,3 +10,4 @@ export { LoadingScreen } from "./LoadingScreen";
 export { HouseWrapper, useRadioAutoplay } from "./HouseWrapper";
 export { ProgramAccordion } from "./ProgramAccordion";
 export { TrackRecordScroll } from "./TrackRecordScroll";
+export { AsSeenOn } from "./AsSeenOn";
