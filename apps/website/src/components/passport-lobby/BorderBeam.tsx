@@ -19,8 +19,9 @@ export interface BorderBeamProps {
 
 /**
  * Animated border beam — place INSIDE a `position: relative` container
- * with matching border-radius. A conic gradient rotates around the
- * element, revealing a thin traveling light trail along the border.
+ * with matching border-radius. Uses @property to animate the conic
+ * gradient angle without transforming the element, so the mask stays
+ * aligned with the border ring.
  */
 export function BorderBeam({
   radius = 20,
@@ -28,42 +29,47 @@ export function BorderBeam({
   borderWidth = 1.5,
   colorFrom = '#A7D921',
   colorTo = '#FF2F8E',
-  trailDegrees = 80,
+  trailDegrees = 90,
   className,
   style,
 }: BorderBeamProps) {
-  const trailStart = 0;
   const trailMid = trailDegrees / 2;
-  const trailEnd = trailDegrees;
 
   return (
     <>
       <div
         aria-hidden
         className={`border-beam ${className ?? ''}`}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: radius,
-          padding: borderWidth,
-          background: `conic-gradient(from 0deg, ${colorFrom} ${trailStart}deg, ${colorTo} ${trailMid}deg, transparent ${trailEnd}deg, transparent 360deg)`,
-          WebkitMask:
-            'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
-          WebkitMaskComposite: 'xor',
-          maskComposite: 'exclude',
-          animation: `border-beam-rotate ${duration}s linear infinite`,
-          pointerEvents: 'none',
-          zIndex: 3,
-          ...style,
-        }}
+        style={
+          {
+            position: 'absolute',
+            inset: 0,
+            borderRadius: radius,
+            padding: borderWidth,
+            background: `conic-gradient(from var(--border-beam-angle, 0deg), ${colorFrom} 0deg, ${colorTo} ${trailMid}deg, transparent ${trailDegrees}deg, transparent 360deg)`,
+            WebkitMask:
+              'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
+            WebkitMaskComposite: 'xor',
+            maskComposite: 'exclude',
+            animation: `border-beam-spin ${duration}s linear infinite`,
+            pointerEvents: 'none',
+            zIndex: 3,
+            ...style,
+          } as CSSProperties
+        }
       />
-      <style jsx>{`
-        @keyframes border-beam-rotate {
+      <style jsx global>{`
+        @property --border-beam-angle {
+          syntax: '<angle>';
+          inherits: false;
+          initial-value: 0deg;
+        }
+        @keyframes border-beam-spin {
           from {
-            transform: rotate(0deg);
+            --border-beam-angle: 0deg;
           }
           to {
-            transform: rotate(360deg);
+            --border-beam-angle: 360deg;
           }
         }
       `}</style>
