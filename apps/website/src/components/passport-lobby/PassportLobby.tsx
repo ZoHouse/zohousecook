@@ -15,13 +15,16 @@ import { PassesDock } from './PassesDock';
 import { StubSection } from './StubSection';
 import { ActiveQuestCard } from './ActiveQuestCard';
 import { InstagramConnectModal } from './InstagramConnectModal';
+import { BadgesSection } from './BadgesSection';
 import { ProUpsellModal, type ProUpsellFeature } from '../pro';
 import { SettingsModal } from '../passport/SettingsModal';
+import { useMyRoles } from '../../hooks/useMyRoles';
 
 export function PassportLobby() {
   const { profile } = useProfile();
   const { myXp } = useMyXp();
   const ig = useInstagramConnect();
+  const { roles, isLoading: rolesLoading } = useMyRoles();
 
   const [tab, setTab] = useState<LobbyTab>('lobby');
   const [upsell, setUpsell] = useState<ProUpsellFeature | null>(null);
@@ -41,7 +44,7 @@ export function PassportLobby() {
   const closeUpsell = () => setUpsell(null);
 
   const handleTabChange = (next: LobbyTab) => {
-    if (next === 'dailies' || next === 'badges') {
+    if (next === 'dailies') {
       openUpsell(next);
       return;
     }
@@ -144,7 +147,7 @@ export function PassportLobby() {
         ) : tab === 'dailies' ? (
           <StubSection feature="dailies" title="Dailies" onUpsell={openUpsell} />
         ) : (
-          <StubSection feature="badges" title="Badges" onUpsell={openUpsell} />
+          <BadgesSection roles={roles} isLoading={rolesLoading} />
         )}
 
         <PassesDock onUpsell={openUpsell} />
