@@ -14,6 +14,7 @@ import { TravelersPill } from './TravelersPill';
 import { PassesDock } from './PassesDock';
 import { StubSection } from './StubSection';
 import { ActiveQuestCard } from './ActiveQuestCard';
+import { InstagramConnectModal } from './InstagramConnectModal';
 import { ProUpsellModal, type ProUpsellFeature } from '../pro';
 import { SettingsModal } from '../passport/SettingsModal';
 
@@ -26,6 +27,7 @@ export function PassportLobby() {
   const [upsell, setUpsell] = useState<ProUpsellFeature | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [igModalOpen, setIgModalOpen] = useState(false);
 
   if (!profile) return null;
 
@@ -46,16 +48,19 @@ export function PassportLobby() {
     setTab(next);
   };
 
-  // Active Quest flow (per Erum PRD): step 1 is "Link IG".
-  // If not connected → redirect to Meta OAuth (connect() in the hook).
-  // If connected → fall through to the quest dailies upsell until the full quest
-  //   submission UI is built.
+  // Quest tap: if IG not connected → show IG connect modal. If connected → dailies upsell.
   const handleQuestTap = () => {
     if (!ig.isConnected) {
-      ig.connect();
+      setIgModalOpen(true);
       return;
     }
     openUpsell('dailies');
+  };
+
+  // IG modal "Connect" button → close modal + redirect to Meta OAuth.
+  const handleIgConnect = () => {
+    setIgModalOpen(false);
+    ig.connect();
   };
 
   return (
@@ -94,7 +99,7 @@ export function PassportLobby() {
         }}
       />
 
-      {/* Wordmark — desktop only, bottom-left to avoid collision with Map HUD */}
+      {/* Wordmark — desktop only, bottom-left */}
       <div
         aria-hidden
         className="hidden md:flex fixed bottom-6 left-6 z-20 items-center gap-3 pointer-events-none"
@@ -134,7 +139,7 @@ export function PassportLobby() {
             ghostVisitors={<GhostVisitors />}
             nextMilestone={<NextMilestoneSign />}
             travelersPill={<TravelersPill />}
-            activeQuest={<ActiveQuestCard onTap={handleQuestTap} requiresInstagram={!ig.isConnected} />}
+            activeQuest={<ActiveQuestCard onTap={handleQuestTap} />}
           />
         ) : tab === 'dailies' ? (
           <StubSection feature="dailies" title="Dailies" onUpsell={openUpsell} />
@@ -148,6 +153,7 @@ export function PassportLobby() {
       <ProUpsellModal feature={upsell} onClose={closeUpsell} />
       <MapModal open={mapOpen} onClose={() => setMapOpen(false)} />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <InstagramConnectModal open={igModalOpen} onClose={() => setIgModalOpen(false)} onConnect={handleIgConnect} />
     </div>
   );
 }
