@@ -209,14 +209,7 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
           </Head>
         )}
         {showNewUserInvited ? (
-          <NewUserInvitedView
-            inviterHandle={urlHandle}
-            inviterDisplayName={og?.title?.split(" · ")[0] || null}
-            inviterAvatarUrl={og?.image || null}
-            viewerHandle={profile?.custom_nickname || profile?.nickname || null}
-            viewerDisplayName={profile?.full_name || profile?.first_name || null}
-            viewerAvatarUrl={profile?.avatar?.image || profile?.pfp_image || null}
-          />
+          <NewUserInvitedView />
         ) : (
           <PublicPassportView
             handle={urlHandle}
@@ -288,7 +281,9 @@ export default function PassportPage({ handleFromUrl, og }: PassportPageProps) {
               />
             )}
 
-            <PassportProCard />
+            <section id="pro" className="scroll-mt-16">
+              <PassportProCard />
+            </section>
             <QuestsSection />
             <ReferralSection handle={handle} />
             {handle && (
