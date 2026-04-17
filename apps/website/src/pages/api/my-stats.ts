@@ -68,7 +68,7 @@ function getRankTitle(xp: number): string {
 async function fetchZostelBookings(
   zostelToken: string,
   zostelUserId: string,
-): Promise<{ nights: number; properties: string[]; destinations: string[]; spend: number }> {
+): Promise<{ nights: number; properties: string[]; propertyNames: string[]; destinations: string[]; spend: number }> {
   const bookings: StayBooking[] = [];
   let url = `${ZOSTEL_API}/api/v1/stay/my/bookings/list/?limit=100`;
 
@@ -138,9 +138,11 @@ async function fetchZostelBookings(
       if (n <= 365) nights += n;
     }
     if (b.paid_amount) spend += Number(b.paid_amount) || 0;
-    if (b.operator?.code) propertySet.add(b.operator.code);
-    // Also track the human-readable name for display in badges
-    if (b.operator?.name) propertyNameMap.set(b.operator.code, b.operator.name);
+    if (b.operator?.code) {
+      propertySet.add(b.operator.code);
+      // Also track the human-readable name for display in badges
+      if (b.operator.name) propertyNameMap.set(b.operator.code, b.operator.name);
+    }
     if (b.operator?.name) {
       const name = b.operator.name;
       const parenMatch = name.match(/\(([^)]+)\)/);
@@ -265,7 +267,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const [stays, profile, trips] = await Promise.all([
       zostelToken && zostelUserId
         ? fetchZostelBookings(zostelToken, zostelUserId)
-        : Promise.resolve({ nights: 0, properties: [] as string[], destinations: [] as string[], spend: 0 }),
+        : Promise.resolve({ nights: 0, properties: [] as string[], propertyNames: [] as string[], destinations: [] as string[], spend: 0 }),
       fetchProfileStats(zoToken, deviceId, deviceSecret),
       userUuid
         ? fetchTripStats(userUuid)
