@@ -5,7 +5,10 @@ import { toast } from "sonner";
 
 const IG_APP_ID = process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "";
-const ZO_API = process.env.API_BASE_URL || "https://api.io.zo.xyz";
+const ZO_API =
+  process.env.API_BASE_URL_INSTAGRAM ||
+  process.env.API_BASE_URL ||
+  "https://api.io.zo.xyz";
 
 function getZoAuthHeaders(): Record<string, string> {
   const token =
@@ -23,6 +26,7 @@ function getZoAuthHeaders(): Record<string, string> {
   return {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
+    "client-key": process.env.APP_ID || "",
     "client-device-id": deviceId,
     "client-device-secret": deviceSecret,
   };
@@ -111,10 +115,13 @@ export default function useInstagramConnect(): UseInstagramConnectReturn {
   const disconnect = useCallback(async () => {
     setIsDisconnecting(true);
     try {
-      const res = await fetch(`${ZO_API}/api/v1/oauth/instagram/disconnect/`, {
-        method: "DELETE",
-        headers: getZoAuthHeaders(),
-      });
+      const res = await fetch(
+        `${ZO_API}/api/v1/auth/oauth/instagram/disconnect/`,
+        {
+          method: "DELETE",
+          headers: getZoAuthHeaders(),
+        }
+      );
       const data = await res.json();
       if (data?.success) {
         toast.success("Instagram disconnected");

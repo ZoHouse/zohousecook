@@ -37,6 +37,7 @@ const nextConfig = {
   env: {
     APP_ID: process.env.APP_ID || "",
     API_BASE_URL: process.env.API_BASE_URL || "",
+    API_BASE_URL_INSTAGRAM: process.env.API_BASE_URL_INSTAGRAM || "",
     API_SOCKET_URL: process.env.API_SOCKET_URL || "",
     WEB_BASE_URL: process.env.WEB_BASE_URL || "https://zo.xyz",
     NFT_AIRDROP_COLLECTION_SLUG: process.env.NFT_AIRDROP_COLLECTION_SLUG || "",

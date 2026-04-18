@@ -2,7 +2,10 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { useProfile } from "@zo/auth";
 
-const ZO_API = process.env.API_BASE_URL || "https://api.io.zo.xyz";
+const ZO_API =
+  process.env.API_BASE_URL_INSTAGRAM ||
+  process.env.API_BASE_URL ||
+  "https://api.io.zo.xyz";
 const TIMEOUT_MS = 20000;
 
 function getZoAuthHeaders(): Record<string, string> {
@@ -21,6 +24,7 @@ function getZoAuthHeaders(): Record<string, string> {
   return {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
+    "client-key": process.env.APP_ID || "",
     "client-device-id": deviceId,
     "client-device-secret": deviceSecret,
   };
@@ -56,25 +60,42 @@ export default function InstagramCallbackPage() {
     const code = rawCode.replace(/#_$/, "");
     calledRef.current = true;
 
-    fetch(`${ZO_API}/api/v1/oauth/instagram/connect/`, {
+    fetch(`${ZO_API}/api/v1/auth/oauth/instagram/connect/`, {
       method: "POST",
       headers: getZoAuthHeaders(),
       body: JSON.stringify({ code }),
     })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.success) {
-          router.push("/passport?ig_connected=true");
-        } else {
-          router.push(
-            `/passport?ig_error=${encodeURIComponent(
-              data?.errors?.[0] || "connect_failed"
-            )}`
-          );
+      .then(async (res) => {
+        const text = await res.text();
+        let data: { success?: boolean; errors?: string[]; detail?: string } = {};
+        try {
+          data = JSON.parse(text);
+        } catch {
+          // Non-JSON response (HTML error page, empty body, etc.)
         }
+        if (res.ok && data?.success) {
+          router.push("/passport?ig_connected=true");
+          return;
+        }
+        // Surface the real failure so the toast is debuggable.
+        // eslint-disable-next-line no-console
+        console.error("IG connect failed", res.status, text);
+        const reason =
+          data?.errors?.[0] ||
+          data?.detail ||
+          `${res.status}_${text.slice(0, 80) || "no_body"}`;
+        router.push(
+          `/passport?ig_error=${encodeURIComponent(reason)}`
+        );
       })
-      .catch(() => {
-        router.push("/passport?ig_error=connect_failed");
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error("IG connect network error", err);
+        router.push(
+          `/passport?ig_error=${encodeURIComponent(
+            `network_${(err as Error)?.message || "unknown"}`
+          )}`
+        );
       });
   }, [router.isReady, router.query.code, profile, router]);
 
