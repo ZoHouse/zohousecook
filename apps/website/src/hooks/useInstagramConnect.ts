@@ -23,6 +23,7 @@ function getZoAuthHeaders(): Record<string, string> {
   return {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
+    "client-key": process.env.APP_ID || "",
     "client-device-id": deviceId,
     "client-device-secret": deviceSecret,
   };
@@ -111,10 +112,13 @@ export default function useInstagramConnect(): UseInstagramConnectReturn {
   const disconnect = useCallback(async () => {
     setIsDisconnecting(true);
     try {
-      const res = await fetch(`${ZO_API}/api/v1/oauth/instagram/disconnect/`, {
-        method: "DELETE",
-        headers: getZoAuthHeaders(),
-      });
+      const res = await fetch(
+        `${ZO_API}/api/v1/auth/oauth/instagram/disconnect/`,
+        {
+          method: "DELETE",
+          headers: getZoAuthHeaders(),
+        }
+      );
       const data = await res.json();
       if (data?.success) {
         toast.success("Instagram disconnected");

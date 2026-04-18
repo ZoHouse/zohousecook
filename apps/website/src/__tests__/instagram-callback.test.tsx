@@ -39,10 +39,12 @@ describe("Instagram OAuth callback", () => {
     });
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({
-        success: true,
-        instagram: { id: "123", username: "johndoe", account_type: "CREATOR" },
-      }),
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          success: true,
+          instagram: { id: "123", username: "johndoe", account_type: "CREATOR" },
+        }),
     });
 
     const { default: CallbackPage } = await import(
@@ -52,10 +54,15 @@ describe("Instagram OAuth callback", () => {
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("/api/v1/oauth/instagram/connect/"),
+        expect.stringContaining("/api/v1/auth/oauth/instagram/connect/"),
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({ code: "META_CODE_123" }),
+          headers: expect.objectContaining({
+            "client-key": expect.any(String),
+            "client-device-id": "dev-123",
+            "client-device-secret": "sec-456",
+          }),
         })
       );
       expect(mockPush).toHaveBeenCalledWith("/passport?ig_connected=true");
