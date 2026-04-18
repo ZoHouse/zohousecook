@@ -2,7 +2,10 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { useProfile } from "@zo/auth";
 
-const ZO_API = process.env.API_BASE_URL || "https://api.io.zo.xyz";
+const ZO_API =
+  process.env.API_BASE_URL_INSTAGRAM ||
+  process.env.API_BASE_URL ||
+  "https://api.io.zo.xyz";
 const TIMEOUT_MS = 20000;
 
 function getZoAuthHeaders(): Record<string, string> {

@@ -5,7 +5,10 @@ import { toast } from "sonner";
 
 const IG_APP_ID = process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "";
-const ZO_API = process.env.API_BASE_URL || "https://api.io.zo.xyz";
+const ZO_API =
+  process.env.API_BASE_URL_INSTAGRAM ||
+  process.env.API_BASE_URL ||
+  "https://api.io.zo.xyz";
 
 function getZoAuthHeaders(): Record<string, string> {
   const token =
