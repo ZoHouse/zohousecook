@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -179,6 +180,13 @@ export default function House({
                 <p className="font-[family-name:var(--font-headline)] italic text-2xl shiny-gold opacity-60">
                   &ldquo;The house doesn&apos;t reset. It compounds.&rdquo;
                 </p>
+                <Link
+                  href="/network"
+                  className="inline-flex items-center gap-2 mt-8 text-[11px] tracking-[3px] uppercase text-white/40 hover:text-white transition-colors"
+                >
+                  Meet the network
+                  <span aria-hidden>→</span>
+                </Link>
               </div>
             </BlurFade>
           </div>
