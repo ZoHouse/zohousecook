@@ -7,10 +7,11 @@ import MODEL_URL from '../../assets/3d/zobu_bro.glb';
 export default function Pro3dAvatarPreview() {
   const ref = useRef<HTMLElement>(null);
   const [failed, setFailed] = useState(false);
-
-  const reducedMotion =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const [reducedMotion] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
 
   useEffect(() => {
     // Registers the <model-viewer> custom element on mount.
@@ -37,7 +38,7 @@ export default function Pro3dAvatarPreview() {
   return (
     <div className="relative w-full aspect-[3/4] max-h-[60vh] mb-4 rounded-xl overflow-hidden bg-black/40">
       <model-viewer
-        ref={ref as React.RefObject<HTMLElement>}
+        ref={ref}
         src={MODEL_URL}
         alt="Base Zobu 3D avatar"
         tabIndex={-1}
