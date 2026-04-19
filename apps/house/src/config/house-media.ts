@@ -15,7 +15,7 @@ export const HOUSE_MEDIA = {
   foundersDinner: `${CDN}/gallery/media/images/8cdac665-66df-4577-ad25-7ac81c69198c_20260414114433.png`,
   zoBlr: `${CDN}/gallery/media/images/55901f3f-e3a8-4133-8925-fb6a59cfd89a_20260414114436.webp`,
   zoKrm: `${CDN}/gallery/media/images/d92292fb-01bd-4fae-aa87-8e2b17af8947_20260414114439.webp`,
-  heroVideo: `${CDN}/gallery/media/videos/e9c2b359-7e6f-4d72-bfb0-54ce1c74da78_20260414120414.mp4`,
+  heroVideo: `${CDN}/gallery/media/videos/33ae43dd-99c6-41d2-bcc6-77e9e2a6d09c_20260419063038.mp4`,
   heroBg: `${CDN}/gallery/media/images/f959f43e-0d6e-4798-a7e2-01388bdf2bc7_20260414120415.svg`,
   demoday: `${CDN}/gallery/media/videos/ff94c107-3fb2-4311-9048-c620835cae15_20260414114343.mp4`,
   hackathon: `${CDN}/gallery/media/videos/fa5f38eb-e607-4237-911f-cde1dea4685f_20260414121823.mp4`,
