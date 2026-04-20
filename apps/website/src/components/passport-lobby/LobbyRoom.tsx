@@ -122,7 +122,7 @@ export function LobbyRoom({ sideNav, hero, ghostVisitors, nextMilestone, travele
         <div className="absolute left-8 bottom-24 z-[4] lg:hidden">{ghostVisitors}</div>
 
         {/* HUD: Left panel — quest + ghost visitors, lg:+ only. */}
-        <aside className="hidden lg:block absolute left-8 top-32 z-[6] w-[320px] space-y-6">
+        <aside aria-label="Active quest and recent visitors" className="hidden lg:block absolute left-8 top-32 z-[6] w-[320px] space-y-6">
           {activeQuest}
           {ghostVisitors}
         </aside>
