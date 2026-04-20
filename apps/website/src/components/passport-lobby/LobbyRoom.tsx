@@ -102,7 +102,7 @@ export function LobbyRoom({ sideNav, hero, ghostVisitors, nextMilestone, travele
         {/* HUD: Side nav — right edge, vertically centered. Includes Map button now. */}
         <div className="absolute top-1/2 right-6 -translate-y-1/2 z-[10] flex flex-col items-center gap-6">
           {sideNav}
-          <div className="opacity-60" style={{ width: 44 }}>{nextMilestone}</div>
+          <div className="opacity-60 w-11 lg:opacity-100 lg:w-auto">{nextMilestone}</div>
         </div>
 
         {/* CENTER STAGE: hero card + pedestal + progress bar + quest + travelers */}
@@ -114,12 +114,18 @@ export function LobbyRoom({ sideNav, hero, ghostVisitors, nextMilestone, travele
           <div style={{ marginTop: -20 }} aria-hidden>
             <Image src={progressBar} alt="" width={113} height={6} style={{ width: 160, height: 'auto' }} />
           </div>
-          {activeQuest && <div className="mt-6">{activeQuest}</div>}
+          {activeQuest && <div className="mt-6 lg:hidden">{activeQuest}</div>}
           <div className="mt-3">{travelersPill}</div>
         </div>
 
         {/* HUD: ghost visitors — bottom-left */}
-        <div className="absolute left-8 bottom-24 z-[4]">{ghostVisitors}</div>
+        <div className="absolute left-8 bottom-24 z-[4] lg:hidden">{ghostVisitors}</div>
+
+        {/* HUD: Left panel — quest + ghost visitors, lg:+ only. */}
+        <aside className="hidden lg:block absolute left-8 top-32 z-[6] w-[320px] space-y-6">
+          {activeQuest}
+          {ghostVisitors}
+        </aside>
       </div>
     </>
   );
