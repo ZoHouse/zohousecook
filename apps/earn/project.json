@@ -1,0 +1,57 @@
+{
+  "name": "earn",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/earn",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/next:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/earn",
+        "postcssConfig": "apps/earn/postcss.config.js"
+      },
+      "configurations": {
+        "development": {
+          "outputPath": "apps/earn"
+        },
+        "production": {}
+      }
+    },
+    "serve": {
+      "executor": "@nx/next:server",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "earn:build",
+        "dev": true,
+        "port": 4211
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "earn:build:development",
+          "dev": true
+        },
+        "production": {
+          "buildTarget": "earn:build:production",
+          "dev": false
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["apps/earn/**/*.{ts,tsx,js,jsx}"]
+      }
+    },
+    "prisma-generate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "prisma generate --schema=apps/earn/prisma/schema.prisma",
+        "cwd": "."
+      }
+    }
+  },
+  "tags": []
+}

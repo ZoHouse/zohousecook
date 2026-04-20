@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Bounty {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  reward      String
+  tags        String[]
+  deadline    String?
+  source      String
+  sourceId    String   @map("source_id")
+  url         String?
+  applicants  Int      @default(0)
+  status      String   @default("open")
+  color       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([source, sourceId])
+  @@map("bounties")
+}

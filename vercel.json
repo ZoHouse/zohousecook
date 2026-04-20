@@ -80,6 +80,26 @@
       "source": "/meme/:path*",
       "has": [{ "type": "host", "value": "zozozo.work" }],
       "destination": "https://zozozo-meme-samurais-dojo.vercel.app/meme/:path*"
+    },
+    {
+      "source": "/earn",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-earn-samurais-dojo.vercel.app/earn"
+    },
+    {
+      "source": "/earn/:path*",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-earn-samurais-dojo.vercel.app/earn/:path*"
+    },
+    {
+      "source": "/earn",
+      "has": [{ "type": "host", "value": "zo.house" }],
+      "destination": "https://zozozo-earn-samurais-dojo.vercel.app/earn"
+    },
+    {
+      "source": "/earn/:path*",
+      "has": [{ "type": "host", "value": "zo.house" }],
+      "destination": "https://zozozo-earn-samurais-dojo.vercel.app/earn/:path*"
     }
   ]
 }
