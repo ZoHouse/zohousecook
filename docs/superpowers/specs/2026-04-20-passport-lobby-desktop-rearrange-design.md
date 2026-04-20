@@ -15,7 +15,7 @@ Use the empty sides at wide viewports. Keep the center as the stage for the avat
 ## Non-goals
 
 - No changes to `CitizenCard`, `ActiveQuestCard`, `GhostVisitors`, `NextMilestoneSign`, `TravelersPill`, `SideNavRail`, `TopBar`, `PassesDock`.
-- No changes to `PassportLobby.tsx` (slot wiring stays the same; the fixed-position wordmark at `PassportLobby.tsx:115-134` stays untouched — it sits at `bottom-6 left-6 z-20` and is vertically far from the proposed center-anchored left panel, so no collision).
+- No changes to `PassportLobby.tsx` (slot wiring stays the same; the fixed-position wordmark at `PassportLobby.tsx:115-134` stays untouched — it sits at `bottom-6 left-6 z-20 pointer-events-none`, horizontally overlapping the left panel's column but visually subtle and click-transparent; on tall-state quest on a short viewport (~1024×700) the aside's bottom may reach the wordmark's vertical band and they will render stacked — the wordmark is `pointer-events-none` and opacity-subtle, so this is an acceptable visual cohabitation, not a collision).
 - No changes to the mobile block inside `LobbyRoom.tsx` (lines 23–61 of the current file; it still uses `z-[4]` at line 60 for ghost visitors — that is intentional and unchanged).
 - No changes to the public visitor view at `zozozo.work/@handle` for unauthenticated visits or visits to another user's handle.
 - No full-body-avatar work (Phase-1 avatar roadmap continues on its own track and lands in the existing hero slot).
@@ -40,7 +40,7 @@ The existing `hidden md:block` wrapper around the desktop block stays. Inside it
 |---|---|---|
 | Left panel (absent today) | — | `<aside>` at `absolute left-8 top-32 z-[6]`, fixed `w-[320px]`, renders `ActiveQuestCard` on top and `GhostVisitors` beneath it with `space-y-6`. Wrapper only mounts if at least one of the two slots is non-falsy. |
 | Center stage | `CitizenCard` → pedestal SVG → progress bar SVG → `ActiveQuestCard` → `TravelersPill` | `CitizenCard` → pedestal SVG → progress bar SVG → `TravelersPill`. Quest card is **only removed from the center at `lg:`+**. Between `md:` and `lg:` the center stack still includes the quest card (unchanged behavior). |
-| Right panel | `SideNavRail` + `NextMilestoneSign` wrapped in `<div className="opacity-60" style={{ width: 44 }}>` | `SideNavRail` + `<div>{nextMilestone}</div>` (plain wrapper preserving the parent `flex-col items-center gap-6` spacing — do NOT remove the wrapper div, just drop the `className="opacity-60"` and the inline `style={{ width: 44 }}`). |
+| Right panel | `SideNavRail` + `NextMilestoneSign` wrapped in `<div className="opacity-60" style={{ width: 44 }}>` | `SideNavRail` + `<div className="opacity-60 w-11 lg:opacity-100 lg:w-auto">{nextMilestone}</div>` — at `md:` to `lg:-1px` keeps today's faded 44px look exactly (via Tailwind `opacity-60 w-11`); at `lg:+` drops the fade and width clamp. Inline `style={{ width: 44 }}` is removed because inline styles can't be responsive — `w-11` (2.75rem = 44px) is the Tailwind equivalent. Wrapper div preserved so the parent `flex-col items-center gap-6` spacing still applies. |
 | Ghost visitors bottom-left badge (`absolute left-8 bottom-24 z-[4]`) | present | **at `lg:`+**, hidden via `lg:hidden` (it moves into the left panel). Between `md:` and `lg:` the bottom-left badge remains as today. |
 
 ### Layout mechanics
@@ -50,14 +50,13 @@ The desktop block (`hidden md:block`, current lines 63–123) stays a positioned
 **Left panel (new, `lg:`+ only):**
 
 ```
-<aside
-  className="hidden lg:block absolute left-8 top-32 z-[6] w-[320px] space-y-6"
-  // conditional: render this aside only if activeQuest or ghostVisitors is non-null
->
+<aside className="hidden lg:block absolute left-8 top-32 z-[6] w-[320px] space-y-6">
   {activeQuest}
   {ghostVisitors}
 </aside>
 ```
+
+No mount guard — both slots are always passed as truthy React nodes by `PassportLobby.tsx`. Empty-state visual behavior is covered in the "Empty-state handling" section below.
 
 - Width clamp (`w-[320px]`) prevents the panel from growing to arbitrary widths and colliding with center at borderline viewports.
 - Top-anchored (`top-32`, 128px from top below the TopBar) rather than vertically centered, so tall quest card states (long description, multi-line CTA, error state) extend downward rather than pushing off-screen on short (≤ ~700px-height) viewports.
@@ -72,7 +71,7 @@ The desktop block (`hidden md:block`, current lines 63–123) stays a positioned
 **Right panel (edit in place, current lines 103–106):**
 
 - Current: `<div className="absolute top-1/2 right-6 -translate-y-1/2 z-[10] flex flex-col items-center gap-6"> {sideNav} <div className="opacity-60" style={{ width: 44 }}>{nextMilestone}</div> </div>`
-- Change: swap the inner `<div className="opacity-60" style={{ width: 44 }}>{nextMilestone}</div>` for a plain `<div>{nextMilestone}</div>` (preserve the wrapper so the parent `gap-6` still applies uniformly). At `md:` to `lg:-1px` this means the milestone goes from faded-tiny to full — that is an acceptable side-effect of this change and part of the "fill the sides" goal.
+- Change: swap the inner wrapper for `<div className="opacity-60 w-11 lg:opacity-100 lg:w-auto">{nextMilestone}</div>`. At `md:` to `lg:-1px` it renders identically to today (opacity 60%, 44px wide via `w-11`). At `lg:+` both classes clear, matching the new three-region layout. The outer wrapper (position, z-index, flex layout) is untouched.
 
 **Ghost visitors bottom-left badge (current lines 121–122):**
 
@@ -109,8 +108,9 @@ Modal layers (`MapModal`, `SettingsModal`, `InstagramConnectModal`, `ShareModal`
 
 ### Empty-state handling
 
-- `activeQuest?: ReactNode` is optional (undefined is legal). If `activeQuest` is falsy AND `ghostVisitors` renders null/fragment, do NOT mount the `<aside>` wrapper — otherwise `space-y-6` produces an orphan 24px gap and the panel appears as mysterious empty space. Concrete gate: render the aside only when `activeQuest || ghostVisitors` is truthy (approximates "something was passed" — `GhostVisitors` always returns an element but `activeQuest` may be undefined; practically the aside will almost always render, but the guard prevents a broken-looking panel if upstream ever passes both as null).
-- `GhostVisitors` today renders a small element when there are visitors and otherwise renders nothing visible. Its height collapses to 0 in that case — `space-y-6` only applies spacing when there are 2+ non-zero-height children, so a hidden/empty `GhostVisitors` under the quest card doesn't add stray margin.
+- `PassportLobby.tsx` always passes a `<GhostVisitors />` element into the `ghostVisitors` slot regardless of whether the component renders anything visible, so at the spec's level the `ghostVisitors` prop is always a truthy React node. A JS-level truthiness guard on the props would never fire and is not useful. The left panel `<aside>` therefore always mounts at `lg:+`.
+- `GhostVisitors` itself today renders nothing visible when it has no data (its height collapses to 0). Tailwind's `space-y-6` only adds a 24px gap between sibling children with non-zero rendered height, so a zero-height `GhostVisitors` beneath the quest card contributes no stray margin. The practical outcome: a user with no ghost visitors sees the quest card sitting alone at top-32 with no visual gap below it.
+- `activeQuest?: ReactNode` is optional at the type level but `PassportLobby.tsx` always passes `<ActiveQuestCard onTap={handleQuestTap} />`. If the prop is ever genuinely undefined (different caller in the future), the aside's first slot is empty and `space-y-6` above `ghostVisitors` still contributes nothing; the panel would show only ghost visitors if any — acceptable.
 
 ## Success criteria
 
