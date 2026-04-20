@@ -1,5 +1,7 @@
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
+
+const Pro3dAvatarPreview = lazy(() => import('./Pro3dAvatarPreview'));
 
 export type ProUpsellFeature =
   | '3d-avatar' | 'dailies' | 'badges'
@@ -38,6 +40,11 @@ export function ProUpsellModal({ feature, onClose }: ProUpsellModalProps) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6" onClick={onClose}>
       <div className="max-w-sm w-full bg-neutral-900 border border-neutral-800 rounded-2xl p-6 text-center"
         onClick={(e) => e.stopPropagation()}>
+        {feature === '3d-avatar' && (
+          <Suspense fallback={<div className="w-full aspect-[3/4] max-h-[60vh] mb-4 rounded-xl bg-black/40 animate-pulse" />}>
+            <Pro3dAvatarPreview />
+          </Suspense>
+        )}
         <h2 id="pro-upsell-title" className="text-white text-xl font-semibold mb-2">{title}</h2>
         <p className="text-neutral-400 text-sm mb-6">{description}</p>
         <Link href="/pro" className="inline-block px-6 py-3 rounded-full bg-white text-black font-semibold">
