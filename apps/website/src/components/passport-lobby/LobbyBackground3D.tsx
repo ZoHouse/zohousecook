@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { MeshReflectorMaterial } from '@react-three/drei';
 import { EffectComposer, Bloom, ChromaticAberration } from '@react-three/postprocessing';
 import { MeshGradient } from '@paper-design/shaders-react';
 import * as THREE from 'three';
@@ -17,71 +16,24 @@ const ABYSS_COLORS = [
   '#000000',
 ];
 
-const CUBE_W = 14;
-const CUBE_H = 7;
-const CUBE_D = 10;
-const FLOOR_Y = -CUBE_H / 2;
-
-function WireCube() {
-  const edges = useMemo(() => {
-    const box = new THREE.BoxGeometry(CUBE_W, CUBE_H, CUBE_D);
-    const geom = new THREE.EdgesGeometry(box);
-    box.dispose();
-    return geom;
-  }, []);
-  return (
-    <lineSegments geometry={edges}>
-      <lineBasicMaterial color="#ffffff" transparent opacity={0.85} toneMapped={false} />
-    </lineSegments>
-  );
-}
-
-function ReflectiveFloor() {
-  return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, FLOOR_Y, 0]}>
-      <planeGeometry args={[CUBE_W, CUBE_D]} />
-      <MeshReflectorMaterial
-        blur={[300, 100]}
-        resolution={1024}
-        mixBlur={1}
-        mixStrength={55}
-        roughness={0.75}
-        depthScale={1}
-        minDepthThreshold={0.4}
-        maxDepthThreshold={1.4}
-        color="#050505"
-        metalness={0.6}
-        mirror={0.7}
-      />
-    </mesh>
-  );
-}
-
-/**
- * Sets camera fov/position from viewport aspect and reports whether we're in
- * portrait (mobile). Lives inside <Canvas> so it can read the live R3F size.
- */
-function AspectAwareCamera({ onPortraitChange }: { onPortraitChange: (isPortrait: boolean) => void }) {
+/** Aspect-aware camera framing. No scene geometry yet; kept for future additions. */
+function AspectAwareCamera() {
   const { size, camera } = useThree();
   const aspect = size.width / Math.max(size.height, 1);
 
   useEffect(() => {
     let fov: number;
     let pos: [number, number, number];
-    let isPortrait: boolean;
 
     if (aspect > 1.0) {
       fov = 58;
       pos = [0, 0, 4.8];
-      isPortrait = false;
     } else if (aspect >= 0.5) {
       fov = 72;
       pos = [0, 0.4, 3.8];
-      isPortrait = true;
     } else {
       fov = 78;
       pos = [0, 0.5, 3.2];
-      isPortrait = true;
     }
 
     const persp = camera as THREE.PerspectiveCamera;
@@ -89,29 +41,17 @@ function AspectAwareCamera({ onPortraitChange }: { onPortraitChange: (isPortrait
     persp.position.set(pos[0], pos[1], pos[2]);
     persp.lookAt(0, 0, -1);
     persp.updateProjectionMatrix();
-    onPortraitChange(isPortrait);
-  }, [aspect, camera, onPortraitChange]);
+  }, [aspect, camera]);
 
   return null;
 }
 
 function Scene({ isLowEnd }: { isLowEnd: boolean }) {
-  const [isPortrait, setIsPortrait] = useState(false);
-
   return (
     <>
-      <AspectAwareCamera onPortraitChange={setIsPortrait} />
+      <AspectAwareCamera />
 
       <ambientLight intensity={0.4} />
-
-      {/* Wireframe cube + reflective floor only on desktop — on mobile they
-          cut ugly horizontal lines across the narrow viewport. */}
-      {!isPortrait && (
-        <>
-          <WireCube />
-          <ReflectiveFloor />
-        </>
-      )}
 
       <EffectComposer multisampling={isLowEnd ? 0 : 4}>
         <Bloom
