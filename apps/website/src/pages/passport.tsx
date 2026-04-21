@@ -25,7 +25,14 @@ import { useWhereabouts } from "../hooks/useWhereabouts";
 import { useCaptureReferrer } from "../hooks/useCaptureReferrer";
 import { identifyUser, trackActivity } from "../lib/analytics/trackActivity";
 
-const PASSPORT_ENDPOINT = "https://api.nsfp.io.zo.xyz/api/v1/passport";
+// Resolve against API_BASE_URL_PASSPORT (mock locally, staging on preview,
+// unset in prod so it falls back to API_BASE_URL = api.io.zo.xyz). Mirrors
+// zoPassportServer's baseURL in libs/auth/src/utils.ts.
+const PASSPORT_ENDPOINT = `${
+  process.env.API_BASE_URL_PASSPORT ||
+  process.env.API_BASE_URL ||
+  "https://api.io.zo.xyz"
+}/api/v1/passport`;
 
 interface PassportOg {
   handle: string;
