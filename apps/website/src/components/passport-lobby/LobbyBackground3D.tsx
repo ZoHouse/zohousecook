@@ -1,11 +1,9 @@
-import { useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { useEffect, useMemo, useState } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
 import { MeshReflectorMaterial } from '@react-three/drei';
 import { EffectComposer, Bloom, ChromaticAberration } from '@react-three/postprocessing';
 import { MeshGradient } from '@paper-design/shaders-react';
 import * as THREE from 'three';
-
-const CA_OFFSET = new THREE.Vector2(0.015, 0.015);
 
 // Obsidian (samurai-fx #09) — 8 near-blacks with thin light streaks. Liquid metal.
 const ABYSS_COLORS = [
@@ -23,6 +21,29 @@ const CUBE_W = 14;
 const CUBE_H = 7;
 const CUBE_D = 10;
 const FLOOR_Y = -CUBE_H / 2;
+
+type OrbSpec = { position: [number, number, number]; size: number };
+
+// Desktop: bursts at eye level, hugging the back + side walls.
+const DESKTOP_ORBS: OrbSpec[] = [
+  { position: [-4.2, -0.2, -4.9], size: 0.55 },
+  { position: [4.2, -0.2, -4.9], size: 0.55 },
+  { position: [0, 0.4, -4.95], size: 0.5 },
+  { position: [-6.9, 0.3, -1.5], size: 0.4 },
+  { position: [6.9, 0.3, -1.5], size: 0.4 },
+];
+
+// Mobile: bursts drop below eye line, push deeper, spread wider. Reads as stage
+// lights glowing behind + below the player instead of competing with the hero card.
+const MOBILE_ORBS: OrbSpec[] = [
+  { position: [-4.5, -1.6, -5.5], size: 0.6 },
+  { position: [4.5, -1.6, -5.5], size: 0.6 },
+  { position: [0, -1.8, -6.2], size: 0.55 },
+  { position: [-6.9, -1.9, -2.5], size: 0.45 },
+  { position: [6.9, -1.9, -2.5], size: 0.45 },
+  // Under-glow floor wash — stage-light kick from below
+  { position: [0, -2.8, -3], size: 0.5 },
+];
 
 function WireCube() {
   const edges = useMemo(() => {
@@ -72,9 +93,54 @@ function ReflectiveFloor() {
   );
 }
 
-function Scene() {
+/**
+ * Picks camera fov/position and orb layout from the current viewport aspect.
+ * Lives inside <Canvas> so it can read the live R3F size + drive the default camera.
+ */
+function AspectAwareCamera({ onLayout }: { onLayout: (orbs: OrbSpec[]) => void }) {
+  const { size, camera } = useThree();
+  const aspect = size.width / Math.max(size.height, 1);
+
+  useEffect(() => {
+    let fov: number;
+    let pos: [number, number, number];
+    let orbs: OrbSpec[];
+
+    if (aspect > 1.0) {
+      // Landscape / desktop — original tuning
+      fov = 58;
+      pos = [0, 0, 4.8];
+      orbs = DESKTOP_ORBS;
+    } else if (aspect >= 0.5) {
+      // Standard portrait (most phones) — wider fov + closer camera so the cube fills vertically
+      fov = 72;
+      pos = [0, 0.4, 3.8];
+      orbs = MOBILE_ORBS;
+    } else {
+      // Very narrow portrait (small phones / split-screen)
+      fov = 78;
+      pos = [0, 0.5, 3.2];
+      orbs = MOBILE_ORBS;
+    }
+
+    const persp = camera as THREE.PerspectiveCamera;
+    persp.fov = fov;
+    persp.position.set(pos[0], pos[1], pos[2]);
+    persp.lookAt(0, 0, -1);
+    persp.updateProjectionMatrix();
+    onLayout(orbs);
+  }, [aspect, camera, onLayout]);
+
+  return null;
+}
+
+function Scene({ isLowEnd }: { isLowEnd: boolean }) {
+  const [orbs, setOrbs] = useState<OrbSpec[]>(DESKTOP_ORBS);
+
   return (
     <>
+      <AspectAwareCamera onLayout={setOrbs} />
+
       <ambientLight intensity={0.15} />
 
       <WireCube />
@@ -82,11 +148,9 @@ function Scene() {
 
       {/* Bright white lights — Bloom + ChromaticAberration turn these into
           iridescent prism-refraction halos. */}
-      <LightSource position={[-4.2, -0.2, -4.9]} size={0.55} />
-      <LightSource position={[4.2, -0.2, -4.9]} size={0.55} />
-      <LightSource position={[0, 0.4, -4.95]} size={0.5} />
-      <LightSource position={[-6.9, 0.3, -1.5]} size={0.4} />
-      <LightSource position={[6.9, 0.3, -1.5]} size={0.4} />
+      {orbs.map((orb, i) => (
+        <LightSource key={i} position={orb.position} size={orb.size} />
+      ))}
 
       {/* God-ray from above */}
       <spotLight
@@ -98,20 +162,39 @@ function Scene() {
         distance={14}
       />
 
-      <EffectComposer multisampling={4}>
+      <EffectComposer multisampling={isLowEnd ? 0 : 4}>
         <Bloom
-          intensity={5}
+          intensity={isLowEnd ? 1.5 : 5}
           luminanceThreshold={0.5}
           luminanceSmoothing={0.5}
-          mipmapBlur
+          mipmapBlur={!isLowEnd}
         />
-        <ChromaticAberration offset={CA_OFFSET} radialModulation={false} modulationOffset={0} />
+        <ChromaticAberration
+          offset={isLowEnd ? new THREE.Vector2(0.006, 0.006) : new THREE.Vector2(0.015, 0.015)}
+          radialModulation={false}
+          modulationOffset={0}
+        />
       </EffectComposer>
     </>
   );
 }
 
+/**
+ * Low-end heuristic: dial down Bloom + ChromaticAberration on weak devices
+ * so we stay at 60fps. Browser-only — component is ssr:false via dynamic import.
+ */
+function detectLowEnd(): boolean {
+  if (typeof window === 'undefined') return false;
+  const cores = navigator.hardwareConcurrency ?? 8;
+  if (cores < 4) return true;
+  if (/Android/i.test(navigator.userAgent)) return true;
+  if (window.matchMedia?.('(max-width: 480px) and (max-resolution: 2dppx)').matches) return true;
+  return false;
+}
+
 export function LobbyBackground3D() {
+  const isLowEnd = useMemo(detectLowEnd, []);
+
   return (
     <div
       aria-hidden
@@ -136,11 +219,11 @@ export function LobbyBackground3D() {
       />
       <Canvas
         camera={{ position: [0, 0, 4.8], fov: 58 }}
-        gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
-        dpr={[1, 1.75]}
+        gl={{ antialias: !isLowEnd, alpha: true, powerPreference: 'high-performance' }}
+        dpr={isLowEnd ? [1, 1.25] : [1, 1.75]}
         style={{ position: 'absolute', inset: 0 }}
       >
-        <Scene />
+        <Scene isLowEnd={isLowEnd} />
       </Canvas>
     </div>
   );
