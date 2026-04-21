@@ -5,7 +5,8 @@ const Pro3dAvatarPreview = lazy(() => import('./Pro3dAvatarPreview'));
 
 export type ProUpsellFeature =
   | '3d-avatar' | 'dailies' | 'badges'
-  | 'quest-pass' | 'earn-pass' | 'create-pass' | 'host-pass';
+  | 'quest-pass' | 'earn-pass' | 'create-pass' | 'host-pass'
+  | 'tripper-tier' | 'creator-tier' | 'tribe-builder-tier';
 
 interface CopyEntry { title: string; description: string }
 
@@ -17,6 +18,9 @@ const COPY: Record<ProUpsellFeature, CopyEntry> = {
   'earn-pass': { title: 'Earn Pass', description: 'Turn your tribe into a paycheck. 8–15% on every booking. Apply with Pro.' },
   'create-pass': { title: 'Creator Pass', description: 'Your content, real places, real money. Apply with Pro.' },
   'host-pass': { title: 'Host Pass', description: 'Open your space as a Zo Node. Keep 85%. Apply with Pro.' },
+  'tripper-tier': { title: 'Tripper', description: 'Travel the world, rack up XP. Level up with every trip. Unlock with Pro.' },
+  'creator-tier': { title: 'Creator', description: 'Make moments worth sharing. Turn your content into the currency of the tribe. Unlock with Pro.' },
+  'tribe-builder-tier': { title: 'Tribe Builder', description: 'Grow your circle, level the tribe. Every member powers your climb. Unlock with Pro.' },
 };
 
 export interface ProUpsellModalProps {

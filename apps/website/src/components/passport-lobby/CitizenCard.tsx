@@ -1,7 +1,12 @@
 import { useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { MeshGradient } from '@paper-design/shaders-react';
 import { Avatar2D } from './Avatar2D';
 import { BorderBeam } from './BorderBeam';
 import { rubikClassName, syneClassName } from '../utils/font';
+
+// Samurai FX #01 — Hologram. Holographic foil, premium but playful.
+// Framer "Liquid Gradient" params mapped to paper-shaders' MeshGradient.
+const HOLOGRAM_COLORS = ['#0051FF', '#4DFF00', '#FFE500', '#FF6F00', '#0051FF'];
 
 export interface CitizenCardProps {
   handle: string;
@@ -27,9 +32,8 @@ export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare 
     ry: number;
     glowX: number;
     glowY: number;
-    /** -1 → 1 across the card, used to shift the holographic hue */
+    /** -1 → 1 horizontal, used to angle the sheen streak */
     nx: number;
-    ny: number;
   } | null>(null);
 
   const handleMouseMove = (e: ReactMouseEvent<HTMLDivElement>) => {
@@ -48,7 +52,6 @@ export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare 
       glowX: (x / rect.width) * 100,
       glowY: (y / rect.height) * 100,
       nx: dx,
-      ny: dy,
     });
   };
 
@@ -57,10 +60,6 @@ export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare 
   const transform = tilt
     ? `perspective(900px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg) translateZ(${HOVER_LIFT}px)`
     : 'perspective(900px) rotateX(0deg) rotateY(0deg) translateZ(0)';
-
-  // Holographic hue shift — angle of iridescent conic gradient follows cursor
-  const holoAngle = tilt ? 180 + tilt.nx * 180 : 0;
-  const holoShift = tilt ? 50 + tilt.ny * 50 : 50;
 
   return (
     <div style={{ perspective: 900 }}>
@@ -95,41 +94,32 @@ export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare 
           overflow: 'hidden',
         }}
       >
-        {/* Holographic iridescent base layer — always on, subtle */}
+        {/* Hologram shader background — holographic foil */}
         <div
           aria-hidden
           style={{
             position: 'absolute',
             inset: 0,
             borderRadius: CARD_RADIUS,
-            background:
-              'conic-gradient(from 180deg at 50% 50%, #FF2F8E 0deg, #A7D921 60deg, #2C67F6 140deg, #BA2553 220deg, #FEDD1E 300deg, #FF2F8E 360deg)',
-            opacity: 0.08,
-            mixBlendMode: 'color-dodge',
+            overflow: 'hidden',
             pointerEvents: 'none',
             zIndex: 1,
-            transition: 'opacity 300ms ease-out',
           }}
-        />
+        >
+          <MeshGradient
+            colors={HOLOGRAM_COLORS}
+            speed={0.6}
+            scale={1.4}
+            distortion={0.6}
+            swirl={0.55}
+            grainMixer={0.05}
+            grainOverlay={0.08}
+            fit="cover"
+            style={{ width: '100%', height: '100%' }}
+          />
+        </div>
 
-        {/* Iridescent hue layer that shifts with cursor */}
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: CARD_RADIUS,
-            background: `conic-gradient(from ${holoAngle}deg at ${50 + (tilt?.nx ?? 0) * 30}% ${holoShift}%, rgba(255,47,142,0.35) 0deg, rgba(167,217,33,0.3) 90deg, rgba(44,103,246,0.35) 180deg, rgba(186,37,83,0.3) 270deg, rgba(255,47,142,0.35) 360deg)`,
-            opacity: tilt ? 0.55 : 0,
-            mixBlendMode: 'color-dodge',
-            pointerEvents: 'none',
-            zIndex: 1,
-            transition: 'opacity 200ms ease-out',
-            filter: 'blur(6px)',
-          }}
-        />
-
-        {/* Glossy sheen streak — diagonal shine that sweeps across */}
+        {/* Cursor-reactive glossy sheen streak */}
         <div
           aria-hidden
           style={{
@@ -140,6 +130,7 @@ export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare 
             pointerEvents: 'none',
             zIndex: 2,
             transition: 'background 200ms ease-out',
+            mixBlendMode: 'overlay',
           }}
         />
 
