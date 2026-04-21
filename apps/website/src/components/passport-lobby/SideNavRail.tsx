@@ -22,21 +22,21 @@ const TABS: Array<{ key: LobbyTab; label: string; icon: IconSrc }> = [
   { key: 'badges', label: 'Badges', icon: shieldIcon as IconSrc },
 ];
 
-// Frosted-pill styling keeps nav items legible against the bright prism shader.
+// Solid pills — the 3D canvas below has ChromaticAberration so any backdrop-blur
+// picks up the aberrated colors and makes buttons look hazy. Solid bg sits cleanly
+// above the canvas.
 const PILL_INACTIVE: React.CSSProperties = {
-  background: 'rgba(10,10,10,0.55)',
-  backdropFilter: 'blur(10px)',
-  WebkitBackdropFilter: 'blur(10px)',
+  background: '#0d0d10',
   border: '1px solid rgba(255,255,255,0.08)',
   borderRadius: 14,
-  boxShadow: '0 2px 12px rgba(0,0,0,0.35)',
+  boxShadow: '0 2px 12px rgba(0,0,0,0.45)',
 };
 
 const PILL_ACTIVE: React.CSSProperties = {
   ...PILL_INACTIVE,
-  background: 'rgba(10,10,10,0.7)',
+  background: '#1a1a20',
   border: '1px solid rgba(255,255,255,0.22)',
-  boxShadow: '0 2px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)',
+  boxShadow: '0 2px 16px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.1)',
 };
 
 const ICON_DROP_SHADOW: React.CSSProperties = {
