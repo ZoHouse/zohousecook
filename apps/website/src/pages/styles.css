@@ -805,3 +805,16 @@ body {
   color: #d4af37 !important;
   -webkit-text-fill-color: #d4af37 !important;
 }
+
+/* iOS auto-zoom prevention.
+ * Safari on iOS zooms in when an <input>/<textarea>/<select> with font-size < 16px
+ * receives focus. Enforce 16px only at mobile widths so desktop layouts are untouched.
+ * Applies to text-ish inputs (not submit/checkbox/radio/range which don't zoom anyway).
+ */
+@media (max-width: 767px) {
+  input:not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

@@ -30,5 +30,7 @@ export { StubSection } from './StubSection';
 export type { StubSectionProps } from './StubSection';
 export { ActiveQuestCard } from './ActiveQuestCard';
 export type { ActiveQuestCardProps } from './ActiveQuestCard';
+export { TreasureChestCard } from './TreasureChestCard';
+export type { TreasureChestCardProps } from './TreasureChestCard';
 export { BorderBeam } from './BorderBeam';
 export type { BorderBeamProps } from './BorderBeam';

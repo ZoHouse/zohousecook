@@ -4350,6 +4350,18 @@
   dependencies:
     "@opentelemetry/core" "^2.0.0"
 
+"@paper-design/shaders-react@^0.0.76":
+  version "0.0.76"
+  resolved "https://registry.npmjs.org/@paper-design/shaders-react/-/shaders-react-0.0.76.tgz"
+  integrity sha512-uPJWrYRf6cJdO2H+fuXlahaqz0QjYglNAyUTaRfIInpzCa/d6guxBIK003soAZQFuQ035yg9FhtfFzKNWm+a5A==
+  dependencies:
+    "@paper-design/shaders" "0.0.76"
+
+"@paper-design/shaders@0.0.76":
+  version "0.0.76"
+  resolved "https://registry.npmjs.org/@paper-design/shaders/-/shaders-0.0.76.tgz"
+  integrity sha512-AcNDY4J66YQHUfQYFInkCP7M9VOje0od7wLpOR7LtCmc532opJy6ll+h1W9zBovz8tt9U7OADUmJ/qKEXyOX/A==
+
 "@parcel/watcher-android-arm64@2.4.1":
   version "2.4.1"
   resolved "https://registry.yarnpkg.com/@parcel/watcher-android-arm64/-/watcher-android-arm64-2.4.1.tgz#c2c19a3c442313ff007d2d7a9c2c1dd3e1c9ca84"
