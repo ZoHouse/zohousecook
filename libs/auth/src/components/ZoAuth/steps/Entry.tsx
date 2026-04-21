@@ -70,7 +70,9 @@ const Entry: FC<EntryProps> = ({
   const [mobileLoginStep, setMobileLoginStep] = useState<
     "REQUEST_OTP" | "ENTER_OTP"
   >("REQUEST_OTP");
-  const { mutate: requestOtp } = useMutationApi("AUTH_LOGIN_MOBILE_OTP");
+  const { mutate: requestOtp, isLoading: isSendingOtp } = useMutationApi(
+    "AUTH_LOGIN_MOBILE_OTP",
+  );
   const { mutate: getZostelCreds } = useMutationApi(
     "AUTH_REQUEST_OTP_ZOSTEL",
     {}
@@ -164,7 +166,22 @@ const Entry: FC<EntryProps> = ({
                 setTimer(30);
                 setIsResendOtpButtonDisabled(true);
               },
-              onError: logAxiosError,
+              onError: (error) => {
+                // Previously silent (logAxiosError → console only). If the
+                // backend rate-limits, the carrier drops SMS, or the request
+                // times out, the button used to sit there with zero feedback
+                // while WhatsApp OTP arrived out-of-band. Surface a visible
+                // message so users know something went wrong and can retry.
+                const status = (error as AxiosError)?.response?.status;
+                const msg =
+                  status === 429
+                    ? "Too many attempts. Try again in a minute."
+                    : status === 400
+                    ? "Invalid mobile number."
+                    : "Could not send OTP. Check your connection and try again.";
+                setOptVerificationResponse(msg);
+                logAxiosError(error);
+              },
             }
           );
         }
@@ -371,18 +388,26 @@ const Entry: FC<EntryProps> = ({
                 </span>
               </form>
             ) : (
-              <button
-                type="submit"
-                onClick={handleMobileSubmit}
-                className={btnPrimary}
-                disabled={
-                  mobileNumber?.startsWith("91")
-                    ? !isValidNumber("+" + mobileNumber, "IN")
-                    : !isPossibleNumber("+" + mobileNumber)
-                }
-              >
-                Send Verification Code
-              </button>
+              <>
+                {otpVerificationResponse && (
+                  <span className="text-xs text-red-400 block">
+                    {otpVerificationResponse}
+                  </span>
+                )}
+                <button
+                  type="submit"
+                  onClick={handleMobileSubmit}
+                  className={btnPrimary}
+                  disabled={
+                    isSendingOtp ||
+                    (mobileNumber?.startsWith("91")
+                      ? !isValidNumber("+" + mobileNumber, "IN")
+                      : !isPossibleNumber("+" + mobileNumber))
+                  }
+                >
+                  {isSendingOtp ? "Sending code…" : "Send Verification Code"}
+                </button>
+              </>
             )}
           </div>
         )}
