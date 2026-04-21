@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useProfile } from '@zo/auth';
 import { useMyXp } from '../../hooks/useMyXp';
+import { useTodayQuests } from '../../hooks/useTodayQuests';
 import useInstagramConnect from '../../hooks/useInstagramConnect';
 import { toast } from 'sonner';
 
@@ -32,6 +33,7 @@ export function PassportLobby() {
   const { myXp } = useMyXp();
   const ig = useInstagramConnect();
   const { roles, isLoading: rolesLoading } = useMyRoles();
+  const { quests: todayQuests } = useTodayQuests();
 
   const [tab, setTab] = useState<LobbyTab>('lobby');
   const [upsell, setUpsell] = useState<ProUpsellFeature | null>(null);
@@ -117,7 +119,11 @@ export function PassportLobby() {
         <PassesDock onUpsell={openUpsell} />
       </div>
 
-      <TreasureChestCard open={questsOpen} onClose={() => setQuestsOpen(false)} />
+      <TreasureChestCard
+        open={questsOpen}
+        onClose={() => setQuestsOpen(false)}
+        quests={todayQuests}
+      />
       <ProUpsellModal feature={upsell} onClose={closeUpsell} />
       <MapModal open={mapOpen} onClose={() => setMapOpen(false)} />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
