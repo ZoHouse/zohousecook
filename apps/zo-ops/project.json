@@ -6,6 +6,7 @@
   "targets": {
     "build": {
       "executor": "@nx/next:build",
+      "cache": false,
       "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
