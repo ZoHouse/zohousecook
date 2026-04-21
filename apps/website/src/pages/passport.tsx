@@ -25,7 +25,11 @@ import { useWhereabouts } from "../hooks/useWhereabouts";
 import { useCaptureReferrer } from "../hooks/useCaptureReferrer";
 import { identifyUser, trackActivity } from "../lib/analytics/trackActivity";
 
-const PASSPORT_ENDPOINT = "https://api.nsfp.io.zo.xyz/api/v1/passport";
+const PASSPORT_ENDPOINT = `${
+  process.env.API_BASE_URL_PASSPORT ||
+  process.env.API_BASE_URL ||
+  "https://api.io.zo.xyz"
+}/api/v1/passport`;
 
 interface PassportOg {
   handle: string;

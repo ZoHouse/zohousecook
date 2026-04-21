@@ -75,6 +75,9 @@ demo-task-def.json
 .claude/memory.db
 .vercel
 
+# Git worktrees (isolated branch workspaces)
+.worktrees/
+
 # Figma reference exports (big, reference-only; source of truth is Figma itself)
 apps/website/src/assets/figma-ref/
 docs/superpowers/specs/figma-passport-avatar/
