@@ -1,6 +1,9 @@
 import { useQuery } from "react-query";
 import { useAuth } from "@zo/auth";
-import { zoPassportServer } from "../lib/zoPassportServer";
+// zoPassportServer lives in libs/auth/src/utils.ts alongside zoServer and
+// zostelServer. It isn't re-exported via @zo/auth yet, so import via the
+// same relative path usePassportProfile / useSeason use.
+import { zoPassportServer } from "../../../../libs/auth/src/utils";
 
 export type QuestStatus =
   | "live"
