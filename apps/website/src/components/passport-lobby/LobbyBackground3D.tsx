@@ -33,16 +33,20 @@ const DESKTOP_ORBS: OrbSpec[] = [
   { position: [6.9, 0.3, -1.5], size: 0.4 },
 ];
 
-// Mobile: bursts drop below eye line, push deeper, spread wider. Reads as stage
-// lights glowing behind + below the player instead of competing with the hero card.
+// Mobile: bursts sit BEHIND the hero card (x≈0, y mid-upper where the card
+// appears on screen, z deep). Reads as a glowing halo around the player
+// rather than ambient floor light.
 const MOBILE_ORBS: OrbSpec[] = [
-  { position: [-4.5, -1.6, -5.5], size: 0.6 },
-  { position: [4.5, -1.6, -5.5], size: 0.6 },
-  { position: [0, -1.8, -6.2], size: 0.55 },
-  { position: [-6.9, -1.9, -2.5], size: 0.45 },
-  { position: [6.9, -1.9, -2.5], size: 0.45 },
-  // Under-glow floor wash — stage-light kick from below
-  { position: [0, -2.8, -3], size: 0.5 },
+  // Central burst directly behind the card — the main halo
+  { position: [0, 0.8, -6.2], size: 0.75 },
+  // Two flanking bursts to spread color + prism split
+  { position: [-2.4, 0.6, -5.8], size: 0.5 },
+  { position: [2.4, 0.6, -5.8], size: 0.5 },
+  // Upper accent — hints of light cresting above the card
+  { position: [0, 2.0, -5], size: 0.4 },
+  // Subtle side-wall bounces
+  { position: [-6.5, 0.4, -2.5], size: 0.35 },
+  { position: [6.5, 0.4, -2.5], size: 0.35 },
 ];
 
 function WireCube() {
