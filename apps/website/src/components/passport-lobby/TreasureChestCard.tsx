@@ -1,13 +1,21 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { rubikClassName } from '../utils/font';
 import chestIcon from '../../assets/passport-lobby/treasure-chest.png';
+import type { TodayQuest } from '../../hooks/useTodayQuests';
 
 export interface TreasureChestCardProps {
   open: boolean;
   onClose: () => void;
   activeCount?: number;
   countdown?: string;
+  /**
+   * Live quest feed from /api/v1/passport/quests/today/. When provided,
+   * transforms to the tile shape and replaces the hardcoded demo list.
+   * Falls back to demo tiles when undefined so the surface still previews
+   * in new-user / loading / no-auth states.
+   */
+  quests?: TodayQuest[];
 }
 
 interface Reward {
@@ -25,6 +33,90 @@ interface QuestDef {
   meta?: string;
   rewards: Reward[];
   cta?: { label: string; bg: string; color: string };
+}
+
+const ROLE_STYLE: Record<string, { color: string; noun: string }> = {
+  Creator: { color: '#C26BE8', noun: 'Creator' },
+  Tripper: { color: '#5A9BFF', noun: 'Tripper' },
+  Tribemaker: { color: '#FF66C4', noun: 'Tribe Maker' },
+};
+
+const CTA_STYLES = {
+  start: {
+    label: 'Start Quest',
+    bg: 'linear-gradient(180deg, #FF7A2E 0%, #E15400 100%)',
+    color: '#FFFFFF',
+  },
+  connect: {
+    label: 'Connect IG',
+    bg: 'linear-gradient(180deg, #A855E8 0%, #7A22C2 100%)',
+    color: '#FFFFFF',
+  },
+};
+
+function rewardTile(reward: NonNullable<TodayQuest['reward_pool']>['reward']): Reward | null {
+  if (!reward) return null;
+  const { type, amount } = reward;
+  if (type === 'xp' && typeof amount === 'number') {
+    return { icon: '✦', label: `${amount} XP`, color: '#FFD84D' };
+  }
+  if (type === 'bed_drop') {
+    return { icon: '◈', label: 'Free Bed Drop', color: '#C9A7FF' };
+  }
+  if (type === 'discount' && typeof amount === 'number') {
+    return { icon: '₹', label: `Rs. ${Math.round(amount / 100)}`, color: '#80E57B' };
+  }
+  if (type === 'credit' && typeof amount === 'number') {
+    return { icon: '◉', label: `${amount} Zo Cred`, color: '#A7D921' };
+  }
+  return null;
+}
+
+function formatDeadline(expires_at?: string): string | undefined {
+  if (!expires_at) return undefined;
+  const ms = new Date(expires_at).getTime() - Date.now();
+  if (Number.isNaN(ms)) return undefined;
+  if (ms <= 0) return 'Expired';
+  const h = Math.floor(ms / (1000 * 60 * 60));
+  const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+  if (h >= 24) return `${Math.floor(h / 24)}d left`;
+  if (h > 0) return `${h}h ${m}m left`;
+  return `${m}m left`;
+}
+
+function questDefFromToday(q: TodayQuest): QuestDef {
+  const roleName = q.role_names?.[0];
+  const roleStyle = (roleName && ROLE_STYLE[roleName]) || ROLE_STYLE.Tripper;
+  const isDaily = q.cadence === 'daily';
+  const category = isDaily
+    ? `Daily ${roleStyle.noun} Quest`
+    : `Today's ${roleStyle.noun} Quest`;
+
+  const rewards = [rewardTile(q.reward_pool?.reward)].filter(Boolean) as Reward[];
+
+  // Special-case the ig_story_post quest: the user has to connect Instagram
+  // before they can submit, so surface the connect CTA instead of Start Quest.
+  const needsIgConnect = q.qualifying_actions?.includes('ig_story_post');
+  const ctaByStatus =
+    q.status === 'live'
+      ? needsIgConnect
+        ? CTA_STYLES.connect
+        : CTA_STYLES.start
+      : undefined;
+
+  const metaFromDeadline = q.status === 'post_due' ? 'Expired' : formatDeadline(q.expires_at);
+  const meta = q.description && !isDaily ? q.description : metaFromDeadline;
+
+  return {
+    id: q.user_quest_id,
+    category,
+    categoryColor: roleStyle.color,
+    isDaily,
+    title: q.name,
+    meta,
+    rewards,
+    cta: ctaByStatus,
+  };
 }
 
 const QUESTS: QuestDef[] = [
@@ -170,8 +262,21 @@ function QuestsBanner({ countdown }: { countdown: string }) {
  * Mobile: bottom sheet (slides up from the tier nav area).
  * Desktop: centered dialog card.
  */
-export function TreasureChestCard({ open, onClose, activeCount: _activeCount, countdown = '08:06:12' }: TreasureChestCardProps) {
+export function TreasureChestCard({
+  open,
+  onClose,
+  activeCount: _activeCount,
+  countdown = '08:06:12',
+  quests: liveQuests,
+}: TreasureChestCardProps) {
   void _activeCount;
+
+  const tiles = useMemo<QuestDef[]>(() => {
+    if (liveQuests && liveQuests.length > 0) {
+      return liveQuests.map(questDefFromToday);
+    }
+    return QUESTS;
+  }, [liveQuests]);
 
   useEffect(() => {
     if (!open) return;
@@ -225,7 +330,7 @@ export function TreasureChestCard({ open, onClose, activeCount: _activeCount, co
           className="flex flex-col gap-2 overflow-y-auto"
           style={{ maxHeight: '60vh' }}
         >
-          {QUESTS.map((q) => (
+          {tiles.map((q) => (
             <QuestTile key={q.id} quest={q} />
           ))}
         </div>
