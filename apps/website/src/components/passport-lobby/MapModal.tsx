@@ -1,7 +1,31 @@
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { useEffect, useRef } from 'react';
-import { PROPERTIES, type PropertyKind, type ZoProperty } from './properties';
+import { useEffect, useMemo, useRef } from 'react';
+import { type PropertyKind, type ZoProperty } from './properties';
+import { useZostelOperators, type ZostelOperator } from '../../hooks/useZostelOperators';
+
+// Zostel API `type_code` → our PropertyKind. H/B = Zostel, P = Plus, HO = Zo House, S = Zo Selections.
+function kindFromTypeCode(tc?: string): PropertyKind {
+  switch (tc) {
+    case 'HO': return 'zo-house';
+    case 'P':  return 'zostel-plus';
+    case 'S':  return 'zostel-homes';
+    case 'H':
+    case 'B':  return 'zostel';
+    default:   return 'other';
+  }
+}
+
+function operatorToProperty(op: ZostelOperator): ZoProperty {
+  return {
+    id: op.code,
+    name: op.name,
+    destination: op.destination?.name ?? op.address ?? op.name,
+    lat: op.latitude,
+    lng: op.longitude,
+    kind: kindFromTypeCode(op.type_code),
+  };
+}
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
 
@@ -76,10 +100,16 @@ export function MapModal({ open, onClose }: MapModalProps) {
   const container = useRef<HTMLDivElement | null>(null);
   const map = useRef<mapboxgl.Map | null>(null);
 
+  const { operators } = useZostelOperators(open);
+  const properties = useMemo<ZoProperty[]>(
+    () => (operators ? operators.map(operatorToProperty) : []),
+    [operators],
+  );
+
   const showAll = () => {
     if (!map.current) return;
     const bounds = new mapboxgl.LngLatBounds();
-    PROPERTIES.forEach((p) => bounds.extend([p.lng, p.lat]));
+    properties.forEach((p) => bounds.extend([p.lng, p.lat]));
     map.current.fitBounds(bounds, {
       padding: { top: 100, bottom: 100, left: 80, right: 80 },
       pitch: 35,
@@ -106,10 +136,11 @@ export function MapModal({ open, onClose }: MapModalProps) {
   useEffect(() => {
     if (!open || !container.current || map.current) return;
     if (!mapboxgl.accessToken) return;
+    if (properties.length === 0) return; // wait for live operator data
 
     // Open zoomed-in on BLRxZo (primary property) so 3D buildings + skyline read immediately.
     // Users navigate to other properties by tapping their pillars, or "Show all" to fit the planet.
-    const primary = PROPERTIES.find((p) => p.id === '9XWJCC93') ?? PROPERTIES[0];
+    const primary = properties.find((p) => p.id === 'BNGHO812') ?? properties[0];
 
     map.current = new mapboxgl.Map({
       container: container.current,
@@ -181,7 +212,7 @@ export function MapModal({ open, onClose }: MapModalProps) {
 
       // Jitter properties that share exact coords (city centroids) so pins don't stack
       const seen = new Map<string, number>();
-      PROPERTIES.forEach((property) => {
+      properties.forEach((property) => {
         const key = `${property.lat.toFixed(4)},${property.lng.toFixed(4)}`;
         const n = seen.get(key) ?? 0;
         seen.set(key, n + 1);
@@ -307,7 +338,9 @@ export function MapModal({ open, onClose }: MapModalProps) {
           aria-label="Frame all Zo properties on the map"
         >
           <span className="w-2 h-2 rounded-full bg-[#FF2F8E] animate-pulse" aria-hidden />
-          <span className="text-white text-sm font-medium">Zo World · {PROPERTIES.length} properties</span>
+          <span className="text-white text-sm font-medium">
+            Zo World · {properties.length > 0 ? `${properties.length} properties` : 'loading…'}
+          </span>
           <span className="text-white/50 text-xs ml-1">·&nbsp;view all</span>
         </button>
 
