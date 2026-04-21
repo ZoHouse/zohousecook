@@ -22,33 +22,6 @@ const CUBE_H = 7;
 const CUBE_D = 10;
 const FLOOR_Y = -CUBE_H / 2;
 
-type OrbSpec = { position: [number, number, number]; size: number };
-
-// Desktop: bursts at eye level, hugging the back + side walls.
-const DESKTOP_ORBS: OrbSpec[] = [
-  { position: [-4.2, -0.2, -4.9], size: 0.55 },
-  { position: [4.2, -0.2, -4.9], size: 0.55 },
-  { position: [0, 0.4, -4.95], size: 0.5 },
-  { position: [-6.9, 0.3, -1.5], size: 0.4 },
-  { position: [6.9, 0.3, -1.5], size: 0.4 },
-];
-
-// Mobile: bursts sit BEHIND the hero card (x≈0, y mid-upper where the card
-// appears on screen, z deep). Reads as a glowing halo around the player
-// rather than ambient floor light.
-const MOBILE_ORBS: OrbSpec[] = [
-  // Central burst directly behind the card — the main halo
-  { position: [0, 0.8, -6.2], size: 0.75 },
-  // Two flanking bursts to spread color + prism split
-  { position: [-2.4, 0.6, -5.8], size: 0.5 },
-  { position: [2.4, 0.6, -5.8], size: 0.5 },
-  // Upper accent — hints of light cresting above the card
-  { position: [0, 2.0, -5], size: 0.4 },
-  // Subtle side-wall bounces
-  { position: [-6.5, 0.4, -2.5], size: 0.35 },
-  { position: [6.5, 0.4, -2.5], size: 0.35 },
-];
-
 function WireCube() {
   const edges = useMemo(() => {
     const box = new THREE.BoxGeometry(CUBE_W, CUBE_H, CUBE_D);
@@ -60,19 +33,6 @@ function WireCube() {
     <lineSegments geometry={edges}>
       <lineBasicMaterial color="#ffffff" transparent opacity={0.85} toneMapped={false} />
     </lineSegments>
-  );
-}
-
-/**
- * A pure-white emissive orb. Combined with high Bloom + ChromaticAberration
- * it blooms into an iridescent rainbow halo — the prism-refraction look.
- */
-function LightSource({ position, size = 0.45 }: { position: [number, number, number]; size?: number }) {
-  return (
-    <mesh position={position}>
-      <sphereGeometry args={[size, 24, 24]} />
-      <meshBasicMaterial color="#ffffff" toneMapped={false} />
-    </mesh>
   );
 }
 
@@ -98,33 +58,30 @@ function ReflectiveFloor() {
 }
 
 /**
- * Picks camera fov/position and orb layout from the current viewport aspect.
- * Lives inside <Canvas> so it can read the live R3F size + drive the default camera.
+ * Sets camera fov/position from viewport aspect and reports whether we're in
+ * portrait (mobile). Lives inside <Canvas> so it can read the live R3F size.
  */
-function AspectAwareCamera({ onLayout }: { onLayout: (orbs: OrbSpec[]) => void }) {
+function AspectAwareCamera({ onPortraitChange }: { onPortraitChange: (isPortrait: boolean) => void }) {
   const { size, camera } = useThree();
   const aspect = size.width / Math.max(size.height, 1);
 
   useEffect(() => {
     let fov: number;
     let pos: [number, number, number];
-    let orbs: OrbSpec[];
+    let isPortrait: boolean;
 
     if (aspect > 1.0) {
-      // Landscape / desktop — original tuning
       fov = 58;
       pos = [0, 0, 4.8];
-      orbs = DESKTOP_ORBS;
+      isPortrait = false;
     } else if (aspect >= 0.5) {
-      // Standard portrait (most phones) — wider fov + closer camera so the cube fills vertically
       fov = 72;
       pos = [0, 0.4, 3.8];
-      orbs = MOBILE_ORBS;
+      isPortrait = true;
     } else {
-      // Very narrow portrait (small phones / split-screen)
       fov = 78;
       pos = [0, 0.5, 3.2];
-      orbs = MOBILE_ORBS;
+      isPortrait = true;
     }
 
     const persp = camera as THREE.PerspectiveCamera;
@@ -132,49 +89,39 @@ function AspectAwareCamera({ onLayout }: { onLayout: (orbs: OrbSpec[]) => void }
     persp.position.set(pos[0], pos[1], pos[2]);
     persp.lookAt(0, 0, -1);
     persp.updateProjectionMatrix();
-    onLayout(orbs);
-  }, [aspect, camera, onLayout]);
+    onPortraitChange(isPortrait);
+  }, [aspect, camera, onPortraitChange]);
 
   return null;
 }
 
 function Scene({ isLowEnd }: { isLowEnd: boolean }) {
-  const [orbs, setOrbs] = useState<OrbSpec[]>(DESKTOP_ORBS);
+  const [isPortrait, setIsPortrait] = useState(false);
 
   return (
     <>
-      <AspectAwareCamera onLayout={setOrbs} />
+      <AspectAwareCamera onPortraitChange={setIsPortrait} />
 
-      <ambientLight intensity={0.15} />
+      <ambientLight intensity={0.4} />
 
-      <WireCube />
-      <ReflectiveFloor />
-
-      {/* Bright white lights — Bloom + ChromaticAberration turn these into
-          iridescent prism-refraction halos. */}
-      {orbs.map((orb, i) => (
-        <LightSource key={i} position={orb.position} size={orb.size} />
-      ))}
-
-      {/* God-ray from above */}
-      <spotLight
-        position={[0, 3.2, -2]}
-        intensity={10}
-        angle={0.6}
-        penumbra={0.9}
-        color="#ffffff"
-        distance={14}
-      />
+      {/* Wireframe cube + reflective floor only on desktop — on mobile they
+          cut ugly horizontal lines across the narrow viewport. */}
+      {!isPortrait && (
+        <>
+          <WireCube />
+          <ReflectiveFloor />
+        </>
+      )}
 
       <EffectComposer multisampling={isLowEnd ? 0 : 4}>
         <Bloom
-          intensity={isLowEnd ? 1.5 : 5}
-          luminanceThreshold={0.5}
+          intensity={isLowEnd ? 1 : 2.5}
+          luminanceThreshold={0.6}
           luminanceSmoothing={0.5}
           mipmapBlur={!isLowEnd}
         />
         <ChromaticAberration
-          offset={isLowEnd ? new THREE.Vector2(0.006, 0.006) : new THREE.Vector2(0.015, 0.015)}
+          offset={isLowEnd ? new THREE.Vector2(0.004, 0.004) : new THREE.Vector2(0.01, 0.01)}
           radialModulation={false}
           modulationOffset={0}
         />
