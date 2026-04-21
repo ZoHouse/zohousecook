@@ -288,12 +288,15 @@ function MobileTierNav({ onUpsell }: PassesDockProps) {
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       <div
-        className="mx-3 mb-3 flex items-center justify-between gap-2.5 p-2.5"
+        className="mb-3 flex items-center justify-between gap-2.5 p-2.5"
         style={{
           background: '#0d0d10',
           borderRadius: 26,
           border: '1px solid rgba(255,255,255,0.14)',
           boxShadow: '0 10px 32px rgba(0,0,0,0.75)',
+          // Landscape notched phones: keep the dock clear of the left/right safe-area insets (min 12px to match mx-3).
+          marginLeft: 'max(12px, env(safe-area-inset-left, 12px))',
+          marginRight: 'max(12px, env(safe-area-inset-right, 12px))',
         }}
       >
         {TILES.map((tile) => (

@@ -35,6 +35,10 @@ export function RankPill({ rank, xp, avatarUrl, onClick }: RankPillProps) {
         backgroundImage: `linear-gradient(#202020, #202020), ${GRADIENT_PASSPORT_BORDER}`,
         backgroundOrigin: 'border-box',
         backgroundClip: 'padding-box, border-box',
+        // 30px avatar + 4px vertical padding + 2px border × 2 = 40px. Bump to 44px min-height
+        // so tapping from mobile clears WCAG 2.5.5 / Apple HIG. Visual pill grows ~4px vertically.
+        minHeight: 44,
+        minWidth: onClick ? 44 : undefined,
       }}
     >
       <span

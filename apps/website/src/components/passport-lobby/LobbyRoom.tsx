@@ -59,7 +59,14 @@ export function LobbyRoom({ sideNav, hero, nextMilestone, travelersPill }: Lobby
     <>
       {/* MOBILE: fill remaining viewport, content anchored low (above the tier nav). */}
       <div className="relative md:hidden flex flex-col flex-1 overflow-hidden">
-        <div className="absolute top-3 right-3 z-[10] flex flex-col items-end gap-1">
+        <div
+          className="absolute top-3 right-3 z-[10] flex flex-col items-end gap-1"
+          style={{
+            // Respect iOS notch / landscape right-edge inset so the side-nav rail isn't clipped.
+            paddingTop: 'env(safe-area-inset-top, 0px)',
+            paddingRight: 'env(safe-area-inset-right, 0px)',
+          }}
+        >
           {sideNav}
           <div className="mt-3 flex justify-center" style={{ width: 44 }}>{nextMilestone}</div>
         </div>

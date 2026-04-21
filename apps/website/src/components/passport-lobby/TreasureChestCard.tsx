@@ -200,6 +200,9 @@ export function TreasureChestCard({ open, onClose, activeCount: _activeCount, co
           borderTopLeftRadius: 24,
           borderTopRightRadius: 24,
           border: '1px solid rgba(255,184,76,0.25)',
+          // Sheet can reach the top of the viewport on tall phones (maxHeight:85vh on a short screen),
+          // so pad for the notch too. Bottom pad keeps clear of the home indicator.
+          paddingTop: 'calc(16px + env(safe-area-inset-top, 0px))',
           paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
           maxHeight: '85vh',
           boxShadow: '0 -20px 60px rgba(0,0,0,0.6)',
@@ -210,8 +213,10 @@ export function TreasureChestCard({ open, onClose, activeCount: _activeCount, co
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute top-3 right-3 flex items-center justify-center text-white/70 active:scale-90 transition-all"
-          style={{ width: 32, height: 32, fontSize: 22, lineHeight: 1 }}
+          className="absolute top-1 right-1 flex items-center justify-center text-white/70 active:scale-90 transition-all"
+          // Visual chrome is a 22px ×, but we expand the hit area to 44×44 (WCAG / Apple HIG min) with
+          // transparent padding — looks the same, just easier to tap.
+          style={{ width: 44, height: 44, fontSize: 22, lineHeight: 1, background: 'transparent' }}
         >
           ×
         </button>

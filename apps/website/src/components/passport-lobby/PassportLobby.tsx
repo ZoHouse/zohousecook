@@ -76,7 +76,14 @@ export function PassportLobby() {
   return (
     <div
       className="h-[100svh] md:min-h-screen md:h-auto overflow-hidden md:overflow-visible text-white relative"
-      style={{ background: '#0a0a0a' }}
+      style={{
+        background: '#0a0a0a',
+        // PWA polish: kill the grey tap flash on iOS, cancel rubber-band scroll, and
+        // skip the 300ms double-tap-zoom delay so buttons feel native-responsive.
+        WebkitTapHighlightColor: 'transparent',
+        overscrollBehavior: 'none',
+        touchAction: 'manipulation',
+      }}
     >
       {/* 3D prism-cube background — fills viewport, sits behind all UI */}
       <LobbyBackground3D />
