@@ -2,11 +2,14 @@ import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useProfile } from '@zo/auth';
 import { useMyXp } from '../../hooks/useMyXp';
+import { usePassportProfile } from '../../hooks/usePassportProfile';
+import { useSeason } from '../../hooks/useSeason';
 import { useTodayQuests } from '../../hooks/useTodayQuests';
 import useInstagramConnect from '../../hooks/useInstagramConnect';
 import { toast } from 'sonner';
 
 import { TopBar } from './TopBar';
+import { SeasonLevelBar } from './SeasonLevelBar';
 
 const LobbyBackground3D = dynamic(
   () => import('./LobbyBackground3D').then((m) => m.LobbyBackground3D),
@@ -34,6 +37,8 @@ export function PassportLobby() {
   const ig = useInstagramConnect();
   const { roles, isLoading: rolesLoading } = useMyRoles();
   const { quests: todayQuests } = useTodayQuests();
+  const { profile: passportProfile } = usePassportProfile();
+  const { season } = useSeason();
 
   const [tab, setTab] = useState<LobbyTab>('lobby');
   const [upsell, setUpsell] = useState<ProUpsellFeature | null>(null);
@@ -94,6 +99,22 @@ export function PassportLobby() {
       {/* Mobile: fill viewport, no scroll. Desktop: full viewport immersive lobby. */}
       <div className="relative z-[1] mx-auto w-full h-full flex flex-col md:h-auto md:block md:max-w-none md:px-0">
         <TopBar xp={xpTotal} rank={rank} avatarUrl={avatarUrl} onOpenSettings={() => setSettingsOpen(true)} />
+
+        {/* Season XP meter (L1-L100). Only rendered when the backend exposes
+            a season_level - prod currently returns v1 profile shape without it,
+            so the bar is hidden there until Daya ships v2. Local dev (mock)
+            and staging (Daya's backend) populate it. */}
+        {tab === 'lobby' && passportProfile?.season_level != null && (
+          <div className="px-5 pb-2 md:fixed md:top-6 md:left-6 md:z-[20] md:px-0 md:w-[280px]">
+            <SeasonLevelBar
+              level={passportProfile.season_level}
+              xpInLevel={passportProfile.season_xp ?? 0}
+              seasonKey={season?.key ?? 's1'}
+              levelCurve={season?.level_curve}
+              rankTitle={passportProfile.rank_title}
+            />
+          </div>
+        )}
 
         {tab === 'lobby' ? (
           <LobbyRoom
