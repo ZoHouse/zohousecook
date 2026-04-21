@@ -36,7 +36,7 @@ import { QueryCache, QueryClient, QueryClientProvider } from "react-query";
 import { http, WagmiProvider } from "wagmi";
 import { base, baseSepolia, goerli, mainnet, polygon } from "wagmi/chains";
 import { ZoAuth } from "../../components";
-import { setZoServerHeaders } from "../../utils";
+import { setZoPassportServerHeaders, setZoServerHeaders } from "../../utils";
 import { AuthContext } from "./AuthContext";
 
 const wagmiConfig = getDefaultConfig({
@@ -208,8 +208,10 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
 
       console.log("Setting device headers:", customAxiosHeaders);
       setZoServerHeaders(customAxiosHeaders);
+      setZoPassportServerHeaders(customAxiosHeaders);
     } else {
       setZoServerHeaders(null);
+      setZoPassportServerHeaders(null);
     }
   }, [localKey]);
 
@@ -246,6 +248,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
       "client-key": process.env.APP_ID || "",
     };
     setZoServerHeaders(customAxiosHeaders);
+    setZoPassportServerHeaders(customAxiosHeaders);
   }, [localKey]);
 
   const showLoginModal = useCallback(
