@@ -46,6 +46,7 @@ const nextConfig = {
   env: {
     APP_ID: process.env.APP_ID || "",
     API_BASE_URL: process.env.API_BASE_URL || "",
+    API_BASE_URL_PASSPORT: process.env.API_BASE_URL_PASSPORT || "",
     API_SOCKET_URL: process.env.API_SOCKET_URL || "",
     WEB_BASE_URL: process.env.WEB_BASE_URL || "",
     WEB_BASE_PATH: process.env.WEB_BASE_PATH || "",
