@@ -98,7 +98,14 @@ export function PassportLobby() {
 
       {/* Mobile: fill viewport, no scroll. Desktop: full viewport immersive lobby. */}
       <div className="relative z-[1] mx-auto w-full h-full flex flex-col md:h-auto md:block md:max-w-none md:px-0">
-        <TopBar xp={xpTotal} rank={rank} avatarUrl={avatarUrl} onOpenSettings={() => setSettingsOpen(true)} />
+        <TopBar
+          xp={xpTotal}
+          rank={rank}
+          avatarUrl={avatarUrl}
+          onOpenSettings={() => setSettingsOpen(true)}
+          streakCurrent={passportProfile?.streak?.current}
+          streakFreezeTokens={passportProfile?.streak?.freeze_tokens}
+        />
 
         {/* Season XP meter (L1-L100). Only rendered when the backend exposes
             a season_level - prod currently returns v1 profile shape without it,
