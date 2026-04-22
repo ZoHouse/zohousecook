@@ -21,6 +21,7 @@ const excludeFooterIn = [
   "/zollardoe",
   "/passport",
   "/pro",
+  "/homecoming",
 ];
 const excludeHeaderIn = [
   "/events/token2049",
@@ -30,6 +31,7 @@ const excludeHeaderIn = [
   "/zollardoe",
   "/passport",
   "/pro",
+  "/homecoming",
 ];
 
 const hasBlackBackground = ["/membership"];
