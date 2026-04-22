@@ -18,6 +18,7 @@ import { useCompleteHomecoming } from "./hooks/useCompleteHomecoming";
 import { rankBandsByKey } from "../../lib/homecoming/rankBands";
 import { OBELISK_WORLD_POSITIONS } from "../../lib/homecoming/obeliskPositions";
 import type { HomecomingPayload, RankMeta, ObeliskKind } from "./types";
+import { ReducedMotionStack } from "./fallback/ReducedMotionStack";
 
 interface Props { payload: HomecomingPayload; replay: boolean }
 
@@ -28,6 +29,16 @@ const CAPTION_LABELS = ["Destinations Unlocked", "Nights Stayed", "Zostels Unloc
 const RIBBON_COLORS = ["#F1563F", "#A7D921", "#FEDD1E", "#FEDD1E"];
 
 export function HomecomingStage({ payload, replay }: Props) {
+  // All hooks first — rules of hooks
+  const [reducedMotion, setReducedMotion] = React.useState(false);
+  React.useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReducedMotion(mq.matches);
+    const onChange = () => setReducedMotion(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   const [flyers, setFlyers] = useState<Flyer[]>([]);
   const { complete, firing } = useCompleteHomecoming({ replay });
 
@@ -45,6 +56,11 @@ export function HomecomingStage({ payload, replay }: Props) {
     (id: number) => setFlyers((prev) => prev.filter((f) => f.id !== id)),
     [],
   );
+
+  // Then the reduced-motion guard — after all hooks
+  if (reducedMotion) {
+    return <ReducedMotionStack payload={payload} onTap={complete} />;
+  }
 
   return (
     <ScrollRail>
