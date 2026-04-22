@@ -79,8 +79,11 @@ export function LobbyRoom({ sideNav, hero, travelersPill }: LobbyRoomProps) {
       >
         {sideNav}
 
-        {/* CENTER STAGE: hero card + pedestal + progress bar + quest + travelers */}
-        <div className="relative z-[5] flex flex-col items-center justify-center pt-[80px] lg:pt-[360px]" style={{ minHeight: 'calc(100vh - 260px)' }}>
+        {/* CENTER STAGE: hero card + pedestal + CTA. Bottom padding clears the
+            desktop PassesDock tier cards (~260px tall fixed at bottom-6); without
+            it, justify-center lets the pedestal + CTA drop behind the tier dock
+            on shorter viewports (1440p and below). */}
+        <div className="relative z-[5] flex flex-col items-center justify-center pt-[80px] lg:pt-40 pb-[320px]" style={{ minHeight: 'calc(100vh - 260px)' }}>
           {hero}
           <div style={{ marginTop: 6 }} aria-hidden>
             <Image src={pedestal} alt="" width={179} height={65} style={{ width: 260, height: 'auto' }} />
