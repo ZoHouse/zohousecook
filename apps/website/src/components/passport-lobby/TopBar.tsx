@@ -22,10 +22,10 @@ export function TopBar({
 }: TopBarProps) {
   return (
     <header
-      className="flex justify-end items-center gap-2 px-5 pt-4 pb-3 md:fixed md:top-6 md:right-6 md:px-0 md:py-0 md:z-[20]"
+      className="fixed top-0 right-0 z-[20] flex justify-end items-center gap-2 pl-5 pr-5 pt-4 pb-3 md:top-6 md:right-6 md:p-0"
       style={{
         // Mobile: pad for notch / Dynamic Island so the rank pill clears the status bar in iOS standalone PWA mode.
-        // Desktop overrides with md:pt-0 via absolute positioning (md:top-6), so the inline style is harmless there.
+        // Desktop resets padding via md:p-0 because md:top-6 / md:right-6 handle positioning.
         paddingTop: 'max(16px, calc(env(safe-area-inset-top, 0px) + 8px))',
         paddingRight: 'max(20px, env(safe-area-inset-right, 20px))',
       }}

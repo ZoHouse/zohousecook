@@ -4,16 +4,20 @@ import { EffectComposer, Bloom, ChromaticAberration } from '@react-three/postpro
 import { MeshGradient } from '@paper-design/shaders-react';
 import * as THREE from 'three';
 
-// Obsidian (samurai-fx #09) — 8 near-blacks with thin light streaks. Liquid metal.
-const ABYSS_COLORS = [
-  '#000000',
-  '#14151C',
-  '#1E1B24',
-  '#55535E',
-  '#1D1D26',
-  '#111117',
-  '#0A0A0D',
-  '#000000',
+// Samurai FX #09 — Obsidian params, re-palette'd as liquid CHROME.
+// Metallic needs sharp highlight-to-shadow stratification — that's the optical
+// cue your brain reads as "polished metal" vs "flat silver paint". Palette
+// cycles: pure highlight → light steel → mid steel → DEEP cool shadow → mid
+// steel → light → highlight. Slight cool undertone (blue-gray, not warm).
+const CHROME_COLORS = [
+  '#FFFFFF',
+  '#DDE3EC',
+  '#9AA5B3',
+  '#3F4652',
+  '#1E232B',
+  '#6B7480',
+  '#C0C7D1',
+  '#FFFFFF',
 ];
 
 /** Aspect-aware camera framing. No scene geometry yet; kept for future additions. */
@@ -53,15 +57,17 @@ function Scene({ isLowEnd }: { isLowEnd: boolean }) {
 
       <ambientLight intensity={0.4} />
 
+      {/* Chrome has deep shadows now, so highlights have room to pop without
+          blowing out. Bloom kicks only on the brightest highlight streaks. */}
       <EffectComposer multisampling={isLowEnd ? 0 : 4}>
         <Bloom
-          intensity={isLowEnd ? 1 : 2.5}
-          luminanceThreshold={0.6}
-          luminanceSmoothing={0.5}
+          intensity={isLowEnd ? 0.4 : 0.7}
+          luminanceThreshold={0.8}
+          luminanceSmoothing={0.35}
           mipmapBlur={!isLowEnd}
         />
         <ChromaticAberration
-          offset={isLowEnd ? new THREE.Vector2(0.004, 0.004) : new THREE.Vector2(0.01, 0.01)}
+          offset={isLowEnd ? new THREE.Vector2(0.003, 0.003) : new THREE.Vector2(0.005, 0.005)}
           radialModulation={false}
           modulationOffset={0}
         />
@@ -96,15 +102,16 @@ export function LobbyBackground3D() {
         pointerEvents: 'none',
       }}
     >
-      {/* Obsidian liquid-metal shader — slow breathing darkness behind the 3D scene */}
+      {/* Obsidian params + chrome palette = liquid chrome. Swirl bumped
+          slightly for more reflection flow; grain mix bumped for metal tooth. */}
       <MeshGradient
-        colors={ABYSS_COLORS}
-        speed={0.8}
-        scale={1.6}
+        colors={CHROME_COLORS}
+        speed={0.83}
+        scale={0.4}
         distortion={0}
-        swirl={0.1}
-        grainMixer={0.01}
-        grainOverlay={0}
+        swirl={0.25}
+        grainMixer={0.04}
+        grainOverlay={0.02}
         fit="cover"
         style={{ position: 'absolute', inset: 0 }}
       />

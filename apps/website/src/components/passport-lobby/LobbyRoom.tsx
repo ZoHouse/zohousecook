@@ -46,7 +46,6 @@ function UnlimitedAccessCta({ size = 'md' }: { size?: 'sm' | 'md' }) {
 export interface LobbyRoomProps {
   sideNav: ReactNode;
   hero: ReactNode;
-  nextMilestone: ReactNode;
   travelersPill: ReactNode;
 }
 
@@ -54,24 +53,14 @@ export interface LobbyRoomProps {
  * Lobby scene — Fortnite-style lobby. Avatar center-stage, HUD around edges.
  * Map access lives inside the side-nav rail (passed in via sideNav slot).
  */
-export function LobbyRoom({ sideNav, hero, nextMilestone, travelersPill }: LobbyRoomProps) {
+export function LobbyRoom({ sideNav, hero, travelersPill }: LobbyRoomProps) {
   return (
     <>
       {/* MOBILE: fill remaining viewport, content anchored low (above the tier nav). */}
       <div className="relative md:hidden flex flex-col flex-1 overflow-hidden">
-        <div
-          className="absolute top-3 right-3 z-[10] flex flex-col items-end gap-1"
-          style={{
-            // Respect iOS notch / landscape right-edge inset so the side-nav rail isn't clipped.
-            paddingTop: 'env(safe-area-inset-top, 0px)',
-            paddingRight: 'env(safe-area-inset-right, 0px)',
-          }}
-        >
-          {sideNav}
-          <div className="mt-3 flex justify-center" style={{ width: 44 }}>{nextMilestone}</div>
-        </div>
+        {sideNav}
 
-        <div className="relative z-[5] flex flex-col items-center justify-end flex-1 pt-20 pb-[190px]">
+        <div className="relative z-[5] flex flex-col items-center justify-end flex-1 pt-20 pb-[260px]">
           {hero}
           <div style={{ marginTop: -6 }} aria-hidden>
             <Image src={pedestal} alt="" width={179} height={65} style={{ width: 200, height: 'auto' }} />
@@ -88,11 +77,7 @@ export function LobbyRoom({ sideNav, hero, nextMilestone, travelersPill }: Lobby
           background: 'transparent',
         }}
       >
-        {/* HUD: Side nav — right edge, vertically centered. Includes Map button now. */}
-        <div className="absolute top-1/2 right-6 -translate-y-1/2 z-[10] flex flex-col items-center gap-6">
-          {sideNav}
-          <div className="opacity-60 w-11 lg:opacity-100 lg:w-auto">{nextMilestone}</div>
-        </div>
+        {sideNav}
 
         {/* CENTER STAGE: hero card + pedestal + progress bar + quest + travelers */}
         <div className="relative z-[5] flex flex-col items-center justify-center pt-[80px] lg:pt-[360px]" style={{ minHeight: 'calc(100vh - 260px)' }}>
