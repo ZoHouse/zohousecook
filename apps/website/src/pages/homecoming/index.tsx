@@ -14,6 +14,31 @@ interface Props {
 }
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
+  // Local / dev preview override — renders the ceremony against a fixture
+  // without touching the backend. Bypasses auth, identity gate, one-time flag,
+  // and the completion write. `?state=zero` swaps to the zero-history track.
+  //
+  //   /homecoming?preview=1              → legendary reveal
+  //   /homecoming?preview=1&state=zero   → day-1 zero-state
+  //
+  // Only active when NODE_ENV !== "production" so it can never leak to prod.
+  if (ctx.query.preview === "1" && process.env.NODE_ENV !== "production") {
+    const { LEGENDARY_FIXTURE, ZERO_STATE_FIXTURE } = await import(
+      "../../lib/homecoming/fixtures"
+    );
+    const payload =
+      ctx.query.state === "zero" ? ZERO_STATE_FIXTURE : LEGENDARY_FIXTURE;
+    return {
+      props: {
+        payload,
+        handle: payload.handle,
+        firstName: payload.first_name,
+        avatarImage: payload.avatar_image,
+        replay: true, // suppresses the complete() write so preview is safe to repeat
+      },
+    };
+  }
+
   // Kill-switch
   if (
     process.env.NEXT_PUBLIC_HOMECOMING_ENABLED === "false" &&
