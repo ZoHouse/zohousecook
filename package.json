@@ -39,6 +39,7 @@
     "@react-three/postprocessing": "^2.19.1",
     "@sentry/nextjs": "^10.32.1",
     "@slack/web-api": "^7.9.1",
+    "@studio-freight/lenis": "^1.0.42",
     "@supabase/supabase-js": "^2.100.0",
     "@swc/helpers": "~0.5.2",
     "@tabler/icons-react": "^3.40.0",
