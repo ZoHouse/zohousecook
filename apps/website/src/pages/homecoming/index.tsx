@@ -3,6 +3,7 @@ import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import { zoServer, zoPassportServer } from "../../../../../libs/auth/src/utils";
 import type { HomecomingPayload } from "../../components/homecoming/types";
+import { HomecomingStage } from "../../components/homecoming/HomecomingStage";
 
 interface Props {
   payload: HomecomingPayload;
@@ -91,23 +92,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   };
 };
 
-export default function HomecomingPage({
-  payload,
-  handle,
-  firstName,
-  replay,
-}: Props) {
+export default function HomecomingPage({ payload, replay }: Props) {
   return (
     <>
       <Head>
         <title>Homecoming · Zo World</title>
         <meta name="robots" content="noindex" />
       </Head>
-      <main style={{ background: "#050708", minHeight: "100vh", color: "#fff" }}>
-        <pre style={{ padding: 24, fontSize: 12 }}>
-          {JSON.stringify({ handle, firstName, replay, payload }, null, 2)}
-        </pre>
-      </main>
+      <HomecomingStage payload={payload} replay={replay} />
     </>
   );
 }
