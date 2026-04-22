@@ -1,6 +1,6 @@
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { type PropertyKind, type ZoProperty } from './properties';
 import { useZostelOperators, type ZostelOperator } from '../../hooks/useZostelOperators';
 
@@ -99,6 +99,13 @@ export interface MapModalProps {
 export function MapModal({ open, onClose }: MapModalProps) {
   const container = useRef<HTMLDivElement | null>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const [status, setStatus] = useState<
+    | { kind: 'idle' }
+    | { kind: 'no-token' }
+    | { kind: 'loading' }
+    | { kind: 'error'; message: string }
+    | { kind: 'ready' }
+  >({ kind: 'idle' });
 
   const { operators } = useZostelOperators(open);
   const properties = useMemo<ZoProperty[]>(
@@ -134,9 +141,17 @@ export function MapModal({ open, onClose }: MapModalProps) {
   }, [open, onClose]);
 
   useEffect(() => {
-    if (!open || !container.current || map.current) return;
-    if (!mapboxgl.accessToken) return;
-    if (properties.length === 0) return; // wait for live operator data
+    if (!open) return;
+    if (!mapboxgl.accessToken) {
+      setStatus({ kind: 'no-token' });
+      return;
+    }
+    if (properties.length === 0) {
+      setStatus({ kind: 'loading' });
+      return;
+    }
+    if (!container.current || map.current) return;
+    setStatus({ kind: 'loading' });
 
     // Open zoomed-in on BLRxZo (primary property) so 3D buildings + skyline read immediately.
     // Users navigate to other properties by tapping their pillars, or "Show all" to fit the planet.
@@ -159,6 +174,7 @@ export function MapModal({ open, onClose }: MapModalProps) {
 
     map.current.on('style.load', () => {
       if (!map.current) return;
+      setStatus({ kind: 'ready' });
       try {
         map.current.setConfigProperty('basemap', 'lightPreset', 'dusk');
         map.current.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
@@ -169,6 +185,14 @@ export function MapModal({ open, onClose }: MapModalProps) {
       } catch {
         // Older style versions — ignore
       }
+    });
+
+    map.current.on('error', (e) => {
+      // Surface any Mapbox runtime error (bad token, style 404, tile fetch fail)
+      // so the modal doesn't sit dark and silent.
+      const message = (e.error && (e.error.message || String(e.error))) || 'Mapbox error';
+      console.error('[MapModal] mapbox error:', e);
+      setStatus({ kind: 'error', message });
     });
 
     // Track all markers so we can hide all-but-focused when zoomed in close.
@@ -302,7 +326,7 @@ export function MapModal({ open, onClose }: MapModalProps) {
       map.current?.remove();
       map.current = null;
     };
-  }, [open]);
+  }, [open, properties.length]);
 
   if (!open) return null;
 
@@ -346,9 +370,42 @@ export function MapModal({ open, onClose }: MapModalProps) {
 
         <div
           ref={container}
-          className="w-full h-full overflow-hidden"
-          style={{ borderRadius: 24, border: '1px solid rgba(255,255,255,0.1)' }}
-        />
+          className="w-full h-full overflow-hidden relative"
+          style={{ borderRadius: 24, border: '1px solid rgba(255,255,255,0.1)', background: '#0a0a0a' }}
+        >
+          {(status.kind === 'no-token' ||
+            status.kind === 'loading' ||
+            status.kind === 'error') && (
+            <div className="absolute inset-0 flex items-center justify-center text-center px-8 pointer-events-none">
+              <div className="text-white/80 text-sm">
+                {status.kind === 'no-token' && (
+                  <>
+                    <div className="font-semibold mb-1">Map unavailable</div>
+                    <div className="text-xs text-white/50">
+                      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN is not set in the env for
+                      this deploy.
+                    </div>
+                  </>
+                )}
+                {status.kind === 'loading' && (
+                  <div className="text-xs text-white/50">
+                    {properties.length === 0
+                      ? 'Loading properties…'
+                      : 'Loading map…'}
+                  </div>
+                )}
+                {status.kind === 'error' && (
+                  <>
+                    <div className="font-semibold mb-1">Map failed to load</div>
+                    <div className="text-xs text-white/50 max-w-[320px] mx-auto">
+                      {status.message}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <style jsx global>{`
@@ -379,10 +436,20 @@ export function MapModal({ open, onClose }: MapModalProps) {
           padding: 4px 8px;
           right: 2px;
           top: 2px;
+          border: none;
+          outline: none;
+          box-shadow: none;
+          background: transparent;
         }
-        .mapboxgl-popup.zo-map-popup .mapboxgl-popup-close-button:hover {
+        .mapboxgl-popup.zo-map-popup .mapboxgl-popup-close-button:hover,
+        .mapboxgl-popup.zo-map-popup .mapboxgl-popup-close-button:focus,
+        .mapboxgl-popup.zo-map-popup .mapboxgl-popup-close-button:focus-visible,
+        .mapboxgl-popup.zo-map-popup .mapboxgl-popup-close-button:active {
           color: #fff;
           background: transparent;
+          border: none;
+          outline: none;
+          box-shadow: none;
         }
         .mapboxgl-popup.zo-map-popup .mapboxgl-popup-tip {
           border-top-color: rgba(32, 32, 32, 0.9);

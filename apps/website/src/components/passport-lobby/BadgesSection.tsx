@@ -3,7 +3,7 @@ import RoleBadge from '../passport/RoleBadge';
 import { rubikClassName, syneClassName } from '../utils/font';
 import type { UserRoleInfo } from '../../hooks/useMyRoles';
 import type { MyXpData } from '../../hooks/useMyXp';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ProfileData = Record<string, any>;
@@ -14,6 +14,8 @@ export interface BadgesSectionProps {
   myXp: MyXpData | null;
   profile: ProfileData | null;
   onBack: () => void;
+  /** Hide internal Back button + title (parent page provides breadcrumb instead). */
+  embedded?: boolean;
 }
 
 const BADGE_TYPES: Array<{ slug: string; type: 'creator' | 'tribebuilder' }> = [
@@ -122,6 +124,15 @@ function CountryCard({
         borderRadius: 14,
         border: isUnlocked ? '1.5px solid rgba(167,217,33,0.35)' : '1px solid rgba(255,255,255,0.06)',
         boxShadow: isUnlocked ? '0 4px 12px rgba(167,217,33,0.1)' : '0 2px 8px rgba(0,0,0,0.2)',
+        // Promote to its own compositor layer so the Warp shader behind can't
+        // drag the GIF repaint into sync with its frame loop. Without this the
+        // cards visibly flicker because the browser batches card + shader on
+        // the same layer.
+        transform: 'translateZ(0)',
+        willChange: 'transform',
+        isolation: 'isolate',
+        contain: 'paint',
+        background: '#080200',
       }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -129,6 +140,7 @@ function CountryCard({
         src={card.src}
         alt={card.name}
         className={`w-full h-full object-cover ${isUnlocked ? '' : 'grayscale opacity-30'}`}
+        style={{ transform: 'translateZ(0)' }}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5">
@@ -195,17 +207,32 @@ function CountryModal({
 
 // ─── Main ───
 
-export function BadgesSection({ roles, rolesLoading, myXp, profile, onBack }: BadgesSectionProps) {
+export function BadgesSection({ roles, rolesLoading, myXp, profile, onBack, embedded = false }: BadgesSectionProps) {
   const [selectedCountry, setSelectedCountry] = useState<(typeof COUNTRY_CARDS)[0] | null>(null);
 
-  const earnedBadges = roles ? BADGE_TYPES.filter((b) => roles.hasRole(b.slug)) : [];
-  const allRoleNames = roles?.displayNames ?? [];
+  // Derive data into stable references — myXp is re-spread every render in
+  // useMyXp when leaderboard resolves, so downstream derivations must be
+  // memoized on primitive dependencies to stop the grids from re-mounting and
+  // flickering images underneath.
+  const destinationsKey = (myXp?.destinationNames ?? []).join('|');
+  const zostelsKey = (myXp?.zostelNames ?? []).join('|');
+  const tripsKey = (myXp?.tripDestinations ?? []).join('|');
+  const rolesKey = (roles?.displayNames ?? []).join('|');
+  const earnedKey = roles ? BADGE_TYPES.map((b) => (roles.hasRole(b.slug) ? b.slug : '')).join('|') : '';
 
-  const destinations = myXp?.destinationNames ?? [];
-  const zostels = myXp?.zostelNames ?? [];
-  const trips = myXp?.tripDestinations ?? [];
+  const destinations = useMemo(() => myXp?.destinationNames ?? [], [destinationsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const zostels = useMemo(() => myXp?.zostelNames ?? [], [zostelsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const trips = useMemo(() => myXp?.tripDestinations ?? [], [tripsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const allRoleNames = useMemo(() => roles?.displayNames ?? [], [rolesKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const earnedBadges = useMemo(
+    () => (roles ? BADGE_TYPES.filter((b) => roles.hasRole(b.slug)) : []),
+    [earnedKey], // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
-  const unlockedCountries = getUnlockedCountries(destinations, trips);
+  const unlockedCountries = useMemo(
+    () => getUnlockedCountries(destinations, trips),
+    [destinations, trips],
+  );
 
   const nationality = profile?.country?.name as string | undefined;
   const countryFlag = profile?.country?.flag as string | undefined;
@@ -214,22 +241,33 @@ export function BadgesSection({ roles, rolesLoading, myXp, profile, onBack }: Ba
   const hasStats = stats && (stats.destinations > 0 || stats.properties > 0 || stats.nights > 0 || stats.trips > 0);
   const hasAnything = earnedBadges.length > 0 || allRoleNames.length > 0 || destinations.length > 0 || zostels.length > 0 || trips.length > 0 || hasStats || !!nationality;
 
-  return (
-    <div className={`px-4 md:px-8 py-6 pb-36 md:pb-44 max-w-[600px] mx-auto ${rubikClassName}`}>
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 mb-4 text-white/50 hover:text-white transition-colors"
-        style={{ fontSize: 12, fontWeight: 500 }}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <path d="M19 12H5" /><path d="M12 19l-7-7 7-7" />
-        </svg>
-        Back to Lobby
-      </button>
-      <div className={`text-xl font-bold text-white mb-0.5 ${syneClassName}`}>Badges</div>
-      <div className="text-[11px] text-white/40 mb-6">Earned through your journey in Zo World</div>
+  // Show the spinner until BOTH roles and myXp have finished resolving.
+  // Previously this only checked rolesLoading, so while myXp was still null we
+  // briefly fell through to `hasAnything=false` → empty state, then swapped to
+  // content when myXp arrived — that was the "crazy flicker" in the middle of
+  // the page.
+  const isLoading = rolesLoading || myXp === null;
 
-      {rolesLoading ? (
+  return (
+    <div className={`${embedded ? 'py-0' : 'px-4 md:px-8 py-6 pb-36 md:pb-44 max-w-[600px] mx-auto'} ${rubikClassName}`}>
+      {!embedded && (
+        <>
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 mb-4 text-white/50 hover:text-white transition-colors"
+            style={{ fontSize: 12, fontWeight: 500 }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M19 12H5" /><path d="M12 19l-7-7 7-7" />
+            </svg>
+            Back to Lobby
+          </button>
+          <div className={`text-xl font-bold text-white mb-0.5 ${syneClassName}`}>Badges</div>
+          <div className="text-[11px] text-white/40 mb-6">Earned through your journey in Zo World</div>
+        </>
+      )}
+
+      {isLoading ? (
         <div className="flex items-center justify-center py-16">
           <div className="animate-spin rounded-full border-2 border-white/15 border-t-white" style={{ width: 24, height: 24 }} />
         </div>

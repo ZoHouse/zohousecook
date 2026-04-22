@@ -2,8 +2,22 @@
 // close-button are wired.
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useAuth, useProfile, useMutationApi, useQueryApi } from "@zo/auth";
+import { MeshGradient } from "@paper-design/shaders-react";
 import { useMyNfts } from "../../hooks/useMyNfts";
 import useInstagramConnect from "../../hooks/useInstagramConnect";
+
+// Samurai FX #09 — Obsidian. Liquid metal, quiet luxury, 8 near-blacks with
+// thin light streaks. Used as the settings modal surface.
+const OBSIDIAN_COLORS = [
+  '#000000',
+  '#14151C',
+  '#1E1B24',
+  '#55535E',
+  '#1D1D26',
+  '#111117',
+  '#0A0A0D',
+  '#000000',
+];
 
 function Spinner({ size = 16 }: { size?: number }) {
   return (
@@ -1134,12 +1148,35 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         onClick={onClose}
       />
       <div
-        className="relative w-full max-w-[640px] h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:rounded-[24px] rounded-none flex flex-col overflow-hidden backdrop-blur-[48px] border border-white/10"
+        className="relative w-full max-w-[640px] h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:rounded-[24px] rounded-none flex flex-col overflow-hidden border border-white/10"
         style={{
-          background: "linear-gradient(135deg, rgba(41,41,41,0.95), rgba(0,0,0,0.95))",
+          background: "#0A0A0D",
           boxShadow: "inset 0px -1px 24px rgba(255,255,255,0.4)",
         }}
       >
+        {/* Samurai FX #09 Obsidian — liquid metal surface behind the content */}
+        <div
+          aria-hidden
+          className="absolute inset-0 pointer-events-none"
+          style={{ zIndex: 0 }}
+        >
+          <MeshGradient
+            colors={OBSIDIAN_COLORS}
+            speed={0.83}
+            scale={0.4}
+            distortion={0}
+            swirl={0.1}
+            grainMixer={0.01}
+            grainOverlay={0}
+            fit="cover"
+            style={{ width: '100%', height: '100%' }}
+          />
+        </div>
+
+        {/* Content wrapper lifts above the shader. min-h-0 so the flex-1 scroll
+            region inside can shrink below intrinsic content height (otherwise
+            the inner overflow-y-auto can't activate on iOS / Chrome mobile). */}
+        <div className="relative flex flex-col h-full min-h-0" style={{ zIndex: 1 }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-shrink-0">
           <h2 id="settings-modal-title" className="text-lg font-bold text-white">Settings</h2>
           <button
@@ -1163,7 +1200,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </button>
         </div>
         <ProfileStrip />
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4">
           <ProfileSection />
           <LocationSection />
           <CulturesSection />
@@ -1173,6 +1210,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <SocialsSection />
           <FounderNftsSection />
           <LogoutSection onClose={onClose} />
+        </div>
         </div>
       </div>
     </div>

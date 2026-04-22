@@ -36,7 +36,7 @@ const nextConfig = {
   },
   env: {
     APP_ID: process.env.APP_ID || "",
-    API_BASE_URL: process.env.API_BASE_URL || "",
+    API_BASE_URL: process.env.API_BASE_URL || "https://api.io.zo.xyz",
     API_BASE_URL_PASSPORT: process.env.API_BASE_URL_PASSPORT || "",
     API_BASE_URL_INSTAGRAM: process.env.API_BASE_URL_INSTAGRAM || "",
     API_SOCKET_URL: process.env.API_SOCKET_URL || "",
@@ -88,6 +88,9 @@ const nextConfig = {
     ];
 
     const rewrites = [
+      { source: "/@:handle/earnings", destination: "/passport/earnings?handle=:handle" },
+      { source: "/@:handle/quests", destination: "/passport/quests?handle=:handle" },
+      { source: "/@:handle/badges", destination: "/passport/badges?handle=:handle" },
       { source: "/@:handle", destination: "/passport" },
     ];
     for (const app of subApps) {
