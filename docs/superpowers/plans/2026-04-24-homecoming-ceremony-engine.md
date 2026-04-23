@@ -20,11 +20,20 @@ Full design spec: `docs/superpowers/specs/2026-04-23-homecoming-ceremony-engine-
 - [ ] **Pre-plan blocker: idle Zobu `.glb` audit** (spec §5.5). Confirm watertight + sub-50k triangles. Fix before Chunk 5 begins.
 - [ ] **Confirm `PASSPORT_SUCCESS_ROUTE`** — `/passport/success` is a placeholder; confirm canonical route against the `project_passport_is_home` direction. Not blocking; `constants.ts` isolates the change to one line.
 - [ ] **Branch:** `feat/homecoming-ceremony`. Three spec commits already landed (`9659b3a`, `013e6b4`, `25ffc84`). The old homecoming code in `apps/website/src/components/homecoming/` has uncommitted changes — **stash or commit** before Task 1.1 deletes everything.
-- [ ] **Install new deps:**
+- [ ] **Install new deps** — `zod` is needed for the `CeremonyDataSchema` validator, `zustand` for stores, `detect-gpu` for tier classification:
   ```bash
   cd /Users/samuraizan/samuraidojo/zohouse/zo.xyz/mono-front-main
-  npm install zustand@^4.5 detect-gpu@^5.0
+  npm install zod zustand@^4.5 detect-gpu@^5.0
   ```
+- [ ] **Upload existing `.glb`s to cdn.zo.xyz** before Chunk 3 begins. The engine loads from canonical URLs (no `public/` per memory `feedback_vercel_public_not_served`):
+  - `cdn.zo.xyz/homecoming/models/z-monument.glb` — the chrome `\z/` monument (already in hand, verify Pre-plan blocker 1 passed)
+  - `cdn.zo.xyz/homecoming/models/` — the idle Zobu (already in hand; final filename is `zobu-generic-v1.glb`, referenced as `cdn.zo.xyz/zobu/generic-v1.glb` per `data/demo.ts`)
+  - `cdn.zo.xyz/homecoming/hdri/mars-warm-2k.hdr` — Mars exterior HDRI (Poly Haven source acceptable for v1)
+  - `cdn.zo.xyz/homecoming/textures/mars-albedo-2k.jpg`, `mars-normal-2k.jpg` — Mars terrain textures (tileable)
+  - `cdn.zo.xyz/homecoming/posters/idle-mars-2880x1800.jpg` — fallback poster (captured after Chunk 3 renders; placeholder is fine for dev)
+
+  If any of these return 404 during dev, the corresponding module's loader throws and the fallback path activates — expected behavior for CI without CDN, but the visual walkthrough in Task 6.7 requires these assets live.
+- [ ] **E2E framework status:** the monorepo does NOT yet have an `apps/website-e2e` project. Playwright smoke tests (Task 6.8) require scaffolding `website-e2e` via `npx nx g @nx/playwright:configuration website-e2e` **or** demoting Task 6.8 to a follow-up. Default: demote and file follow-up. Skip Task 6.8 unless the scaffold already exists.
 
 ## File Structure Summary (spec §7)
 
@@ -65,18 +74,26 @@ git rm -rf apps/website/src/components/homecoming/
 - [ ] **Step 3: Grep the rest of the app for orphan imports from the deleted code**
 
 ```bash
-grep -rn "from.*components/homecoming" apps/website/src --include="*.tsx" --include="*.ts"
+grep -rn "from.*components/homecoming\|from.*lib/homecoming" apps/website/src --include="*.tsx" --include="*.ts"
 ```
 
-If any files outside `homecoming/` import from the deleted tree (e.g., `pages/homecoming/index.tsx`, `components/helpers/home/HeroSection.tsx`), note them — we will fix them in Chunk 6. For now, keep a list.
+Known orphan surface (confirmed before plan was written):
+- `apps/website/src/lib/homecoming/beatTimeline.ts`
+- `apps/website/src/lib/homecoming/endpoints.ts`
+- `apps/website/src/lib/homecoming/fixtures.ts`
+- `apps/website/src/lib/homecoming/obeliskPositions.ts`
+- `apps/website/src/lib/homecoming/rankBands.ts`
+- `apps/website/src/pages/homecoming/index.tsx` (imports `HomecomingStage` + `HomecomingPayload`)
+
+All of `lib/homecoming/` exists only to serve the old prototype (mutual imports with deleted `components/homecoming/types.ts`). Task 6.6 deletes the entire `lib/homecoming/` directory. `pages/homecoming/index.tsx` is rewritten in Task 6.5. No other files outside that set should import anything we just deleted — if the grep surfaces others, flag them.
 
 - [ ] **Step 4: Build to verify the error surface is only the expected orphans**
 
 ```bash
-npx nx build website 2>&1 | head -50
+npx nx build website 2>&1 | head -80
 ```
 
-Expected: compile errors limited to the files identified in Step 3. Any *other* errors indicate the deletion hit something unexpected — investigate.
+Expected: compile errors limited to the 6 files above. Any *other* errors indicate the deletion hit something unexpected — investigate.
 
 - [ ] **Step 5: Commit**
 
@@ -97,7 +114,7 @@ git commit -m "feat(homecoming): delete prototype, begin rewrite"
 
 ```ts
 // apps/website/src/__tests__/homecoming/schema.test.ts
-import { CeremonyDataSchema } from '@/components/homecoming/types'
+import { CeremonyDataSchema } from '../../components/homecoming/types'
 
 describe('CeremonyDataSchema', () => {
   const valid = {
@@ -130,7 +147,7 @@ describe('CeremonyDataSchema', () => {
 - [ ] **Step 2: Run test — expect FAIL (module not found)**
 
 ```bash
-npx nx test website --testFile=schema.test.ts
+npx nx test website --testPathPattern=schema.test.ts
 ```
 
 - [ ] **Step 3: Implement `types.ts`**
@@ -171,7 +188,7 @@ export type CeremonyData = z.infer<typeof CeremonyDataSchema>
 - [ ] **Step 4: Run test — expect PASS**
 
 ```bash
-npx nx test website --testFile=schema.test.ts
+npx nx test website --testPathPattern=schema.test.ts
 ```
 
 - [ ] **Step 5: Commit**
@@ -234,7 +251,7 @@ git commit -m "feat(homecoming): add named constants (scroll, intro, pulse)"
 
 ```ts
 // apps/website/src/__tests__/homecoming/beatProgress.test.ts
-import { beatProgress, ZONES } from '@/components/homecoming/spine/zones'
+import { beatProgress, ZONES } from '../../components/homecoming/spine/zones'
 
 describe('beatProgress', () => {
   it('returns 0 before the zone', () => {
@@ -268,7 +285,7 @@ describe('beatProgress', () => {
 - [ ] **Step 2: Run — expect FAIL**
 
 ```bash
-npx nx test website --testFile=beatProgress.test.ts
+npx nx test website --testPathPattern=beatProgress.test.ts
 ```
 
 - [ ] **Step 3: Implement `zones.ts`**
@@ -306,7 +323,7 @@ export function beatProgress(t: number, zone: Zone): number {
 - [ ] **Step 4: Run — expect PASS**
 
 ```bash
-npx nx test website --testFile=beatProgress.test.ts
+npx nx test website --testPathPattern=beatProgress.test.ts
 ```
 
 - [ ] **Step 5: Implement `useBeatProgress` hook (reads from the progress store)**
@@ -384,8 +401,8 @@ git commit -m "feat(homecoming): spine waypoint list"
 ```ts
 // apps/website/src/__tests__/homecoming/spine.test.ts
 import { Vector3 } from 'three'
-import { buildSpine } from '@/components/homecoming/spine/buildSpine'
-import { WAYPOINTS } from '@/components/homecoming/spine/waypoints'
+import { buildSpine } from '../../components/homecoming/spine/buildSpine'
+import { WAYPOINTS } from '../../components/homecoming/spine/waypoints'
 
 describe('buildSpine', () => {
   const spine = buildSpine(WAYPOINTS)
@@ -430,7 +447,7 @@ describe('buildSpine', () => {
 - [ ] **Step 2: Run — expect FAIL**
 
 ```bash
-npx nx test website --testFile=spine.test.ts
+npx nx test website --testPathPattern=spine.test.ts
 ```
 
 - [ ] **Step 3: Implement `buildSpine.ts`**
@@ -457,7 +474,7 @@ export function buildSpine(waypoints: readonly Waypoint[]): Spine {
 - [ ] **Step 4: Run — expect PASS**
 
 ```bash
-npx nx test website --testFile=spine.test.ts
+npx nx test website --testPathPattern=spine.test.ts
 ```
 
 - [ ] **Step 5: Commit**
@@ -641,8 +658,8 @@ git commit -m "feat(homecoming): demo + zero-state ceremony fixtures"
 
 ```ts
 // apps/website/src/__tests__/homecoming/getProofCopy.test.ts
-import { getProofCopy } from '@/components/homecoming/copy/getProofCopy'
-import type { ProofData } from '@/components/homecoming/types'
+import { getProofCopy } from '../../components/homecoming/copy/getProofCopy'
+import type { ProofData } from '../../components/homecoming/types'
 
 describe('getProofCopy', () => {
   it('returns "Label · <count>" for populated proofs', () => {
@@ -675,7 +692,7 @@ describe('getProofCopy', () => {
 - [ ] **Step 2: Run — expect FAIL**
 
 ```bash
-npx nx test website --testFile=getProofCopy.test.ts
+npx nx test website --testPathPattern=getProofCopy.test.ts
 ```
 
 - [ ] **Step 3: Implement**
@@ -841,6 +858,8 @@ export function useIntroTimeline() {
     return () => {
       window.removeEventListener('wheel', onIntent)
       window.removeEventListener('touchmove', onIntent)
+      // Restore scroll if we unmount before intro finished (e.g., nav away).
+      document.body.style.overflow = ''
     }
   }, [])
 
@@ -921,7 +940,15 @@ export type ChromeStoneOptions = {
   pulsePhase?: number
 }
 
-/** Extends MeshPhysicalMaterial with inner-pulse emissive via onBeforeCompile. */
+/**
+ * Pure factory. Returns a MeshPhysicalMaterial configured for chrome-stone
+ * with userData slots holding pulse state.
+ *
+ * Consumers are responsible for writing `material.emissiveIntensity` inside
+ * their own useFrame loop, typically via `applyChromeStonePulse(material, t)`
+ * below. Three.js does not have a material-level per-frame hook, so the
+ * pattern is: factory seeds state + helper, consumers drive it.
+ */
 export function createChromeStoneMaterial(opts: ChromeStoneOptions = {}): MeshPhysicalMaterial {
   const {
     albedo,
@@ -946,9 +973,6 @@ export function createChromeStoneMaterial(opts: ChromeStoneOptions = {}): MeshPh
     emissiveIntensity: pulseBaseline,
   })
 
-  // Expose per-frame controllable pulse state on userData.
-  // Consumers update userData.pulseIntensity in useFrame; we copy it into
-  // emissiveIntensity before each render.
   mat.userData.pulseBaseline = pulseBaseline
   mat.userData.pulseAmplitude = pulseAmplitude
   mat.userData.pulsePhase = pulsePhase
@@ -956,14 +980,21 @@ export function createChromeStoneMaterial(opts: ChromeStoneOptions = {}): MeshPh
   mat.userData.pulseProximity = 0
   mat.userData.uMaterialization = 1
 
-  mat.onBeforeRender = () => {
-    const { pulseBaseline: b, pulseAmplitude: a, pulseHoverBoost, pulseProximity, uMaterialization } = mat.userData
-    // Pulse is driven externally; this keeps emissive responsive to hover/proximity without re-render churn.
-    const intensity = (b + a * (pulseHoverBoost + pulseProximity)) * uMaterialization
-    mat.emissiveIntensity = intensity
-  }
-
   return mat
+}
+
+/**
+ * Call every frame from the consumer's useFrame. Computes emissiveIntensity
+ * from the material's userData slots and writes it to the material. Consumers
+ * mutate userData.pulseHoverBoost / pulseProximity / uMaterialization as needed.
+ */
+export function applyChromeStonePulse(mat: MeshPhysicalMaterial): void {
+  const b = (mat.userData.pulseBaseline ?? 0.25) as number
+  const a = (mat.userData.pulseAmplitude ?? 0.75) as number
+  const boost = (mat.userData.pulseHoverBoost ?? 0) as number
+  const proximity = (mat.userData.pulseProximity ?? 0) as number
+  const uMat = (mat.userData.uMaterialization ?? 1) as number
+  mat.emissiveIntensity = (b + a * (boost + proximity)) * uMat
 }
 ```
 
@@ -991,7 +1022,7 @@ git commit -m "feat(homecoming): ChromeStoneMaterial factory with inner-pulse em
 
 ```ts
 // apps/website/src/components/homecoming/materials/DustShader.ts
-import { ShaderMaterial, Color, Vector2, AdditiveBlending } from 'three'
+import { ShaderMaterial, Color, Vector2, AdditiveBlending, DoubleSide } from 'three'
 
 export type DustMode = 'raymarch' | 'billboard'
 
@@ -999,6 +1030,9 @@ export function createDustShader(mode: DustMode): ShaderMaterial {
   return new ShaderMaterial({
     transparent: true,
     depthWrite: false,
+    // DoubleSide so the dust renders while the camera is inside the slab
+    // (camera travels from y=-2 to y=-86 *through* this volume).
+    side: DoubleSide,
     blending: AdditiveBlending,
     uniforms: {
       uTime: { value: 0 },
@@ -1264,12 +1298,11 @@ export function MarsSurface({ tier }: { tier: DeviceTier }) {
   const size = tier >= 3 ? 200 : tier >= 2 ? 120 : 80
   const segs = tier >= 3 ? 128 : tier >= 2 ? 64 : 32
 
-  const dustRef = useRef<any>(null)
   const dustMode = tier >= 3 ? 'raymarch' : 'billboard'
   const dustMat = useMemo(() => createDustShader(dustMode), [dustMode])
 
   useFrame((_, delta) => {
-    if (dustMat) dustMat.uniforms.uTime.value += delta
+    dustMat.uniforms.uTime.value += delta
   })
 
   return (
@@ -1280,8 +1313,9 @@ export function MarsSurface({ tier }: { tier: DeviceTier }) {
         <meshStandardMaterial map={albedo} normalMap={normal} roughness={0.95} metalness={0.0} />
       </mesh>
 
-      {/* Dust volume — tall slab from y=-5 to y=-95 centered on spine axis */}
-      <mesh position={[0, -50, 0]} material={dustMat} ref={dustRef}>
+      {/* Dust volume — tall slab from y=-5 to y=-95 centered on spine axis.
+          DustShader renders DoubleSide so it's visible while camera is inside. */}
+      <mesh position={[0, -50, 0]} material={dustMat}>
         <boxGeometry args={[80, 90, 80]} />
       </mesh>
 
@@ -1321,7 +1355,7 @@ import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import { useRef, useMemo, useEffect } from 'react'
 import { Group, MeshPhysicalMaterial, Mesh, MathUtils } from 'three'
-import { createChromeStoneMaterial } from '../materials/ChromeStoneMaterial'
+import { createChromeStoneMaterial, applyChromeStonePulse } from '../materials/ChromeStoneMaterial'
 import { useCeremonyProgress } from '../state/useCeremonyProgress'
 import { useCeremonyInteraction } from '../state/useCeremonyInteraction'
 import {
@@ -1376,6 +1410,7 @@ export function ZLogoMonument() {
       m.userData.pulseHoverBoost = osc * boost * 0.5
       m.userData.pulseProximity = osc * 0.5  // baseline breath
       m.userData.uMaterialization = uMat
+      applyChromeStonePulse(m)
     })
   })
 
@@ -1655,7 +1690,7 @@ git commit -m "feat(homecoming): ProofStack maps 4 proofs to anchors + zones"
 import { useRef, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Group, MathUtils, Vector3 } from 'three'
-import { createChromeStoneMaterial } from '../materials/ChromeStoneMaterial'
+import { createChromeStoneMaterial, applyChromeStonePulse } from '../materials/ChromeStoneMaterial'
 import { readBeatProgress } from '../hooks/useBeatProgress'
 import { ZONES } from '../spine/zones'
 import type { DeviceTier } from '../hooks/useDeviceTier'
@@ -1670,6 +1705,9 @@ const RINGS: RingCfg[] = [
   { radius: 2.5, y: -117, thickness: 0.45 },
 ]
 
+// Hoist module-scope temp to avoid per-frame allocation (spec §6).
+const PORTAL_CENTER = new Vector3(0, -112, 0)
+
 export function PortalStoneRings({ tier }: { tier: DeviceTier }) {
   const groupRef = useRef<Group>(null!)
   const material = useMemo(() => createChromeStoneMaterial({ pulsePhase: 1.5 }), [])
@@ -1677,14 +1715,13 @@ export function PortalStoneRings({ tier }: { tier: DeviceTier }) {
   const fragCount = FRAGMENTS_PER_RING[tier]
 
   useFrame(() => {
-    const t = readBeatProgress([ZONES.portalApproach[0], ZONES.chamberReveal[1]])
-    // Proximity-based pulse amplification
-    const portalCenter = new Vector3(0, -112, 0)
-    const dist = camera.position.distanceTo(portalCenter)
+    const uApproach = readBeatProgress([ZONES.portalApproach[0], ZONES.chamberReveal[1]])
+    void uApproach  // reserved for arc-energy or core-disc intensity tuning
+    const dist = camera.position.distanceTo(PORTAL_CENTER)
     const proximity = MathUtils.clamp(1 - dist / 30, 0, 1)
     material.userData.pulseProximity = proximity
     material.userData.uMaterialization = 1
-    // Brighten the whole ring group as portalApproach progresses
+    applyChromeStonePulse(material)
     if (groupRef.current) groupRef.current.visible = true
   })
 
@@ -1995,38 +2032,41 @@ export function BottomLeftSound() {
 
 ```tsx
 // ScrollHint.tsx
+// The bounce keyframe is inlined via a <style> tag — the website app does
+// not currently have a global stylesheet entrypoint we can append to
+// without touching other teams.
 import { useCeremonyProgress } from '../state/useCeremonyProgress'
+
+const BOUNCE_KEYFRAME = `
+@keyframes homecoming-scrollhint-bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%      { transform: translateX(-50%) translateY(6px); }
+}`
+
 export function ScrollHint() {
   const t = useCeremonyProgress((s) => s.tLerp)
   const introDone = useCeremonyProgress((s) => s.introDone)
   if (!introDone || t > 0.03) return null
   return (
-    <div
-      style={{ position: 'fixed', bottom: 48, left: '50%', transform: 'translateX(-50%)',
-               zIndex: 20, color: '#ffd9a8', fontFamily: 'monospace', fontSize: 12, opacity: 0.7, letterSpacing: 2,
-               animation: 'homecoming-bounce 1.8s infinite ease-in-out' }}
-      aria-hidden
-    >
-      scroll ↓
-    </div>
+    <>
+      <style>{BOUNCE_KEYFRAME}</style>
+      <div
+        style={{ position: 'fixed', bottom: 48, left: '50%', transform: 'translateX(-50%)',
+                 zIndex: 20, color: '#ffd9a8', fontFamily: 'monospace', fontSize: 12, opacity: 0.7, letterSpacing: 2,
+                 animation: 'homecoming-scrollhint-bounce 1.8s infinite ease-in-out' }}
+        aria-hidden
+      >
+        scroll ↓
+      </div>
+    </>
   )
-}
-```
-
-Add the keyframe in `apps/website/src/styles/globals.css` (monorepo typically has this):
-
-```css
-@keyframes homecoming-bounce {
-  0%, 100% { transform: translateX(-50%) translateY(0); }
-  50% { transform: translateX(-50%) translateY(6px); }
 }
 ```
 
 - [ ] **Step 2: Commit**
 
 ```bash
-git add apps/website/src/components/homecoming/hud/ \
-        apps/website/src/styles/globals.css
+git add apps/website/src/components/homecoming/hud/
 git commit -m "feat(homecoming): HUD chrome (logo, sound, scroll hint)"
 ```
 
@@ -2263,10 +2303,18 @@ cat apps/website/src/pages/homecoming/index.tsx
 ```tsx
 // apps/website/src/pages/homecoming/index.tsx
 import type { GetServerSideProps } from 'next'
-import { Ceremony } from '@/components/homecoming/Ceremony'
-import { DEMO_CEREMONY, ZERO_STATE_CEREMONY } from '@/components/homecoming/data/demo'
-import type { CeremonyData } from '@/components/homecoming/types'
-import { CeremonyDataSchema } from '@/components/homecoming/types'
+import dynamic from 'next/dynamic'
+import { DEMO_CEREMONY, ZERO_STATE_CEREMONY } from '../../components/homecoming/data/demo'
+import type { CeremonyData } from '../../components/homecoming/types'
+import { CeremonyDataSchema } from '../../components/homecoming/types'
+
+// Client-only: the Ceremony component uses window.matchMedia, document, and
+// @react-three/fiber's Canvas — rendering it on the server causes a hydration
+// mismatch. next/dynamic with ssr:false is the standard Pages-Router fix.
+const Ceremony = dynamic(
+  () => import('../../components/homecoming/Ceremony').then((m) => m.Ceremony),
+  { ssr: false },
+)
 
 export default function HomecomingPage({ data }: { data: CeremonyData }) {
   return <Ceremony data={data} />
@@ -2298,18 +2346,31 @@ git commit -m "feat(homecoming): page route renders Ceremony via getServerSidePr
 
 ---
 
-### Task 6.6: Fix orphan imports from the deletion in Task 1.1
+### Task 6.6: Delete orphan `lib/homecoming/` + fix any remaining callers
 
 **Files:**
-- Modify: any file from Task 1.1 Step 3's orphan list (typically `apps/website/src/components/helpers/home/HeroSection.tsx`)
+- Delete: `apps/website/src/lib/homecoming/beatTimeline.ts`
+- Delete: `apps/website/src/lib/homecoming/endpoints.ts`
+- Delete: `apps/website/src/lib/homecoming/fixtures.ts`
+- Delete: `apps/website/src/lib/homecoming/obeliskPositions.ts`
+- Delete: `apps/website/src/lib/homecoming/rankBands.ts`
+- Delete: `apps/website/src/lib/homecoming/` (the now-empty directory)
 
-- [ ] **Step 1: Re-grep for orphans**
+The entire `lib/homecoming/` directory existed only to serve the deleted prototype (mutual imports with the old `components/homecoming/types.ts`). The new engine has its own `CeremonyData` types and does not need `beatTimeline`, `rankBands`, `obeliskPositions`, `endpoints`, or `fixtures`.
+
+- [ ] **Step 1: Confirm nothing else imports from lib/homecoming**
 
 ```bash
-grep -rn "from.*components/homecoming" apps/website/src --include="*.tsx" --include="*.ts"
+grep -rn "from.*lib/homecoming" apps/website/src --include="*.tsx" --include="*.ts"
 ```
 
-- [ ] **Step 2: For each orphan**, delete the import and any usage. The homecoming prototype was experimental — nothing outside that directory should depend on its internals. If a caller needed something real, the ceremony page route `/homecoming` is the new surface.
+Expected: only matches inside `src/lib/homecoming/` itself (mutual imports between these 5 files). If any file *outside* that directory imports from it, flag — this plan assumes the orphan surface is bounded.
+
+- [ ] **Step 2: Delete**
+
+```bash
+git rm -rf apps/website/src/lib/homecoming/
+```
 
 - [ ] **Step 3: Build**
 
@@ -2317,13 +2378,21 @@ grep -rn "from.*components/homecoming" apps/website/src --include="*.tsx" --incl
 npx nx build website 2>&1 | tail -10
 ```
 
-Expected: clean build.
+Expected: clean build. No remaining orphan errors.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Grep one more time for any leftover references**
+
+```bash
+grep -rn "from.*components/homecoming\|from.*lib/homecoming" apps/website/src --include="*.tsx" --include="*.ts"
+```
+
+Expected: only legitimate imports from inside the new `components/homecoming/` tree. If `components/helpers/home/HeroSection.tsx` or any other caller from outside the homecoming surface still has a stale import, delete the import line and any downstream usage (the prototype was experimental — nothing outside `homecoming/` should have load-bearing dependencies on its internals).
+
+- [ ] **Step 5: Commit**
 
 ```bash
 git add -A apps/website/src
-git commit -m "chore(homecoming): remove orphan imports from deleted prototype"
+git commit -m "chore(homecoming): delete lib/homecoming prototype scaffolding"
 ```
 
 ---
@@ -2358,27 +2427,32 @@ Verify each of the following in order:
 
 Navigate to `/homecoming?debug=1&t=0.62`. Camera should jump to the portal-entry pose. Try `t=0.0`, `t=0.4`, `t=1.0`. Verify no errors in console.
 
-- [ ] **Step 4: Capture visual issues as follow-up tasks**
+- [ ] **Step 4: Verify zero-state path**
+
+Navigate to `/homecoming?zero=1`. Scroll through. Proof card faces should show the zero-state strings (`"Destinations · Your first one awaits"` etc.) instead of numeric counts. CTA still renders and navigates normally. Canvas textures can be inspected in browser DevTools if copy looks wrong.
+
+- [ ] **Step 5: Capture visual issues as follow-up tasks**
 
 Any visual problems (flickering, material misbehavior, z-fighting, bloom overshoot) go into a follow-up task list, not into this plan. The goal of this step is *engine works end-to-end*, not pixel-perfect.
 
-- [ ] **Step 5: Commit a session note if anything was fixed along the way**
+- [ ] **Step 6: Commit a session note if anything was fixed along the way**
 
 ---
 
-### Task 6.8: Playwright smoke test
+### Task 6.8: Playwright smoke test (conditional)
 
-**Files:**
-- Create: `apps/website/e2e/homecoming.spec.ts` (or wherever the website app's Playwright specs live — check `apps/website/project.json` for the e2e target config)
+**Gate:** the monorepo does NOT currently have an `apps/website-e2e` project. Only proceed with this task if the e2e scaffold already exists (check via `ls apps/website-e2e 2>/dev/null`). If it does not exist, **skip this task and file a follow-up** titled "Scaffold apps/website-e2e + port Homecoming smoke tests". Do not block the PR on this.
 
-- [ ] **Step 1: Check where Playwright specs live**
+**Files (only if scaffold exists):**
+- Create: `apps/website-e2e/src/homecoming.spec.ts` (adjust path to match the scaffold's existing `src/` convention)
+
+- [ ] **Step 1: Confirm scaffold presence**
 
 ```bash
-find apps/website -name "*.spec.ts" -path "*e2e*" | head -3
-find apps/website -name "playwright.config*" | head
+ls apps/website-e2e 2>/dev/null && echo "scaffold present" || echo "skip this task"
 ```
 
-Follow the existing pattern. If no Playwright setup exists in `apps/website`, skip this task and file a follow-up to add e2e infra.
+If output is "skip this task", stop here and open a GitHub issue titled as above referencing this plan. Proceed to Task 6.9.
 
 - [ ] **Step 2: Write smoke test**
 
@@ -2455,7 +2529,7 @@ Implementation plan: `docs/superpowers/plans/2026-04-24-homecoming-ceremony-engi
 
 ## Test plan
 - [ ] `npx nx test website` passes (unit: schema, spine, beatProgress, getProofCopy)
-- [ ] `npx nx e2e website-e2e` passes (mount, CTA navigation, reduced-motion fallback)
+- [ ] `npx nx e2e website-e2e` passes (mount, CTA navigation, reduced-motion fallback) — *only if website-e2e scaffold exists; otherwise tracked as a follow-up*
 - [ ] Visual walkthrough on http://localhost:4202/homecoming matches Task 6.7 checklist
 - [ ] `?debug=1&t=<value>` deep-links work at t=0, 0.3, 0.62, 1.0
 - [ ] `?zero=1` renders zero-state proof copy
