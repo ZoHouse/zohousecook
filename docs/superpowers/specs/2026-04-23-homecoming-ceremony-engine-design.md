@@ -102,7 +102,7 @@ PHASE D  (3.5s+)      IDLE (t=0) — fully rendered Mars scene, front-on,
 
 **Mechanism:** a single global shader uniform `uMaterialization ∈ [0, 1]` drives the reveal. Every custom material in the scene has `uMaterialization` injected. `0` = wireframe-only mode (emissive edge lines); `1` = full PBR. Phase B → C tweens the uniform from 0 → 1 with an ease-out over ~1.5s. Camera transform tweens in parallel over the same duration.
 
-**Skip path:** if the user scrolls during Phase B or C, the intro fast-forwards (remaining materialization compresses to ~300ms) and normal scroll-driven `t` takes over.
+**Skip path:** during intro, `body` has `overflow: hidden` so the scroll position cannot move, but we still listen at `window` for `wheel` and `touchmove` *intent* events. Any intent event during Phase B or C fast-forwards the intro (remaining materialization compresses to ~300ms, `introDone = true` fires, overflow clears). The user's next real scroll gesture then drives `t` normally. Intent events during Phase A (pre-geometry) are ignored.
 
 **Preloader gate:** Phase A waits for `useProgress()` from drei to report geometry loaded. Textures can continue streaming during materialization — they pop in as the surfaces solidify, which reads as thematic.
 
@@ -120,11 +120,14 @@ The camera is a point riding two parallel `THREE.CatmullRomCurve3` curves: one f
 | 0.27 | (0, -28, 8) | (0, -35, 0) | approach proof 2 |
 | 0.39 | (0, -48, 8) | (0, -55, 0) | approach proof 3 |
 | 0.50 | (0, -68, 8) | (0, -75, 0) | approach proof 4 |
-| 0.55 | (0, -95, 3) | (0, -110, 0) | tip to top-down |
+| 0.56 | (0, -86, 6) | (0, -95, 0) | post-proof4 settle, begin pitch |
+| 0.60 | (0, -98, 3) | (0, -110, 0) | tip to top-down |
 | 0.62 | (0, -110, 0) | (0, -160, 0) | enter portal |
 | 0.70 | (0, -135, 0) | (0, -160, 0) | through rings |
 | 0.82 | (0, -150, 2) | (0, -158, 0) | ease off-axis, see Zobu |
 | 1.00 | (0.5, -148, 3.5) | (0, -155, 0) | chamber settle |
+
+**Zone / waypoint alignment:** proof4's hold-to-fade envelope completes by `u ≈ 0.54`; the `0.56` settle waypoint gives the camera a clean moment after proof4 fully fades before pitching. The portal reveal pitch happens entirely inside `ZONES.portalApproach = [0.55, 0.62]`, not on the proof4/portal boundary. Zones and waypoints are co-tuned, not independent.
 
 Curves are built with tension `0.3` to prevent overshooting. Runtime uses `getPointAt()` (arc-length parameterization) so visual speed is even regardless of waypoint density.
 
@@ -204,7 +207,7 @@ Each module is a self-contained R3F component that mounts once, lives in the tre
 
 - Large terrain plane with displaced heightmap at `y = 0`, extends ~200 units, disappears under dust past `y = -5`.
 - Ringed planet: one billboarded sphere far behind the horizon, parallaxes very slightly with camera position.
-- Dust volume: vertical slab from `y = -5` to `y = -95`, `ShaderMaterial` raymarched noise (tier 3) or stacked billboard planes (tier 2/1). Dust thins below `y = -95` so the portal reveal is unoccluded.
+- Dust volume: vertical slab from `y = -5` to `y = -95`, rendered via the shared `DustShader` (see section 4.1). Tier 3 uses raymarched 3D simplex noise; tiers 2/1 fall back to stacked billboard planes sampling the same 2D noise texture. `DustShader` is authored once and exposes a `mode: 'raymarch' | 'billboard'` uniform selected at mount from the device tier.
 - Dust noise scrolls over time regardless of `t` — always alive.
 - Mars surface mesh frustum-culls once camera is below `y = -50`.
 
@@ -407,6 +410,15 @@ Encoded in `getProofCopy(proof: ProofData)`, not in branching beats.
 5. **Audio:** Optional, off by default; single ambient track if we ship with audio. Ships silent if not.
 6. **CTA copy:** "Become a citizen."
 
+### Named constants
+
+Load-bearing values exported from `components/homecoming/constants.ts` so they are referenced, not re-typed:
+
+- `SCROLL_SPACER_VH = 600` — the tall spacer div height in `vh`. Governs total scroll distance and therefore `t` sensitivity. Any change directly shifts how much physical scroll corresponds to a zone.
+- `PASSPORT_SUCCESS_ROUTE: string` — the route the CTA navigates to. **Currently unresolved** (see open items), so the constant is exported as `PASSPORT_SUCCESS_ROUTE = '/passport/success'` as a placeholder. When the canonical route is confirmed (see memory `project_passport_is_home` — candidates are `/passport`, `/passport/success`, or `/@handle`), this single constant is the only line to change. The CTA imports from here, nothing else hard-codes the URL.
+- `INTRO_PHASE_B_MS = 1400`, `INTRO_PHASE_C_MS = 1500`, `INTRO_SKIP_COMPRESS_MS = 300` — intro timing knobs.
+- `DAMPING_LAMBDA = 8` — `damp()` smoothing constant for `tLerp`.
+
 ## 5.5. 3D Asset Manifest
 
 Already available: **chrome `\z/` monument (.glb)**, **idle Zobu (.glb)**.
@@ -451,8 +463,13 @@ Chamber concentric floor rings, chamber ceiling light ring, red dust volume, ele
 - [ ] chrome-stone texture set (albedo + normal + roughness)
 - [ ] Mars terrain texture set (albedo + normal ± heightmap)
 - [ ] ringed planet textures (body + ring band)
-- [ ] verify `\z/` monument has separable pillars + emissive channel
-- [ ] verify idle Zobu is watertight + sub-50k tris
+
+### Pre-plan blockers (resolve before implementation begins)
+
+These are not shopping-list items. If either fails, the tier-1 scope (inner chrome pulse, particle resolve) breaks and the design needs a fallback authored before coding starts.
+
+- **Existing `\z/` monument `.glb` audit** — confirm the model has separable pillar meshes (each pillar addressable independently for hover, pulse, and arc spawn points) and either an interior cavity mesh or an emissive shader channel available on each pillar. If fused into one mesh, split and re-export before implementation. If no interior cavity, the inner-pulse shader needs an alternative authoring path (subsurface approximation) that must be spec'd.
+- **Existing idle Zobu `.glb` audit** — confirm watertight geometry (required for `MeshSurfaceSampler` to distribute points evenly — holes cause sampling bias) and sub-50k triangle count (required for `EdgesGeometry` wireframe stage to stay under frame budget). If not watertight, re-mesh before implementation. If over budget, decimate.
 
 **Hosting:** all assets on `cdn.zo.xyz`, never `apps/website/public/` (see memory `feedback_vercel_public_not_served`). Engine loads via `useGLTF('https://cdn.zo.xyz/homecoming/...')`.
 
@@ -477,9 +494,11 @@ Target: 60fps on desktop, 30fps minimum on tablet, degraded still-image + CTA on
 | `<MarsSurface>` | 200×200, 200u distance | 100×100, 120u | 50×50, 80u |
 | dust volume | raymarched | stacked billboards | same as mid |
 | `<ProofStack>` | full PBR | reduced roughness sampling | flat shaded |
-| `<PortalStoneRings>` | 48 fragments | 40 | 32 |
+| `<PortalStoneRings>` | 4 rings × 12 fragments = 48 | 4 rings × 10 = 40 | 4 rings × 8 = 32 |
 | `<ZobuParticleForm>` | 40k points, custom shader | 20k | 8k, default point material |
 | `<PostFX>` | bloom + chromatic + grain + vignette | bloom + grain | off |
+
+**LOD rule for portal rings:** ring *count* is fixed at 4 across all tiers (the four concentric rings are narrative, not decorative). Tier-based LOD reduces only the number of *fragments per ring* (12 / 10 / 8). `8 fragments × 4 rings = 32` meets the `<PortalStoneRings>` module minimum (8 fragment pieces per ring) exactly on tier 1.
 
 Bloom is expensive and the first to go. Anything raymarched scales or disappears on tier 1.
 
@@ -631,6 +650,55 @@ apps/website/src/
 
 Replaces the existing `apps/website/src/components/homecoming/*` wholesale. Scroll is driven by the spacer div inside `Ceremony.tsx`; there is no separate `ScrollRail`.
 
+**`<CitizenshipCTA>` is HTML, not inside the canvas.** It is a sibling of `<Canvas>` inside `Ceremony.tsx`, positioned absolutely over the canvas viewport. It reads `t` from the progress store, fades in at `t ≥ 0.95`, and on click imports `PASSPORT_SUCCESS_ROUTE` and calls `router.push()` after firing the `<PostFX>` bloom wash. No part of the CTA is rendered as a 3D mesh.
+
+### Deletions — the full replace surface
+
+Every file below in `apps/website/src/components/homecoming/` is removed as part of this rewrite. The new file tree above is the complete replacement. Nothing from the prototype survives.
+
+```
+DELETE apps/website/src/components/homecoming/
+├── HomecomingStage.tsx                    (replaced by Ceremony.tsx)
+├── ScrollRail.tsx                         (replaced by inline ScrollSpacer in Ceremony.tsx)
+├── types.ts                               (replaced by new types.ts)
+├── canvas/
+│   ├── AmbientBackdrop.tsx                (subsumed by SceneEnvironment)
+│   ├── AmbientParticles.tsx               (subsumed by Chamber ambient motes)
+│   ├── ArtifactMonument.tsx               (replaced by ProofStack/Proof)
+│   ├── CameraRig.tsx                      (replaced by new CameraRig)
+│   ├── HomecomingCanvas.tsx               (merged into Ceremony.tsx)
+│   ├── LightRibbon.tsx                    (dropped — not part of new grammar)
+│   ├── Obelisk.tsx                        (replaced by ZLogoMonument)
+│   ├── ObeliskGlyph.tsx                   (replaced by inner-pulse shader)
+│   ├── ParticleField.tsx                  (replaced by ZobuParticleForm point cloud)
+│   ├── PassportCardFace.tsx               (dropped — CTA is HTML, not 3D card)
+│   ├── PassportCardMesh.tsx               (dropped — see above)
+│   ├── PortalScene.tsx                    (replaced by PortalStoneRings + Chamber)
+│   └── SceneEnvironment.tsx               (replaced by new SceneEnvironment)
+├── hooks/
+│   ├── useBeatProgress.ts                 (replaced by new useBeatProgress + zones.ts)
+│   ├── useCompleteHomecoming.ts           (dropped — no tap-to-complete flow; CTA handles it)
+│   ├── useHomecomingPayload.ts            (replaced by CeremonyData props via getServerSideProps)
+│   └── useRankTransitions.ts              (dropped — no XP/rank UI during ceremony)
+├── nav/
+│   ├── HomecomingNav.tsx                  (dropped — no nav in new HUD)
+│   ├── MenuDots.tsx                       (dropped)
+│   ├── ProgressBar.tsx                    (dropped — scroll itself is the progress)
+│   ├── RankPill.tsx                       (dropped — no XP/rank UI during ceremony)
+│   ├── XpPill.tsx                         (dropped)
+│   └── ZoLogoMark.tsx                     (replaced by new TopLeftLogo)
+├── overlay/
+│   ├── BeatCopy.tsx                       (dropped — copy is on proof card faces)
+│   ├── FloatingXpPill.tsx                 (dropped)
+│   ├── ObeliskCaption.tsx                 (dropped)
+│   ├── StickyEnterButton.tsx              (replaced by CitizenshipCTA)
+│   └── TakePassportHint.tsx               (dropped — CTA is the only hint)
+└── fallback/
+    └── ReducedMotionStack.tsx             (replaced by new fallback/CeremonyFallback.tsx — broader scope: reduced motion, low-end, no-WebGL, load timeout)
+```
+
+The replacement surface (section 7 file tree above) matches the deletion surface: no orphan files remain. The git commit that lands the rewrite should show these files as deletions paired with the new files as additions.
+
 ### Explicit non-goals
 
 - No per-user Zobu trait compositing in this engine — `ZobuData.modelUrl` comes pre-baked.
@@ -646,7 +714,7 @@ Replaces the existing `apps/website/src/components/homecoming/*` wholesale. Scro
 1. Spine waypoint tuning — illustrative numbers here; tuned in-browser.
 2. Audio track source/duration if shipped in v1.
 3. Fallback poster image — requires a frozen scene to screenshot from.
-4. Final passport success route URL (`/passport/success`, `/@handle`, or other — see `project_passport_is_home`).
+4. Final passport success route URL — isolated behind `PASSPORT_SUCCESS_ROUTE` constant (see section 5, *Named constants*). One-line change when the canonical route is confirmed against `project_passport_is_home`. Does not block implementation; placeholder is safe.
 5. Copy review on zero-state proof strings.
 
 ## Summary of locked decisions
