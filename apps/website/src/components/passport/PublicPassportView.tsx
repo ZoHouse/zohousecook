@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@zo/auth";
-import { usePublicPassport } from "../../hooks/usePublicPassport";
+import { usePublicPassport, type PublicPassport } from "../../hooks/usePublicPassport";
 import { SideNavRail } from "../passport-lobby/SideNavRail";
 import { MapModal } from "../passport-lobby/MapModal";
 import { TopBar } from "../passport-lobby/TopBar";
@@ -18,6 +18,7 @@ import StampsGrid from "./StampsGrid";
 interface PublicPassportViewProps {
   handle: string;
   viewerState: ViewerState;
+  initialData?: PublicPassport | null;
 }
 
 type PublicData = NonNullable<ReturnType<typeof usePublicPassport>["data"]>;
@@ -71,10 +72,10 @@ function adaptRoles(data: PublicData) {
   return { displayNames: data.roles.map((r) => r.label) };
 }
 
-export function PublicPassportView({ handle, viewerState }: PublicPassportViewProps) {
+export function PublicPassportView({ handle, viewerState, initialData }: PublicPassportViewProps) {
   const router = useRouter();
   const { isLoggedIn, showLoginModal } = useAuth();
-  const { data, isLoading, isError } = usePublicPassport(handle);
+  const { data, isLoading, isError } = usePublicPassport(handle, initialData);
   // Viewer's own profile, for the global RankPill. Does not affect the viewed
   // passport data — that still comes from usePublicPassport(handle) above.
   const { profile: viewerProfile } = useMyProfile();
