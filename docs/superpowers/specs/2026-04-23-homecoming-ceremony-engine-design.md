@@ -602,6 +602,7 @@ apps/website/src/
 │   └── homecoming/
 │       ├── Ceremony.tsx              # <Canvas> wrapper + HUD
 │       ├── types.ts                  # CeremonyData, ProofData, ZobuData
+│       ├── constants.ts              # SCROLL_SPACER_VH, PASSPORT_SUCCESS_ROUTE, INTRO_*_MS, DAMPING_LAMBDA
 │       ├── data/
 │       │   └── demo.ts               # DEMO_CEREMONY
 │       ├── copy/
@@ -630,9 +631,9 @@ apps/website/src/
 │       │   ├── ChromeStoneMaterial.ts
 │       │   └── DustShader.ts
 │       ├── spine/
-│       │   ├── waypoints.ts
-│       │   ├── zones.ts
-│       │   └── buildSpine.ts
+│       │   ├── waypoints.ts           # the Waypoint[] list from §3
+│       │   ├── zones.ts               # the ZONES constant from §3
+│       │   └── buildSpine.ts          # constructs positionSpine + lookAtSpine
 │       ├── hud/
 │       │   ├── TopLeftLogo.tsx
 │       │   ├── BottomLeftSound.tsx
