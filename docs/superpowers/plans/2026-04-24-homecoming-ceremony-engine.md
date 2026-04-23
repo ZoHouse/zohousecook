@@ -945,7 +945,7 @@ export type ChromeStoneOptions = {
  * with userData slots holding pulse state.
  *
  * Consumers are responsible for writing `material.emissiveIntensity` inside
- * their own useFrame loop, typically via `applyChromeStonePulse(material, t)`
+ * their own useFrame loop, typically via `applyChromeStonePulse(material)`
  * below. Three.js does not have a material-level per-frame hook, so the
  * pattern is: factory seeds state + helper, consumers drive it.
  */
@@ -1715,8 +1715,6 @@ export function PortalStoneRings({ tier }: { tier: DeviceTier }) {
   const fragCount = FRAGMENTS_PER_RING[tier]
 
   useFrame(() => {
-    const uApproach = readBeatProgress([ZONES.portalApproach[0], ZONES.chamberReveal[1]])
-    void uApproach  // reserved for arc-energy or core-disc intensity tuning
     const dist = camera.position.distanceTo(PORTAL_CENTER)
     const proximity = MathUtils.clamp(1 - dist / 30, 0, 1)
     material.userData.pulseProximity = proximity
@@ -2457,7 +2455,7 @@ If output is "skip this task", stop here and open a GitHub issue titled as above
 - [ ] **Step 2: Write smoke test**
 
 ```ts
-// apps/website/e2e/homecoming.spec.ts
+// apps/website-e2e/src/homecoming.spec.ts
 import { test, expect } from '@playwright/test'
 
 test.describe('Homecoming ceremony', () => {
@@ -2498,7 +2496,7 @@ npx nx e2e website-e2e
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/website/e2e/homecoming.spec.ts
+git add apps/website-e2e/src/homecoming.spec.ts
 git commit -m "test(homecoming): playwright smoke (mount, CTA, reduced-motion)"
 ```
 
