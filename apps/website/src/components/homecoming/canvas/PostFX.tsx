@@ -14,7 +14,12 @@ export function PostFX({ tier }: { tier: DeviceTier }) {
     <EffectComposer multisampling={tier >= 3 ? 4 : 0}>
       <Bloom intensity={0.6} luminanceThreshold={0.6} luminanceSmoothing={0.2} mipmapBlur />
       {tier >= 3 ? (
-        <ChromaticAberration blendFunction={BlendFunction.NORMAL} offset={caOffset} />
+        <ChromaticAberration
+          blendFunction={BlendFunction.NORMAL}
+          offset={caOffset}
+          radialModulation={false}
+          modulationOffset={0.15}
+        />
       ) : <></>}
       <Noise opacity={0.04} premultiply blendFunction={BlendFunction.SCREEN} />
       {tier >= 3 ? <Vignette eskil={false} offset={0.3} darkness={0.6} /> : <></>}
