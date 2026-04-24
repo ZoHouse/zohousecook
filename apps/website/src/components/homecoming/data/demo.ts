@@ -1,6 +1,13 @@
 // apps/website/src/components/homecoming/data/demo.ts
 import type { CeremonyData } from '../types'
 
+// Dev uses a local asset under apps/website/public/homecoming-dev/.
+// Prod points at the per-user baked Zobu; generic fallback lives on cdn.zo.xyz.
+const ZOBU_URL =
+  process.env.NODE_ENV === 'production'
+    ? 'https://cdn.zo.xyz/zobu/generic-v1.glb'
+    : '/homecoming-dev/zobu-generic-v1.glb'
+
 export const DEMO_CEREMONY: CeremonyData = {
   user: { id: 'demo', handle: 'samurai', displayName: 'Samurai' },
   proofs: [
@@ -9,7 +16,7 @@ export const DEMO_CEREMONY: CeremonyData = {
     { id: 'zostels',      label: 'Zostels',      count: 23 },
     { id: 'tribe',        label: 'Tribe',        count: 184 },
   ],
-  zobu: { modelUrl: 'https://cdn.zo.xyz/zobu/generic-v1.glb' },
+  zobu: { modelUrl: ZOBU_URL },
 }
 
 // Zero-state variant for preview — flip in getServerSideProps via ?zero=1.
@@ -21,5 +28,5 @@ export const ZERO_STATE_CEREMONY: CeremonyData = {
     { id: 'zostels',      label: 'Zostels',      count: 0 },
     { id: 'tribe',        label: 'Tribe',        count: 0 },
   ],
-  zobu: { modelUrl: 'https://cdn.zo.xyz/zobu/generic-v1.glb' },
+  zobu: { modelUrl: ZOBU_URL },
 }

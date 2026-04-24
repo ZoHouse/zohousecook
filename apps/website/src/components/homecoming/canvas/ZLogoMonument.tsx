@@ -13,7 +13,12 @@ import {
   CHROME_STONE_PULSE_FREQ_HZ_HOVERED,
 } from '../constants'
 
-const MONUMENT_URL = 'https://cdn.zo.xyz/homecoming/models/z-monument.glb'
+// Dev uses a local asset under apps/website/public/homecoming-dev/.
+// Prod uses cdn.zo.xyz once the CDN is populated.
+const MONUMENT_URL =
+  process.env.NODE_ENV === 'production'
+    ? 'https://cdn.zo.xyz/homecoming/models/z-monument.glb'
+    : '/homecoming-dev/z-monument.glb'
 
 useGLTF.preload(MONUMENT_URL)
 

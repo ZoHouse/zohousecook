@@ -1,20 +1,39 @@
 // apps/website/src/components/homecoming/canvas/MarsSurface.tsx
 import { useMemo } from 'react'
 import { useFrame, useLoader } from '@react-three/fiber'
-import { TextureLoader, RepeatWrapping, DoubleSide } from 'three'
+import { TextureLoader, RepeatWrapping, DoubleSide, Texture } from 'three'
 import { createDustShader } from '../materials/DustShader'
 import type { DeviceTier } from '../hooks/useDeviceTier'
 
+// Mars terrain textures. Dev falls back to solid color when CDN assets are
+// missing (see apps/website/public/homecoming-dev/ for local preview assets).
+const HAS_CDN_TEXTURES = process.env.NODE_ENV === 'production'
 const ALBEDO_URL = 'https://cdn.zo.xyz/homecoming/textures/mars-albedo-2k.jpg'
 const NORMAL_URL = 'https://cdn.zo.xyz/homecoming/textures/mars-normal-2k.jpg'
 
-export function MarsSurface({ tier }: { tier: DeviceTier }) {
-  const [albedo, normal] = useLoader(TextureLoader, [ALBEDO_URL, NORMAL_URL])
+function MarsTerrainMaterial({ size, segs }: { size: number; segs: number }) {
+  if (!HAS_CDN_TEXTURES) {
+    return (
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow={false}>
+        <planeGeometry args={[size, size, segs, segs]} />
+        <meshStandardMaterial color="#8a3f28" roughness={0.95} metalness={0.0} />
+      </mesh>
+    )
+  }
+  const [albedo, normal] = useLoader(TextureLoader, [ALBEDO_URL, NORMAL_URL]) as [Texture, Texture]
   for (const tex of [albedo, normal]) {
     tex.wrapS = tex.wrapT = RepeatWrapping
     tex.repeat.set(8, 8)
   }
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow={false}>
+      <planeGeometry args={[size, size, segs, segs]} />
+      <meshStandardMaterial map={albedo} normalMap={normal} roughness={0.95} metalness={0.0} />
+    </mesh>
+  )
+}
 
+export function MarsSurface({ tier }: { tier: DeviceTier }) {
   const size = tier >= 3 ? 200 : tier >= 2 ? 120 : 80
   const segs = tier >= 3 ? 128 : tier >= 2 ? 64 : 32
 
@@ -27,11 +46,7 @@ export function MarsSurface({ tier }: { tier: DeviceTier }) {
 
   return (
     <group>
-      {/* Terrain */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow={false}>
-        <planeGeometry args={[size, size, segs, segs]} />
-        <meshStandardMaterial map={albedo} normalMap={normal} roughness={0.95} metalness={0.0} />
-      </mesh>
+      <MarsTerrainMaterial size={size} segs={segs} />
 
       {/* Dust volume — tall slab from y=-5 to y=-95 centered on spine axis.
           DustShader renders DoubleSide so it's visible while camera is inside. */}

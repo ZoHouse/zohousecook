@@ -42,11 +42,18 @@ export function SceneEnvironment() {
     if (dirRef.current) dirRef.current.color.copy(keyColor)
   })
 
+  // Skip the HDRI in dev until cdn.zo.xyz is populated. Drei's <Environment>
+  // treats a 404 as a suspense throw, which the canvas error boundary catches
+  // and swaps to CeremonyFallback — so the 3D walkthrough never renders.
+  const hasCdn = process.env.NODE_ENV === 'production'
+
   return (
     <>
       <ambientLight ref={ambRef} intensity={0.4} color={MARS_AMBIENT} />
       <directionalLight ref={dirRef} intensity={1.2} color={MARS_KEY} position={[12, 20, 8]} castShadow={false} />
-      <Environment files="https://cdn.zo.xyz/homecoming/hdri/mars-warm-2k.hdr" background={false} />
+      {hasCdn && (
+        <Environment files="https://cdn.zo.xyz/homecoming/hdri/mars-warm-2k.hdr" background={false} />
+      )}
     </>
   )
 }

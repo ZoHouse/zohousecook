@@ -12,8 +12,10 @@ export const ProofDataSchema = z.object({
 })
 export type ProofData = z.infer<typeof ProofDataSchema>
 
+// modelUrl can be an absolute https URL (prod, cdn.zo.xyz) or a root-relative
+// path (dev, served from apps/website/public/). Structure matters, not URL format.
 export const ZobuDataSchema = z.object({
-  modelUrl: z.string().url(),
+  modelUrl: z.string().min(1),
 })
 export type ZobuData = z.infer<typeof ZobuDataSchema>
 
