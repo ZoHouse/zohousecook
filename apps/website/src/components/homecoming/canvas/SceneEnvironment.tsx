@@ -7,12 +7,12 @@ import type { DirectionalLight, AmbientLight } from 'three'
 import { useCeremonyProgress } from '../state/useCeremonyProgress'
 import { beatProgress, ZONES } from '../spine/zones'
 
-// Desaturated Mars palette — subtle warm tint, not nuclear red.
-const MARS_FOG = new Color('#3a2620')       // muted brown-gray, not saturated red
+// Mars twilight palette — dark sky with heavy pale dust fog.
+const MARS_FOG = new Color('#c9c1b8')       // light warm gray, reads as misty atmosphere
 const CHAMBER_FOG = new Color('#d8cfc6')
 const MARS_AMBIENT = new Color('#1a1410')   // near-black with faint warmth
 const CHAMBER_AMBIENT = new Color('#1a1a1c')
-const MARS_KEY = new Color('#d9bfa0')       // warm off-white, not orange
+const MARS_KEY = new Color('#e8ddd0')       // cool-warm off-white key
 const CHAMBER_KEY = new Color('#f3e8dc')
 
 const fogColor = new Color()
@@ -25,9 +25,10 @@ export function SceneEnvironment() {
   const ambRef = useRef<AmbientLight>(null!)
 
   // Lazy-init fog so we can mutate .color per frame without recreating.
-  // Far distance is 800 in Mars so the big terrain + skydome read cleanly;
-  // chamber collapses to a tighter fog so the chamber feels enclosed.
-  if (!scene.fog) scene.fog = new Fog(MARS_FOG.clone(), 60, 800)
+  // Thick Mars fog — close near distance so even the near-camera meshes
+  // pick up atmospheric wash; cap far at 280 so the horizon dissolves into
+  // fog rather than a hard skydome line.
+  if (!scene.fog) scene.fog = new Fog(MARS_FOG.clone(), 12, 280)
 
   useFrame(() => {
     const t = useCeremonyProgress.getState().tLerp
@@ -39,8 +40,8 @@ export function SceneEnvironment() {
     keyColor.copy(MARS_KEY).lerp(CHAMBER_KEY, mix)
 
     ;(scene.fog as Fog).color.copy(fogColor)
-    ;(scene.fog as Fog).near = 60 - mix * 50   // Mars 60 → Chamber 10
-    ;(scene.fog as Fog).far = 800 - mix * 720  // Mars 800 → Chamber 80
+    ;(scene.fog as Fog).near = 12 - mix * 2    // Mars 12 → Chamber 10
+    ;(scene.fog as Fog).far = 280 - mix * 200  // Mars 280 → Chamber 80
     if (ambRef.current) ambRef.current.color.copy(ambient)
     if (dirRef.current) dirRef.current.color.copy(keyColor)
   })
