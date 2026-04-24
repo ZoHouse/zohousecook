@@ -1,7 +1,7 @@
 // apps/website/src/components/homecoming/constants.ts
 // See spec §5 (Named constants) for rationale.
 
-export const SCROLL_SPACER_VH = 600  // total scroll distance; governs t sensitivity
+export const SCROLL_SPACER_VH = 300  // total scroll distance; governs t sensitivity — 300vh feels snappy on desktop (~2700px vs 5400px at 600vh)
 
 /**
  * Post-ceremony destination. /@handle is rewritten by Next to /passport
