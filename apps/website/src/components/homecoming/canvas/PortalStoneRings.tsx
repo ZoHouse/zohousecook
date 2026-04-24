@@ -3,8 +3,6 @@ import { useRef, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Group, MathUtils, Vector3 } from 'three'
 import { createChromeStoneMaterial, applyChromeStonePulse } from '../materials/ChromeStoneMaterial'
-import { readBeatProgress } from '../hooks/useBeatProgress'
-import { ZONES } from '../spine/zones'
 import type { DeviceTier } from '../hooks/useDeviceTier'
 
 const FRAGMENTS_PER_RING: Record<DeviceTier, number> = { 0: 8, 1: 8, 2: 10, 3: 12 }

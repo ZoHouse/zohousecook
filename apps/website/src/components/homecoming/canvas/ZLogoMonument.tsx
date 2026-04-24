@@ -1,8 +1,8 @@
 // apps/website/src/components/homecoming/canvas/ZLogoMonument.tsx
 import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
-import { useRef, useMemo, useEffect } from 'react'
-import { Group, MeshPhysicalMaterial, Mesh, MathUtils } from 'three'
+import { useRef, useMemo } from 'react'
+import { Group, MeshPhysicalMaterial, MathUtils } from 'three'
 import { createChromeStoneMaterial, applyChromeStonePulse } from '../materials/ChromeStoneMaterial'
 import { useCeremonyProgress } from '../state/useCeremonyProgress'
 import { useCeremonyInteraction } from '../state/useCeremonyInteraction'

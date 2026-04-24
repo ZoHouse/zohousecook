@@ -1,6 +1,8 @@
 // apps/website/src/components/homecoming/canvas/Chamber.tsx
 import { useMemo } from 'react'
-import { createChromeStoneMaterial } from '../materials/ChromeStoneMaterial'
+import { useFrame } from '@react-three/fiber'
+import { createChromeStoneMaterial, applyChromeStonePulse } from '../materials/ChromeStoneMaterial'
+import { useCeremonyProgress } from '../state/useCeremonyProgress'
 
 const FLOOR_RINGS = [
   { r: 10, y: -159.9 },
@@ -8,6 +10,19 @@ const FLOOR_RINGS = [
   { r: 6, y: -159.97 },
   { r: 4, y: -159.99 },
 ]
+
+function Pedestal({ material }: { material: ReturnType<typeof createChromeStoneMaterial> }) {
+  useFrame(() => {
+    material.userData.uMaterialization = useCeremonyProgress.getState().uMaterialization
+    material.userData.pulseProximity = 0.5
+    applyChromeStonePulse(material)
+  })
+  return (
+    <mesh position={[0, -157, 0]} material={material}>
+      <cylinderGeometry args={[1.3, 1.5, 2, 48]} />
+    </mesh>
+  )
+}
 
 export function Chamber() {
   const pedestalMat = useMemo(() => createChromeStoneMaterial({ pulsePhase: 3.1 }), [])
@@ -23,9 +38,7 @@ export function Chamber() {
       ))}
 
       {/* Pedestal */}
-      <mesh position={[0, -157, 0]} material={pedestalMat}>
-        <cylinderGeometry args={[1.3, 1.5, 2, 48]} />
-      </mesh>
+      <Pedestal material={pedestalMat} />
 
       {/* Ceiling light ring */}
       <mesh position={[0, -145, 0]} rotation={[-Math.PI / 2, 0, 0]}>

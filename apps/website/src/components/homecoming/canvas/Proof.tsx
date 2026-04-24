@@ -1,12 +1,13 @@
 // apps/website/src/components/homecoming/canvas/Proof.tsx
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Group, Mesh, CanvasTexture, MathUtils } from 'three'
+import { Group, CanvasTexture, MathUtils } from 'three'
 import type { ProofData } from '../types'
 import type { Zone } from '../spine/zones'
 import { readBeatProgress } from '../hooks/useBeatProgress'
 import { getProofCopy } from '../copy/getProofCopy'
-import { createChromeStoneMaterial } from '../materials/ChromeStoneMaterial'
+import { createChromeStoneMaterial, applyChromeStonePulse } from '../materials/ChromeStoneMaterial'
+import { useCeremonyProgress } from '../state/useCeremonyProgress'
 
 function drawCardTexture(text: string): CanvasTexture {
   const c = document.createElement('canvas')
@@ -82,7 +83,16 @@ export function Proof({
         }
       })
     }
+
+    // Breathe the chrome-stone frame with the monument/portal pulse language.
+    material.userData.uMaterialization = useCeremonyProgress.getState().uMaterialization
+    material.userData.pulseProximity = 0.35  // constant mid-strength baseline for proofs
+    applyChromeStonePulse(material)
   })
+
+  // Dispose the CanvasTexture when the data changes or the component unmounts
+  // — otherwise the underlying <canvas> and GPU texture leak.
+  useEffect(() => () => { faceTexture.dispose() }, [faceTexture])
 
   return (
     <group ref={groupRef} position={[0, anchorY - 6, 0]}>

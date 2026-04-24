@@ -4,8 +4,10 @@
 export const SCROLL_SPACER_VH = 600  // total scroll distance; governs t sensitivity
 
 /**
- * Post-ceremony destination. /@handle is rewritten by Next to /passport?handle=:handle
- * in apps/website/next.config.js, so the user lands on their own passport page.
+ * Post-ceremony destination. /@handle is rewritten by Next to /passport
+ * in apps/website/next.config.js (subroutes like /@:handle/earnings do append
+ * ?handle=:handle, but the base route does not). The passport page infers
+ * the viewer's handle from auth / pathname.
  */
 export function buildHandleHome(handle: string): string {
   return `/@${handle}`

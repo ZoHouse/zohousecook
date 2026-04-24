@@ -115,8 +115,15 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   }
 
   // 7. Adapt backend payload → CeremonyData and validate.
-  const data = adaptHomecomingPayload(payload, profile)
-  CeremonyDataSchema.parse(data)
+  //    If the backend shape drifts (missing field, partial rollout), fail
+  //    safe to the user's passport page rather than throwing a 500.
+  let data: CeremonyData
+  try {
+    data = adaptHomecomingPayload(payload, profile)
+    CeremonyDataSchema.parse(data)
+  } catch {
+    return { redirect: { destination: buildHandleHome(profile.handle), permanent: false } }
+  }
 
   return { props: { data, replay } }
 }

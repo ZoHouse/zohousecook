@@ -1,7 +1,7 @@
 // apps/website/src/components/homecoming/canvas/MarsSurface.tsx
-import { useRef, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useFrame, useLoader } from '@react-three/fiber'
-import { PlaneGeometry, TextureLoader, RepeatWrapping, Mesh, MeshStandardMaterial, DoubleSide } from 'three'
+import { TextureLoader, RepeatWrapping, DoubleSide } from 'three'
 import { createDustShader } from '../materials/DustShader'
 import type { DeviceTier } from '../hooks/useDeviceTier'
 
