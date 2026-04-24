@@ -134,8 +134,11 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
       const displayNumber = lastOrder ? lastOrder.display_number + 1 : 1
 
       const itemsTotal = cart.reduce((sum, c) => sum + c.menuItem.price * c.quantity, 0)
+      // 5% GST on subtotal, rounded down to nearest paise (matches place_cafe_order RPC)
+      const taxAmount = Math.floor(itemsTotal * 0.05)
+      const total = itemsTotal + taxAmount
 
-      // Insert order
+      // Insert order (human_order_id is auto-populated by the trigger)
       const { data: order, error: orderError } = await supabase
         .from('cafe_orders')
         .insert({
@@ -148,8 +151,8 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
           display_number: displayNumber,
           subtotal: itemsTotal,
           service_charge: 0,
-          tax_amount: 0,
-          total: itemsTotal,
+          tax_amount: taxAmount,
+          total: total,
           notes: notes || null,
         })
         .select()

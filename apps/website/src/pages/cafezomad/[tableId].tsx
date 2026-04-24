@@ -285,6 +285,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         ? `${user.first_name} ${user.last_name || ''}`.trim()
         : null
       const customerPhone = normalizePhone(user.mobile_number || null)
+      const customerEmail = user.email_address || null
 
       // Call server-side RPC — all validation happens in Postgres:
       // • Checks item availability & uses server-side prices
@@ -295,6 +296,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         p_table_id: tableId,
         p_customer_name: customerName,
         p_customer_phone: customerPhone,
+        p_customer_email: customerEmail,
         p_zo_user_id: user.id || null,
         p_items: cart.map((c) => ({
           menu_item_id: c.menu_item_id,
