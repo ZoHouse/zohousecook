@@ -1,13 +1,29 @@
 // apps/website/src/lib/homecoming/endpoints.ts
+import { zoPassportServer } from '../../../../../libs/auth/src/utils'
 
-// zoPassportServer is not re-exported via @zo/auth barrel (only contexts/hooks/components
-// are re-exported). Use the relative path pattern established by useSeason.ts,
-// useTodayQuests.ts, and usePassportProfile.ts.
-import { zoPassportServer } from "../../../../../libs/auth/src/utils";
-import type {
-  HomecomingPayload,
-  HomecomingCompleteResponse,
-} from "../../components/homecoming/types";
+// Backend response shapes — kept local to this file since only the adapter
+// (components/homecoming/data/adapt.ts) consumes the payload, and it owns
+// a structural type for what it needs.
+export interface HomecomingPayload {
+  handle: string
+  first_name: string | null
+  avatar_image: string
+  citizen_since: number
+  starting_xp: number
+  total_xp: number
+  final_rank: { key: string; label: string; chip_color: string }
+  destinations: { count: number; xp: number; caption: string }
+  nights: { count: number; xp: number; caption: string }
+  zostels: { count: number; xp: number; caption: string }
+  tribe: { count: number; xp: number; caption: string }
+  has_journey: boolean
+}
+
+export interface HomecomingCompleteResponse {
+  homecoming_completed_at: string
+  total_xp: number
+  rank: string
+}
 
 /**
  * POST /api/v1/passport/homecoming/
@@ -16,9 +32,9 @@ import type {
  */
 export async function fetchHomecomingPayload(): Promise<HomecomingPayload> {
   const { data } = await zoPassportServer.post<HomecomingPayload>(
-    "/api/v1/passport/homecoming/",
-  );
-  return data;
+    '/api/v1/passport/homecoming/',
+  )
+  return data
 }
 
 /**
@@ -28,7 +44,7 @@ export async function fetchHomecomingPayload(): Promise<HomecomingPayload> {
  */
 export async function completeHomecoming(): Promise<HomecomingCompleteResponse> {
   const { data } = await zoPassportServer.post<HomecomingCompleteResponse>(
-    "/api/v1/passport/homecoming/complete/",
-  );
-  return data;
+    '/api/v1/passport/homecoming/complete/',
+  )
+  return data
 }
