@@ -7,11 +7,12 @@ import type { DirectionalLight, AmbientLight } from 'three'
 import { useCeremonyProgress } from '../state/useCeremonyProgress'
 import { beatProgress, ZONES } from '../spine/zones'
 
-const MARS_FOG = new Color('#c46144')
+// Desaturated Mars palette — subtle warm tint, not nuclear red.
+const MARS_FOG = new Color('#3a2620')       // muted brown-gray, not saturated red
 const CHAMBER_FOG = new Color('#d8cfc6')
-const MARS_AMBIENT = new Color('#3a1a12')
+const MARS_AMBIENT = new Color('#1a1410')   // near-black with faint warmth
 const CHAMBER_AMBIENT = new Color('#1a1a1c')
-const MARS_KEY = new Color('#ffb07a')
+const MARS_KEY = new Color('#d9bfa0')       // warm off-white, not orange
 const CHAMBER_KEY = new Color('#f3e8dc')
 
 const fogColor = new Color()

@@ -28,7 +28,7 @@ function MarsTerrainMaterial({ size, segs }: { size: number; segs: number }) {
     return (
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow={false}>
         <planeGeometry args={[size, size, segs, segs]} />
-        <meshStandardMaterial color="#8a3f28" roughness={0.95} metalness={0.0} />
+        <meshStandardMaterial color="#3e2d26" roughness={0.95} metalness={0.0} />
       </mesh>
     )
   }
@@ -85,9 +85,12 @@ function Skydome() {
           depthWrite: false,
           depthTest: false,
           uniforms: {
-            uTop: { value: [0.06, 0.02, 0.015] },       // deep brown-black at top
-            uMid: { value: [0.32, 0.11, 0.06] },        // mars red-brown at horizon
-            uBottom: { value: [0.55, 0.22, 0.10] },     // warmer glow below horizon
+            // Toned down — near-black at the top, a subtle desaturated Mars
+            // tint at the horizon, and a muted terracotta below. No hot
+            // orange glow; keeps the scene from reading as nuclear-red.
+            uTop: { value: [0.015, 0.012, 0.018] },     // near-black with faint cool undertone
+            uMid: { value: [0.14, 0.08, 0.07] },        // muted Mars brown-gray at horizon
+            uBottom: { value: [0.22, 0.13, 0.10] },     // terracotta below, not glowing
           },
           vertexShader: /* glsl */ `
             varying vec3 vWorldPos;

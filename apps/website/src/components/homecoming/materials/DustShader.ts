@@ -23,14 +23,15 @@ export function createDustShader(mode: DustMode): ShaderMaterial {
     blending: NormalBlending,
     uniforms: {
       uTime: { value: 0 },
-      // Mars smoke palette — dark charred through ember through warm cream.
-      uColorA: { value: new Color(0x120603) },   // deep char
-      uColorB: { value: new Color(0x4a1a0c) },   // mars rust
-      uColorC: { value: new Color(0xbe4e1d) },   // burning ember
-      uColorD: { value: new Color(0xf1a46d) },   // warm sandstone
-      uDensity: { value: mode === 'raymarch' ? 0.9 : 1.1 },
+      // Desaturated smoke — dark near-neutral shadows through a small warm
+      // highlight band. Keeps the scene from looking like one solid red wash.
+      uColorA: { value: new Color(0x0a0808) },   // near-black neutral
+      uColorB: { value: new Color(0x221d1c) },   // warm charcoal
+      uColorC: { value: new Color(0x6b4a3c) },   // dusty clay
+      uColorD: { value: new Color(0xc19778) },   // muted sandstone highlight
+      uDensity: { value: mode === 'raymarch' ? 0.6 : 0.75 },
       uScroll: { value: new Vector2(0.02, -0.09) },  // Y-negative = smoke rises in UV space
-      uNearFade: { value: 14.0 },
+      uNearFade: { value: 18.0 },
     },
     vertexShader: /* glsl */ `
       varying vec3 vWorldPos;
