@@ -131,7 +131,7 @@ const PassportIdentityCard: React.FC<PassportIdentityCardProps> = ({
         </button>
       )}
 
-      <GlowCard className="w-full pt-0 pb-6 px-6" style={{ overflow: "visible" }}>
+      <GlowCard variant="lobby" className="w-full pt-0 pb-6 px-6" style={{ overflow: "visible" }}>
         <div className="flex flex-col gap-4">
           {/* Avatar + CitizenSeal */}
           <div className="relative">
@@ -230,7 +230,15 @@ const PassportIdentityCard: React.FC<PassportIdentityCardProps> = ({
               TRAVEL STATS
             </span>
             <div className="flex gap-2">
-              <div className="flex-1 bg-[#202020] rounded-2xl p-2">
+              <div
+                className="flex-1 rounded-2xl p-2 border border-white/15"
+                style={{
+                  background: "rgba(255,255,255,0.06)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12)",
+                }}
+              >
                 <span className="text-white text-[20px] font-medium block">
                   {destinations}
                 </span>
@@ -238,7 +246,15 @@ const PassportIdentityCard: React.FC<PassportIdentityCardProps> = ({
                   Destinations Explored
                 </span>
               </div>
-              <div className="flex-1 bg-[#202020] rounded-2xl p-2">
+              <div
+                className="flex-1 rounded-2xl p-2 border border-white/15"
+                style={{
+                  background: "rgba(255,255,255,0.06)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12)",
+                }}
+              >
                 <span className="text-white text-[20px] font-medium block">
                   {properties}
                 </span>

@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@zo/auth";
 import { usePublicPassport } from "../../hooks/usePublicPassport";
-import { SideNavRail } from "../passport-lobby/SideNavRail";
-import { MapModal } from "../passport-lobby/MapModal";
 import { TopBar } from "../passport-lobby/TopBar";
 import { useProfile as useMyProfile } from "@zo/auth";
 import { useMyXp } from "../../hooks/useMyXp";
@@ -11,8 +9,6 @@ import { ViewerState } from "./PassportPitch";
 import { ShareQuestButtons } from "./ShareQuestButtons";
 import ShareModal from "./ShareModal";
 import PassportIdentityCard from "./PassportIdentityCard";
-import PassportPlusUpsell from "./PassportPlusUpsell";
-import BookStaysPlaceholder from "./BookStaysPlaceholder";
 import StampsGrid from "./StampsGrid";
 
 interface PublicPassportViewProps {
@@ -80,7 +76,6 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
   const { profile: viewerProfile } = useMyProfile();
   const { myXp: viewerXp } = useMyXp();
   const [shareOpen, setShareOpen] = useState(false);
-  const [mapOpen, setMapOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -217,10 +212,6 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
           <br />
           their passport with you
         </h1>
-        <p className="text-white/60 text-sm mt-3">
-          Join Zo World to earn XP, collect stamps, and unlock stays across
-          108+ Zostel properties.
-        </p>
       </div>
 
       <button
@@ -242,12 +233,6 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
         </div>
       )}
 
-      <BookStaysPlaceholder />
-
-      <PassportPlusUpsell
-        onBecomeMember={handlePrimary}
-        onUnlockAndGo={handlePrimary}
-      />
     </div>
   );
 
@@ -263,13 +248,6 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
           avatarUrl={viewerProfile?.pfp_image || viewerProfile?.avatar?.image}
         />
       )}
-      <div className="fixed top-1/2 right-4 md:right-6 -translate-y-1/2 z-[10] hidden md:block">
-        <SideNavRail handle={handle} onOpenMap={() => setMapOpen(true)} />
-      </div>
-      <div className="fixed top-[76px] right-3 z-[10] md:hidden">
-        <SideNavRail handle={handle} onOpenMap={() => setMapOpen(true)} />
-      </div>
-
       <div className="max-w-[1280px] mx-auto px-4 pt-24 xl:pt-32 pb-16 md:pr-32">
         <div className="flex flex-col xl:flex-row xl:gap-10 gap-8">
           <div className="w-full xl:w-[380px] xl:flex-shrink-0">
@@ -278,8 +256,6 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
           <div className="flex-1 min-w-0">{pitchPanel}</div>
         </div>
       </div>
-
-      <MapModal open={mapOpen} onClose={() => setMapOpen(false)} />
 
       <ShareModal
         isOpen={shareOpen}
