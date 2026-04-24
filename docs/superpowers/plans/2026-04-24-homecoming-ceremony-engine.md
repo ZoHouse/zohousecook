@@ -270,7 +270,9 @@ export const CHROME_STONE_PULSE_FREQ_HZ = 0.6  // at rest
 export const CHROME_STONE_PULSE_FREQ_HZ_HOVERED = 1.6
 
 export const LOAD_TIMEOUT_MS = 10_000  // spec §6: fall back if assets don't load in 10s
-export const COMPLETE_ENDPOINT = '/api/v1/passport/homecoming/complete/'
+// Backend endpoint path used by SSR. The client-side helper in
+// lib/homecoming/endpoints.ts owns the complete/ URL literal — no need to
+// duplicate here.
 export const HOMECOMING_ENDPOINT = '/api/v1/passport/homecoming/'
 ```
 
@@ -2311,7 +2313,7 @@ export function CitizenshipCTA({ handle, replay }: Props) {
 
 ```bash
 git add apps/website/src/components/homecoming/hud/CitizenshipCTA.tsx
-git commit -m "feat(homecoming): CitizenshipCTA navigates to PASSPORT_SUCCESS_ROUTE"
+git commit -m "feat(homecoming): CitizenshipCTA navigates to /@handle + writes completion"
 ```
 
 ---
