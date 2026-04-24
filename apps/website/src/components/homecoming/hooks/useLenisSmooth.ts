@@ -33,9 +33,10 @@ export function useLenisSmooth({ enabled = true }: Options = {}) {
       touchMultiplier: 1.4,
     })
 
-    // Force Lenis' internal target to 0 immediately — otherwise it may carry
-    // a pending scroll target from a prior navigation / HMR cycle.
-    lenis.scrollTo(0, { immediate: true })
+    // NOTE: do NOT call lenis.scrollTo(0, { immediate: true }) here.
+    // Certain Lenis versions treat that as a locked target that clamps
+    // subsequent wheel deltas to the max-scroll edge. The window.scrollTo
+    // above is sufficient to reset position without breaking input.
 
     let rafId = 0
     const raf = (time: number) => {
