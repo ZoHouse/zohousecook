@@ -28,12 +28,13 @@ export function ZLogoMonument() {
   const { scene } = useGLTF(MONUMENT_URL) as any
   const setHovered = useCeremonyInteraction((s) => s.setMonumentHovered)
 
-  // Pin monument at world origin on the Mars surface (y=0). Scale chosen so
-  // the model reads at ~7 units tall, matching the spec's y=0..+8 target.
+  // Lift monument base slightly above the sand dune peak so the pillars
+  // never clip into the terrain. Sand shader caps dune displacement near
+  // +0.35 world units; y=0.5 gives a clean gap.
   return (
     <group
       ref={groupRef}
-      position={[0, 0, 0]}
+      position={[0, 0.5, 0]}
       scale={[1.6, 1.6, 1.6]}
       onPointerOver={(e) => { e.stopPropagation(); setHovered(true) }}
       onPointerOut={(e) => { e.stopPropagation(); setHovered(false) }}

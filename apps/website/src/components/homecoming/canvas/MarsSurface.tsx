@@ -45,7 +45,10 @@ function SandTerrain({ size, segs }: { size: number; segs: number }) {
               // still reads as a horizon line.
               float dune = vnoise(uv * 12.0) - 0.5;
               float ripple = vnoise(uv * 80.0) - 0.5;
-              vHeight = dune * 1.8 + ripple * 0.18;
+              // Keep peak dune under +0.35 world units so geometry sitting at
+              // y=0 never clips through the surface. Shading still reads with
+              // this smaller amplitude because the fragment shader adds grain.
+              vHeight = dune * 0.55 + ripple * 0.08;
               vec3 displaced = position + vec3(0.0, 0.0, vHeight);  // local z = world y after the -PI/2 rotation
               gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
             }
