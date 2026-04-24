@@ -2,7 +2,9 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rewrite the Homecoming ceremony in `apps/website` as a scroll-driven 3D cinematic: Mars exterior with a chrome `\z/` monument, descent through red dust past 4 proof monoliths, pulsating stone portal, concentric chamber, particle Zobu figure, CTA to passport success.
+**Goal:** Rewrite the Homecoming ceremony in `apps/website` as a scroll-driven 3D cinematic: Mars exterior with a chrome `\z/` monument, descent through red dust past 4 proof monoliths, pulsating stone portal, concentric chamber, particle Zobu figure, CTA that completes the one-time homecoming and lands the user on their `/@handle` passport page.
+
+**Scope:** `/homecoming` is a **one-time onboarding ceremony**. The plan replaces the current page's rendering engine in-place while preserving every existing SSR gate (preview override, kill-switch, auth, identity, one-time-completion, backend payload fetch). Users who have already completed homecoming are still redirected to `/@{handle}`; `?replay=1` still bypasses the one-time gate; `?preview=1` (non-prod only) still bypasses auth and uses demo fixtures. On CTA click the ceremony writes `profile.homecoming_completed_at` via `POST /api/v1/passport/homecoming/complete/` (unless replay), then navigates to `/@{handle}`.
 
 **Architecture:** One `<Canvas>` (React Three Fiber), one continuous 3D world, one spinal camera rig that rides a `CatmullRomCurve3` driven by normalized scroll progress `t ∈ [0, 1]`. All scene modules mount once and read their local animation from `t`. See spec §1–3 for the full mental model.
 
@@ -18,7 +20,7 @@ Full design spec: `docs/superpowers/specs/2026-04-23-homecoming-ceremony-engine-
 
 - [ ] **Pre-plan blocker: `\z/` monument `.glb` audit** (spec §5.5). Confirm the existing model has separable pillar meshes and an emissive channel for the inner pulse. If fused, split and re-export before Chunk 3 begins. If no emissive channel, spec the alternate authoring path.
 - [ ] **Pre-plan blocker: idle Zobu `.glb` audit** (spec §5.5). Confirm watertight + sub-50k triangles. Fix before Chunk 5 begins.
-- [ ] **Confirm `PASSPORT_SUCCESS_ROUTE`** — `/passport/success` is a placeholder; confirm canonical route against the `project_passport_is_home` direction. Not blocking; `constants.ts` isolates the change to one line.
+- [ ] **CTA destination confirmed: `/@{handle}`.** The `apps/website/next.config.js` rewrites `/@:handle` → `/passport?handle=:handle`, so navigating to `/@samurai` serves the passport page keyed to that handle. `CitizenshipCTA` and `CeremonyFallback` both build this route at click time from `data.user.handle`.
 - [ ] **Branch:** `feat/homecoming-ceremony`. Three spec commits already landed (`9659b3a`, `013e6b4`, `25ffc84`). The old homecoming code in `apps/website/src/components/homecoming/` has uncommitted changes — **stash or commit** before Task 1.1 deletes everything.
 - [ ] **Install new deps** — `zod` is needed for the `CeremonyDataSchema` validator, `zustand` for stores, `detect-gpu` for tier classification:
   ```bash
@@ -78,14 +80,14 @@ grep -rn "from.*components/homecoming\|from.*lib/homecoming" apps/website/src --
 ```
 
 Known orphan surface (confirmed before plan was written):
-- `apps/website/src/lib/homecoming/beatTimeline.ts`
-- `apps/website/src/lib/homecoming/endpoints.ts`
-- `apps/website/src/lib/homecoming/fixtures.ts`
-- `apps/website/src/lib/homecoming/obeliskPositions.ts`
-- `apps/website/src/lib/homecoming/rankBands.ts`
-- `apps/website/src/pages/homecoming/index.tsx` (imports `HomecomingStage` + `HomecomingPayload`)
+- `apps/website/src/lib/homecoming/beatTimeline.ts` — **deleted in Task 6.6**
+- `apps/website/src/lib/homecoming/endpoints.ts` — **kept** (repointed internally), still used by the new CTA + SSR
+- `apps/website/src/lib/homecoming/fixtures.ts` — **deleted in Task 6.6** (replaced by `data/demo.ts`)
+- `apps/website/src/lib/homecoming/obeliskPositions.ts` — **deleted in Task 6.6**
+- `apps/website/src/lib/homecoming/rankBands.ts` — **deleted in Task 6.6**
+- `apps/website/src/pages/homecoming/index.tsx` — **rewritten in Task 6.5** (imports `<Ceremony>` instead of `<HomecomingStage>`)
 
-All of `lib/homecoming/` exists only to serve the old prototype (mutual imports with deleted `components/homecoming/types.ts`). Task 6.6 deletes the entire `lib/homecoming/` directory. `pages/homecoming/index.tsx` is rewritten in Task 6.5. No other files outside that set should import anything we just deleted — if the grep surfaces others, flag them.
+The old `lib/homecoming/` existed only to serve the prototype. We keep `endpoints.ts` because the new engine still hits the same two passport endpoints (`/api/v1/passport/homecoming/` and `/api/v1/passport/homecoming/complete/`). Everything else is deleted. Compile errors from `endpoints.ts` importing deleted `HomecomingPayload` / `HomecomingCompleteResponse` types are fixed in Task 6.6 Step 1 by rehoming those interfaces into `endpoints.ts` itself.
 
 - [ ] **Step 4: Build to verify the error surface is only the expected orphans**
 
@@ -141,6 +143,22 @@ describe('CeremonyDataSchema', () => {
     const bad = { ...valid, proofs: [{ ...valid.proofs[0], id: 'snacks' }, ...valid.proofs.slice(1)] }
     expect(() => CeremonyDataSchema.parse(bad)).toThrow()
   })
+
+  it('rejects duplicate proof ids (two destinations)', () => {
+    const bad = {
+      ...valid,
+      proofs: [valid.proofs[0], valid.proofs[0], valid.proofs[2], valid.proofs[3]],
+    }
+    expect(() => CeremonyDataSchema.parse(bad)).toThrow(/exactly one of each/i)
+  })
+
+  it('rejects missing category (no tribe)', () => {
+    const bad = {
+      ...valid,
+      proofs: [valid.proofs[0], valid.proofs[1], valid.proofs[2], { ...valid.proofs[0] }],
+    }
+    expect(() => CeremonyDataSchema.parse(bad)).toThrow(/exactly one of each/i)
+  })
 })
 ```
 
@@ -172,13 +190,25 @@ export const ZobuDataSchema = z.object({
 })
 export type ZobuData = z.infer<typeof ZobuDataSchema>
 
+const REQUIRED_PROOF_IDS: ReadonlySet<ProofId> = new Set([
+  'destinations', 'nights', 'zostels', 'tribe',
+])
+
 export const CeremonyDataSchema = z.object({
   user: z.object({
     id: z.string().min(1),
     handle: z.string().min(1),
     displayName: z.string().min(1),
   }),
-  proofs: z.array(ProofDataSchema).length(4),
+  proofs: z.array(ProofDataSchema).length(4).superRefine((proofs, ctx) => {
+    const seen = new Set(proofs.map((p) => p.id))
+    if (seen.size !== proofs.length || ![...REQUIRED_PROOF_IDS].every((id) => seen.has(id))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'proofs must contain exactly one of each id: destinations, nights, zostels, tribe',
+      })
+    }
+  }),
   zobu: ZobuDataSchema,
   issuedAt: z.string().optional(),
 })
@@ -215,9 +245,18 @@ No tests — constants only, no behavior to test.
 
 export const SCROLL_SPACER_VH = 600  // total scroll distance; governs t sensitivity
 
-// Placeholder — confirm canonical route against project_passport_is_home
-// before shipping. Single-line change.
-export const PASSPORT_SUCCESS_ROUTE = '/passport/success'
+/**
+ * Post-ceremony destination. /@handle is rewritten by Next to /passport?handle=:handle
+ * in apps/website/next.config.js, so the user lands on their own passport page.
+ */
+export function buildHandleHome(handle: string): string {
+  return `/@${handle}`
+}
+
+// Redirect targets used by SSR on auth/identity/one-time/error paths.
+export const REDIRECT_AUTH = '/zo-auth?next=/homecoming'
+export const REDIRECT_ONBOARDING = '/onboarding?next=/homecoming'
+// Completion & failsafe redirects use buildHandleHome(handle) above.
 
 export const INTRO_PHASE_B_MS = 1400   // wireframe hold
 export const INTRO_PHASE_C_MS = 1500   // materialization + camera pan
@@ -229,6 +268,10 @@ export const CHROME_STONE_PULSE_BASELINE = 0.25
 export const CHROME_STONE_PULSE_AMPLITUDE = 0.75
 export const CHROME_STONE_PULSE_FREQ_HZ = 0.6  // at rest
 export const CHROME_STONE_PULSE_FREQ_HZ_HOVERED = 1.6
+
+export const LOAD_TIMEOUT_MS = 10_000  // spec §6: fall back if assets don't load in 10s
+export const COMPLETE_ENDPOINT = '/api/v1/passport/homecoming/complete/'
+export const HOMECOMING_ENDPOINT = '/api/v1/passport/homecoming/'
 ```
 
 - [ ] **Step 2: Commit**
@@ -487,6 +530,112 @@ git commit -m "feat(homecoming): buildSpine returns two CatmullRom curves with t
 
 ---
 
+### Task 1.6a: `spine/sampleSpine.ts` — preserve authored `u` timing
+
+Problem to fix (spec §3 misdirection): `CatmullRomCurve3.getPointAt(u)` samples by arc-length, which discards the authored `u` values on waypoints. That means `t = 0.15` would NOT land on "approach proof 1" — it would land wherever arc-length `0.15` happens to be along the curve. Zones (`proof1 = [0.10, 0.22]`) assume authored timing.
+
+This task adds a helper that maps `authoredU` → curve parameter via a piecewise-linear table built from the waypoint list.
+
+**Files:**
+- Create: `apps/website/src/components/homecoming/spine/sampleSpine.ts`
+- Test: `apps/website/src/__tests__/homecoming/spine.test.ts` (extend existing)
+
+- [ ] **Step 1: Extend the failing test**
+
+Append to `spine.test.ts`:
+
+```ts
+import { sampleSpineAt } from '../../components/homecoming/spine/sampleSpine'
+
+describe('sampleSpineAt (authored-u mapping)', () => {
+  const { positionSpine, lookAtSpine } = buildSpine(WAYPOINTS)
+  const out = new Vector3()
+
+  it('sampling at authored u of waypoint i returns that waypoint position', () => {
+    for (const w of WAYPOINTS) {
+      sampleSpineAt(positionSpine, WAYPOINTS, w.u, out)
+      expect(out.x).toBeCloseTo(w.pos[0], 2)
+      expect(out.y).toBeCloseTo(w.pos[1], 2)
+      expect(out.z).toBeCloseTo(w.pos[2], 2)
+    }
+  })
+
+  it('interpolates smoothly between waypoints', () => {
+    // halfway between waypoint[2] (u=0.15) and waypoint[3] (u=0.27) is u=0.21
+    sampleSpineAt(positionSpine, WAYPOINTS, 0.21, out)
+    expect(Number.isFinite(out.y)).toBe(true)
+    expect(out.y).toBeLessThan(WAYPOINTS[2].pos[1])       // below proof 1 anchor
+    expect(out.y).toBeGreaterThan(WAYPOINTS[3].pos[1])    // above proof 2 anchor
+  })
+
+  it('clamps out-of-range u', () => {
+    sampleSpineAt(positionSpine, WAYPOINTS, -0.5, out)
+    expect(out.y).toBeCloseTo(WAYPOINTS[0].pos[1], 2)
+    sampleSpineAt(positionSpine, WAYPOINTS, 1.5, out)
+    expect(out.y).toBeCloseTo(WAYPOINTS[WAYPOINTS.length - 1].pos[1], 2)
+  })
+})
+```
+
+- [ ] **Step 2: Run — expect FAIL**
+
+```bash
+npx nx test website --testPathPattern=spine.test.ts
+```
+
+- [ ] **Step 3: Implement**
+
+```ts
+// apps/website/src/components/homecoming/spine/sampleSpine.ts
+import type { CatmullRomCurve3, Vector3 } from 'three'
+import type { Waypoint } from './waypoints'
+
+/**
+ * Maps authored `u` (as declared on Waypoint) to the curve's own parameter
+ * (which runs evenly across control points: waypoint i is at i/(n-1)), then
+ * samples the curve at that position via `getPoint` (NOT `getPointAt` — we
+ * want the curve parameter, not arc-length, so authored timing is preserved).
+ *
+ * Writes into `out` to avoid allocating. Clamps authoredU to [0, 1].
+ */
+export function sampleSpineAt(
+  curve: CatmullRomCurve3,
+  waypoints: readonly Waypoint[],
+  authoredU: number,
+  out: Vector3,
+): Vector3 {
+  const n = waypoints.length
+  if (n === 0) return out
+  if (authoredU <= waypoints[0].u) return curve.getPoint(0, out)
+  if (authoredU >= waypoints[n - 1].u) return curve.getPoint(1, out)
+
+  // Find the segment [i, i+1] where waypoints[i].u <= authoredU < waypoints[i+1].u
+  for (let i = 0; i < n - 1; i++) {
+    const a = waypoints[i].u
+    const b = waypoints[i + 1].u
+    if (authoredU <= b) {
+      const segProgress = (authoredU - a) / (b - a)
+      // Curve parameter at waypoint i is i / (n - 1); each segment is that wide.
+      const curveT = (i + segProgress) / (n - 1)
+      return curve.getPoint(curveT, out)
+    }
+  }
+  return curve.getPoint(1, out)
+}
+```
+
+- [ ] **Step 4: Run — expect PASS**
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/website/src/components/homecoming/spine/sampleSpine.ts \
+        apps/website/src/__tests__/homecoming/spine.test.ts
+git commit -m "feat(homecoming): sampleSpineAt preserves authored waypoint timing"
+```
+
+---
+
 ### Task 1.7: `state/useCeremonyProgress.ts` + wire `useBeatProgress`
 
 **Files:**
@@ -738,9 +887,19 @@ git commit -m "feat(homecoming): getProofCopy with zero-state branches"
 import { useEffect } from 'react'
 import { useCeremonyProgress } from '../state/useCeremonyProgress'
 
-/** Attaches a passive scroll listener that writes normalized t to the store. */
-export function useScrollListener(spacerRef: React.RefObject<HTMLElement>) {
+type Options = { enabled?: boolean }
+
+/**
+ * Attaches a passive scroll listener that writes normalized t to the store.
+ * When `enabled` is false, the listener is skipped — used so the fallback
+ * path doesn't install global scroll handlers.
+ */
+export function useScrollListener(
+  spacerRef: React.RefObject<HTMLElement>,
+  { enabled = true }: Options = {},
+) {
   useEffect(() => {
+    if (!enabled) return
     const onScroll = () => {
       const el = spacerRef.current
       if (!el) return
@@ -753,7 +912,7 @@ export function useScrollListener(spacerRef: React.RefObject<HTMLElement>) {
     window.addEventListener('scroll', onScroll, { passive: true })
     onScroll()  // prime on mount
     return () => window.removeEventListener('scroll', onScroll)
-  }, [spacerRef])
+  }, [spacerRef, enabled])
 }
 ```
 
@@ -835,6 +994,8 @@ import {
   INTRO_SKIP_COMPRESS_MS,
 } from '../constants'
 
+type Options = { enabled?: boolean }
+
 /**
  * Runs on mount before scroll is live:
  *   Phase A: wait for drei useProgress loaded === true
@@ -844,13 +1005,18 @@ import {
  *
  * Listens at window for wheel/touchmove intent to fast-forward
  * (overflow: hidden on body prevents actual scroll; we watch intent).
+ *
+ * When `enabled` is false (fallback path), all effects no-op so the overflow
+ * lock never gets installed on devices that are supposed to see the static
+ * poster.
  */
-export function useIntroTimeline() {
+export function useIntroTimeline({ enabled = true }: Options = {}) {
   const loaded = useProgress((s) => s.loaded > 0 && s.active === false)
   const rafRef = useRef<number | null>(null)
   const skipRef = useRef(false)
 
   useEffect(() => {
+    if (!enabled) return
     const onIntent = () => { skipRef.current = true }
     window.addEventListener('wheel', onIntent, { passive: true })
     window.addEventListener('touchmove', onIntent, { passive: true })
@@ -861,10 +1027,10 @@ export function useIntroTimeline() {
       // Restore scroll if we unmount before intro finished (e.g., nav away).
       document.body.style.overflow = ''
     }
-  }, [])
+  }, [enabled])
 
   useEffect(() => {
-    if (!loaded) return
+    if (!enabled || !loaded) return
 
     const startB = performance.now()
     const phaseBMs = () => (skipRef.current ? INTRO_SKIP_COMPRESS_MS * 0.3 : INTRO_PHASE_B_MS)
@@ -893,7 +1059,7 @@ export function useIntroTimeline() {
     }
     rafRef.current = requestAnimationFrame(tick)
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
-  }, [loaded])
+  }, [loaded, enabled])
 }
 ```
 
@@ -1105,11 +1271,12 @@ git commit -m "feat(homecoming): DustShader (layered noise for Mars dust)"
 ```tsx
 // apps/website/src/components/homecoming/canvas/CameraRig.tsx
 import { useFrame, useThree } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Vector3, MathUtils } from 'three'
 import { useCeremonyProgress } from '../state/useCeremonyProgress'
 import { WAYPOINTS } from '../spine/waypoints'
 import { buildSpine } from '../spine/buildSpine'
+import { sampleSpineAt } from '../spine/sampleSpine'
 import { DAMPING_LAMBDA } from '../constants'
 import { readDebugParams } from '../hooks/useDeviceTier'
 
@@ -1122,7 +1289,7 @@ export function CameraRig() {
   const debugTRef = useRef<number | null>(null)
 
   // Honor ?t=<value> for isolated beat review
-  useMemo(() => {
+  useEffect(() => {
     const { t } = readDebugParams()
     debugTRef.current = t
   }, [])
@@ -1133,8 +1300,9 @@ export function CameraRig() {
     const tLerp = MathUtils.damp(state.tLerp, target, DAMPING_LAMBDA, delta)
     state.setTLerp(tLerp)
 
-    positionSpine.getPointAt(tLerp, tmpPos)
-    lookAtSpine.getPointAt(tLerp, tmpLook)
+    // Sample with authored-u mapping so zones align with waypoint timing.
+    sampleSpineAt(positionSpine, WAYPOINTS, tLerp, tmpPos)
+    sampleSpineAt(lookAtSpine, WAYPOINTS, tLerp, tmpLook)
     camera.position.copy(tmpPos)
     camera.lookAt(tmpLook)
   })
@@ -2080,26 +2248,47 @@ git commit -m "feat(homecoming): HUD chrome (logo, sound, scroll hint)"
 ```tsx
 // apps/website/src/components/homecoming/hud/CitizenshipCTA.tsx
 import { useRouter } from 'next/router'
+import { useState } from 'react'
 import { useCeremonyProgress } from '../state/useCeremonyProgress'
 import { useCeremonyInteraction } from '../state/useCeremonyInteraction'
-import { PASSPORT_SUCCESS_ROUTE } from '../constants'
+import { completeHomecoming } from '../../../lib/homecoming/endpoints'
+import { buildHandleHome } from '../constants'
 
-export function CitizenshipCTA() {
+type Props = { handle: string; replay: boolean }
+
+export function CitizenshipCTA({ handle, replay }: Props) {
   const router = useRouter()
   const t = useCeremonyProgress((s) => s.tLerp)
   const fireCTA = useCeremonyInteraction((s) => s.fireCTA)
+  const [busy, setBusy] = useState(false)
 
   const show = t >= 0.95
   const opacity = Math.min(1, Math.max(0, (t - 0.95) / 0.04))
+  const destination = buildHandleHome(handle)
+
+  const onClick = async () => {
+    if (busy) return
+    setBusy(true)
+    fireCTA()
+    // Lock scroll so the user doesn't overshoot while we transition.
+    document.body.style.overflow = 'hidden'
+    // Write homecoming_completed_at unless this is a replay (?replay=1 or ?preview=1).
+    // Server-side this is idempotent, but we skip the write for replay so preview/
+    // debug sessions do not flip the one-time flag.
+    if (!replay) {
+      try {
+        await completeHomecoming()
+      } catch {
+        // Completion failure is not fatal for navigation — the next /homecoming
+        // request will re-run the SSR gate and either redirect or retry.
+      }
+    }
+    router.push(destination)
+  }
 
   return (
     <button
-      onClick={() => {
-        fireCTA()
-        // Lock scroll so the user doesn't overshoot while we transition.
-        document.body.style.overflow = 'hidden'
-        setTimeout(() => router.push(PASSPORT_SUCCESS_ROUTE), 450)
-      }}
+      onClick={onClick}
       style={{
         position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', zIndex: 25,
         padding: '16px 36px', fontFamily: 'monospace', fontSize: 14, letterSpacing: 3,
@@ -2110,6 +2299,7 @@ export function CitizenshipCTA() {
       }}
       tabIndex={show ? 0 : -1}
       aria-hidden={!show}
+      disabled={busy}
     >
       Become a citizen
     </button>
@@ -2136,14 +2326,28 @@ git commit -m "feat(homecoming): CitizenshipCTA navigates to PASSPORT_SUCCESS_RO
 ```tsx
 // apps/website/src/components/homecoming/fallback/CeremonyFallback.tsx
 import { useRouter } from 'next/router'
+import { useState } from 'react'
 import type { CeremonyData } from '../types'
 import { getProofCopy } from '../copy/getProofCopy'
-import { PASSPORT_SUCCESS_ROUTE } from '../constants'
+import { completeHomecoming } from '../../../lib/homecoming/endpoints'
+import { buildHandleHome } from '../constants'
 
 const POSTER_URL = 'https://cdn.zo.xyz/homecoming/posters/idle-mars-2880x1800.jpg'
 
-export function CeremonyFallback({ data }: { data: CeremonyData }) {
+export function CeremonyFallback({ data, replay }: { data: CeremonyData; replay: boolean }) {
   const router = useRouter()
+  const [busy, setBusy] = useState(false)
+  const destination = buildHandleHome(data.user.handle)
+
+  const onClick = async () => {
+    if (busy) return
+    setBusy(true)
+    if (!replay) {
+      try { await completeHomecoming() } catch { /* non-fatal */ }
+    }
+    router.push(destination)
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: `#1c1008 url(${POSTER_URL}) center/cover no-repeat`, color: '#ffd9a8', padding: '48px 24px', fontFamily: 'monospace' }}>
       <div style={{ maxWidth: 640, margin: '0 auto', background: 'rgba(28,16,8,0.82)', padding: 32 }}>
@@ -2158,7 +2362,8 @@ export function CeremonyFallback({ data }: { data: CeremonyData }) {
           ))}
         </ul>
         <button
-          onClick={() => router.push(PASSPORT_SUCCESS_ROUTE)}
+          onClick={onClick}
+          disabled={busy}
           style={{ padding: '14px 28px', background: '#ffd9a8', color: '#1c1008', border: 'none', fontFamily: 'monospace', fontSize: 14, letterSpacing: 3, textTransform: 'uppercase', cursor: 'pointer' }}
         >
           Become a citizen
@@ -2181,6 +2386,80 @@ git commit -m "feat(homecoming): CeremonyFallback static poster + proofs + CTA"
 
 ---
 
+### Task 6.3a: Error boundary + load timeout
+
+**Files:**
+- Create: `apps/website/src/components/homecoming/fallback/CeremonyErrorBoundary.tsx`
+- Create: `apps/website/src/components/homecoming/hooks/useLoadTimeout.ts`
+
+Both guard the fallback path so any runtime failure or slow asset load ends on the poster instead of a white screen.
+
+- [ ] **Step 1: Error boundary**
+
+```tsx
+// apps/website/src/components/homecoming/fallback/CeremonyErrorBoundary.tsx
+import React from 'react'
+
+type Props = { fallback: React.ReactNode; children: React.ReactNode }
+type State = { hasError: boolean }
+
+export class CeremonyErrorBoundary extends React.Component<Props, State> {
+  state: State = { hasError: false }
+
+  static getDerivedStateFromError(): State { return { hasError: true } }
+
+  componentDidCatch(error: Error) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[Homecoming] canvas crashed → rendering fallback', error)
+    }
+    // TODO: wire to Sentry once the website app's Sentry config confirms
+    // a reporter is available — see apps/website/sentry.client.config.ts
+  }
+
+  render() {
+    if (this.state.hasError) return this.props.fallback
+    return this.props.children
+  }
+}
+```
+
+- [ ] **Step 2: Load timeout hook**
+
+```ts
+// apps/website/src/components/homecoming/hooks/useLoadTimeout.ts
+import { useEffect, useState } from 'react'
+import { useProgress } from '@react-three/drei'
+import { LOAD_TIMEOUT_MS } from '../constants'
+
+/**
+ * Returns true if drei's loader has been "still loading" for LOAD_TIMEOUT_MS
+ * since mount. Consumers flip the fallback path on. Pass `active = false`
+ * to skip (e.g., when fallback is already decided for other reasons).
+ */
+export function useLoadTimeout(active: boolean): boolean {
+  const [timedOut, setTimedOut] = useState(false)
+  const active$ = useProgress((s) => s.active)
+  useEffect(() => {
+    if (!active) return
+    const id = window.setTimeout(() => {
+      if (active$) setTimedOut(true)
+    }, LOAD_TIMEOUT_MS)
+    return () => window.clearTimeout(id)
+  }, [active, active$])
+  return timedOut
+}
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add apps/website/src/components/homecoming/fallback/CeremonyErrorBoundary.tsx \
+        apps/website/src/components/homecoming/hooks/useLoadTimeout.ts
+git commit -m "feat(homecoming): error boundary + 10s load timeout → fallback"
+```
+
+---
+
 ### Task 6.4: `Ceremony.tsx`
 
 **Files:**
@@ -2190,13 +2469,14 @@ git commit -m "feat(homecoming): CeremonyFallback static poster + proofs + CTA"
 
 ```tsx
 // apps/website/src/components/homecoming/Ceremony.tsx
-import { useEffect, useRef } from 'react'
+import { Suspense, useMemo, useRef, useState, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { SCROLL_SPACER_VH } from './constants'
 import type { CeremonyData } from './types'
 import { useDeviceTier } from './hooks/useDeviceTier'
 import { useScrollListener } from './hooks/useScrollListener'
 import { useIntroTimeline } from './hooks/useIntroTimeline'
+import { useLoadTimeout } from './hooks/useLoadTimeout'
 import { CameraRig } from './canvas/CameraRig'
 import { SceneEnvironment } from './canvas/SceneEnvironment'
 import { MarsSurface } from './canvas/MarsSurface'
@@ -2212,54 +2492,74 @@ import { BottomLeftSound } from './hud/BottomLeftSound'
 import { ScrollHint } from './hud/ScrollHint'
 import { CitizenshipCTA } from './hud/CitizenshipCTA'
 import { CeremonyFallback } from './fallback/CeremonyFallback'
+import { CeremonyErrorBoundary } from './fallback/CeremonyErrorBoundary'
 
-function useShouldFallback(): boolean {
+/**
+ * Feature detection for fallback. Runs on client only (component is mounted
+ * via next/dynamic { ssr: false } in pages/homecoming/index.tsx).
+ * Lazily initialized via useState so the value is stable across renders.
+ */
+function initialShouldFallback(): boolean {
   if (typeof window === 'undefined') return false
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  const noWebGL = (() => {
-    try {
-      const c = document.createElement('canvas')
-      return !c.getContext('webgl2') && !c.getContext('webgl')
-    } catch { return true }
-  })()
+  let noWebGL = false
+  try {
+    const c = document.createElement('canvas')
+    noWebGL = !c.getContext('webgl2') && !c.getContext('webgl')
+  } catch { noWebGL = true }
   return reducedMotion || noWebGL
 }
 
-export function Ceremony({ data }: { data: CeremonyData }) {
+type Props = { data: CeremonyData; replay: boolean }
+
+export function Ceremony({ data, replay }: Props) {
   const spacerRef = useRef<HTMLDivElement>(null)
   const tier = useDeviceTier()
-  useScrollListener(spacerRef)
-  useIntroTimeline()
+  const [featureFallback] = useState(initialShouldFallback)
+  const loadTimedOut = useLoadTimeout(!featureFallback)
+  const fallback = featureFallback || loadTimedOut
 
-  const fallback = useShouldFallback()
-  if (fallback) return <CeremonyFallback data={data} />
+  // Hooks run unconditionally; effects no-op when fallback is active.
+  useScrollListener(spacerRef, { enabled: !fallback })
+  useIntroTimeline({ enabled: !fallback })
+
+  const maxDpr = useMemo(
+    () => Math.min(1.5, typeof window !== 'undefined' ? window.devicePixelRatio : 1),
+    [],
+  )
+
+  if (fallback) return <CeremonyFallback data={data} replay={replay} />
 
   return (
     <>
       <div style={{ position: 'fixed', inset: 0, zIndex: 0 }}>
-        <Canvas
-          camera={{ position: [0, 30, 0], fov: 45, near: 0.1, far: 400 }}
-          dpr={[1, Math.min(1.5, typeof window !== 'undefined' ? window.devicePixelRatio : 1)]}
-          gl={{ antialias: tier >= 3, alpha: false }}
-        >
-          <color attach="background" args={['#1c0a04']} />
-          <CameraRig />
-          <SceneEnvironment />
-          <MarsSurface tier={tier} />
-          <ZLogoMonument />
-          <ProofStack proofs={data.proofs} />
-          <PortalStoneRings tier={tier} />
-          <Chamber />
-          <ZobuParticleForm modelUrl={data.zobu.modelUrl} tier={tier} />
-          <LoadingGridline />
-          <PostFX tier={tier} />
-        </Canvas>
+        <CeremonyErrorBoundary fallback={<CeremonyFallback data={data} replay={replay} />}>
+          <Canvas
+            camera={{ position: [0, 30, 0], fov: 45, near: 0.1, far: 400 }}
+            dpr={[1, maxDpr]}
+            gl={{ antialias: tier >= 3, alpha: false }}
+          >
+            <color attach="background" args={['#1c0a04']} />
+            <Suspense fallback={null}>
+              <CameraRig />
+              <SceneEnvironment />
+              <MarsSurface tier={tier} />
+              <ZLogoMonument />
+              <ProofStack proofs={data.proofs} />
+              <PortalStoneRings tier={tier} />
+              <Chamber />
+              <ZobuParticleForm modelUrl={data.zobu.modelUrl} tier={tier} />
+              <LoadingGridline />
+              <PostFX tier={tier} />
+            </Suspense>
+          </Canvas>
+        </CeremonyErrorBoundary>
       </div>
       <div ref={spacerRef} style={{ height: `${SCROLL_SPACER_VH}vh`, pointerEvents: 'none' }} />
       <TopLeftLogo />
       <BottomLeftSound />
       <ScrollHint />
-      <CitizenshipCTA />
+      <CitizenshipCTA handle={data.user.handle} replay={replay} />
       {/* SR-only narrative */}
       <section aria-label="Homecoming ceremony" style={{ position: 'absolute', left: -9999, width: 1, height: 1 }}>
         <h1>Homecoming</h1>
@@ -2285,45 +2585,167 @@ git commit -m "feat(homecoming): Ceremony top-level wrapper wires every module"
 
 ---
 
-### Task 6.5: `pages/homecoming/index.tsx`
+### Task 6.5: `pages/homecoming/index.tsx` (preserves all existing SSR gates)
 
 **Files:**
+- Create: `apps/website/src/components/homecoming/data/adapt.ts` (payload → CeremonyData)
 - Modify (rewrite): `apps/website/src/pages/homecoming/index.tsx`
 
-- [ ] **Step 1: Read the existing file**
+The page must keep everything the current implementation does — preview override, kill-switch, auth redirect, identity redirect, one-time redirect, payload fetch — and simply swap `<HomecomingStage>` for `<Ceremony>` with data adapted to the new `CeremonyData` shape.
 
-```bash
-cat apps/website/src/pages/homecoming/index.tsx
+- [ ] **Step 1: Write payload adapter**
+
+```ts
+// apps/website/src/components/homecoming/data/adapt.ts
+import type { CeremonyData } from '../types'
+
+// Subset of the backend shape we actually consume. Full shape lives in the
+// backend's passport serializer; we only care about handle + 4 counts.
+type BackendHomecomingPayload = {
+  handle: string
+  first_name: string | null
+  avatar_image: string
+  destinations: { count: number }
+  nights:       { count: number }
+  zostels:      { count: number }
+  tribe:        { count: number }
+  has_journey?: boolean
+}
+
+type ProfileMe = {
+  id?: string
+  handle: string
+  first_name: string | null
+  avatar_image: string
+}
+
+export function adaptHomecomingPayload(
+  payload: BackendHomecomingPayload,
+  profile: ProfileMe,
+): CeremonyData {
+  return {
+    user: {
+      id: profile.id ?? profile.handle,
+      handle: profile.handle,
+      displayName: profile.first_name ?? profile.handle,
+    },
+    proofs: [
+      { id: 'destinations', label: 'Destinations', count: payload.destinations.count },
+      { id: 'nights',       label: 'Nights',       count: payload.nights.count },
+      { id: 'zostels',      label: 'Zostels',      count: payload.zostels.count },
+      { id: 'tribe',        label: 'Tribe',        count: payload.tribe.count },
+    ],
+    zobu: {
+      // Per-user baked Zobu; generic fallback if 404 is handled by ZobuParticleForm.
+      modelUrl: `https://cdn.zo.xyz/zobu/${profile.handle}.glb`,
+    },
+  }
+}
 ```
 
-- [ ] **Step 2: Replace with the new page**
+- [ ] **Step 2: Rewrite the page (keeping all current SSR gates)**
 
 ```tsx
 // apps/website/src/pages/homecoming/index.tsx
+import React from 'react'
 import type { GetServerSideProps } from 'next'
+import Head from 'next/head'
 import dynamic from 'next/dynamic'
-import { DEMO_CEREMONY, ZERO_STATE_CEREMONY } from '../../components/homecoming/data/demo'
+import { zoServer, zoPassportServer } from '../../../../../libs/auth/src/utils'
 import type { CeremonyData } from '../../components/homecoming/types'
 import { CeremonyDataSchema } from '../../components/homecoming/types'
+import { DEMO_CEREMONY, ZERO_STATE_CEREMONY } from '../../components/homecoming/data/demo'
+import { adaptHomecomingPayload } from '../../components/homecoming/data/adapt'
+import {
+  REDIRECT_AUTH,
+  REDIRECT_ONBOARDING,
+  HOMECOMING_ENDPOINT,
+  buildHandleHome,
+} from '../../components/homecoming/constants'
 
-// Client-only: the Ceremony component uses window.matchMedia, document, and
-// @react-three/fiber's Canvas — rendering it on the server causes a hydration
-// mismatch. next/dynamic with ssr:false is the standard Pages-Router fix.
+// The Ceremony component uses window.matchMedia, <Canvas>, and @react-three/*;
+// SSR would hydration-mismatch. Pages-Router fix: next/dynamic with ssr:false.
 const Ceremony = dynamic(
   () => import('../../components/homecoming/Ceremony').then((m) => m.Ceremony),
   { ssr: false },
 )
 
-export default function HomecomingPage({ data }: { data: CeremonyData }) {
-  return <Ceremony data={data} />
+type Props = { data: CeremonyData; replay: boolean }
+
+export default function HomecomingPage({ data, replay }: Props) {
+  return (
+    <>
+      <Head>
+        <title>Homecoming · Zo World</title>
+        <meta name="robots" content="noindex" />
+      </Head>
+      <Ceremony data={data} replay={replay} />
+    </>
+  )
 }
 
-export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  // TODO: swap this for a real fetch from the Zo passport endpoint.
-  // Contract: returns CeremonyData.
-  const source = ctx.query.zero === '1' ? ZERO_STATE_CEREMONY : DEMO_CEREMONY
-  const data = CeremonyDataSchema.parse(source)
-  return { props: { data } }
+export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
+  // 1. Preview override — non-prod only, bypasses auth + identity + one-time.
+  //    /homecoming?preview=1              → demo (populated) ceremony
+  //    /homecoming?preview=1&state=zero   → zero-state ceremony
+  if (ctx.query.preview === '1' && process.env.NODE_ENV !== 'production') {
+    const data = ctx.query.state === 'zero' ? ZERO_STATE_CEREMONY : DEMO_CEREMONY
+    CeremonyDataSchema.parse(data)
+    return { props: { data, replay: true } }
+  }
+
+  // 2. Kill-switch (unless ?replay=1).
+  if (
+    process.env.NEXT_PUBLIC_HOMECOMING_ENABLED === 'false' &&
+    ctx.query.replay !== '1'
+  ) {
+    return { redirect: { destination: '/passport', permanent: false } }
+  }
+
+  // 3. Cookie-forwarded auth.
+  const cookie = ctx.req.headers.cookie ?? ''
+  const authConfig = { headers: { cookie } }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let profile: any = null
+  try {
+    const res = await zoServer.get('/api/v1/profile/me/', authConfig)
+    profile = res.data
+  } catch {
+    return { redirect: { destination: REDIRECT_AUTH, permanent: false } }
+  }
+  if (!profile) {
+    return { redirect: { destination: REDIRECT_AUTH, permanent: false } }
+  }
+
+  // 4. Identity gate — handle + avatar must be set.
+  if (!profile.handle || !profile.avatar_image) {
+    return { redirect: { destination: REDIRECT_ONBOARDING, permanent: false } }
+  }
+
+  // 5. One-time gate (unless replay).
+  const replay = ctx.query.replay === '1'
+  if (profile.homecoming_completed_at && !replay) {
+    return { redirect: { destination: buildHandleHome(profile.handle), permanent: false } }
+  }
+
+  // 6. Payload fetch (matches existing code: direct zoPassportServer call
+  //    with cookie, not the client helper — server needs the cookie).
+  let payload
+  try {
+    const res = await zoPassportServer.post(HOMECOMING_ENDPOINT, {}, authConfig)
+    payload = res.data
+  } catch {
+    // Fail-safe: send the user to their passport (matches old behavior, but
+    // keyed to handle instead of /passport).
+    return { redirect: { destination: buildHandleHome(profile.handle), permanent: false } }
+  }
+
+  // 7. Adapt backend payload → CeremonyData and validate.
+  const data = adaptHomecomingPayload(payload, profile)
+  CeremonyDataSchema.parse(data)
+
+  return { props: { data, replay } }
 }
 ```
 
@@ -2333,64 +2755,112 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 npx nx build website 2>&1 | tail -20
 ```
 
-Expected: clean build. If there's an orphan import of `components/homecoming/...` from `apps/website/src/components/helpers/home/HeroSection.tsx`, fix it (likely a `<HomecomingStage>` reference from the old prototype — remove the import and the usage).
+Expected: clean build. If any orphan import from `components/homecoming/*` remains (e.g., in `components/helpers/home/HeroSection.tsx`), fix it — the old prototype was experimental and its internals don't have legitimate external consumers.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/website/src/pages/homecoming/index.tsx
-git commit -m "feat(homecoming): page route renders Ceremony via getServerSideProps"
+git add apps/website/src/pages/homecoming/index.tsx \
+        apps/website/src/components/homecoming/data/adapt.ts
+git commit -m "feat(homecoming): page preserves SSR gates, adapts payload → CeremonyData"
 ```
 
 ---
 
-### Task 6.6: Delete orphan `lib/homecoming/` + fix any remaining callers
+### Task 6.6: Prune `lib/homecoming/` (keep `endpoints.ts`, delete the rest)
 
 **Files:**
-- Delete: `apps/website/src/lib/homecoming/beatTimeline.ts`
-- Delete: `apps/website/src/lib/homecoming/endpoints.ts`
-- Delete: `apps/website/src/lib/homecoming/fixtures.ts`
-- Delete: `apps/website/src/lib/homecoming/obeliskPositions.ts`
-- Delete: `apps/website/src/lib/homecoming/rankBands.ts`
-- Delete: `apps/website/src/lib/homecoming/` (the now-empty directory)
+- **Keep:** `apps/website/src/lib/homecoming/endpoints.ts` — `fetchHomecomingPayload` + `completeHomecoming` are still load-bearing. `CitizenshipCTA` and `CeremonyFallback` import `completeHomecoming`; the SSR page hits the endpoint directly via `zoPassportServer`. Rewriting `endpoints.ts` is unnecessary — its import from the (deleted) old `components/homecoming/types.ts` for `HomecomingPayload` / `HomecomingCompleteResponse` needs to be repointed (see Step 1 below), but the module shape stays.
+- **Delete:** `apps/website/src/lib/homecoming/beatTimeline.ts` — obsolete, old prototype's zone definitions
+- **Delete:** `apps/website/src/lib/homecoming/fixtures.ts` — replaced by `components/homecoming/data/demo.ts`
+- **Delete:** `apps/website/src/lib/homecoming/obeliskPositions.ts` — obsolete, old prototype's obelisk anchor logic
+- **Delete:** `apps/website/src/lib/homecoming/rankBands.ts` — obsolete, old prototype's rank UI
 
-The entire `lib/homecoming/` directory existed only to serve the deleted prototype (mutual imports with the old `components/homecoming/types.ts`). The new engine has its own `CeremonyData` types and does not need `beatTimeline`, `rankBands`, `obeliskPositions`, `endpoints`, or `fixtures`.
+- [ ] **Step 1: Rehome the backend types that `endpoints.ts` consumes**
 
-- [ ] **Step 1: Confirm nothing else imports from lib/homecoming**
+`endpoints.ts` imports `HomecomingPayload` and `HomecomingCompleteResponse` from the (deleted) old types file. Move those two interfaces into `endpoints.ts` itself, since nothing else imports them and the adapter (`data/adapt.ts`) has its own local type for the same payload shape.
 
-```bash
-grep -rn "from.*lib/homecoming" apps/website/src --include="*.tsx" --include="*.ts"
+Replace the imports at the top of `apps/website/src/lib/homecoming/endpoints.ts`:
+
+```ts
+// apps/website/src/lib/homecoming/endpoints.ts
+import { zoPassportServer } from '../../../../../libs/auth/src/utils'
+
+// Backend response shapes — kept local to this file since only the adapter
+// (components/homecoming/data/adapt.ts) consumes the payload, and it owns
+// a structural type for what it needs.
+export interface HomecomingPayload {
+  handle: string
+  first_name: string | null
+  avatar_image: string
+  citizen_since: number
+  starting_xp: number
+  total_xp: number
+  final_rank: { key: string; label: string; chip_color: string }
+  destinations: { count: number; xp: number; caption: string }
+  nights:       { count: number; xp: number; caption: string }
+  zostels:      { count: number; xp: number; caption: string }
+  tribe:        { count: number; xp: number; caption: string }
+  has_journey: boolean
+}
+
+export interface HomecomingCompleteResponse {
+  homecoming_completed_at: string
+  total_xp: number
+  rank: string
+}
+
+export async function fetchHomecomingPayload(): Promise<HomecomingPayload> {
+  const { data } = await zoPassportServer.post<HomecomingPayload>('/api/v1/passport/homecoming/')
+  return data
+}
+
+export async function completeHomecoming(): Promise<HomecomingCompleteResponse> {
+  const { data } = await zoPassportServer.post<HomecomingCompleteResponse>(
+    '/api/v1/passport/homecoming/complete/',
+  )
+  return data
+}
 ```
 
-Expected: only matches inside `src/lib/homecoming/` itself (mutual imports between these 5 files). If any file *outside* that directory imports from it, flag — this plan assumes the orphan surface is bounded.
-
-- [ ] **Step 2: Delete**
+- [ ] **Step 2: Confirm nothing else imports from `lib/homecoming/*` besides `endpoints.ts`**
 
 ```bash
-git rm -rf apps/website/src/lib/homecoming/
+grep -rn "from.*lib/homecoming/\(beatTimeline\|fixtures\|obeliskPositions\|rankBands\)" apps/website/src --include="*.tsx" --include="*.ts"
 ```
 
-- [ ] **Step 3: Build**
+Expected: no matches. If any surface, they are orphan references from the old prototype that should have been handled in Task 1.1 — fix now.
+
+- [ ] **Step 3: Delete the obsolete files**
+
+```bash
+git rm apps/website/src/lib/homecoming/beatTimeline.ts \
+       apps/website/src/lib/homecoming/fixtures.ts \
+       apps/website/src/lib/homecoming/obeliskPositions.ts \
+       apps/website/src/lib/homecoming/rankBands.ts
+```
+
+- [ ] **Step 4: Build**
 
 ```bash
 npx nx build website 2>&1 | tail -10
 ```
 
-Expected: clean build. No remaining orphan errors.
+Expected: clean build.
 
-- [ ] **Step 4: Grep one more time for any leftover references**
+- [ ] **Step 5: Grep one more time for any remaining stale references**
 
 ```bash
 grep -rn "from.*components/homecoming\|from.*lib/homecoming" apps/website/src --include="*.tsx" --include="*.ts"
 ```
 
-Expected: only legitimate imports from inside the new `components/homecoming/` tree. If `components/helpers/home/HeroSection.tsx` or any other caller from outside the homecoming surface still has a stale import, delete the import line and any downstream usage (the prototype was experimental — nothing outside `homecoming/` should have load-bearing dependencies on its internals).
+Expected: only legitimate imports from inside the new `components/homecoming/` tree plus `endpoints.ts` consumers.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add -A apps/website/src
-git commit -m "chore(homecoming): delete lib/homecoming prototype scaffolding"
+git add -A apps/website/src/lib/homecoming
+git commit -m "chore(homecoming): prune lib/homecoming prototype files, rehome backend types"
 ```
 
 ---
@@ -2405,21 +2875,26 @@ No files — run the dev server and walk through the ceremony in a browser.
 npx nx serve website
 ```
 
-Opens http://localhost:4202. Navigate to `/homecoming`.
+Opens http://localhost:4202. Because `/homecoming` runs behind real auth in dev as well, use the preview route for initial visual review:
+
+- `http://localhost:4202/homecoming?preview=1` — demo (populated) ceremony, replay=true (no completion write)
+- `http://localhost:4202/homecoming?preview=1&state=zero` — zero-state ceremony
+
+Test the real auth path only after preview looks good, and do it against the `staging` branch preview so the one-time flag doesn't clobber your prod account.
 
 - [ ] **Step 2: Walk through the ceremony**
 
-Verify each of the following in order:
+Verify each of the following in order (against `?preview=1`):
 
 1. **Intro** — canvas is initially black, then wireframe edges appear (Mars terrain outline, `\z/` pillars as line silhouettes, portal rings as line rings, pedestal as line cylinder). Grid plane at `y=0` is faintly visible. After ~2s, solid materials morph in and the camera pans from top-down to front-on.
 2. **Idle (t=0)** — Mars surface, `\z/` monument front-on with inner pulse breathing. Hover over the monument: pulse intensifies, hover boost is visible. Move cursor away: pulse relaxes.
 3. **Scroll** — scroll down slowly. Camera descends, tilts into dust. Red dust volume is visible around the camera.
-4. **Proof 1 (~15% scroll)** — a chrome-stone card with "Destinations · 47" rises from below, holds in frame, drifts up and fades.
+4. **Proof 1 (~15% scroll)** — a chrome-stone card with "Destinations · 47" rises from below, holds in frame, drifts up and fades. Confirm that proof 1 is actually visible at scroll ≈ 0.15 — if it lands off-zone, the authored-u mapping (Task 1.6a) is wrong; inspect `sampleSpineAt`.
 5. **Proofs 2, 3, 4** — same behavior, each new card, each with their label + count.
 6. **Portal approach (~55% scroll)** — camera tips to look straight down. 4 concentric rings become visible, pulsing. Bright core at center.
 7. **Portal traversal (~62-70% scroll)** — camera passes through the rings. Bloom should wash the frame white briefly.
 8. **Chamber reveal (~75% scroll)** — camera lands in the chamber, warm-grey palette. Concentric floor rings + pedestal + ceiling light. Zobu wireframe appears, then particles condense into a figure on the pedestal.
-9. **Issuance (~95% scroll)** — "Become a citizen" button fades in at the bottom. Click it — page navigates to `/passport/success`.
+9. **Issuance (~95% scroll)** — "Become a citizen" button fades in at the bottom. Click it — page should navigate to `/@{handle}` (for preview, that's `/@samurai`). Preview mode does NOT write `homecoming_completed_at`, so refreshing `?preview=1` loops cleanly.
 
 - [ ] **Step 3: Check debug overlay**
 
@@ -2427,7 +2902,17 @@ Navigate to `/homecoming?debug=1&t=0.62`. Camera should jump to the portal-entry
 
 - [ ] **Step 4: Verify zero-state path**
 
-Navigate to `/homecoming?zero=1`. Scroll through. Proof card faces should show the zero-state strings (`"Destinations · Your first one awaits"` etc.) instead of numeric counts. CTA still renders and navigates normally. Canvas textures can be inspected in browser DevTools if copy looks wrong.
+Navigate to `/homecoming?preview=1&state=zero`. Scroll through. Proof card faces should show the zero-state strings (`"Destinations · Your first one awaits"` etc.) instead of numeric counts. CTA still renders and navigates normally. Canvas textures can be inspected in browser DevTools if copy looks wrong.
+
+- [ ] **Step 4b: Verify auth + one-time gates (against staging, not prod)**
+
+On the `staging` branch preview (never against prod — see memory `feedback_zozozo_staging_vs_live`):
+
+- Unauthenticated user visits `/homecoming` → redirected to `/zo-auth?next=/homecoming`.
+- Authenticated user with no handle or avatar → redirected to `/onboarding?next=/homecoming`.
+- Authenticated user with `homecoming_completed_at` set → redirected to `/@{handle}`.
+- First-time authenticated user: ceremony renders, clicking CTA calls `/api/v1/passport/homecoming/complete/` (watch network tab), then navigates to `/@{handle}`. Revisiting `/homecoming` now redirects (gate works).
+- Adding `?replay=1` to the completed user's URL: ceremony renders again, but CTA does NOT call the complete endpoint (verified in network tab).
 
 - [ ] **Step 5: Capture visual issues as follow-up tasks**
 
@@ -2517,20 +3002,22 @@ git log --oneline main..HEAD | head -40
 git push -u origin feat/homecoming-ceremony
 gh pr create --title "feat(homecoming): scroll-driven 3D ceremony engine" --body "$(cat <<'EOF'
 ## Summary
-- Rewrites the Homecoming ceremony as a scroll-driven R3F cinematic with a spinal camera rig
+- Rewrites the Homecoming ceremony rendering engine as a scroll-driven R3F cinematic with a spinal camera rig
 - Single continuous 3D world: Mars exterior, chrome \z/ monument, 4 proof monoliths, stone portal, particle Zobu in a chamber
-- Ends with a "Become a citizen" CTA that navigates to the passport success page
-- Degraded fallback for low-end / reduced-motion / no-WebGL
+- Preserves all existing SSR gates: preview override, kill-switch, auth, identity, one-time completion, backend payload fetch
+- CTA writes `homecoming_completed_at` and navigates the user to their `/@{handle}` passport page
+- Degraded fallback for low-end / reduced-motion / no-WebGL / slow-load / runtime errors
 
 Design spec: `docs/superpowers/specs/2026-04-23-homecoming-ceremony-engine-design.md`
 Implementation plan: `docs/superpowers/plans/2026-04-24-homecoming-ceremony-engine.md`
 
 ## Test plan
-- [ ] `npx nx test website` passes (unit: schema, spine, beatProgress, getProofCopy)
+- [ ] `npx nx test website` passes (unit: schema, spine, sampleSpine, beatProgress, getProofCopy)
 - [ ] `npx nx e2e website-e2e` passes (mount, CTA navigation, reduced-motion fallback) — *only if website-e2e scaffold exists; otherwise tracked as a follow-up*
-- [ ] Visual walkthrough on http://localhost:4202/homecoming matches Task 6.7 checklist
+- [ ] Visual walkthrough on `http://localhost:4202/homecoming?preview=1` matches Task 6.7 checklist
 - [ ] `?debug=1&t=<value>` deep-links work at t=0, 0.3, 0.62, 1.0
-- [ ] `?zero=1` renders zero-state proof copy
+- [ ] `?preview=1&state=zero` renders zero-state proof copy
+- [ ] Against staging: auth redirect, identity redirect, one-time redirect, completion write all behave per Task 6.7 Step 4b (never test one-time write against prod)
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
@@ -2543,13 +3030,15 @@ EOF
 
 All 6 chunks landed. The `feat/homecoming-ceremony` branch now contains:
 
-1. Deleted prototype (Task 1.1)
-2. Pure-module foundations with tests (Chunk 1)
+1. Deleted prototype + pruned lib/homecoming (Tasks 1.1, 6.6)
+2. Pure-module foundations with tests — including `sampleSpine` for authored-u timing (Chunk 1)
 3. Materials and camera infrastructure (Chunk 2)
 4. Exterior scene modules (Chunk 3)
 5. Proofs, portal, chamber (Chunk 4)
 6. Zobu (Chunk 5)
-7. HUD, fallback, integration, Playwright, PR (Chunk 6)
+7. HUD, error boundary, load-timeout, fallback, `Ceremony.tsx`, SSR-preserving page, optional Playwright, PR (Chunk 6)
+
+The `/homecoming` route preserves all existing gates (preview, kill-switch, auth, identity, one-time, payload fetch). The CTA writes `homecoming_completed_at` via the existing `/api/v1/passport/homecoming/complete/` endpoint and navigates the user to `/@{handle}`.
 
 **Hand-off notes for the implementer:**
 - The 3D modules (Chunks 2–5) rely on visual review, not unit tests. Run `npx nx serve website` and navigate to `/homecoming?debug=1&t=<n>` for isolated beat review.
