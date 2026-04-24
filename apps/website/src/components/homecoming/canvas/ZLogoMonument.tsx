@@ -67,13 +67,20 @@ export function ZLogoMonument() {
     })
   })
 
+  // Pin monument at world origin sitting on the Mars surface (y=0).
+  // Scale chosen so the model reads at ~7 units tall, matching the spec's
+  // y=0..+8 target. Production will replace this with the real chrome \z/
+  // model; in dev the Z_rock_Model.obj has its own origin baked in, so we
+  // re-anchor here rather than relying on the GLB's local transform.
   return (
     <group
       ref={groupRef}
+      position={[0, 0, 0]}
+      scale={[1.6, 1.6, 1.6]}
       onPointerOver={(e) => { e.stopPropagation(); setHovered(true) }}
       onPointerOut={(e) => { e.stopPropagation(); setHovered(false) }}
     >
-      <primitive object={scene} />
+      <primitive object={scene} position={[0, 0, 0]} />
     </group>
   )
 }

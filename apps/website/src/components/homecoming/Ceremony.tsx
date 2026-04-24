@@ -7,6 +7,7 @@ import { useDeviceTier } from './hooks/useDeviceTier'
 import { useScrollListener } from './hooks/useScrollListener'
 import { useIntroTimeline } from './hooks/useIntroTimeline'
 import { useLoadTimeout } from './hooks/useLoadTimeout'
+import { useLenisSmooth } from './hooks/useLenisSmooth'
 import { CameraRig } from './canvas/CameraRig'
 import { SceneEnvironment } from './canvas/SceneEnvironment'
 import { MarsSurface } from './canvas/MarsSurface'
@@ -56,6 +57,7 @@ export function Ceremony({ data, replay }: Props) {
   // Hooks run unconditionally; effects no-op when fallback is active.
   useScrollListener(spacerRef, { enabled: !fallback })
   useIntroTimeline({ enabled: !fallback })
+  useLenisSmooth({ enabled: !fallback })
 
   const maxDpr = useMemo(
     () =>
@@ -75,7 +77,7 @@ export function Ceremony({ data, replay }: Props) {
           fallback={<CeremonyFallback data={data} replay={replay} />}
         >
           <Canvas
-            camera={{ position: [0, 30, 0], fov: 45, near: 0.1, far: 400 }}
+            camera={{ position: [0, 30, 0], fov: 45, near: 0.1, far: 2500 }}
             dpr={[1, maxDpr]}
             gl={{ antialias: tier >= 3, alpha: false }}
           >

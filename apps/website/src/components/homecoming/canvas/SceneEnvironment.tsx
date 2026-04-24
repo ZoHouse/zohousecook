@@ -24,7 +24,9 @@ export function SceneEnvironment() {
   const ambRef = useRef<AmbientLight>(null!)
 
   // Lazy-init fog so we can mutate .color per frame without recreating.
-  if (!scene.fog) scene.fog = new Fog(MARS_FOG.clone(), 10, 200)
+  // Far distance is 800 in Mars so the big terrain + skydome read cleanly;
+  // chamber collapses to a tighter fog so the chamber feels enclosed.
+  if (!scene.fog) scene.fog = new Fog(MARS_FOG.clone(), 60, 800)
 
   useFrame(() => {
     const t = useCeremonyProgress.getState().tLerp
@@ -36,8 +38,8 @@ export function SceneEnvironment() {
     keyColor.copy(MARS_KEY).lerp(CHAMBER_KEY, mix)
 
     ;(scene.fog as Fog).color.copy(fogColor)
-    ;(scene.fog as Fog).near = 10 - mix * 3
-    ;(scene.fog as Fog).far = 200 - mix * 130
+    ;(scene.fog as Fog).near = 60 - mix * 50   // Mars 60 → Chamber 10
+    ;(scene.fog as Fog).far = 800 - mix * 720  // Mars 800 → Chamber 80
     if (ambRef.current) ambRef.current.color.copy(ambient)
     if (dirRef.current) dirRef.current.color.copy(keyColor)
   })

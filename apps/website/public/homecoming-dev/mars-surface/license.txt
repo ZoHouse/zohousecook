@@ -1,0 +1,11 @@
+Model Information:
+* title:	Mud of Mars
+* source:	https://sketchfab.com/3d-models/mud-of-mars-a6d8831589f14c378184f2a79c49ad37
+* author:	bilgehan.korkmaz (https://sketchfab.com/bilgehan.korkmaz)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Mud of Mars" (https://sketchfab.com/3d-models/mud-of-mars-a6d8831589f14c378184f2a79c49ad37) by bilgehan.korkmaz (https://sketchfab.com/bilgehan.korkmaz) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
