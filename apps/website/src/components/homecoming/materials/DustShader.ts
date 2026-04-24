@@ -23,13 +23,12 @@ export function createDustShader(mode: DustMode): ShaderMaterial {
     blending: NormalBlending,
     uniforms: {
       uTime: { value: 0 },
-      // White smoke — pale dust drifting through the scene. Light gray
-      // shadows lift through warm cream to bright off-white highlights.
-      // Reads as steam/mist rather than colored dust.
-      uColorA: { value: new Color(0x7a7370) },   // light warm gray shadow
-      uColorB: { value: new Color(0xc8c0b8) },   // pale dust body
-      uColorC: { value: new Color(0xe8e2d8) },   // warm cream mid
-      uColorD: { value: new Color(0xf8f4ee) },   // bright off-white highlight
+      // Smoke palette mirrors the SandTerrain stops so dust rising off
+      // the surface reads as the same material — Mars sand in the air.
+      uColorA: { value: new Color(0x7a5838) },   // sand shadow (matches SandTerrain uDark)
+      uColorB: { value: new Color(0xcfa870) },   // sand body   (matches SandTerrain uMid)
+      uColorC: { value: new Color(0xebcfa2) },   // sand highlight (matches SandTerrain uLight)
+      uColorD: { value: new Color(0xf5e5c8) },   // lifted highlight for wisp tops
       uDensity: { value: mode === 'raymarch' ? 0.85 : 1.0 },
       uScroll: { value: new Vector2(0.02, -0.09) },  // Y-negative = smoke rises in UV space
       uNearFade: { value: 14.0 },

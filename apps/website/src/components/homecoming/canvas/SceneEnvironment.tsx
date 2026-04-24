@@ -7,12 +7,14 @@ import type { DirectionalLight, AmbientLight } from 'three'
 import { useCeremonyProgress } from '../state/useCeremonyProgress'
 import { beatProgress, ZONES } from '../spine/zones'
 
-// Mars twilight palette — dark sky with heavy pale dust fog.
-const MARS_FOG = new Color('#c9c1b8')       // light warm gray, reads as misty atmosphere
+// Mars twilight palette — fog matches the SandTerrain + DustShader stops
+// so horizon atmosphere, airborne dust, and the ground all read as the
+// same Mars-sand material.
+const MARS_FOG = new Color('#cfa870')       // sand body — unified atmosphere
 const CHAMBER_FOG = new Color('#d8cfc6')
 const MARS_AMBIENT = new Color('#1a1410')   // near-black with faint warmth
 const CHAMBER_AMBIENT = new Color('#1a1a1c')
-const MARS_KEY = new Color('#e8ddd0')       // cool-warm off-white key
+const MARS_KEY = new Color('#ebcfa2')       // sand highlight as warm key
 const CHAMBER_KEY = new Color('#f3e8dc')
 
 const fogColor = new Color()
