@@ -41,3 +41,34 @@ describe('buildSpine', () => {
     }
   })
 })
+
+import { sampleSpineAt } from '../../components/homecoming/spine/sampleSpine'
+
+describe('sampleSpineAt (authored-u mapping)', () => {
+  const { positionSpine, lookAtSpine } = buildSpine(WAYPOINTS)
+  const out = new Vector3()
+
+  it('sampling at authored u of waypoint i returns that waypoint position', () => {
+    for (const w of WAYPOINTS) {
+      sampleSpineAt(positionSpine, WAYPOINTS, w.u, out)
+      expect(out.x).toBeCloseTo(w.pos[0], 2)
+      expect(out.y).toBeCloseTo(w.pos[1], 2)
+      expect(out.z).toBeCloseTo(w.pos[2], 2)
+    }
+  })
+
+  it('interpolates smoothly between waypoints', () => {
+    // halfway between waypoint[2] (u=0.15) and waypoint[3] (u=0.27) is u=0.21
+    sampleSpineAt(positionSpine, WAYPOINTS, 0.21, out)
+    expect(Number.isFinite(out.y)).toBe(true)
+    expect(out.y).toBeLessThan(WAYPOINTS[2].pos[1])       // below proof 1 anchor
+    expect(out.y).toBeGreaterThan(WAYPOINTS[3].pos[1])    // above proof 2 anchor
+  })
+
+  it('clamps out-of-range u', () => {
+    sampleSpineAt(positionSpine, WAYPOINTS, -0.5, out)
+    expect(out.y).toBeCloseTo(WAYPOINTS[0].pos[1], 2)
+    sampleSpineAt(positionSpine, WAYPOINTS, 1.5, out)
+    expect(out.y).toBeCloseTo(WAYPOINTS[WAYPOINTS.length - 1].pos[1], 2)
+  })
+})
