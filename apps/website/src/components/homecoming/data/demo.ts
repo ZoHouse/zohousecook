@@ -6,7 +6,7 @@ import type { CeremonyData } from '../types'
 const ZOBU_URL =
   process.env.NODE_ENV === 'production'
     ? 'https://cdn.zo.xyz/zobu/generic-v1.glb'
-    : '/homecoming-dev/zobu-generic-v1.glb'
+    : '/homecoming-dev/zobu-rigged.glb'
 
 export const DEMO_CEREMONY: CeremonyData = {
   user: { id: 'demo', handle: 'samurai', displayName: 'Samurai' },
