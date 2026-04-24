@@ -39,18 +39,23 @@ export function ZobuParticleForm({ modelUrl, tier }: { modelUrl: string; tier: D
   }, [zobuMesh])
 
   // Build point cloud.
-  const { geometry: pointGeom, targetPositions, spawnOffsets } = useMemo(() => {
-    if (!zobuMesh) return { geometry: null, targetPositions: null, spawnOffsets: null }
+  const { geometry: pointGeom, targetPositions, spawnOffsets, sampledNormals } = useMemo(() => {
+    if (!zobuMesh) return { geometry: null, targetPositions: null, spawnOffsets: null, sampledNormals: null }
     const sampler = new MeshSurfaceSampler(zobuMesh).build()
     const targets = new Float32Array(pointCount * 3)
     const offsets = new Float32Array(pointCount * 3)
+    const normals = new Float32Array(pointCount * 3)
     const positions = new Float32Array(pointCount * 3)
     const tmp = new Vector3()
+    const tmpNormal = new Vector3()
     for (let i = 0; i < pointCount; i++) {
-      sampler.sample(tmp)
+      sampler.sample(tmp, tmpNormal)
       targets[i * 3 + 0] = tmp.x
       targets[i * 3 + 1] = tmp.y
       targets[i * 3 + 2] = tmp.z
+      normals[i * 3 + 0] = tmpNormal.x
+      normals[i * 3 + 1] = tmpNormal.y
+      normals[i * 3 + 2] = tmpNormal.z
       // Random offset for initial scatter
       offsets[i * 3 + 0] = (Math.random() - 0.5) * 4
       offsets[i * 3 + 1] = (Math.random() - 0.5) * 4
@@ -61,7 +66,7 @@ export function ZobuParticleForm({ modelUrl, tier }: { modelUrl: string; tier: D
     }
     const geom = new BufferGeometry()
     geom.setAttribute('position', new BufferAttribute(positions, 3))
-    return { geometry: geom, targetPositions: targets, spawnOffsets: offsets }
+    return { geometry: geom, targetPositions: targets, spawnOffsets: offsets, sampledNormals: normals }
   }, [zobuMesh, pointCount])
 
   const pointMat = useMemo(() => new ShaderMaterial({
@@ -93,6 +98,16 @@ export function ZobuParticleForm({ modelUrl, tier }: { modelUrl: string; tier: D
     if (wireframe) wireRef.current = wireframe
   }, [wireframe])
 
+  // Dispose GPU resources on unmount or when memo deps change.
+  useEffect(() => {
+    return () => {
+      wireframe?.geometry.dispose()
+      ;(wireframe?.material as LineBasicMaterial | undefined)?.dispose()
+      pointGeom?.dispose()
+      pointMat?.dispose()
+    }
+  }, [wireframe, pointGeom, pointMat])
+
   useFrame((_, delta) => {
     const u = readBeatProgress(ZONES.chamberReveal)
     // 0-0.5: wireframe stage. 0.5-1: particle stage.
@@ -107,7 +122,7 @@ export function ZobuParticleForm({ modelUrl, tier }: { modelUrl: string; tier: D
     if (pointsRef.current) pointsRef.current.visible = pointOpacity > 0.01
 
     // Condensation: lerp current positions toward targets based on particle stage progress.
-    if (pointGeom && targetPositions && spawnOffsets) {
+    if (pointGeom && targetPositions && spawnOffsets && sampledNormals) {
       const progress = MathUtils.clamp((u - 0.5) / 0.4, 0, 1)
       const arr = pointGeom.attributes.position.array as Float32Array
       for (let i = 0; i < pointCount; i++) {
@@ -117,11 +132,14 @@ export function ZobuParticleForm({ modelUrl, tier }: { modelUrl: string; tier: D
         const ox = spawnOffsets[i * 3 + 0] * (1 - progress)
         const oy = spawnOffsets[i * 3 + 1] * (1 - progress)
         const oz = spawnOffsets[i * 3 + 2] * (1 - progress)
-        // Breathing term once resolved
-        const breath = progress > 0.95 ? 0.02 * Math.sin(performance.now() / 500 + i * 0.01) : 0
-        arr[i * 3 + 0] = tx + ox + breath
-        arr[i * 3 + 1] = ty + oy + breath
-        arr[i * 3 + 2] = tz + oz + breath
+        // Breathing term once resolved: oscillate along surface normals
+        const b = progress > 0.95 ? 0.02 * Math.sin(performance.now() / 500 + i * 0.01) : 0
+        const nx = sampledNormals[i * 3 + 0]
+        const ny = sampledNormals[i * 3 + 1]
+        const nz = sampledNormals[i * 3 + 2]
+        arr[i * 3 + 0] = tx + ox + nx * b
+        arr[i * 3 + 1] = ty + oy + ny * b
+        arr[i * 3 + 2] = tz + oz + nz * b
       }
       pointGeom.attributes.position.needsUpdate = true
     }
