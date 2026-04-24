@@ -25,7 +25,7 @@ export function TopLeftLogo() {
       }}
       aria-hidden
     >
-      \z/
+      {'\\z/'}
     </div>
   )
 }

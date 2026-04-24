@@ -31,10 +31,13 @@ export function CitizenshipCTA({ handle, replay }: Props) {
       try {
         await completeHomecoming()
       } catch {
-        // Completion failure is not fatal for navigation — the next /homecoming
+        // Completion failure is not fatal for navigation. The next /homecoming
         // request will re-run the SSR gate and either redirect or retry.
       }
     }
+    // Restore overflow before navigating so the destination page starts clean.
+    // (useIntroTimeline cleanup also restores, but only if it was active.)
+    document.body.style.overflow = ''
     router.push(destination)
   }
 
