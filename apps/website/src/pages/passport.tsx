@@ -94,30 +94,105 @@ function resolveViewerState(
   return "free";
 }
 
-// Reads the cached auth user payload synchronously from localStorage. Mirrors
-// the `${localKey}-user` key written by libs/auth/AuthProvider. Zostel-enabled
-// deployments (zozozo.work) use 'zo-admin'; public zo.xyz uses 'zo-web'.
-// Returns the viewer's handle (without the trailing .zo) or null.
-// Client-only — returns null during SSR so hydration stays deterministic.
-function readOwnerHint(): string | null {
+const OWNER_HINT_STORAGE_KEY = "zo-passport-owner-hint";
+const AUTH_USER_STORAGE_KEYS = ["zo-admin-user", "zo-web-user"] as const;
+
+type CachedAuthUser = {
+  id?: string | null;
+  mobile_number?: string | null;
+  email_address?: string | null;
+  custom_nickname?: string | null;
+  nickname?: string | null;
+};
+
+type OwnerHintRecord = {
+  handle?: string | null;
+  authUserId?: string | null;
+  mobileNumber?: string | null;
+  emailAddress?: string | null;
+};
+
+function normaliseHandle(handle?: string | null): string {
+  return String(handle || "")
+    .replace(/\.zo$/, "")
+    .trim();
+}
+
+function readCachedAuthUser(): CachedAuthUser | null {
   if (typeof window === "undefined") return null;
-  for (const key of ["zo-admin-user", "zo-web-user"]) {
+  for (const key of AUTH_USER_STORAGE_KEYS) {
     try {
       const raw = window.localStorage.getItem(key);
       if (!raw) continue;
-      const user = JSON.parse(raw) as {
-        custom_nickname?: string | null;
-        nickname?: string | null;
-      };
-      const h = (user.custom_nickname || user.nickname || "")
-        .replace(/\.zo$/, "")
-        .trim();
-      if (h) return h;
+      const user = JSON.parse(raw) as CachedAuthUser;
+      if (user && typeof user === "object") return user;
     } catch {
       /* ignore malformed payload */
     }
   }
   return null;
+}
+
+function ownerHintMatchesAuthUser(
+  record: OwnerHintRecord,
+  authUser: CachedAuthUser,
+): boolean {
+  const comparisons: Array<[string | null | undefined, string | null | undefined]> = [
+    [record.authUserId, authUser.id],
+    [record.mobileNumber, authUser.mobile_number],
+    [record.emailAddress, authUser.email_address],
+  ];
+
+  let hasOverlap = false;
+  for (const [expected, actual] of comparisons) {
+    if (!expected || !actual) continue;
+    hasOverlap = true;
+    if (expected !== actual) return false;
+  }
+
+  return hasOverlap;
+}
+
+function writeOwnerHint(handle: string) {
+  if (typeof window === "undefined") return;
+  const authUser = readCachedAuthUser();
+  const normalisedHandle = normaliseHandle(handle);
+  if (!authUser || !normalisedHandle) return;
+
+  const record: OwnerHintRecord = {
+    handle: normalisedHandle,
+    authUserId: authUser.id || null,
+    mobileNumber: authUser.mobile_number || null,
+    emailAddress: authUser.email_address || null,
+  };
+
+  window.localStorage.setItem(OWNER_HINT_STORAGE_KEY, JSON.stringify(record));
+}
+
+function clearOwnerHint() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(OWNER_HINT_STORAGE_KEY);
+}
+
+// Reads the cached auth user synchronously from localStorage. If we've already
+// resolved the viewer's real passport handle once, prefer the dedicated hint
+// for that same auth user; otherwise fall back to the raw auth payload.
+function readOwnerHint(): string | null {
+  const authUser = readCachedAuthUser();
+  if (!authUser) return null;
+
+  try {
+    const raw = window.localStorage.getItem(OWNER_HINT_STORAGE_KEY);
+    if (raw) {
+      const record = JSON.parse(raw) as OwnerHintRecord;
+      const hint = normaliseHandle(record.handle);
+      if (hint && ownerHintMatchesAuthUser(record, authUser)) return hint;
+    }
+  } catch {
+    /* ignore malformed payload */
+  }
+
+  return normaliseHandle(authUser.custom_nickname || authUser.nickname) || null;
 }
 
 interface PassportPageProps {
@@ -182,8 +257,9 @@ export default function PassportPage({
   const isPassportRoute =
     router.asPath === "/passport" || router.asPath.startsWith("/passport?");
 
-  const profileHandle =
-    profile?.custom_nickname?.replace(".zo", "") || profile?.nickname || "";
+  const profileHandle = normaliseHandle(
+    profile?.custom_nickname || profile?.nickname,
+  );
 
   const authResolved = isLoggedIn !== null;
   const profileReady = !profileLoading && !!profile;
@@ -193,7 +269,22 @@ export default function PassportPage({
 
   const isOwnHandle =
     (hintValid && !!urlHandle && urlHandle === ownerHint) ||
-    (profileReady && !!profileHandle && urlHandle === profileHandle);
+    (isLoggedIn !== false &&
+      profileReady &&
+      !!profileHandle &&
+      urlHandle === profileHandle);
+
+  useEffect(() => {
+    if (isLoggedIn === false) {
+      clearOwnerHint();
+      setOwnerHint(null);
+      return;
+    }
+
+    if (!profileHandle) return;
+    writeOwnerHint(profileHandle);
+    setOwnerHint((current) => (current === profileHandle ? current : profileHandle));
+  }, [isLoggedIn, profileHandle]);
 
   // Default visitor view for any /@handle unless we've confirmed the viewer is
   // the owner. This keeps SSR output crawlable (most traffic is visitors) and
@@ -269,19 +360,25 @@ export default function PassportPage({
             {og.image && <meta property="twitter:image" content={og.image} />}
           </Head>
         )}
-        {showNewUserInvited ? (
-          <NewUserInvitedView />
-        ) : (
-          <PublicPassportView
-            handle={urlHandle}
-            viewerState={resolveViewerState(isLoggedIn, profile)}
-            initialData={
-              publicPassport && publicPassport.handle === urlHandle
-                ? publicPassport
-                : null
-            }
-          />
-        )}
+        {/* data-passport-ssr="public" lets the pre-paint script in
+            _document.tsx hide this subtree when the viewer is the
+            handle's owner, so the SSR Public paint never flashes
+            before React swaps in the Owner lobby. */}
+        <div data-passport-ssr="public">
+          {showNewUserInvited ? (
+            <NewUserInvitedView />
+          ) : (
+            <PublicPassportView
+              handle={urlHandle}
+              viewerState={resolveViewerState(isLoggedIn, profile)}
+              initialData={
+                publicPassport && publicPassport.handle === urlHandle
+                  ? publicPassport
+                  : null
+              }
+            />
+          )}
+        </div>
       </>
     );
   }

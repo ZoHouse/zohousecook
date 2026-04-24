@@ -34,6 +34,25 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 })(window,document,'script','dataLayer','GTM-PWPM6Z8');`,
           }}
         />
+        {/* Pre-paint owner detection for /@handle routes. Mirrors the
+            readOwnerHint() schema in pages/passport.tsx — keep in sync.
+            Runs before body paints, sets html.passport-is-owner when the
+            viewer's cached handle matches the URL, so the SSR Public view
+            is hidden by the CSS below until React mounts the Owner lobby.
+            Non-owners and logged-out visitors: class is never added, SSR
+            Public view paints normally. No flash on either path. */}
+        <Script
+          id="passport-owner-hint"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var m=location.pathname.match(/^\\/@([^/?#]+)/);if(!m)return;var urlHandle=decodeURIComponent(m[1]);var ls=window.localStorage;var rawAu=ls.getItem("zo-admin-user")||ls.getItem("zo-web-user");if(!rawAu)return;var au=JSON.parse(rawAu);if(!au)return;var hint=null;var rawRec=ls.getItem("zo-passport-owner-hint");if(rawRec){var r=JSON.parse(rawRec);var match=(r.authUserId&&au.id&&r.authUserId===au.id)||(r.mobileNumber&&au.mobile_number&&r.mobileNumber===au.mobile_number)||(r.emailAddress&&au.email_address&&r.emailAddress===au.email_address);if(match&&r.handle)hint=String(r.handle).replace(/\\.zo$/,"").trim();}if(!hint){var fb=au.custom_nickname||au.nickname;if(fb)hint=String(fb).replace(/\\.zo$/,"").trim();}if(hint&&hint===urlHandle)document.documentElement.classList.add("passport-is-owner");}catch(e){}})();`,
+          }}
+        />
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `html.passport-is-owner [data-passport-ssr="public"]{display:none!important}`,
+          }}
+        />
       </Head>
       <body>
         <noscript>
