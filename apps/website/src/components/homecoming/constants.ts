@@ -22,7 +22,7 @@ export const INTRO_PHASE_B_MS = 1400   // wireframe hold
 export const INTRO_PHASE_C_MS = 1500   // materialization + camera pan
 export const INTRO_SKIP_COMPRESS_MS = 300  // fast-forward duration on user intent
 
-export const DAMPING_LAMBDA = 8  // damp() smoothing for tLerp
+export const DAMPING_LAMBDA = 14  // damp() smoothing for tLerp — snappier camera follow
 
 export const CHROME_STONE_PULSE_BASELINE = 0.25
 export const CHROME_STONE_PULSE_AMPLITUDE = 0.75
