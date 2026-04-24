@@ -1,79 +1,99 @@
 // apps/website/src/components/homecoming/canvas/MarsSurface.tsx
 import { useMemo, useRef } from 'react'
-import { useFrame, useLoader, useThree } from '@react-three/fiber'
-import {
-  TextureLoader,
-  RepeatWrapping,
-  DoubleSide,
-  BackSide,
-  Texture,
-  Mesh,
-  Vector3,
-} from 'three'
-import { useGLTF } from '@react-three/drei'
+import { useFrame, useThree } from '@react-three/fiber'
+import { DoubleSide, BackSide, Mesh, Vector3 } from 'three'
 import { createDustShader } from '../materials/DustShader'
 import type { DeviceTier } from '../hooks/useDeviceTier'
-
-// Mars terrain textures. Dev falls back to solid color when CDN assets are
-// missing (see apps/website/public/homecoming-dev/ for local preview assets).
-const HAS_CDN_TEXTURES = process.env.NODE_ENV === 'production'
-const ALBEDO_URL = 'https://cdn.zo.xyz/homecoming/textures/mars-albedo-2k.jpg'
-const NORMAL_URL = 'https://cdn.zo.xyz/homecoming/textures/mars-normal-2k.jpg'
 
 // Module-scoped temp to avoid per-frame allocation (spec §6).
 const tmpCamPos = new Vector3()
 
-function MarsTerrainMaterial({ size, segs }: { size: number; segs: number }) {
-  if (!HAS_CDN_TEXTURES) {
-    return (
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow={false}>
-        <planeGeometry args={[size, size, segs, segs]} />
-        <meshStandardMaterial color="#3e2d26" roughness={0.95} metalness={0.0} />
-      </mesh>
-    )
-  }
-  const [albedo, normal] = useLoader(TextureLoader, [ALBEDO_URL, NORMAL_URL]) as [Texture, Texture]
-  for (const tex of [albedo, normal]) {
-    tex.wrapS = tex.wrapT = RepeatWrapping
-    tex.repeat.set(32, 32)
-  }
+/**
+ * Sand terrain — a large plane with a procedural sand shader. Warm tan
+ * palette with layered noise for dune-like variation. Displaced slightly in
+ * the vertex shader so the surface isn't perfectly flat. Much more readable
+ * than a dark mud chunk model when the camera stands up close to it.
+ */
+function SandTerrain({ size, segs }: { size: number; segs: number }) {
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow={false}>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
       <planeGeometry args={[size, size, segs, segs]} />
-      <meshStandardMaterial map={albedo} normalMap={normal} roughness={0.95} metalness={0.0} />
+      <shaderMaterial
+        args={[{
+          uniforms: {
+            uLight: { value: [0xeb / 255, 0xcf / 255, 0xa2 / 255] }, // warm highlight
+            uMid:   { value: [0xcf / 255, 0xa8 / 255, 0x70 / 255] }, // sand body
+            uDark:  { value: [0x7a / 255, 0x58 / 255, 0x38 / 255] }, // shadow grains
+            uDeep:  { value: [0x3b / 255, 0x2a / 255, 0x1d / 255] }, // deepest ripple
+          },
+          vertexShader: /* glsl */ `
+            varying vec2 vUv;
+            varying float vHeight;
+
+            float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+            float vnoise(vec2 p) {
+              vec2 i = floor(p), f = fract(p);
+              float a = hash(i), b = hash(i + vec2(1,0)), c = hash(i + vec2(0,1)), d = hash(i + vec2(1,1));
+              vec2 u = f*f*(3.0-2.0*f);
+              return mix(mix(a,b,u.x), mix(c,d,u.x), u.y);
+            }
+
+            void main() {
+              vUv = uv;
+              // Coarse dunes + fine ripple displacement. UV-driven so it stays
+              // stable as the camera moves; amplitude is small so the plane
+              // still reads as a horizon line.
+              float dune = vnoise(uv * 12.0) - 0.5;
+              float ripple = vnoise(uv * 80.0) - 0.5;
+              vHeight = dune * 1.8 + ripple * 0.18;
+              vec3 displaced = position + vec3(0.0, 0.0, vHeight);  // local z = world y after the -PI/2 rotation
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
+            }
+          `,
+          fragmentShader: /* glsl */ `
+            varying vec2 vUv;
+            varying float vHeight;
+            uniform vec3 uLight;
+            uniform vec3 uMid;
+            uniform vec3 uDark;
+            uniform vec3 uDeep;
+
+            float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+            float vnoise(vec2 p) {
+              vec2 i = floor(p), f = fract(p);
+              float a = hash(i), b = hash(i + vec2(1,0)), c = hash(i + vec2(0,1)), d = hash(i + vec2(1,1));
+              vec2 u = f*f*(3.0-2.0*f);
+              return mix(mix(a,b,u.x), mix(c,d,u.x), u.y);
+            }
+
+            void main() {
+              // Multi-octave noise keyed to world-scale repeat for grain detail.
+              vec2 p = vUv * 180.0;
+              float g = 0.0, amp = 0.5;
+              for (int i = 0; i < 4; i++) {
+                g += vnoise(p) * amp;
+                p *= 2.01;
+                amp *= 0.55;
+              }
+              // Broader dune shading reuses the vertex-displacement height.
+              float shade = clamp(0.5 + vHeight * 0.35 + (g - 0.5) * 0.6, 0.0, 1.0);
+
+              vec3 color = mix(uDeep, uDark, smoothstep(0.0, 0.35, shade));
+              color = mix(color, uMid, smoothstep(0.3, 0.65, shade));
+              color = mix(color, uLight, smoothstep(0.65, 1.0, shade));
+
+              gl_FragColor = vec4(color, 1.0);
+            }
+          `,
+        }]}
+      />
     </mesh>
   )
 }
 
-// Sketchfab Mars-mud terrain chunk. Sits on top of the procedural base plane
-// for sculpted detail in the hero shot; chunk is cloned + scattered so the
-// edge is never a single rectangular boundary.
-const MARS_SURFACE_URL = '/homecoming-dev/mars-surface/scene.gltf'
-useGLTF.preload(MARS_SURFACE_URL)
-
-function MarsMudChunks() {
-  const gltf = useGLTF(MARS_SURFACE_URL) as any
-  const base = gltf.scene
-  // Clone the scene graph once so we can render multiple instances safely.
-  const make = () => base.clone(true)
-  return (
-    <group position={[0, -0.1, 0]}>
-      {/* Central chunk directly under the monument, scaled to span ~200 units */}
-      <primitive object={make()} scale={[60, 30, 60]} position={[0, 0, 0]} />
-      {/* Ring of scattered chunks for horizon texture */}
-      <primitive object={make()} scale={[80, 35, 80]} position={[180, 0, -90]} rotation={[0, 0.8, 0]} />
-      <primitive object={make()} scale={[75, 32, 75]} position={[-200, 0, -60]} rotation={[0, -1.1, 0]} />
-      <primitive object={make()} scale={[70, 30, 70]} position={[120, 0, 180]} rotation={[0, 2.2, 0]} />
-      <primitive object={make()} scale={[90, 40, 90]} position={[-160, 0, 160]} rotation={[0, -2.6, 0]} />
-    </group>
-  )
-}
-
 /**
- * Skydome — a large inverted sphere rendered from the inside, with a simple
- * vertical gradient (dark Mars horizon at the top transitioning to red glow
- * at the bottom). Anchored at world origin; large enough that the camera
- * never approaches its shell.
+ * Skydome — large inverted sphere with a subtle vertical gradient. Near-black
+ * at top, muted Mars tint at horizon, warm terracotta below.
  */
 function Skydome() {
   return (
@@ -85,12 +105,9 @@ function Skydome() {
           depthWrite: false,
           depthTest: false,
           uniforms: {
-            // Toned down — near-black at the top, a subtle desaturated Mars
-            // tint at the horizon, and a muted terracotta below. No hot
-            // orange glow; keeps the scene from reading as nuclear-red.
-            uTop: { value: [0.015, 0.012, 0.018] },     // near-black with faint cool undertone
+            uTop: { value: [0.015, 0.012, 0.018] },     // near-black
             uMid: { value: [0.14, 0.08, 0.07] },        // muted Mars brown-gray at horizon
-            uBottom: { value: [0.22, 0.13, 0.10] },     // terracotta below, not glowing
+            uBottom: { value: [0.22, 0.13, 0.10] },     // terracotta below
           },
           vertexShader: /* glsl */ `
             varying vec3 vWorldPos;
@@ -106,7 +123,6 @@ function Skydome() {
             uniform vec3 uMid;
             uniform vec3 uBottom;
             void main() {
-              // Height-based gradient. Normalize by the sphere radius-ish range.
               float h = clamp(vWorldPos.y / 400.0, -1.0, 1.0);
               vec3 color;
               if (h > 0.0) color = mix(uMid, uTop, smoothstep(0.0, 1.0, h));
@@ -121,11 +137,8 @@ function Skydome() {
 }
 
 /**
- * Camera-following dust volume. A sphere sized large enough that the camera
- * is always well inside it; re-centers on the camera every frame. Gives the
- * "you are inside the dust" feel without box walls ever coming into view.
- * Limited to the vertical dust zone (y ∈ [-5, -95]) by fading the shader
- * alpha outside that band.
+ * Camera-following dust volume. A sphere centered on the camera so its walls
+ * never come into frame. Alpha attenuated by y-zone + near/far view distance.
  */
 function DustVolume({ dustMat }: { dustMat: ReturnType<typeof createDustShader> }) {
   const meshRef = useRef<Mesh>(null!)
@@ -143,8 +156,6 @@ function DustVolume({ dustMat }: { dustMat: ReturnType<typeof createDustShader> 
 }
 
 export function MarsSurface({ tier }: { tier: DeviceTier }) {
-  // Ground size is now much larger so the edge never enters frame; visible
-  // detail comes from the texture repeat + fog falloff, not the plane rim.
   const size = tier >= 3 ? 2000 : tier >= 2 ? 1200 : 800
   const segs = tier >= 3 ? 256 : tier >= 2 ? 128 : 64
 
@@ -158,8 +169,7 @@ export function MarsSurface({ tier }: { tier: DeviceTier }) {
   return (
     <group>
       <Skydome />
-      <MarsTerrainMaterial size={size} segs={segs} />
-      <MarsMudChunks />
+      <SandTerrain size={size} segs={segs} />
       <DustVolume dustMat={dustMat} />
 
       {/* Ringed planet billboard — sits far enough back to live on the sky, not in the dust. */}
