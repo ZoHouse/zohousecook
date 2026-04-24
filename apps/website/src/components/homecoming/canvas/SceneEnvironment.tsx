@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { Environment } from '@react-three/drei'
 import { useRef } from 'react'
 import { Color, Fog } from 'three'
+import type { DirectionalLight, AmbientLight } from 'three'
 import { useCeremonyProgress } from '../state/useCeremonyProgress'
 import { beatProgress, ZONES } from '../spine/zones'
 
@@ -19,8 +20,8 @@ const keyColor = new Color()
 
 export function SceneEnvironment() {
   const scene = useThree((s) => s.scene)
-  const dirRef = useRef<any>(null)
-  const ambRef = useRef<any>(null)
+  const dirRef = useRef<DirectionalLight>(null!)
+  const ambRef = useRef<AmbientLight>(null!)
 
   // Lazy-init fog so we can mutate .color per frame without recreating.
   if (!scene.fog) scene.fog = new Fog(MARS_FOG.clone(), 10, 200)

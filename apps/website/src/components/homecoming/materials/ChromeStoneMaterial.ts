@@ -41,7 +41,7 @@ export function createChromeStoneMaterial(opts: ChromeStoneOptions = {}): MeshPh
     metalness: 1.0,
     roughness: 0.15,
     envMapIntensity,
-    emissive: pulseColor,
+    emissive: pulseColor.clone(),
     emissiveIntensity: pulseBaseline,
   })
 
