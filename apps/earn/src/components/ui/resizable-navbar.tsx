@@ -242,7 +242,7 @@ export const NavbarLogo = () => {
         height={32}
       />
       <span className="text-lg font-black uppercase tracking-tight text-black">
-        Marketplace
+        Earn
       </span>
     </a>
   );

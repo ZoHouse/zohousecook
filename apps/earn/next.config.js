@@ -16,6 +16,7 @@ const nextConfig = {
   assetPrefix: basePath,
   reactStrictMode: true,
   images: {
+    unoptimized: true,
     domains: [
       "cdn.zo.xyz",
       "proxy.cdn.zo.xyz",
