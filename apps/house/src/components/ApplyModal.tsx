@@ -40,6 +40,8 @@ export function ApplyModal({ open, onClose }: ApplyModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [waitlistNumber, setWaitlistNumber] = useState<number | null>(null);
+  const [shareSlug, setShareSlug] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -97,6 +99,12 @@ export function ApplyModal({ open, onClose }: ApplyModalProps) {
         return;
       }
       // apply_submit_success is fired by the API route (Chunk 4) — no client fire here.
+      if (typeof data?.waitlist_number === "number") {
+        setWaitlistNumber(data.waitlist_number);
+      }
+      if (typeof data?.share_slug === "string") {
+        setShareSlug(data.share_slug);
+      }
       setSubmitted(true);
     } catch (err) {
       track("apply_submit_error", { error_code: "network" });
@@ -128,7 +136,12 @@ export function ApplyModal({ open, onClose }: ApplyModalProps) {
       <div className="min-h-screen w-full flex flex-col items-center py-16 md:py-24 px-4 md:px-8">
         <div className="w-full max-w-2xl">
           {submitted ? (
-            <SubmittedTicket form={form} onClose={onClose} />
+            <SubmittedTicket
+              form={form}
+              waitlistNumber={waitlistNumber}
+              shareSlug={shareSlug}
+              onClose={onClose}
+            />
           ) : (
             <>
               {/* Banner */}
@@ -438,9 +451,13 @@ function BlurGate({
 
 function SubmittedTicket({
   form,
+  waitlistNumber,
+  shareSlug,
   onClose,
 }: {
   form: { name: string; socials: string; email: string };
+  waitlistNumber: number | null;
+  shareSlug: string | null;
   onClose: () => void;
 }) {
   const handle = useMemo(
@@ -452,13 +469,18 @@ function SubmittedTicket({
     [form.email, form.name, handle]
   );
   const ticketNo = useMemo(() => {
+    if (typeof waitlistNumber === "number" && waitlistNumber > 0) {
+      return String(waitlistNumber).padStart(6, "0");
+    }
+    // Fallback when the count query failed — keep a stable per-applicant code
+    // so the ticket still renders something.
     const seed = `${form.email}${form.name}${handle}`;
     let hash = 0;
     for (let i = 0; i < seed.length; i += 1) {
       hash = (hash * 33 + seed.charCodeAt(i)) >>> 0;
     }
     return String(hash % 1_000_000).padStart(6, "0");
-  }, [form.email, form.name, handle]);
+  }, [waitlistNumber, form.email, form.name, handle]);
 
   return (
     <div className="text-center py-8 md:py-12">
@@ -468,11 +490,11 @@ function SubmittedTicket({
       <h2 className="text-4xl md:text-5xl font-medium tracking-tight mb-3 text-white">
         You&apos;re{" "}
         <span className="font-[family-name:var(--font-headline)] italic shiny-gold">
-          in.
+          waitlisted.
         </span>
       </h2>
       <p className="text-neutral-400 text-base md:text-lg mb-8">
-        Your Era Alpha waiting list pass. Screenshot it, share it, see you soon.
+        Your waitlist pass. Share it, see you soon.
       </p>
       <div className="flex justify-center">
         <div className="origin-top sm:scale-[0.78]">
@@ -482,6 +504,7 @@ function SubmittedTicket({
             title={title}
             ticketNo={ticketNo}
             socials={form.socials}
+            shareSlug={shareSlug}
           />
         </div>
       </div>

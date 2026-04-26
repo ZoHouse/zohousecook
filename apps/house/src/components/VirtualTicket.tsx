@@ -9,6 +9,7 @@ interface VirtualTicketProps {
   ticketNo?: string;
   hideActions?: boolean;
   socials?: string;
+  shareSlug?: string | null;
 }
 
 const GOLDEN_GRADIENT =
@@ -136,7 +137,9 @@ export const VirtualTicket: React.FC<VirtualTicketProps> = ({
   ticketNo = "010091",
   hideActions = false,
   socials,
+  shareSlug,
 }) => {
+  const shareUrl = shareSlug ? `https://zo.house/p/${shareSlug}` : "https://zo.house";
   const ticketRef = useRef<HTMLDivElement>(null);
 
   const captureTicketPng = useCallback(async (): Promise<string | null> => {
@@ -153,68 +156,77 @@ export const VirtualTicket: React.FC<VirtualTicketProps> = ({
     const dataUrl = await captureTicketPng();
     if (!dataUrl) return;
     const link = document.createElement("a");
-    link.download = `civilization-pass-${handle}.png`;
+    link.download = `zo-house-pass-${handle}.png`;
     link.href = dataUrl;
     link.click();
   }, [captureTicketPng, handle]);
 
   const handleShareX = useCallback(async () => {
     const text =
-      "Got my ticket to the civilisation.\nZo House · Era Alpha Waiting List";
-    const url = "https://house.zo.xyz";
+      "I've been seen!!!!!\nOn the Zo House waitlist.";
+    const url = shareUrl;
     const intent = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
 
-    const dataUrl = await captureTicketPng();
-    if (!dataUrl) {
+    const nav = typeof navigator !== "undefined" ? navigator : null;
+    const isMobileUA =
+      typeof navigator !== "undefined" &&
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    // Mobile: try native share sheet (image attaches to X directly).
+    if (isMobileUA && nav && "canShare" in nav) {
+      const dataUrl = await captureTicketPng();
+      if (dataUrl) {
+        try {
+          const blob = await (await fetch(dataUrl)).blob();
+          const file = new File([blob], `zo-house-pass-${handle}.png`, {
+            type: "image/png",
+          });
+          if (nav.canShare({ files: [file] })) {
+            await nav.share({ files: [file], text: `${text}\n${url}` });
+            return;
+          }
+        } catch {
+          /* fall through to popup */
+        }
+      }
       window.open(intent, "_blank", "noopener,noreferrer");
       return;
     }
 
-    const blob = await (await fetch(dataUrl)).blob();
-    const file = new File([blob], `civilization-pass-${handle}.png`, {
-      type: "image/png",
-    });
+    // Desktop: open X tab SYNCHRONOUSLY (inside the user-gesture window) so
+    // the popup blocker doesn't kill it. Copy image to clipboard in parallel.
+    const xWindow = window.open(intent, "_blank", "noopener,noreferrer");
 
-    const nav = typeof navigator !== "undefined" ? navigator : null;
-
-    // Mobile & supported browsers: native share sheet — X appears with image attached.
-    if (nav && "canShare" in nav && nav.canShare({ files: [file] })) {
-      try {
-        await nav.share({ files: [file], text: `${text}\n${url}` });
-        return;
-      } catch {
-        /* user cancelled or share failed — continue to fallback */
-      }
-    }
-
-    // Desktop: copy image to clipboard + open tweet intent. User pastes with Cmd/Ctrl-V.
     try {
+      const dataUrl = await captureTicketPng();
+      if (!dataUrl) return;
+      const blob = await (await fetch(dataUrl)).blob();
+
       if (
         nav &&
         "clipboard" in nav &&
-        typeof window !== "undefined" &&
         typeof window.ClipboardItem !== "undefined"
       ) {
         await nav.clipboard.write([
           new window.ClipboardItem({ "image/png": blob }),
         ]);
-        window.open(intent, "_blank", "noopener,noreferrer");
-        alert(
-          "Ticket copied to clipboard — paste it into your tweet (Cmd/Ctrl-V)."
-        );
+        if (xWindow) {
+          alert(
+            "Ticket copied to clipboard — paste it into your tweet (Cmd/Ctrl-V)."
+          );
+        }
         return;
       }
-    } catch {
-      /* clipboard blocked — fall through to download */
-    }
 
-    // Final fallback: download PNG + open tweet.
-    const link = document.createElement("a");
-    link.download = `civilization-pass-${handle}.png`;
-    link.href = dataUrl;
-    link.click();
-    window.open(intent, "_blank", "noopener,noreferrer");
-  }, [captureTicketPng, handle]);
+      // Clipboard unavailable — download as a fallback.
+      const link = document.createElement("a");
+      link.download = `zo-house-pass-${handle}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch {
+      /* image work failed — X tab is already open, user can still tweet */
+    }
+  }, [captureTicketPng, handle, shareUrl]);
 
   const handleShareImage = useCallback(async () => {
     const dataUrl = await captureTicketPng();
@@ -222,7 +234,7 @@ export const VirtualTicket: React.FC<VirtualTicketProps> = ({
 
     try {
       const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], `civilization-pass-${handle}.png`, {
+      const file = new File([blob], `zo-house-pass-${handle}.png`, {
         type: "image/png",
       });
 
@@ -231,7 +243,7 @@ export const VirtualTicket: React.FC<VirtualTicketProps> = ({
         await nav.share({
           files: [file],
           title: "My Zo House pass",
-          text: "Got my ticket to the civilisation. house.zo.xyz",
+          text: `I've been seen!!!!! On the Zo House waitlist. ${shareUrl}`,
         });
         return;
       }
@@ -240,10 +252,10 @@ export const VirtualTicket: React.FC<VirtualTicketProps> = ({
     }
 
     const link = document.createElement("a");
-    link.download = `civilization-pass-${handle}.png`;
+    link.download = `zo-house-pass-${handle}.png`;
     link.href = dataUrl;
     link.click();
-  }, [captureTicketPng, handle]);
+  }, [captureTicketPng, handle, shareUrl]);
 
   const cleanHandle = handle.replace(/^@/, "");
 
@@ -418,34 +430,22 @@ export const VirtualTicket: React.FC<VirtualTicketProps> = ({
                 </div>
               </div>
 
-              {/* Middle: Civilization Branding */}
+              {/* Middle: The Order */}
               <div style={{ marginTop: 20 }}>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "#D4AF37",
-                    letterSpacing: "0.4em",
-                    textTransform: "uppercase",
-                    marginBottom: 8,
-                    fontWeight: 600,
-                  }}
-                >
-                  TICKET TO
-                </div>
                 <h1
                   style={{
-                    fontSize: 64,
+                    fontSize: 68,
                     margin: 0,
-                    color: "#FFFFFF",
-                    fontWeight: 900,
-                    letterSpacing: "-0.04em",
-                    lineHeight: 0.9,
-                    textTransform: "uppercase",
+                    fontWeight: 700,
+                    letterSpacing: "-0.02em",
+                    lineHeight: 0.95,
                     fontFamily: "serif",
                     fontStyle: "italic",
+                    textTransform: "uppercase",
                   }}
                 >
-                  CIVILIZATION
+                  <div style={{ color: "#FFFFFF" }}>You&apos;ve been</div>
+                  <div style={{ color: "#D4AF37" }}>seen.</div>
                 </h1>
               </div>
 
@@ -467,7 +467,7 @@ export const VirtualTicket: React.FC<VirtualTicketProps> = ({
                       letterSpacing: "0.1em",
                     }}
                   >
-                    WAITING LIST PASS • ERA ALPHA
+                    WAITLIST PASS
                   </div>
                   <div
                     style={{
@@ -487,7 +487,7 @@ export const VirtualTicket: React.FC<VirtualTicketProps> = ({
                     opacity: 0.8,
                   }}
                 >
-                  house.zo.xyz
+                  zo.house
                 </div>
               </div>
             </div>
