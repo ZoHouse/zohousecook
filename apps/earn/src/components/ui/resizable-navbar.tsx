@@ -87,7 +87,7 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => {
       animate={{
         backdropFilter: visible ? "blur(10px)" : "none",
         boxShadow: visible
-          ? "4px 4px 0px 0px #000"
+          ? "0 8px 32px 0 rgba(0, 0, 0, 0.5)"
           : "none",
         width: visible ? "60%" : "100%",
         y: visible ? 12 : 0,
@@ -101,8 +101,8 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => {
         minWidth: visible ? "800px" : undefined,
       }}
       className={cn(
-        "relative z-[60] mx-auto hidden w-full flex-row items-center justify-between self-start rounded-none border-b-4 border-black bg-[#FFFBF0] px-8 py-3 lg:flex",
-        visible && "rounded-xl border-4 border-black bg-[#FFFBF0]",
+        "relative z-[60] mx-auto hidden w-full flex-row items-center justify-between self-start rounded-none border-b border-zui-stroke bg-zui-dark/85 px-8 py-3 backdrop-blur-md lg:flex",
+        visible && "rounded-xl border border-zui-stroke bg-zui-lighter/90",
         className,
       )}
     >
@@ -118,7 +118,7 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
     <motion.div
       onMouseLeave={() => setHovered(null)}
       className={cn(
-        "absolute inset-0 hidden flex-1 flex-row items-center justify-center space-x-2 text-sm font-bold uppercase tracking-wide text-black lg:flex lg:space-x-1",
+        "absolute inset-0 hidden flex-1 flex-row items-center justify-center space-x-2 text-sm font-medium tracking-wide text-zui-white lg:flex lg:space-x-1",
         className,
       )}
     >
@@ -126,14 +126,14 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
         <a
           onMouseEnter={() => setHovered(idx)}
           onClick={onItemClick}
-          className="relative px-4 py-2 text-black transition-colors"
+          className="relative px-4 py-2 text-zui-white/80 transition-colors hover:text-zui-white"
           key={`link-${idx}`}
           href={item.link}
         >
           {hovered === idx && (
             <motion.div
               layoutId="hovered"
-              className="absolute inset-0 h-full w-full rounded-md border-2 border-black bg-[#F1563F]/15"
+              className="absolute inset-0 h-full w-full rounded-md border border-zui-stroke bg-zui-light/60"
             />
           )}
           <span className="relative z-20">{item.name}</span>
@@ -149,12 +149,12 @@ export const MobileNav = ({ children, className, visible }: MobileNavProps) => {
       animate={{
         backdropFilter: visible ? "blur(10px)" : "none",
         boxShadow: visible
-          ? "4px 4px 0px 0px #000"
+          ? "0 8px 32px 0 rgba(0, 0, 0, 0.5)"
           : "none",
         width: visible ? "90%" : "100%",
         paddingRight: visible ? "12px" : "0px",
         paddingLeft: visible ? "12px" : "0px",
-        borderRadius: visible ? "4px" : "0px",
+        borderRadius: visible ? "12px" : "0px",
         y: visible ? 12 : 0,
       }}
       transition={{
@@ -163,8 +163,8 @@ export const MobileNav = ({ children, className, visible }: MobileNavProps) => {
         damping: 50,
       }}
       className={cn(
-        "relative z-50 mx-auto flex w-full max-w-[calc(100vw-2rem)] flex-col items-center justify-between border-b-4 border-black bg-[#FFFBF0] px-4 py-3 lg:hidden",
-        visible && "border-4 border-black",
+        "relative z-50 mx-auto flex w-full max-w-[calc(100vw-2rem)] flex-col items-center justify-between border-b border-zui-stroke bg-zui-dark/85 px-4 py-3 backdrop-blur-md lg:hidden",
+        visible && "border border-zui-stroke bg-zui-lighter/90",
         className,
       )}
     >
@@ -202,7 +202,7 @@ export const MobileNavMenu = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className={cn(
-            "absolute inset-x-0 top-16 z-50 flex w-full flex-col items-start justify-start gap-4 border-4 border-black bg-[#FFFBF0] px-4 py-8 shadow-[4px_4px_0px_0px_#000]",
+            "absolute inset-x-0 top-16 z-50 flex w-full flex-col items-start justify-start gap-4 rounded-xl border border-zui-stroke bg-zui-lighter/95 px-4 py-8 shadow-[0_12px_40px_0_rgba(0,0,0,0.5)] backdrop-blur-md",
             className,
           )}
         >
@@ -221,9 +221,9 @@ export const MobileNavToggle = ({
   onClick: () => void;
 }) => {
   return isOpen ? (
-    <IconX className="text-black" onClick={onClick} />
+    <IconX className="text-zui-white" onClick={onClick} />
   ) : (
-    <IconMenu2 className="text-black" onClick={onClick} />
+    <IconMenu2 className="text-zui-white" onClick={onClick} />
   );
 };
 
@@ -232,7 +232,7 @@ export const NavbarLogo = () => {
   return (
     <a
       href="/"
-      className="relative z-20 mr-4 flex items-center space-x-2 px-2 py-1 text-sm font-normal text-black"
+      className="relative z-20 mr-4 flex items-center space-x-2 px-2 py-1 text-sm font-normal text-zui-white"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -240,8 +240,9 @@ export const NavbarLogo = () => {
         alt="Zo World logo"
         width={32}
         height={32}
+        className="invert"
       />
-      <span className="text-lg font-black uppercase tracking-tight text-black">
+      <span className="font-headline text-2xl tracking-tight text-zui-white">
         Earn
       </span>
     </a>
@@ -266,16 +267,16 @@ export const NavbarButton = ({
   | React.ComponentPropsWithoutRef<"button">
 )) => {
   const baseStyles =
-    "px-4 py-2 rounded-md text-sm font-bold relative cursor-pointer hover:-translate-y-0.5 transition duration-200 inline-block text-center uppercase tracking-wide";
+    "px-4 py-2 rounded-md text-sm font-medium relative cursor-pointer hover:-translate-y-0.5 transition duration-200 inline-block text-center tracking-wide";
 
   const variantStyles = {
     primary:
-      "bg-[#F1563F] text-white border-2 border-black shadow-[3px_3px_0px_0px_#000] hover:shadow-[1px_1px_0px_0px_#000]",
+      "bg-zui-green text-zui-dark border border-zui-green hover:shadow-[0_0_24px_0_rgba(102,223,72,0.45)]",
     secondary:
-      "bg-transparent text-black border-2 border-black shadow-none hover:bg-[#F1563F]/10",
-    dark: "bg-black text-white border-2 border-black shadow-[3px_3px_0px_0px_#FFE566]",
+      "bg-transparent text-zui-white border border-zui-stroke hover:bg-zui-light/60 hover:border-zui-white/30",
+    dark: "bg-zui-light text-zui-white border border-zui-stroke hover:bg-zui-lightest",
     gradient:
-      "bg-gradient-to-b from-[#FF6B6B] to-[#FF4757] text-white border-2 border-black shadow-[3px_3px_0px_0px_#000]",
+      "bg-gradient-to-r from-zui-green to-zui-neon text-zui-dark border border-zui-green hover:shadow-[0_0_28px_0_rgba(207,255,80,0.5)]",
   };
 
   return (

@@ -24,19 +24,19 @@ const projects = [
   {
     name: "ZoDAO Governance",
     desc: "Decentralized governance platform for community proposals and voting.",
-    color: "#4ECDC4",
+    color: "#66DF48",
     members: 34,
   },
   {
     name: "Zo Social Graph",
     desc: "On-chain social graph connecting creators, builders, and communities.",
-    color: "#FFE566",
+    color: "#FFD600",
     members: 21,
   },
   {
     name: "Zo Quest Engine",
     desc: "Gamified quest system for onboarding new members and rewarding engagement.",
-    color: "#FF6B6B",
+    color: "#FF2F8E",
     members: 45,
   },
 ];
@@ -45,7 +45,7 @@ export default function ProjectsPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a] font-sans">
+    <div className="min-h-screen bg-zui-dark font-sans text-zui-white">
       <Navbar>
         <NavBody>
           <NavbarLogo />
@@ -74,7 +74,7 @@ export default function ProjectsPage() {
                 key={`mobile-link-${idx}`}
                 href={item.link}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="text-base font-bold uppercase tracking-wide text-black"
+                className="text-base font-medium tracking-wide text-zui-white"
               >
                 {item.name}
               </a>
@@ -83,30 +83,27 @@ export default function ProjectsPage() {
         </MobileNav>
       </Navbar>
 
-      <section className="mx-auto max-w-6xl px-4 py-24">
-        <h1
-          className="mb-12 text-center text-5xl font-black uppercase tracking-tight text-white"
-          style={{ textShadow: "3px 3px 0px #FFE566" }}
-        >
+      <section className="mx-auto max-w-6xl px-4 pb-24 pt-32">
+        <h1 className="mb-14 text-center font-headline text-6xl leading-[1.05] tracking-tight text-zui-white md:text-7xl">
           Featured Projects
         </h1>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {projects.map((project) => (
             <div
               key={project.name}
-              className="rounded-xl border-4 border-white/20 bg-white/5 p-6 backdrop-blur transition-all hover:-translate-y-1 hover:border-white/40"
+              className="rounded-2xl border border-zui-stroke bg-zui-lighter p-7 transition-all hover:-translate-y-1 hover:border-zui-white/20 hover:shadow-[0_8px_32px_0_rgba(0,0,0,0.45)]"
             >
               <div
-                className="mb-4 inline-block rounded-md border-2 border-black px-3 py-1 text-xs font-black uppercase text-black"
+                className="mb-5 inline-block rounded-full border border-zui-stroke px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-zui-dark"
                 style={{ backgroundColor: project.color }}
               >
                 Active
               </div>
-              <h3 className="mb-2 text-xl font-black uppercase text-white">
+              <h3 className="mb-3 text-xl font-semibold text-zui-white">
                 {project.name}
               </h3>
-              <p className="mb-4 text-sm text-white/70">{project.desc}</p>
-              <div className="flex items-center gap-2 text-sm text-white/50">
+              <p className="mb-5 text-sm leading-relaxed text-zui-white/70">{project.desc}</p>
+              <div className="flex items-center gap-2 text-sm text-zui-white/50">
                 <IconUsers size={16} />
                 <span>{project.members} members</span>
               </div>
@@ -115,15 +112,15 @@ export default function ProjectsPage() {
         </div>
       </section>
 
-      <footer className="border-t-4 border-white/10 bg-black px-4 py-10">
+      <footer className="border-t border-zui-stroke bg-zui-lighter px-4 py-12">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 md:flex-row">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <Image src="/logo.png" alt="Zo" width={28} height={28} className="invert" />
-            <span className="text-lg font-black uppercase text-white">
+            <span className="font-headline text-2xl tracking-tight text-zui-white">
               Marketplace
             </span>
           </div>
-          <p className="text-sm text-white/50">
+          <p className="text-sm text-zui-white/50">
             Zo World. All rights reserved.
           </p>
         </div>

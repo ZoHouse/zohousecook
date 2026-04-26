@@ -100,6 +100,16 @@
       "source": "/earn/:path*",
       "has": [{ "type": "host", "value": "zo.house" }],
       "destination": "https://zozozo-earn-samurais-dojo.vercel.app/earn/:path*"
+    },
+    {
+      "source": "/social-engine",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-social-engine-samurais-dojo.vercel.app/social-engine"
+    },
+    {
+      "source": "/social-engine/:path*",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-social-engine-samurais-dojo.vercel.app/social-engine/:path*"
     }
   ]
 }
