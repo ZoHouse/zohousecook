@@ -1,5 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
+import type { FirstTouch } from "../../lib/analytics/utm";
+import {
+  buildLeadNotes,
+  deriveReferralSource,
+  normalizeLandingPath,
+  sanitizeFirstTouch,
+} from "../../lib/analytics/apply-attribution";
 
 const SUPABASE_URL =
   process.env.SUPABASE_URL || "https://elvaqxadfewcsohrswsi.supabase.co";
@@ -23,6 +30,9 @@ interface ApplyBody {
   heardFrom?: string;
   role?: string;
   preferredProperty?: string;
+  pagePath?: string | null;
+  referrer?: string | null;
+  firstTouch?: FirstTouch | null;
 }
 
 function extractTwitter(raw: string | undefined): string | null {
@@ -109,6 +119,10 @@ export default async function handler(
     !twitter && body.socials ? `Socials: ${body.socials}` : "",
   ].filter(Boolean);
 
+  const firstTouch = sanitizeFirstTouch(body.firstTouch);
+  const landingPath = normalizeLandingPath(body.pagePath);
+  const referralSource = deriveReferralSource(body.heardFrom);
+
   const lead = {
     full_name: body.name!.trim(),
     email: body.email!.trim().toLowerCase(),
@@ -117,13 +131,26 @@ export default async function handler(
     what_building: body.building!.trim(),
     motivation: body.problem!.trim(),
     what_you_bring: body.whyJoin!.trim(),
-    referral_source: body.heardFrom?.trim() || null,
+    referral_source: referralSource,
+    landing_path: landingPath,
+    referrer: body.referrer?.trim() || null,
+    utm_source: firstTouch?.utm_source || null,
+    utm_medium: firstTouch?.utm_medium || null,
+    utm_campaign: firstTouch?.utm_campaign || null,
+    utm_content: firstTouch?.utm_content || null,
+    utm_term: firstTouch?.utm_term || null,
+    fbc: firstTouch?.fbc || null,
+    first_touch_captured_at: firstTouch?.captured_at || null,
     preferred_property: body.preferredProperty,
     stage: "applied",
     lead_type: "membership",
     source: "zo.house",
     lead_tags: body.role ? [body.role] : null,
-    notes: noteParts.join("\n") || null,
+    notes: buildLeadNotes(noteParts, {
+      firstTouch: body.firstTouch,
+      pagePath: body.pagePath,
+      referrer: body.referrer,
+    }),
     member_id: profile?.pid || null,
   };
 
