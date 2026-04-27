@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
-import { Rubik } from "next/font/google";
+import { Space_Grotesk, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 
-const rubik = Rubik({
-  variable: "--font-rubik",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-sans",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-headline",
+  weight: "400",
   subsets: ["latin"],
 });
 
@@ -18,8 +25,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${rubik.variable} antialiased`}>
+    <html lang="en" className="dark">
+      <body
+        className={`${spaceGrotesk.variable} ${instrumentSerif.variable} bg-zui-dark text-zui-white antialiased`}
+      >
         {children}
       </body>
     </html>

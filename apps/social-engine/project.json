@@ -1,0 +1,56 @@
+{
+  "name": "social-engine",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/social-engine",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/next:build",
+      "cache": false,
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/social-engine",
+        "postcssConfig": "apps/social-engine/postcss.config.js"
+      },
+      "configurations": {
+        "development": {
+          "outputPath": "apps/social-engine"
+        },
+        "staging": {},
+        "production": {}
+      }
+    },
+    "serve": {
+      "executor": "@nx/next:server",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "social-engine:build",
+        "dev": true,
+        "port": 4210
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "social-engine:build:development",
+          "dev": true
+        },
+        "staging": {
+          "buildTarget": "social-engine:build:staging",
+          "dev": false
+        },
+        "production": {
+          "buildTarget": "social-engine:build:production",
+          "dev": false
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["apps/social-engine/**/*.{ts,tsx,js,jsx}"]
+      }
+    }
+  },
+  "tags": []
+}

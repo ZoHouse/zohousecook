@@ -52,7 +52,8 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        rubik: ['"Rubik"', "sans-serif"],
+        sans: ['var(--font-sans)', '"Space Grotesk"', "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+        headline: ['var(--font-headline)', '"Instrument Serif"', "serif"],
       },
     },
   },
