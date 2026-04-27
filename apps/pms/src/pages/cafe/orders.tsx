@@ -57,7 +57,6 @@ function OrderDrawer({
       .from("cafe_order_items")
       .select("*")
       .eq("order_id", order.id)
-      .order("created_at", { ascending: true })
       .then(({ data }) => {
         setItems(data || []);
         setLoading(false);
