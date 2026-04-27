@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useZoAuth } from "../hooks/useZoAuth";
 import { HOUSE_MEDIA } from "../config/house-media";
 import { track } from "../lib/analytics/track";
+import { getFirstTouch } from "../lib/analytics/utm";
 
 const STAGES = ["Idea", "Prototype", "Launched", "Growing"];
 const ROLES = ["Founder", "Engineer", "Designer", "Researcher", "Creator", "Operator"];
@@ -82,7 +83,14 @@ export function ApplyModal({ open, onClose }: ApplyModalProps) {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          pagePath:
+            typeof window !== "undefined" ? window.location.pathname : null,
+          referrer:
+            typeof document !== "undefined" ? document.referrer || null : null,
+          firstTouch: getFirstTouch(),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
