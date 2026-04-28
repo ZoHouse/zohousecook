@@ -87,7 +87,6 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     } catch { return [] }
   })
   const [foodCreditAmount, setFoodCreditAmount] = useState(0)
-  const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cash'>('razorpay')
   const [activeTab, setActiveTab] = useState<Tab>('menu')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [isOrdering, setIsOrdering] = useState(false)
@@ -423,11 +422,12 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       const customerEmail = user.email_address || null
 
       // Resolve payment mode: full credit coverage → 'zo_card' (no money
-      // moves), else honor the customer's chosen method. The RPC also enforces
-      // this server-side — we mirror it client-side for UX (showing the right
-      // CTA copy) and to avoid a redundant Razorpay flow when zo_card applies.
+      // moves), else 'razorpay'. The RPC also enforces this server-side; we
+      // pass an explicit value so 'razorpay' is the path even when amountToPay
+      // is somehow misreported. 'cash' is no longer offered customer-side —
+      // staff orders can still pick cash via CreateOrderDialog.
       const amountToPay = Math.max(0, totalAmount - foodCreditAmount * 100)
-      const resolvedMode: 'razorpay' | 'cash' = amountToPay > 0 ? paymentMethod : 'cash'
+      const resolvedMode: 'razorpay' | 'cash' = amountToPay > 0 ? 'razorpay' : 'cash'
 
       // Call server-side RPC — all validation happens in Postgres:
       // • Checks item availability & uses server-side prices
@@ -948,43 +948,21 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                   </div>
                 )}
 
-                {/* Payment method — only when there's still money to collect after credits */}
-                {totalAmount - foodCreditAmount * 100 > 0 && (
-                  <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-3">
-                    <p className="text-[11px] font-bold text-black/50 uppercase tracking-widest mb-2 px-1">Pay With</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => setPaymentMethod('razorpay')}
-                        className={`py-3 rounded-xl text-sm font-bold transition-all ${paymentMethod === 'razorpay' ? 'bg-orange-500 text-black ring-2 ring-orange-500' : 'bg-black/[0.04] text-black/60 ring-1 ring-black/10'}`}
-                      >
-                        UPI / Card
-                      </button>
-                      <button
-                        onClick={() => setPaymentMethod('cash')}
-                        className={`py-3 rounded-xl text-sm font-bold transition-all ${paymentMethod === 'cash' ? 'bg-orange-500 text-black ring-2 ring-orange-500' : 'bg-black/[0.04] text-black/60 ring-1 ring-black/10'}`}
-                      >
-                        At Counter
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Place Order */}
+                {/* Place Order — Razorpay handles every paid order; the only no-payment
+                    path is full food-credit coverage (RPC resolves that to 'zo_card'). */}
                 <button onClick={handlePlaceOrder} disabled={isOrdering || paymentInFlight !== null} className="w-full bg-orange-500 text-black py-4 text-base font-bold tracking-wide rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all disabled:opacity-50">
                   {(() => {
                     if (isOrdering) return 'Placing Order...'
                     const due = totalAmount - foodCreditAmount * 100
                     if (due <= 0) return `Place Order · ${formatPaise(0)} due`
-                    if (paymentMethod === 'razorpay') return `Pay ${formatPaise(due)} via UPI / Card`
-                    return `Place Order · ${formatPaise(due)} at counter`
+                    return `Pay ${formatPaise(due)} · UPI / Card`
                   })()}
                 </button>
                 <p className="text-center text-xs text-black/35 font-medium">
                   {(() => {
                     const due = totalAmount - foodCreditAmount * 100
                     if (due <= 0) return foodCreditAmount > 0 ? `₹${foodCreditAmount} $food covers your order` : 'Order is free — no payment needed'
-                    if (paymentMethod === 'razorpay') return foodCreditAmount > 0 ? `₹${foodCreditAmount} $food applied · pay rest via Razorpay` : 'Razorpay opens after you tap'
-                    return foodCreditAmount > 0 ? `₹${foodCreditAmount} $food applied · pay rest at counter` : 'Pay at the counter after your meal'
+                    return foodCreditAmount > 0 ? `₹${foodCreditAmount} $food applied · pay rest via Razorpay` : 'Razorpay opens after you tap'
                   })()}
                 </p>
               </>
