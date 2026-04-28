@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
+import Script from 'next/script'
 import { useAuth } from '@zo/auth'
 import { supabase } from '../../config/supabase'
 import { useFoodCreditBalance } from '../../hooks/useFoodCreditBalance'
@@ -8,6 +9,37 @@ import { OrderStatusBadge } from '../../components/cafezomad/OrderStatusBadge'
 import { formatPaise } from '../../components/cafezomad/types'
 import type { MenuCategory, MenuItem, CafeOrderWithItems, CartItem, Tab } from '../../components/cafezomad/types'
 import cafeZomadLogo from '../../assets/cafezomad/logo.png'
+
+// Razorpay Checkout is loaded via <Script> below; surface it on window for TS.
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayCheckoutOptions) => { open: () => void }
+  }
+}
+
+interface RazorpayCheckoutOptions {
+  key: string
+  amount: number
+  currency: string
+  order_id: string
+  name: string
+  description?: string
+  notes?: Record<string, string>
+  prefill?: { name?: string; contact?: string; email?: string }
+  theme?: { color?: string }
+  handler?: (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => void
+  modal?: { ondismiss?: () => void }
+}
+
+interface CreateRazorpayOrderResponse {
+  razorpay_order_id: string
+  amount: number
+  currency: string
+  key_id: string
+  cafe_order_id: string
+  display_number: number
+  prefill: { name: string | null; contact: string | null; email: string | null }
+}
 
 function normalizePhone(phone: string | null | undefined): string | null {
   const normalized = (phone || '').replace(/\D/g, '').slice(-10)
@@ -55,9 +87,11 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     } catch { return [] }
   })
   const [foodCreditAmount, setFoodCreditAmount] = useState(0)
+  const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cash'>('razorpay')
   const [activeTab, setActiveTab] = useState<Tab>('menu')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [isOrdering, setIsOrdering] = useState(false)
+  const [paymentInFlight, setPaymentInFlight] = useState<{ orderId: string; status: 'opening' | 'awaiting' | 'confirming' } | null>(null)
   const [orderPlaced, setOrderPlaced] = useState<{ id: string; display_number: number; total: number } | null>(null)
   const [showCategories, setShowCategories] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -269,6 +303,107 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     })
   }
 
+  // Subscribe to a single cafe_orders row for the payment_status='paid' flip
+  // that the Razorpay webhook (apps/pms/src/pages/api/cafe/razorpay-webhook.ts)
+  // writes once payment.captured arrives. We unsubscribe as soon as we see it
+  // (or after a timeout fallback that still completes the success state — the
+  // existing 5s polling will catch up if Realtime is unreliable).
+  const waitForPaymentCaptured = useCallback((cafeOrderId: string): Promise<void> => {
+    return new Promise((resolve) => {
+      let settled = false
+      const finish = () => {
+        if (settled) return
+        settled = true
+        try { channel.unsubscribe() } catch { /* noop */ }
+        clearTimeout(fallback)
+        resolve()
+      }
+
+      const channel = supabase
+        .channel(`cafe_order_payment_${cafeOrderId}`)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'cafe_orders', filter: `id=eq.${cafeOrderId}` },
+          (payload: { new: { payment_status?: string } }) => {
+            if (payload.new?.payment_status === 'paid') finish()
+          },
+        )
+        .subscribe()
+
+      // Fallback: after 30s, give up the realtime wait. The polling refresh
+      // (every 5s when tab is visible) will surface the eventual state, and
+      // we don't want to block the UI forever if Realtime is degraded.
+      const fallback = setTimeout(finish, 30_000)
+    })
+  }, [])
+
+  // Open Razorpay Checkout for an existing pending razorpay cafe_order. Used
+  // both from the Place Order flow (right after RPC creates the row) and from
+  // the "Complete payment" CTA on the orders tab when a customer dismissed the
+  // modal earlier without paying.
+  const openRazorpayCheckout = useCallback(async (cafeOrderId: string) => {
+    setPaymentInFlight({ orderId: cafeOrderId, status: 'opening' })
+    try {
+      const resp = await fetch('/pm/api/cafe/create-razorpay-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cafe_order_id: cafeOrderId }),
+      })
+
+      if (!resp.ok) {
+        const errBody = await resp.json().catch(() => ({ error: 'Payment setup failed' }))
+        throw new Error(errBody.error || 'Payment setup failed')
+      }
+
+      const cfg = (await resp.json()) as CreateRazorpayOrderResponse
+
+      if (typeof window === 'undefined' || !window.Razorpay) {
+        throw new Error('Payment SDK not loaded — refresh and try again')
+      }
+
+      setPaymentInFlight({ orderId: cafeOrderId, status: 'awaiting' })
+
+      const checkout = new window.Razorpay({
+        key: cfg.key_id,
+        amount: cfg.amount,
+        currency: cfg.currency,
+        order_id: cfg.razorpay_order_id,
+        name: 'Cafe Zomad',
+        description: `Order #${cfg.display_number}`,
+        notes: { cafe_order_id: cafeOrderId },
+        prefill: {
+          name: cfg.prefill.name || undefined,
+          contact: cfg.prefill.contact || undefined,
+          email: cfg.prefill.email || undefined,
+        },
+        theme: { color: '#f97316' },
+        handler: async () => {
+          // Razorpay says payment captured client-side. The webhook is the
+          // server-side truth; wait for it to flip payment_status='paid'.
+          setPaymentInFlight({ orderId: cafeOrderId, status: 'confirming' })
+          await waitForPaymentCaptured(cafeOrderId)
+          setPaymentInFlight(null)
+          fetchOrders()
+        },
+        modal: {
+          ondismiss: () => {
+            // User closed the modal without paying. Order stays pending; the
+            // orders tab will show the "Complete payment" CTA so they can
+            // retry. We do NOT auto-cancel — staff sees it and can still
+            // collect cash if the customer changes their mind.
+            setPaymentInFlight(null)
+          },
+        },
+      })
+      checkout.open()
+    } catch (err) {
+      setPaymentInFlight(null)
+      const msg = err instanceof Error ? err.message : 'Could not start payment'
+      setErrorToast(msg)
+      setTimeout(() => setErrorToast(null), 5000)
+    }
+  }, [fetchOrders, waitForPaymentCaptured])
+
   // ── Place Order (via server-side RPC — validates prices, limits, credits) ──
   const handlePlaceOrder = async () => {
     if (cart.length === 0 || !propertyId || isOrdering) return
@@ -287,6 +422,13 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       const customerPhone = normalizePhone(user.mobile_number || null)
       const customerEmail = user.email_address || null
 
+      // Resolve payment mode: full credit coverage → 'zo_card' (no money
+      // moves), else honor the customer's chosen method. The RPC also enforces
+      // this server-side — we mirror it client-side for UX (showing the right
+      // CTA copy) and to avoid a redundant Razorpay flow when zo_card applies.
+      const amountToPay = Math.max(0, totalAmount - foodCreditAmount * 100)
+      const resolvedMode: 'razorpay' | 'cash' = amountToPay > 0 ? paymentMethod : 'cash'
+
       // Call server-side RPC — all validation happens in Postgres:
       // • Checks item availability & uses server-side prices
       // • Enforces daily limits per item
@@ -303,6 +445,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
           quantity: c.quantity,
         })),
         p_food_credit_paise: foodCreditAmount * 100,
+        p_payment_mode: resolvedMode,
       })
 
       if (error) {
@@ -322,6 +465,15 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       })
       setActiveTab('orders')
       fetchOrders()
+
+      // If the resolved mode is Razorpay AND the order still owes money,
+      // open Checkout immediately. Full-credit-coverage rows resolve to
+      // 'zo_card' server-side and skip this branch.
+      if (data.payment_mode === 'razorpay' && data.total > 0) {
+        // Don't await — let the modal lifecycle handle setIsOrdering state
+        // via paymentInFlight; we still want to clear the cart UI immediately.
+        openRazorpayCheckout(data.id)
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to place order'
       setErrorToast(msg)
@@ -383,6 +535,8 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-screen tap-transparent bg-[#f5f0e8]">
+      {/* Razorpay Checkout — lazy-loaded; window.Razorpay populated on script ready */}
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="shrink-0 bg-orange-500 px-5 pt-4 pb-3">
         <div className="flex items-center justify-between">
@@ -699,30 +853,46 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                   Being Prepared
                 </h3>
                 <div className="space-y-3">
-                  {activeOrders.map((order) => (
-                    <div key={order.id} className="rounded-xl bg-orange-50 ring-1 ring-orange-200 p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-mono font-bold text-sm text-black">#{order.display_number}</span>
-                        <OrderStatusBadge status={order.kitchen_status} />
+                  {activeOrders.map((order) => {
+                    const needsPayment = order.payment_mode === 'razorpay' && order.payment_status === 'pending'
+                    const isThisInFlight = paymentInFlight?.orderId === order.id
+                    return (
+                      <div key={order.id} className="rounded-xl bg-orange-50 ring-1 ring-orange-200 p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-mono font-bold text-sm text-black">#{order.display_number}</span>
+                          <OrderStatusBadge status={order.kitchen_status} />
+                        </div>
+                        <div className="space-y-1">
+                          {order.order_items?.map((item) => (
+                            <div key={item.id} className="flex justify-between text-xs">
+                              <span className="text-black/50 font-medium">
+                                <span className="font-mono font-semibold">{item.quantity}×</span> {item.name}
+                              </span>
+                              <span className="font-semibold text-black/70">{formatPaise(item.price * item.quantity)}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-black/5">
+                          <span className="text-[10px] text-black/30 font-medium font-mono">
+                            {new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span className="font-bold text-sm text-black">{formatPaise(order.total)}</span>
+                        </div>
+                        {needsPayment && (
+                          <button
+                            onClick={() => openRazorpayCheckout(order.id)}
+                            disabled={paymentInFlight !== null}
+                            className="w-full mt-3 bg-orange-500 text-black py-2.5 text-sm font-bold rounded-xl active:scale-[0.98] transition-all disabled:opacity-50"
+                          >
+                            {isThisInFlight && paymentInFlight?.status === 'opening' && 'Opening Payment…'}
+                            {isThisInFlight && paymentInFlight?.status === 'awaiting' && 'Waiting in Razorpay…'}
+                            {isThisInFlight && paymentInFlight?.status === 'confirming' && 'Confirming Payment…'}
+                            {!isThisInFlight && `Complete Payment · ${formatPaise(order.total)}`}
+                          </button>
+                        )}
                       </div>
-                      <div className="space-y-1">
-                        {order.order_items?.map((item) => (
-                          <div key={item.id} className="flex justify-between text-xs">
-                            <span className="text-black/50 font-medium">
-                              <span className="font-mono font-semibold">{item.quantity}×</span> {item.name}
-                            </span>
-                            <span className="font-semibold text-black/70">{formatPaise(item.price * item.quantity)}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex justify-between items-center mt-2 pt-2 border-t border-black/5">
-                        <span className="text-[10px] text-black/30 font-medium font-mono">
-                          {new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <span className="font-bold text-sm text-black">{formatPaise(order.total)}</span>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -778,12 +948,44 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                   </div>
                 )}
 
+                {/* Payment method — only when there's still money to collect after credits */}
+                {totalAmount - foodCreditAmount * 100 > 0 && (
+                  <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-3">
+                    <p className="text-[11px] font-bold text-black/50 uppercase tracking-widest mb-2 px-1">Pay With</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setPaymentMethod('razorpay')}
+                        className={`py-3 rounded-xl text-sm font-bold transition-all ${paymentMethod === 'razorpay' ? 'bg-orange-500 text-black ring-2 ring-orange-500' : 'bg-black/[0.04] text-black/60 ring-1 ring-black/10'}`}
+                      >
+                        UPI / Card
+                      </button>
+                      <button
+                        onClick={() => setPaymentMethod('cash')}
+                        className={`py-3 rounded-xl text-sm font-bold transition-all ${paymentMethod === 'cash' ? 'bg-orange-500 text-black ring-2 ring-orange-500' : 'bg-black/[0.04] text-black/60 ring-1 ring-black/10'}`}
+                      >
+                        At Counter
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Place Order */}
-                <button onClick={handlePlaceOrder} disabled={isOrdering} className="w-full bg-orange-500 text-black py-4 text-base font-bold tracking-wide rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all disabled:opacity-50">
-                  {isOrdering ? 'Placing Order...' : `Place Order · ${formatPaise(totalAmount - foodCreditAmount * 100)}`}
+                <button onClick={handlePlaceOrder} disabled={isOrdering || paymentInFlight !== null} className="w-full bg-orange-500 text-black py-4 text-base font-bold tracking-wide rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all disabled:opacity-50">
+                  {(() => {
+                    if (isOrdering) return 'Placing Order...'
+                    const due = totalAmount - foodCreditAmount * 100
+                    if (due <= 0) return `Place Order · ${formatPaise(0)} due`
+                    if (paymentMethod === 'razorpay') return `Pay ${formatPaise(due)} via UPI / Card`
+                    return `Place Order · ${formatPaise(due)} at counter`
+                  })()}
                 </button>
                 <p className="text-center text-xs text-black/35 font-medium">
-                  {foodCreditAmount > 0 ? `₹${foodCreditAmount} $food applied · pay ₹${Math.ceil((totalAmount - foodCreditAmount * 100) / 100)} at counter` : 'Pay at the counter after your meal'}
+                  {(() => {
+                    const due = totalAmount - foodCreditAmount * 100
+                    if (due <= 0) return foodCreditAmount > 0 ? `₹${foodCreditAmount} $food covers your order` : 'Order is free — no payment needed'
+                    if (paymentMethod === 'razorpay') return foodCreditAmount > 0 ? `₹${foodCreditAmount} $food applied · pay rest via Razorpay` : 'Razorpay opens after you tap'
+                    return foodCreditAmount > 0 ? `₹${foodCreditAmount} $food applied · pay rest at counter` : 'Pay at the counter after your meal'
+                  })()}
                 </p>
               </>
             ) : activeOrders.length === 0 && orders.length === 0 ? (
