@@ -74,6 +74,7 @@ export interface CafeOrderWithItems {
   payment_status: 'pending' | 'paid' | 'refunded'
   payment_mode: 'razorpay' | 'cash' | 'zo_card'
   payment_id: string | null
+  razorpay_order_id: string | null
   notes: string | null
   created_at: string
   updated_at: string
