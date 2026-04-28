@@ -76,7 +76,7 @@ export interface CafeTable {
   created_at: string
 }
 
-export type KitchenStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'served' | 'cancelled'
+export type KitchenStatus = 'draft' | 'new' | 'accepted' | 'preparing' | 'ready' | 'served' | 'cancelled'
 export type PaymentStatus = 'pending' | 'paid' | 'refunded'
 export type PaymentMode = 'razorpay' | 'cash' | 'zo_card'
 

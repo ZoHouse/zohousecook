@@ -131,16 +131,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const gatewayFee = typeof payment.fee === 'number' ? payment.fee : null
       const gatewayGst = typeof payment.tax === 'number' ? payment.tax : null
 
+      // Look up the order's current kitchen_status — Razorpay-pending orders
+      // start as 'draft' (place_cafe_order RPC sets this) so chefs don't see
+      // unpaid work. Capture is the moment we promote draft → new. We don't
+      // overwrite further-along statuses (accepted/preparing/ready/served)
+      // so a manually-progressed order isn't reset.
+      const { data: existing } = await supabase
+        .from('cafe_orders')
+        .select('kitchen_status')
+        .eq('id', cafeOrderId)
+        .maybeSingle()
+
+      const updates: Record<string, unknown> = {
+        payment_status: 'paid',
+        payment_id: payment.id,
+        gateway_fee_paise: gatewayFee,
+        gateway_gst_paise: gatewayGst,
+        updated_at: new Date().toISOString(),
+      }
+      if (existing?.kitchen_status === 'draft') {
+        updates.kitchen_status = 'new'
+      }
+
       // Idempotent: only apply if not already paid with same payment_id.
       const { error } = await supabase
         .from('cafe_orders')
-        .update({
-          payment_status: 'paid',
-          payment_id: payment.id,
-          gateway_fee_paise: gatewayFee,
-          gateway_gst_paise: gatewayGst,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updates)
         .eq('id', cafeOrderId)
         .or(`payment_status.neq.paid,payment_id.neq.${payment.id}`)
 
