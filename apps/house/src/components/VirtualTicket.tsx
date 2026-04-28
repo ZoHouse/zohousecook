@@ -1,5 +1,6 @@
 import React, { useRef, useCallback, useEffect, useState } from "react";
 import { toPng } from "html-to-image";
+import { HOUSE_MEDIA } from "../config/house-media";
 
 interface VirtualTicketProps {
   name: string;
@@ -344,7 +345,7 @@ export const VirtualTicket: React.FC<VirtualTicketProps> = ({
             style={{
               flex: 1,
               position: "relative",
-              backgroundImage: "url('/ticket.jpg')",
+              backgroundImage: `url('${HOUSE_MEDIA.applyTicketBg}')`,
               backgroundSize: "cover",
               backgroundPosition: "center",
               borderRadius: 22,

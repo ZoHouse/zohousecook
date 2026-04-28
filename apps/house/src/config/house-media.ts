@@ -6,6 +6,7 @@ export const HOUSE_MEDIA = {
   pfp2: `${CDN}/gallery/media/images/0a8e2b38-99c5-4142-8422-e89e7cae5945_20260414114435.webp`,
   pfp3: `${CDN}/gallery/media/images/74f3771e-1515-42eb-9232-9f41f7659d09_20260414114434.webp`,
   applyBanner: `${CDN}/gallery/media/images/edb6b0c6-0c06-44a1-9086-a4dc6770aae0_20260414114433.png`,
+  applyTicketBg: `${CDN}/gallery/media/images/6a88394a-4527-4a40-a284-e677b28dd62c_20260428075043.jpg`,
   reel3: `${CDN}/gallery/media/images/86f0eb2e-8d0a-4581-b3d2-0a52501e5dc0_20260414114439.png`,
   reel4: `${CDN}/gallery/media/images/80a430ad-68a1-4f8e-8a8a-e19dfac4e30f_20260414114440.png`,
   reel5: `${CDN}/gallery/media/images/8d46d1f3-10f1-4bf2-b60e-01bdcb78e22e_20260414114440.png`,
