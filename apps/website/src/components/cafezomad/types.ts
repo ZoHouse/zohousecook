@@ -65,7 +65,7 @@ export interface CafeOrderWithItems {
   zo_user_id: string | null
   created_by: string | null
   mode: 'dine_in' | 'pickup' | 'room_service'
-  kitchen_status: 'new' | 'accepted' | 'preparing' | 'ready' | 'served' | 'cancelled' | null
+  kitchen_status: 'draft' | 'new' | 'accepted' | 'preparing' | 'ready' | 'served' | 'cancelled' | null
   display_number: number
   subtotal: number
   service_charge: number
