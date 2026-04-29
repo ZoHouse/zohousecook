@@ -490,7 +490,14 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     (o) => o.kitchen_status && !['ready', 'served', 'cancelled'].includes(o.kitchen_status)
   )
   const totalItems = cart.reduce((sum, c) => sum + c.quantity, 0)
-  const totalAmount = cart.reduce((sum, c) => sum + c.price * c.quantity, 0)
+  // Cart math: subtotal is the sum of item prices (paise); GST is 5% of
+  // subtotal floored to nearest paise — must match place_cafe_order RPC's
+  // `v_tax_amount := floor(v_cart_total * 0.05)`. totalAmount is what we
+  // actually collect — every UI amount must derive from it, never from the
+  // subtotal alone, or the FE undercharges visually vs what Razorpay debits.
+  const cartSubtotal = cart.reduce((sum, c) => sum + c.price * c.quantity, 0)
+  const cartTaxAmount = Math.floor(cartSubtotal * 0.05)
+  const totalAmount = cartSubtotal + cartTaxAmount
 
   const searchedItems = searchQuery.trim()
     ? menuItems.filter((item) =>
@@ -927,12 +934,19 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                 </div>
 
                 {/* Bill summary */}
-                <div className="rounded-2xl bg-yellow-200 ring-1 ring-black/10 p-4">
-                  <div className="flex justify-between items-center">
+                <div className="rounded-2xl bg-yellow-200 ring-1 ring-black/10 p-4 space-y-1">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-black/60 font-medium">Subtotal</span>
+                    <span className="font-mono font-semibold text-black/70">{formatPaise(cartSubtotal)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-black/60 font-medium">GST (5%)</span>
+                    <span className="font-mono font-semibold text-black/70">{formatPaise(cartTaxAmount)}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-1.5 mt-1 border-t border-black/10">
                     <span className="font-bold text-black">Total</span>
                     <span className="text-xl font-extrabold text-black">{formatPaise(totalAmount)}</span>
                   </div>
-                  <p className="text-xs text-black/35 font-medium mt-1">Taxes &amp; charges included</p>
                 </div>
 
                 {/* $food Credits slider */}
