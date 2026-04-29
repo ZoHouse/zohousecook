@@ -211,11 +211,14 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     }
   }, [getMyOrderIds, storageKey])
 
-  // ── Data: fetch + poll orders (session IDs + user ID for logged-in users) ──
+  // ── Data: fetch + poll orders ─────────────────────────────────────────────
+  // When logged in, strictly filter by the signed-in user's phone — session
+  // storage IDs from a previous user on the same device are NOT included.
+  // Without this guard, switching accounts on the same device leaks the
+  // previous user's pending orders (and Razorpay prefill comes from those
+  // orders' customer_phone, which is confusing).
+  // When NOT logged in (anonymous QR-scan flow), fall back to session IDs.
   const fetchOrders = useCallback(async () => {
-    const myIds = getMyOrderIds()
-
-    // Build query: session orders OR user's orders at this property
     let query = supabase
       .from('cafe_orders')
       .select('*, order_items:cafe_order_items(*)')
@@ -223,26 +226,25 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       .limit(20)
 
     if (user?.id && propertyId) {
-      // Logged in — get orders by user ID or phone at this property, plus session orders
       const phoneCleaned = normalizePhone(user.mobile_number || null) || ''
-      if (myIds.length > 0 && phoneCleaned) {
-        query = query.or(`customer_phone.eq.${phoneCleaned},id.in.(${myIds.join(',')})`)
-          .eq('property_id', propertyId)
-      } else if (phoneCleaned) {
-        query = query.eq('customer_phone', phoneCleaned).eq('property_id', propertyId)
-      } else if (myIds.length > 0) {
-        query = query.in('id', myIds).eq('property_id', propertyId)
+      if (!phoneCleaned) {
+        // Logged in but no phone → can't safely scope orders. Show none.
+        setOrders([])
+        return
       }
-    } else if (myIds.length > 0) {
-      query = query.in('id', myIds)
+      query = query.eq('customer_phone', phoneCleaned).eq('property_id', propertyId)
     } else {
-      setOrders([])
-      return
+      const myIds = getMyOrderIds()
+      if (myIds.length === 0) {
+        setOrders([])
+        return
+      }
+      query = query.in('id', myIds)
     }
 
     const { data } = await query
     if (data) setOrders(data as CafeOrderWithItems[])
-  }, [getMyOrderIds, user?.id, propertyId])
+  }, [getMyOrderIds, user?.id, user?.mobile_number, propertyId])
 
   // Fix #6: Only poll when tab is visible
   useEffect(() => {
