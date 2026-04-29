@@ -76,6 +76,12 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [orders, setOrders] = useState<CafeOrderWithItems[]>([])
   const [isLoadingInit, setIsLoadingInit] = useState(true)
+  // Per-property "accepting orders" gate — pulled from cafe_properties.
+  // null = unknown (still loading); true = open; false = paused (kitchen
+  // toggled it off via /pm/cafe/kitchen). When false we replace the menu/cart
+  // surface with a closed splash so customers don't fill carts that the RPC
+  // is just going to reject.
+  const [acceptingOrders, setAcceptingOrders] = useState<boolean | null>(null)
 
   // Cart persisted in localStorage so it survives page refresh
   const cartKey = `cafezomad_cart_${tableId}`
@@ -132,8 +138,10 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         setPropertyId(table.property_id)
         setTableInfo({ code: table.code, label: table.label })
 
-        // Fetch categories and items in parallel
-        const [{ data: cats }, { data: items }] = await Promise.all([
+        // Fetch categories, items, and the property's accepting_orders flag
+        // in parallel. The flag drives the closed-splash; if the cafe paused
+        // ordering, we don't bother to render the menu at all.
+        const [{ data: cats }, { data: items }, { data: prop }] = await Promise.all([
           supabase
             .from('cafe_menu_categories')
             .select('*')
@@ -146,7 +154,14 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
             .eq('property_id', table.property_id)
             .eq('is_available', true)
             .order('sort_order'),
+          supabase
+            .from('cafe_properties')
+            .select('accepting_orders')
+            .eq('id', table.property_id)
+            .maybeSingle(),
         ])
+
+        setAcceptingOrders(prop?.accepting_orders ?? true)
 
         setCategories((cats as MenuCategory[]) || [])
         setMenuItems((items as MenuItem[]) || [])
@@ -579,6 +594,28 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
             </div>
           ))}
         </div>
+      </div>
+    )
+  }
+
+  // ── Closed splash — staff has paused orders for this property ────────────
+  if (acceptingOrders === false) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#f5f0e8] px-6 text-center">
+        <div className="w-20 h-20 rounded-3xl bg-white p-3 mb-6 shadow-xl shadow-black/10">
+          <img src={cafeZomadLogo.src} alt="Cafe Zomad" className="w-full h-full object-contain" />
+        </div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 ring-1 ring-red-200 mb-4">
+          <span className="w-2 h-2 rounded-full bg-red-500" />
+          <span className="text-xs font-bold uppercase tracking-widest text-red-700">Closed</span>
+        </div>
+        <h1 className="text-2xl font-extrabold text-black mb-2">We're not taking orders right now</h1>
+        <p className="text-sm text-black/50 font-medium max-w-xs mb-6">
+          The kitchen has paused new orders for the moment. Try again in a bit, or come over to the counter — staff can help in person.
+        </p>
+        <p className="text-[10px] text-black/30 font-mono uppercase tracking-widest">
+          Table {tableInfo?.label || tableInfo?.code || '—'}
+        </p>
       </div>
     )
   }
