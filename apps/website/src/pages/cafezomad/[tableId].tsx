@@ -945,20 +945,21 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                     const needsPayment = order.payment_mode === 'razorpay' && order.payment_status === 'pending'
                     const isThisInFlight = paymentInFlight?.orderId === order.id
 
-                    // Draft-order credit math:
-                    //   net           = subtotal + tax (gross order amount)
-                    //   existingPaise = credits already applied to this order
-                    //   maxRupees     = credits we COULD apply (cap at net or wallet)
-                    //   localRupees   = current slider value (override or existing)
-                    //   newDuePaise   = net - localRupees * 100
-                    const net = order.subtotal + order.tax_amount
-                    const existingCreditsPaise = order.food_credit_applied_paise || 0
-                    const existingCreditsRupees = Math.floor(existingCreditsPaise / 100)
+                    // Multi-economy display + draft retry slider math:
+                    //   orderGross        = subtotal + service_charge + tax  (gross)
+                    //   credit            = $food currently applied to this row (paise)
+                    //   dueAfterCredit    = cafe_orders.total = the Razorpay/cash leg
+                    //   localCreditsRupees = slider value, defaults to existing applied
+                    //   newDuePaise       = recomputed due if user changes the slider
+                    const orderGross = order.subtotal + order.service_charge + order.tax_amount
+                    const credit = order.food_credit_applied_paise || 0
+                    const dueAfterCredit = order.total
+                    const existingCreditsRupees = Math.floor(credit / 100)
                     const maxCreditsRupees = needsPayment
-                      ? Math.min(foodBalance + existingCreditsRupees, Math.floor(net / 100))
+                      ? Math.min(foodBalance + existingCreditsRupees, Math.floor(orderGross / 100))
                       : 0
                     const localCreditsRupees = draftCreditOverrides[order.id] ?? existingCreditsRupees
-                    const newDuePaise = Math.max(0, net - localCreditsRupees * 100)
+                    const newDuePaise = Math.max(0, orderGross - localCreditsRupees * 100)
                     const showSlider = needsPayment && maxCreditsRupees > 0
 
                     return (
@@ -977,11 +978,40 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                             </div>
                           ))}
                         </div>
-                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-black/5">
-                          <span className="text-[10px] text-black/30 font-medium font-mono">
-                            {new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <span className="font-bold text-sm text-black">{formatPaise(net)}</span>
+                        <div className="mt-2 pt-2 border-t border-black/5 space-y-0.5">
+                          <div className="flex justify-between items-center text-[11px] text-black/40 font-medium font-mono">
+                            <span>Subtotal</span>
+                            <span>{formatPaise(order.subtotal)}</span>
+                          </div>
+                          {order.tax_amount > 0 && (
+                            <div className="flex justify-between items-center text-[11px] text-black/40 font-medium font-mono">
+                              <span>GST (5%)</span>
+                              <span>{formatPaise(order.tax_amount)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center text-sm text-black font-semibold">
+                            <span>Order Total</span>
+                            <span>{formatPaise(orderGross)}</span>
+                          </div>
+                          {credit > 0 && (
+                            <>
+                              <div className="flex justify-between items-center text-[11px] text-orange-600 font-medium font-mono">
+                                <span>$food applied</span>
+                                <span>−{formatPaise(credit)}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-sm font-bold pt-0.5 border-t border-black/5">
+                                <span className="text-black">
+                                  {order.payment_status === 'paid' ? 'Paid' : 'To Pay'}
+                                </span>
+                                <span className={order.payment_status === 'paid' ? 'text-green-700' : 'text-black'}>
+                                  {formatPaise(dueAfterCredit)}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                          <p className="text-[10px] text-black/30 font-mono mt-1">
+                            placed {new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
                         </div>
 
                         {showSlider && (
@@ -1118,28 +1148,40 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
               </div>
             ) : null}
 
-            {/* Past orders (served/ready) */}
-            {orders.filter((o) => o.kitchen_status && ['ready', 'served'].includes(o.kitchen_status)).length > 0 && (
+            {/* History — served, ready (waiting at counter), and cancelled.
+                Cancelled orders included so customers don't think they
+                vanished (Akhilesh's feedback). */}
+            {orders.filter((o) => o.kitchen_status && ['ready', 'served', 'cancelled'].includes(o.kitchen_status)).length > 0 && (
               <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-4">
-                <h3 className="text-xs font-bold text-black/60 uppercase tracking-widest mb-3">Completed</h3>
+                <h3 className="text-xs font-bold text-black/60 uppercase tracking-widest mb-3">History</h3>
                 <div className="space-y-3">
-                  {orders.filter((o) => o.kitchen_status && ['ready', 'served'].includes(o.kitchen_status)).map((order) => (
-                    <div key={order.id} className="rounded-xl bg-black/[0.02] ring-1 ring-black/5 p-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-mono font-bold text-sm text-black">#{order.display_number}</span>
-                        <OrderStatusBadge status={order.kitchen_status} />
+                  {orders.filter((o) => o.kitchen_status && ['ready', 'served', 'cancelled'].includes(o.kitchen_status)).map((order) => {
+                    const orderGross = order.subtotal + order.service_charge + order.tax_amount
+                    const credit = order.food_credit_applied_paise || 0
+                    const isCancelled = order.kitchen_status === 'cancelled'
+                    return (
+                      <div key={order.id} className={`rounded-xl ring-1 p-3 ${isCancelled ? 'bg-red-50/40 ring-red-200' : 'bg-black/[0.02] ring-black/5'}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-mono font-bold text-sm text-black">#{order.display_number}</span>
+                          <OrderStatusBadge status={order.kitchen_status} />
+                        </div>
+                        <p className="text-xs text-black/50 font-medium truncate">
+                          {order.order_items?.map((i) => `${i.quantity}× ${i.name}`).join(', ')}
+                        </p>
+                        <div className="flex justify-between items-center mt-1.5">
+                          <span className="text-[10px] text-black/30 font-mono">
+                            {new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span className={`font-bold text-sm ${isCancelled ? 'text-black/40 line-through' : 'text-black'}`}>{formatPaise(orderGross)}</span>
+                        </div>
+                        {credit > 0 && !isCancelled && (
+                          <p className="text-[10px] text-black/40 font-medium font-mono text-right mt-0.5">
+                            {formatPaise(credit)} $food + {formatPaise(orderGross - credit)} {order.payment_status === 'paid' ? 'paid' : 'due'}
+                          </p>
+                        )}
                       </div>
-                      <p className="text-xs text-black/50 font-medium truncate">
-                        {order.order_items?.map((i) => `${i.quantity}× ${i.name}`).join(', ')}
-                      </p>
-                      <div className="flex justify-between items-center mt-1.5">
-                        <span className="text-[10px] text-black/30 font-mono">
-                          {new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <span className="font-bold text-sm text-black">{formatPaise(order.total)}</span>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
