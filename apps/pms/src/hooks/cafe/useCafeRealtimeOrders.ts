@@ -200,13 +200,28 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
   )
 
   const cancelOrder = useCallback(async (orderId: string) => {
-    // Check if order was already accepted (inventory was deducted)
     const order = orders.find((o) => o.id === orderId)
+    // Inventory deduction happens on kitchen ACCEPT (deductInventoryForOrder
+    // fires at the new→accepted transition), so the inventory restore is
+    // gated on having been accepted. Food credits and Razorpay payment are
+    // both committed at PLACE time (place_cafe_order RPC debits credits;
+    // create-razorpay-order + capture pulls cash) so they need refunding
+    // regardless of whether the kitchen ever accepted.
     const wasAccepted = order?.kitchen_status && ['accepted', 'preparing', 'ready'].includes(order.kitchen_status)
+    const wasPaidByRazorpay = order?.payment_mode === 'razorpay' && order?.payment_status === 'paid'
+
+    // Mark cancelled. Also flip payment_status='refunded' on Razorpay-paid
+    // orders so the FE/UI reflects that the money has to come back to the
+    // customer. Note: this just updates our DB — the actual Razorpay refund
+    // API call is TODO (see #refund-todo). Until that's wired up, staff must
+    // manually refund via Razorpay Dashboard. The status='refunded' here
+    // ensures we don't lose track of which payments owe the customer.
+    const updates: Record<string, unknown> = { kitchen_status: 'cancelled' }
+    if (wasPaidByRazorpay) updates.payment_status = 'refunded'
 
     const { error } = await supabase
       .from('cafe_orders')
-      .update({ kitchen_status: 'cancelled' })
+      .update(updates)
       .eq('id', orderId)
 
     if (error) {
@@ -217,17 +232,30 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
     // Remove from active board immediately
     setOrders((prev) => prev.filter((o) => o.id !== orderId))
 
-    // Restore inventory if order had been accepted
+    // Restore inventory ONLY if it was deducted (i.e. order was accepted).
     if (wasAccepted && order?.property_id) {
       restoreInventoryForOrder(orderId, order.property_id).catch((err) =>
         console.error('Inventory restore failed:', err)
       )
     }
 
-    // Restore $food credits if order had been accepted
-    if (wasAccepted) {
-      restoreFoodCredits(orderId).catch((err) =>
-        console.error('Food credit restore failed:', err)
+    // Restore $food credits ALWAYS — they were debited at place_cafe_order
+    // time, before kitchen acceptance. restoreFoodCredits short-circuits
+    // when food_credit_applied_paise is 0/null, so this is safe to call
+    // unconditionally.
+    restoreFoodCredits(orderId).catch((err) =>
+      console.error('Food credit restore failed:', err)
+    )
+
+    if (wasPaidByRazorpay) {
+      // #refund-todo: implement /pm/api/cafe/refund-razorpay endpoint that
+      // calls POST /v1/payments/{payment_id}/refund and confirms before we
+      // set payment_status='refunded'. For now we mark the row above so
+      // staff sees "Refunded" and can reconcile manually via Dashboard.
+      console.warn(
+        'cancelOrder: Razorpay refund not auto-issued for paid order',
+        orderId,
+        '— flagged as refunded in DB; refund manually via Razorpay Dashboard.',
       )
     }
   }, [orders])
