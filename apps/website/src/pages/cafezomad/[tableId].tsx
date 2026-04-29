@@ -87,6 +87,9 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     } catch { return [] }
   })
   const [foodCreditAmount, setFoodCreditAmount] = useState(0)
+  // Per-draft-order slider value (in rupees). Default falls back to the order's
+  // existing food_credit_applied_paise / 100 when undefined.
+  const [draftCreditOverrides, setDraftCreditOverrides] = useState<Record<string, number>>({})
   const [activeTab, setActiveTab] = useState<Tab>('menu')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [isOrdering, setIsOrdering] = useState(false)
@@ -111,7 +114,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   }, [cart, cartKey])
 
   // $food credits
-  const { balance: foodBalance } = useFoodCreditBalance(user?.mobile_number || null)
+  const { balance: foodBalance, refresh: refreshFoodBalance } = useFoodCreditBalance(user?.mobile_number || null)
 
   // ── Data: fetch table + property + menu ────────────────────────────────────
   useEffect(() => {
@@ -404,6 +407,45 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       setTimeout(() => setErrorToast(null), 5000)
     }
   }, [fetchOrders, waitForPaymentCaptured])
+
+  // Complete a draft order's payment. Reads the per-order slider state
+  // (draftCreditOverrides) and, if the customer changed how many credits to
+  // apply, calls update_cafe_order_food_credits to persist that delta before
+  // kicking off Razorpay. If the new credit total fully covers the order,
+  // the RPC flips it to zo_card/paid server-side and we skip Razorpay.
+  const completeDraftPayment = useCallback(async (order: CafeOrderWithItems) => {
+    const existingCreditsRupees = Math.floor((order.food_credit_applied_paise || 0) / 100)
+    const localCreditsRupees = draftCreditOverrides[order.id] ?? existingCreditsRupees
+
+    setPaymentInFlight({ orderId: order.id, status: 'opening' })
+    try {
+      if (localCreditsRupees !== existingCreditsRupees) {
+        const newPaise = localCreditsRupees * 100
+        const { data, error } = await supabase.rpc('update_cafe_order_food_credits', {
+          p_cafe_order_id: order.id,
+          p_food_credit_paise: newPaise,
+        })
+        if (error) {
+          throw new Error(error.message.replace(/^.*RAISE EXCEPTION:\s*/, ''))
+        }
+        // Wallet balance just changed server-side; refresh the local hook.
+        refreshFoodBalance()
+        if (data?.payment_status === 'paid') {
+          setPaymentInFlight(null)
+          fetchOrders()
+          return
+        }
+      }
+
+      // Still need Razorpay for the remaining amount.
+      await openRazorpayCheckout(order.id)
+    } catch (err) {
+      setPaymentInFlight(null)
+      const msg = err instanceof Error ? err.message : 'Could not complete payment'
+      setErrorToast(msg)
+      setTimeout(() => setErrorToast(null), 5000)
+    }
+  }, [draftCreditOverrides, fetchOrders, refreshFoodBalance, openRazorpayCheckout])
 
   // ── Place Order (via server-side RPC — validates prices, limits, credits) ──
   const handlePlaceOrder = async () => {
@@ -865,6 +907,23 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                   {activeOrders.map((order) => {
                     const needsPayment = order.payment_mode === 'razorpay' && order.payment_status === 'pending'
                     const isThisInFlight = paymentInFlight?.orderId === order.id
+
+                    // Draft-order credit math:
+                    //   net           = subtotal + tax (gross order amount)
+                    //   existingPaise = credits already applied to this order
+                    //   maxRupees     = credits we COULD apply (cap at net or wallet)
+                    //   localRupees   = current slider value (override or existing)
+                    //   newDuePaise   = net - localRupees * 100
+                    const net = order.subtotal + order.tax_amount
+                    const existingCreditsPaise = order.food_credit_applied_paise || 0
+                    const existingCreditsRupees = Math.floor(existingCreditsPaise / 100)
+                    const maxCreditsRupees = needsPayment
+                      ? Math.min(foodBalance + existingCreditsRupees, Math.floor(net / 100))
+                      : 0
+                    const localCreditsRupees = draftCreditOverrides[order.id] ?? existingCreditsRupees
+                    const newDuePaise = Math.max(0, net - localCreditsRupees * 100)
+                    const showSlider = needsPayment && maxCreditsRupees > 0
+
                     return (
                       <div key={order.id} className="rounded-xl bg-orange-50 ring-1 ring-orange-200 p-3">
                         <div className="flex items-center justify-between mb-2">
@@ -885,18 +944,46 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                           <span className="text-[10px] text-black/30 font-medium font-mono">
                             {new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                           </span>
-                          <span className="font-bold text-sm text-black">{formatPaise(order.total)}</span>
+                          <span className="font-bold text-sm text-black">{formatPaise(net)}</span>
                         </div>
+
+                        {showSlider && (
+                          <div className="mt-3 rounded-xl bg-black p-3">
+                            <div className="flex justify-between mb-1.5">
+                              <span className="text-orange-400 font-semibold text-xs">Apply $food</span>
+                              <span className="text-orange-400 font-mono font-bold text-xs">balance ₹{foodBalance + existingCreditsRupees}</span>
+                            </div>
+                            <input
+                              type="range"
+                              min={0}
+                              max={maxCreditsRupees}
+                              value={localCreditsRupees}
+                              disabled={paymentInFlight !== null}
+                              onChange={(e) => setDraftCreditOverrides((prev) => ({ ...prev, [order.id]: Number(e.target.value) }))}
+                              className="w-full"
+                              style={{ accentColor: '#f97316' }}
+                            />
+                            <div className="flex justify-between text-[11px] mt-1">
+                              <span className="text-white/50">Apply: ₹{localCreditsRupees}</span>
+                              <span className="text-white font-semibold">To pay: {formatPaise(newDuePaise)}</span>
+                            </div>
+                          </div>
+                        )}
+
                         {needsPayment && (
                           <button
-                            onClick={() => openRazorpayCheckout(order.id)}
+                            onClick={() => completeDraftPayment(order)}
                             disabled={paymentInFlight !== null}
                             className="w-full mt-3 bg-orange-500 text-black py-2.5 text-sm font-bold rounded-xl active:scale-[0.98] transition-all disabled:opacity-50"
                           >
                             {isThisInFlight && paymentInFlight?.status === 'opening' && 'Opening Payment…'}
                             {isThisInFlight && paymentInFlight?.status === 'awaiting' && 'Waiting in Razorpay…'}
                             {isThisInFlight && paymentInFlight?.status === 'confirming' && 'Confirming Payment…'}
-                            {!isThisInFlight && `Complete Payment · ${formatPaise(order.total)}`}
+                            {!isThisInFlight && (
+                              newDuePaise === 0
+                                ? `Confirm Order · ₹0 due`
+                                : `Pay ${formatPaise(newDuePaise)} · UPI / Card`
+                            )}
                           </button>
                         )}
                       </div>

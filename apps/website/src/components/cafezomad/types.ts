@@ -75,6 +75,7 @@ export interface CafeOrderWithItems {
   payment_mode: 'razorpay' | 'cash' | 'zo_card'
   payment_id: string | null
   razorpay_order_id: string | null
+  food_credit_applied_paise: number
   notes: string | null
   created_at: string
   updated_at: string
