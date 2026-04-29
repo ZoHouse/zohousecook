@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { NextPage } from 'next'
-import { Spin } from 'antd'
+import { message, Spin, Switch, Tag } from 'antd'
 import ZoHouseGuard from '../../components/helpers/app/ZoHouseGuard'
 import { Page, PageContent, PageHeader } from '../../components/ui'
 import { KitchenBoard } from '../../components/cafe/KitchenBoard'
@@ -15,6 +15,46 @@ const CafeKitchenPage: NextPage = () => {
   const [showCreateOrder, setShowCreateOrder] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<CafeOrderWithItems | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+
+  // Accepting-orders flag — toggle at the top of the board lets the chef
+  // pause new customer orders (e.g. ingredient run-out, end-of-service).
+  // The flag is enforced inside place_cafe_order RPC; this UI is just the
+  // staff-facing switch.
+  const [acceptingOrders, setAcceptingOrders] = useState<boolean | null>(null)
+  const [acceptingLoading, setAcceptingLoading] = useState(false)
+
+  useEffect(() => {
+    if (!propertyId) {
+      setAcceptingOrders(null)
+      return
+    }
+    let cancelled = false
+    supabase
+      .from('cafe_properties')
+      .select('accepting_orders')
+      .eq('id', propertyId)
+      .single()
+      .then(({ data }) => {
+        if (!cancelled) setAcceptingOrders(data?.accepting_orders ?? true)
+      })
+    return () => { cancelled = true }
+  }, [propertyId])
+
+  const toggleAccepting = async (next: boolean) => {
+    if (!propertyId) return
+    setAcceptingLoading(true)
+    const { error } = await supabase
+      .from('cafe_properties')
+      .update({ accepting_orders: next })
+      .eq('id', propertyId)
+    setAcceptingLoading(false)
+    if (error) {
+      message.error('Could not update accepting_orders: ' + error.message)
+      return
+    }
+    setAcceptingOrders(next)
+    message.success(next ? 'Now accepting orders' : 'Orders paused — customers will see "Closed" until you resume')
+  }
 
   const handleStatusChange = async (orderId: string, newStatus: KitchenStatus) => {
     await supabase
@@ -54,11 +94,47 @@ const CafeKitchenPage: NextPage = () => {
               Select a property to view the kitchen board.
             </div>
           ) : (
-            <KitchenBoard
-              key={refreshKey}
-              propertyId={propertyId}
-              onViewDetail={setSelectedOrder}
-            />
+            <>
+              {/* Accepting-orders toggle — pauses/resumes customer ordering at /cafezomad */}
+              {acceptingOrders !== null && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    padding: '10px 14px',
+                    marginBottom: 12,
+                    borderRadius: 8,
+                    background: acceptingOrders ? 'rgba(82,196,26,0.08)' : 'rgba(255,77,79,0.10)',
+                    border: `1px solid ${acceptingOrders ? 'rgba(82,196,26,0.3)' : 'rgba(255,77,79,0.4)'}`,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Tag color={acceptingOrders ? 'green' : 'red'} style={{ margin: 0 }}>
+                      {acceptingOrders ? 'OPEN' : 'PAUSED'}
+                    </Tag>
+                    <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>
+                      {acceptingOrders
+                        ? 'Customers can place new orders.'
+                        : 'New customer orders are blocked. Existing orders are unaffected.'}
+                    </span>
+                  </div>
+                  <Switch
+                    checked={acceptingOrders}
+                    loading={acceptingLoading}
+                    onChange={toggleAccepting}
+                    checkedChildren="On"
+                    unCheckedChildren="Off"
+                  />
+                </div>
+              )}
+              <KitchenBoard
+                key={refreshKey}
+                propertyId={propertyId}
+                onViewDetail={setSelectedOrder}
+              />
+            </>
           )}
         </PageContent>
       </Page>
