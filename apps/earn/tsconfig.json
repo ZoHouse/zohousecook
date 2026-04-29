@@ -20,11 +20,33 @@
       "jest",
       "node"
     ],
-    "baseUrl": ".",
+    "baseUrl": "../..",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["apps/earn/src/*"],
+      "@zo/assets/brands": ["libs/assets/brands/src/index.ts"],
+      "@zo/assets/icons": ["libs/assets/icons/src/index.ts"],
+      "@zo/assets/lotties": ["libs/assets/lotties/src/index.ts"],
+      "@zo/auth": ["libs/auth/src/index.ts"],
+      "@zo/coal/typography": ["libs/coal/typography/src/index.ts"],
+      "@zo/coal/ui": ["libs/coal/ui/src/index.ts"],
+      "@zo/definitions/admin": ["libs/definitions/admin/src/index.ts"],
+      "@zo/definitions/auth": ["libs/definitions/auth/src/index.ts"],
+      "@zo/definitions/general": ["libs/definitions/general/src/index.ts"],
+      "@zo/moal": ["libs/moal/src/index.ts"],
+      "@zo/utils/array": ["libs/utils/array/src/index.ts"],
+      "@zo/utils/auth": ["libs/utils/auth/src/index.ts"],
+      "@zo/utils/file": ["libs/utils/file/src/index.ts"],
+      "@zo/utils/font": ["libs/utils/font/src/index.ts"],
+      "@zo/utils/hooks": ["libs/utils/hooks/src/index.ts"],
+      "@zo/utils/next": ["libs/utils/next/src/index.ts"],
+      "@zo/utils/number": ["libs/utils/number/src/index.ts"],
+      "@zo/utils/object": ["libs/utils/object/src/index.ts"],
+      "@zo/utils/sentry": ["libs/utils/sentry/src/index.ts"],
+      "@zo/utils/sentry/server": ["libs/utils/sentry/src/server.ts"],
+      "@zo/utils/string": ["libs/utils/string/src/index.ts"],
+      "@zo/utils/web3": ["libs/utils/web3/src/index.ts"],
+      "@zo/zud": ["libs/zud/src/index.ts"],
+      "@zo/avatar-renderer": ["libs/avatar-renderer/src/index.ts"]
     }
   },
   "include": [

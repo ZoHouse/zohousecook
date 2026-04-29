@@ -1,2 +1,0 @@
-# local JSON store — holds posts and X tokens, never commit
-.data/
