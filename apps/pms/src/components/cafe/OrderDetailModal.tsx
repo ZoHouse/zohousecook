@@ -152,29 +152,98 @@ export function OrderDetailModal({ order, onClose, onStatusChange }: OrderDetail
 
       <Divider style={{ margin: '12px 0' }} />
 
-      {/* Totals */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Text type="secondary">Subtotal</Text>
-          <Text type="secondary">{formatPaise(order.subtotal)}</Text>
-        </div>
-        {order.service_charge > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Text type="secondary">Service Charge</Text>
-            <Text type="secondary">{formatPaise(order.service_charge)}</Text>
+      {/*
+        Totals — multi-economy display. Cafe Zomad is a dual-payment system
+        ($food credits + Razorpay/cash), so the breakdown has two stages:
+          1. The order's gross value:    Subtotal + Tax = Order Total
+          2. How it was paid:            Order Total − $food applied = Cash/Razorpay Due
+        We show all four lines whenever credits were applied; otherwise we
+        collapse to the single Order Total (no double-line confusion).
+        Bottom label adapts to payment_status: To Pay / Paid / Refunded so
+        the staff knows whether the Razorpay/cash leg is settled.
+      */}
+      {(() => {
+        const orderGross = order.subtotal + order.service_charge + order.tax_amount
+        const credit = order.food_credit_applied_paise || 0
+        const dueAfterCredit = order.total
+        const hasCredit = credit > 0
+        const finalLabel =
+          order.payment_status === 'paid'
+            ? 'Paid (Razorpay / Cash)'
+            : order.payment_status === 'refunded'
+              ? 'Refunded'
+              : 'To Pay (Razorpay / Cash)'
+        const finalColor =
+          order.payment_status === 'paid'
+            ? '#52c41a'
+            : order.payment_status === 'refunded'
+              ? '#ff7875'
+              : undefined
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Text type="secondary">Subtotal</Text>
+              <Text type="secondary">{formatPaise(order.subtotal)}</Text>
+            </div>
+            {order.service_charge > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Text type="secondary">Service Charge</Text>
+                <Text type="secondary">{formatPaise(order.service_charge)}</Text>
+              </div>
+            )}
+            {order.tax_amount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Text type="secondary">Tax (5%)</Text>
+                <Text type="secondary">{formatPaise(order.tax_amount)}</Text>
+              </div>
+            )}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginTop: 4,
+                paddingTop: 4,
+                borderTop: '1px solid rgba(0,0,0,0.08)',
+              }}
+            >
+              <Text strong style={{ fontSize: 15 }}>Order Total</Text>
+              <Text strong style={{ fontSize: 15 }}>{formatPaise(orderGross)}</Text>
+            </div>
+            {hasCredit && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Text type="secondary">$food applied</Text>
+                  <Text type="secondary">−{formatPaise(credit)}</Text>
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: 4,
+                    paddingTop: 4,
+                    borderTop: '1px solid rgba(0,0,0,0.08)',
+                  }}
+                >
+                  <Text strong style={{ fontSize: 15, color: finalColor }}>{finalLabel}</Text>
+                  <Text strong style={{ fontSize: 15, color: finalColor }}>{formatPaise(dueAfterCredit)}</Text>
+                </div>
+              </>
+            )}
+            {!hasCredit && order.payment_status !== 'pending' && (
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginTop: 4,
+                }}
+              >
+                <Text strong style={{ fontSize: 13, color: finalColor }}>{finalLabel}</Text>
+                <Text strong style={{ fontSize: 13, color: finalColor }}>{formatPaise(dueAfterCredit)}</Text>
+              </div>
+            )}
           </div>
-        )}
-        {order.tax_amount > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Text type="secondary">Tax</Text>
-            <Text type="secondary">{formatPaise(order.tax_amount)}</Text>
-          </div>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-          <Text strong style={{ fontSize: 15 }}>Total</Text>
-          <Text strong style={{ fontSize: 15 }}>{formatPaise(order.total)}</Text>
-        </div>
-      </div>
+        )
+      })()}
 
       {/* Payment info */}
       <Descriptions size="small" column={2} style={{ marginBottom: 16 }}>

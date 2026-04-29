@@ -101,7 +101,9 @@ function OrderDrawer({
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
           <span style={{ color: "rgba(255,255,255,0.45)" }}>Table</span>
-          <span style={{ fontWeight: 500 }}>{order.table_label || order.table_id?.substring(0, 8) || "—"}</span>
+          <span style={{ fontWeight: 500 }}>
+            {order.table?.label || order.table?.code || order.mode?.replace(/_/g, " ") || "—"}
+          </span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
           <span style={{ color: "rgba(255,255,255,0.45)" }}>Time</span>
@@ -160,21 +162,55 @@ function OrderDrawer({
         </div>
       )}
 
-      {/* Total */}
-      <div
-        style={{
-          marginTop: 16,
-          paddingTop: 12,
-          borderTop: "1px solid rgba(255,255,255,0.08)",
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: 15,
-          fontWeight: 700,
-        }}
-      >
-        <span>Total</span>
-        <span>{formatPaise(order.total || 0)}</span>
-      </div>
+      {/* Totals — multi-economy display ($food + Razorpay/cash legs) */}
+      {(() => {
+        const orderGross = (order.subtotal || 0) + (order.service_charge || 0) + (order.tax_amount || 0)
+        const credit = order.food_credit_applied_paise || 0
+        const due = order.total || 0
+        const finalLabel =
+          order.payment_status === 'paid' ? 'Paid (Razorpay / Cash)' :
+          order.payment_status === 'refunded' ? 'Refunded' :
+          'To Pay (Razorpay / Cash)'
+        return (
+          <div
+            style={{
+              marginTop: 16,
+              paddingTop: 12,
+              borderTop: "1px solid rgba(255,255,255,0.08)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+              <span>Subtotal</span><span>{formatPaise(order.subtotal || 0)}</span>
+            </div>
+            {(order.service_charge || 0) > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                <span>Service Charge</span><span>{formatPaise(order.service_charge || 0)}</span>
+              </div>
+            )}
+            {(order.tax_amount || 0) > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                <span>Tax (5%)</span><span>{formatPaise(order.tax_amount || 0)}</span>
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, marginTop: 4, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <span>Order Total</span><span>{formatPaise(orderGross)}</span>
+            </div>
+            {credit > 0 && (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#fa8c16" }}>
+                  <span>$food applied</span><span>−{formatPaise(credit)}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, marginTop: 4, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <span>{finalLabel}</span><span>{formatPaise(due)}</span>
+                </div>
+              </>
+            )}
+          </div>
+        )
+      })()}
     </Drawer>
   );
 }
@@ -261,12 +297,29 @@ function OrdersTab({ propertyId }: { propertyId: string }) {
       ),
     },
     {
+      // Order Total = gross (subtotal + service + tax). Listed as the
+      // headline because that's the food's value; how it was paid (cash
+      // vs $food) appears as a tooltip-eligible second line below for
+      // orders that used $food credits.
       title: "Total",
       key: "total",
-      width: 80,
-      render: (_: unknown, r: Order) => (
-        <span style={{ fontWeight: 600 }}>{formatPaise(r.total || 0)}</span>
-      ),
+      width: 110,
+      render: (_: unknown, r: Order) => {
+        const gross = (r.subtotal || 0) + (r.service_charge || 0) + (r.tax_amount || 0)
+        const credit = r.food_credit_applied_paise || 0
+        const due = r.total || 0
+        return (
+          <div style={{ lineHeight: 1.2 }}>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>{formatPaise(gross)}</div>
+            {credit > 0 && (
+              <div style={{ fontSize: 10, color: "#fa8c16", fontFamily: 'monospace' }}>
+                {formatPaise(credit)} $food
+                {due > 0 && ` + ${formatPaise(due)}`}
+              </div>
+            )}
+          </div>
+        )
+      },
     },
     {
       title: "Status",
