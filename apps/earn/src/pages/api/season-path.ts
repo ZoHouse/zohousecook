@@ -25,12 +25,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let questsDone = 4;
 
   try {
-    const [user, dbNodes] = await Promise.all([
+    const [identity, dbNodes] = await Promise.all([
       getOrCreateUser(req, res),
       prisma.seasonNode.findMany({ orderBy: { sortOrder: "asc" } }),
     ]);
     if (dbNodes.length > 0) nodes = dbNodes.map((n) => ({ id: n.id, label: n.label }));
-    questsDone = user.questsDone;
+    questsDone = identity.profile.questsDone;
   } catch (err) {
     console.error("[earn] season-path falling back to demo:", err);
   }

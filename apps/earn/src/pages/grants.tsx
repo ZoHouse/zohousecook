@@ -8,10 +8,9 @@ import {
   MobileNavToggle,
   MobileNavMenu,
 } from "@/components/ui/resizable-navbar";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
-
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+import { IconGift, IconSparkles } from "@tabler/icons-react";
 
 const navItems = [
   { name: "Bounties", link: "/" },
@@ -19,24 +18,8 @@ const navItems = [
   { name: "Grants", link: "/grants" },
 ];
 
-type Grant = {
-  id: string;
-  title: string;
-  amount: string;
-  description?: string | null;
-  color?: string | null;
-};
-
 export default function GrantsPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [grants, setGrants] = useState<Grant[]>([]);
-
-  useEffect(() => {
-    fetch(`${basePath}/api/grants`)
-      .then((r) => r.json())
-      .then((data) => setGrants(Array.isArray(data) ? data : []))
-      .catch(() => {});
-  }, []);
 
   return (
     <div className="min-h-screen bg-zui-dark font-sans text-zui-white">
@@ -82,32 +65,13 @@ export default function GrantsPage() {
           </h1>
           <Image src="/money.png" alt="Money" width={48} height={48} />
         </div>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {grants.map((grant) => (
-            <div
-              key={grant.id}
-              className="flex gap-5 rounded-2xl border border-zui-stroke bg-zui-lighter p-7 transition-all hover:-translate-y-1 hover:border-zui-white/20 hover:shadow-[0_8px_32px_0_rgba(0,0,0,0.45)]"
-            >
-              <div
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-zui-stroke text-xl font-bold text-zui-dark"
-                style={{ backgroundColor: grant.color || "#66DF48" }}
-              >
-                $
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-zui-white">
-                  {grant.title}
-                </h3>
-                <p className="mb-2 text-sm font-medium text-zui-green">
-                  {grant.amount}
-                </p>
-                <p className="text-sm leading-relaxed text-zui-white/60">
-                  {grant.description}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+
+        <ComingSoon
+          icon={<IconGift size={32} className="text-zui-yellow" />}
+          tag="Grants"
+          headline="Coming soon"
+          body="We're putting together the first Zo grant cohort — funding for builders, researchers, and community organizers. Drop back here once we open submissions."
+        />
       </section>
 
       <footer className="border-t border-zui-stroke bg-zui-lighter px-4 py-12">
@@ -123,6 +87,45 @@ export default function GrantsPage() {
           </p>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function ComingSoon({
+  icon,
+  tag,
+  headline,
+  body,
+}: {
+  icon: React.ReactNode;
+  tag: string;
+  headline: string;
+  body: string;
+}) {
+  return (
+    <div className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl border border-dashed border-zui-stroke bg-zui-lighter p-12 text-center">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-50"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 50% 0%, rgba(102,223,72,0.12) 0%, transparent 60%)",
+        }}
+      />
+      <div className="relative flex flex-col items-center gap-5">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-zui-stroke bg-zui-light/40">
+          {icon}
+        </div>
+        <span className="flex items-center gap-1.5 rounded-full border border-zui-green/40 bg-zui-green/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-zui-green">
+          <IconSparkles size={11} />
+          {tag}
+        </span>
+        <h2 className="font-headline text-5xl leading-tight tracking-tight text-zui-white md:text-6xl">
+          {headline}
+        </h2>
+        <p className="max-w-md text-sm leading-relaxed text-zui-white/60">
+          {body}
+        </p>
+      </div>
     </div>
   );
 }

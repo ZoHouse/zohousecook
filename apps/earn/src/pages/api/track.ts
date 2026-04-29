@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const user = await getOrCreateUser(req, res);
+    const { user } = await getOrCreateUser(req, res);
     const body = (req.body ?? {}) as Record<string, unknown>;
 
     const name = String(body.name ?? "").trim();

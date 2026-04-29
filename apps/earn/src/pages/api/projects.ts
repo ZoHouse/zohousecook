@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!requireAdmin(req, res)) return;
 
     try {
-      const user = await getOrCreateUser(req, res);
+      const { user } = await getOrCreateUser(req, res);
       const body = (req.body ?? {}) as Record<string, unknown>;
       const name = String(body.name ?? "").trim();
       if (!name) return res.status(400).json({ error: "name is required" });

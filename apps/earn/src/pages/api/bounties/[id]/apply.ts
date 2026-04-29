@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!id) return res.status(400).json({ error: "missing id" });
 
   try {
-    const user = await getOrCreateUser(req, res);
+    const { user } = await getOrCreateUser(req, res);
     const bounty = await prisma.bounty.findUnique({ where: { id } });
     if (!bounty) {
       return res.status(404).json({ error: "bounty not found" });
@@ -40,8 +40,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         where: { id: bounty.id },
         data: { applicants: { increment: 1 } },
       });
-      await tx.user.update({
-        where: { id: user.id },
+      await tx.earnProfile.update({
+        where: { userId: user.id },
         data: { xp: { increment: xp } },
       });
       await tx.analyticsEvent.create({

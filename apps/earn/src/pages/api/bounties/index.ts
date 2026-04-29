@@ -74,7 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!requireAdmin(req, res)) return;
 
     try {
-      const user = await getOrCreateUser(req, res);
+      const { user } = await getOrCreateUser(req, res);
       const body = (req.body ?? {}) as Record<string, unknown>;
 
       const title = String(body.title ?? "").trim();

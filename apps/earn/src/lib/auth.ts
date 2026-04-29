@@ -26,30 +26,111 @@ function setCookie(res: NextApiResponse, value: string) {
   res.setHeader("Set-Cookie", parts.join("; "));
 }
 
+export type EarnIdentity = {
+  user: { id: string };
+  profile: {
+    handle: string;
+    title: string;
+    level: number;
+    xp: number;
+    xpMax: number;
+    streak: number;
+    questsDone: number;
+    combo: number;
+  };
+};
+
 /**
- * Resolve the current anonymous user. Reads `zo_user` cookie, creates a row on
- * first hit. This is the lightweight gamification identity — separate from the
- * Zo phone-OTP identity used for the admin gate.
+ * Resolve the current user. Reads `zo_user` cookie; if missing/unknown,
+ * inserts a new row into `public.users` (id only — every other column is
+ * nullable or has a default), then creates a matching row in
+ * `earn_profiles`. The `users` schema is owned by the broader Zo platform
+ * and is never altered from earn.
  */
-export async function getOrCreateUser(req: NextApiRequest, res: NextApiResponse) {
+export async function getOrCreateUser(
+  req: NextApiRequest,
+  res: NextApiResponse,
+): Promise<EarnIdentity> {
   const existingId = req.cookies[COOKIE_NAME];
 
   if (existingId) {
-    const user = await prisma.user.findUnique({ where: { id: existingId } });
-    if (user) return user;
+    const profile = await prisma.earnProfile.findUnique({
+      where: { userId: existingId },
+    });
+    if (profile) {
+      return {
+        user: { id: existingId },
+        profile: {
+          handle: profile.handle,
+          title: profile.title,
+          level: profile.level,
+          xp: profile.xp,
+          xpMax: profile.xpMax,
+          streak: profile.streak,
+          questsDone: profile.questsDone,
+          combo: profile.combo,
+        },
+      };
+    }
+    // Cookie present but row missing — fall through and create fresh.
   }
 
   const id = randomUUID();
-  const user = await prisma.user.create({
-    data: { id, handle: generateHandle() },
-  });
+  // Insert a minimal row into public.users (id only). All other columns are
+  // nullable or have defaults, so this is safe and non-destructive.
+  await prisma.user.create({ data: { id } });
+
+  // Generate a handle that doesn't collide. Retry a few times if unlucky.
+  let profile = null;
+  for (let attempt = 0; attempt < 5 && !profile; attempt++) {
+    const handle = generateHandle();
+    try {
+      profile = await prisma.earnProfile.create({
+        data: { userId: id, handle },
+      });
+    } catch {
+      // Likely handle collision; retry.
+    }
+  }
+  if (!profile) {
+    throw new Error("could not allocate earn handle after retries");
+  }
+
   setCookie(res, id);
-  return user;
+  return {
+    user: { id },
+    profile: {
+      handle: profile.handle,
+      title: profile.title,
+      level: profile.level,
+      xp: profile.xp,
+      xpMax: profile.xpMax,
+      streak: profile.streak,
+      questsDone: profile.questsDone,
+      combo: profile.combo,
+    },
+  };
 }
 
-/** Read-only: returns null if no cookie or row missing. Does not create. */
-export async function getUser(req: NextApiRequest) {
+/** Read-only lookup. Returns null if no cookie or no profile yet. */
+export async function getUser(req: NextApiRequest): Promise<EarnIdentity | null> {
   const id = req.cookies[COOKIE_NAME];
   if (!id) return null;
-  return prisma.user.findUnique({ where: { id } });
+  const profile = await prisma.earnProfile.findUnique({
+    where: { userId: id },
+  });
+  if (!profile) return null;
+  return {
+    user: { id },
+    profile: {
+      handle: profile.handle,
+      title: profile.title,
+      level: profile.level,
+      xp: profile.xp,
+      xpMax: profile.xpMax,
+      streak: profile.streak,
+      questsDone: profile.questsDone,
+      combo: profile.combo,
+    },
+  };
 }

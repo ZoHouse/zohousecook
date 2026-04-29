@@ -8,11 +8,9 @@ import {
   MobileNavToggle,
   MobileNavMenu,
 } from "@/components/ui/resizable-navbar";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
-import { IconUsers } from "@tabler/icons-react";
-
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+import { IconBriefcase, IconSparkles } from "@tabler/icons-react";
 
 const navItems = [
   { name: "Bounties", link: "/" },
@@ -20,24 +18,8 @@ const navItems = [
   { name: "Grants", link: "/grants" },
 ];
 
-type Project = {
-  id: string;
-  name: string;
-  description?: string | null;
-  color?: string | null;
-  members: number;
-};
-
 export default function ProjectsPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [projects, setProjects] = useState<Project[]>([]);
-
-  useEffect(() => {
-    fetch(`${basePath}/api/projects`)
-      .then((r) => r.json())
-      .then((data) => setProjects(Array.isArray(data) ? data : []))
-      .catch(() => {});
-  }, []);
 
   return (
     <div className="min-h-screen bg-zui-dark font-sans text-zui-white">
@@ -79,30 +61,32 @@ export default function ProjectsPage() {
         <h1 className="mb-14 text-center font-headline text-6xl leading-[1.05] tracking-tight text-zui-white md:text-7xl">
           Featured Projects
         </h1>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {projects.map((project) => (
-            <div
-              key={project.id}
-              className="rounded-2xl border border-zui-stroke bg-zui-lighter p-7 transition-all hover:-translate-y-1 hover:border-zui-white/20 hover:shadow-[0_8px_32px_0_rgba(0,0,0,0.45)]"
-            >
-              <div
-                className="mb-5 inline-block rounded-full border border-zui-stroke px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-zui-dark"
-                style={{ backgroundColor: project.color || "#66DF48" }}
-              >
-                Active
-              </div>
-              <h3 className="mb-3 text-xl font-semibold text-zui-white">
-                {project.name}
-              </h3>
-              <p className="mb-5 text-sm leading-relaxed text-zui-white/70">
-                {project.description}
-              </p>
-              <div className="flex items-center gap-2 text-sm text-zui-white/50">
-                <IconUsers size={16} />
-                <span>{project.members} members</span>
-              </div>
+
+        <div className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl border border-dashed border-zui-stroke bg-zui-lighter p-12 text-center">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-50"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 50% 0%, rgba(102,223,72,0.12) 0%, transparent 60%)",
+            }}
+          />
+          <div className="relative flex flex-col items-center gap-5">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-zui-stroke bg-zui-light/40">
+              <IconBriefcase size={32} className="text-zui-pink" />
             </div>
-          ))}
+            <span className="flex items-center gap-1.5 rounded-full border border-zui-green/40 bg-zui-green/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-zui-green">
+              <IconSparkles size={11} />
+              Projects
+            </span>
+            <h2 className="font-headline text-5xl leading-tight tracking-tight text-zui-white md:text-6xl">
+              Coming soon
+            </h2>
+            <p className="max-w-md text-sm leading-relaxed text-zui-white/60">
+              The first batch of community projects is being curated. Soon you&rsquo;ll be
+              able to discover what Zo builders are shipping and jump into the ones that
+              matter to you.
+            </p>
+          </div>
         </div>
       </section>
 

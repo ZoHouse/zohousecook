@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const user = await getOrCreateUser(req, res);
+    const { user, profile } = await getOrCreateUser(req, res);
 
     const [unlocked, allAchievements] = await Promise.all([
       prisma.userAchievement.findMany({
@@ -30,14 +30,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }));
 
     return res.status(200).json({
-      handle:     user.handle,
-      title:      user.title,
-      level:      user.level,
-      xp:         user.xp,
-      xpMax:      user.xpMax,
-      streak:     user.streak,
-      questsDone: user.questsDone,
-      combo:      user.combo,
+      handle:     profile.handle,
+      title:      profile.title,
+      level:      profile.level,
+      xp:         profile.xp,
+      xpMax:      profile.xpMax,
+      streak:     profile.streak,
+      questsDone: profile.questsDone,
+      combo:      profile.combo,
       achievements,
     });
   } catch (err) {

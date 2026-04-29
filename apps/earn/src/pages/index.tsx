@@ -8,6 +8,7 @@ import {
   MobileNavMenu,
 } from "@/components/ui/resizable-navbar";
 import { useState, useEffect } from "react";
+import { useAuth } from "@zo/auth";
 import {
   IconCoin,
   IconUsers,
@@ -32,6 +33,7 @@ import {
   IconArrowRight,
   IconChevronLeft,
   IconChevronRight,
+  IconLogout,
 } from "@tabler/icons-react";
 import { track } from "@/lib/track";
 
@@ -218,7 +220,7 @@ export default function Home() {
             </nav>
           </div>
           <div className="flex items-center gap-3">
-            <NavChip xpPct={xpPct} player={player} />
+            <AuthCorner xpPct={xpPct} player={player} />
           </div>
         </NavBody>
 
@@ -255,9 +257,7 @@ export default function Home() {
 
       <div className="flex flex-col lg:flex-row lg:items-start">
         <main className="min-w-0 flex-1 px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pt-32">
-          <SeasonPath nodes={seasonPath} />
-
-          <section id="bounties" className="mt-12">
+          <section id="bounties">
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="mb-2 flex items-center gap-2">
@@ -358,6 +358,70 @@ export default function Home() {
         </aside>
       </div>
 
+    </div>
+  );
+}
+
+function AuthCorner({ xpPct, player }: { xpPct: number; player: Player }) {
+  const { isLoggedIn, showLoginModal, logout, user } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  if (isLoggedIn === null) {
+    return (
+      <div className="flex h-9 items-center rounded-md border border-zui-stroke bg-zui-light/40 px-3 text-[10px] font-medium uppercase tracking-wider text-zui-white/40">
+        …
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <button
+        type="button"
+        onClick={() => showLoginModal(["mobile"])}
+        className="flex h-9 items-center gap-1.5 rounded-md border border-zui-green/60 bg-zui-green px-3.5 text-xs font-semibold uppercase tracking-wider text-zui-dark transition-transform hover:scale-[1.03]"
+      >
+        Sign in
+        <IconArrowRight size={13} strokeWidth={2.5} />
+      </button>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setMenuOpen((v) => !v)}
+        className="flex items-center"
+      >
+        <NavChip xpPct={xpPct} player={player} />
+      </button>
+      {menuOpen && (
+        <div
+          className="absolute right-0 top-full z-50 mt-2 w-44 rounded-lg border border-zui-stroke bg-zui-lighter shadow-[0_8px_32px_0_rgba(0,0,0,0.5)]"
+          onMouseLeave={() => setMenuOpen(false)}
+        >
+          <div className="border-b border-zui-stroke px-3 py-2">
+            <p className="truncate text-[11px] font-medium text-zui-white">
+              {user?.mobile_number ?? player.handle}
+            </p>
+            <p className="text-[9px] uppercase tracking-wider text-zui-white/50">
+              {player.title}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false);
+              logout();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-zui-white hover:bg-zui-light/60"
+          >
+            <IconLogout size={13} />
+            Sign out
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -511,94 +575,122 @@ const DEFAULT_SEASON_PATH: PathNode[] = [
 type ZoEvent = {
   id: string;
   title: string;
-  house: "BLRxZo" | "WTFxZo";
-  date: string;
-  time: string;
-  tag: string;
-  color: string;
-  image?: string;
+  start_at: string;
+  end_at: string | null;
+  cover_url: string | null;
+  url: string | null;
+  location: string | null;
+  house: "BLRxZo" | "WTFxZo" | null;
 };
 
-const ZO_EVENTS: ZoEvent[] = [
-  {
-    id: "evt-1",
-    title: "Founder Friday — Breakfast with builders",
-    house: "BLRxZo",
-    date: "Fri · Apr 25",
-    time: "9:00 AM",
-    tag: "Community",
-    color: "#FF9E4C",
-    image: `${basePath}/claw.png`,
-  },
-  {
-    id: "evt-2",
-    title: "AI Agents Hackathon — 24hr sprint",
-    house: "WTFxZo",
-    date: "Sat · Apr 26",
-    time: "10 AM – 10 PM",
-    tag: "Hackathon",
-    color: "#FFD600",
-  },
-  {
-    id: "evt-3",
-    title: "Zo Demo Day — S1 cohort showcase",
-    house: "BLRxZo",
-    date: "Wed · Apr 30",
-    time: "6:30 PM",
-    tag: "Demo Day",
-    color: "#66DF48",
-  },
-  {
-    id: "evt-4",
-    title: "Solana Bangalore Meetup",
-    house: "WTFxZo",
-    date: "Thu · May 1",
-    time: "7:00 PM",
-    tag: "Meetup",
-    color: "#9803CE",
-  },
-  {
-    id: "evt-5",
-    title: "Residents Dinner — invite only",
-    house: "BLRxZo",
-    date: "Sat · May 3",
-    time: "8:00 PM",
-    tag: "Residents",
-    color: "#FF2F8E",
-  },
-];
-
 const CAROUSEL_INTERVAL_MS = 4500;
+
+const HOUSE_COLORS: Record<NonNullable<ZoEvent["house"]>, string> = {
+  BLRxZo: "#66DF48",
+  WTFxZo: "#FFD600",
+};
+
+const FALLBACK_COLOR = "#9803CE";
+
+function formatEventDate(iso: string) {
+  const d = new Date(iso);
+  const day = d.toLocaleDateString("en-IN", { weekday: "short" });
+  const date = d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  const time = d.toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+  return { day, date, time };
+}
 
 function ZoEvents() {
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [events, setEvents] = useState<ZoEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (paused) return;
+    let cancelled = false;
+    fetch(`${basePath}/api/events`)
+      .then((r) => r.json())
+      .then((data: { events?: ZoEvent[] }) => {
+        if (cancelled) return;
+        setEvents(Array.isArray(data?.events) ? data.events : []);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (paused || events.length < 2) return;
     const timer = setInterval(() => {
-      setIdx((i) => (i + 1) % ZO_EVENTS.length);
+      setIdx((i) => (i + 1) % events.length);
     }, CAROUSEL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [paused]);
+  }, [paused, events.length]);
+
+  const Header = (
+    <div className="flex items-center justify-between px-1">
+      <div className="flex items-center gap-2">
+        <IconCalendarEvent size={14} className="text-zui-green" />
+        <span className="text-[11px] font-medium uppercase tracking-widest text-zui-white">
+          This week at Zo
+        </span>
+      </div>
+      <a
+        href="https://lu.ma/zohouse"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-0.5 text-[10px] font-medium uppercase tracking-wider text-zui-white/50 transition-colors hover:text-zui-white"
+      >
+        All
+        <IconArrowRight size={11} />
+      </a>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {Header}
+        <div
+          className="flex items-center justify-center rounded-xl border border-zui-stroke bg-zui-lighter text-[11px] font-medium uppercase tracking-wider text-zui-white/40"
+          style={{ aspectRatio: "9 / 16" }}
+        >
+          Loading events…
+        </div>
+      </div>
+    );
+  }
+
+  if (events.length === 0) {
+    return (
+      <div className="space-y-3">
+        {Header}
+        <div
+          className="flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-zui-stroke bg-zui-lighter px-4 text-center"
+          style={{ aspectRatio: "9 / 16" }}
+        >
+          <span className="text-[11px] font-medium uppercase tracking-wider text-zui-white/40">
+            No upcoming events
+          </span>
+          <span className="text-[10px] text-zui-white/30">
+            Check back soon
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-2">
-          <IconCalendarEvent size={14} className="text-zui-green" />
-          <span className="text-[11px] font-medium uppercase tracking-widest text-zui-white">
-            This week at Zo
-          </span>
-        </div>
-        <a
-          href="https://zo.house"
-          className="flex items-center gap-0.5 text-[10px] font-medium uppercase tracking-wider text-zui-white/50 transition-colors hover:text-zui-white"
-        >
-          All
-          <IconArrowRight size={11} />
-        </a>
-      </div>
+      {Header}
 
       <div
         className="group relative overflow-hidden rounded-xl border border-zui-stroke bg-zui-lighter shadow-[0_8px_32px_0_rgba(0,0,0,0.4)]"
@@ -610,7 +702,7 @@ function ZoEvents() {
           className="flex h-full transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{ transform: `translateX(-${idx * 100}%)` }}
         >
-          {ZO_EVENTS.map((event) => (
+          {events.map((event) => (
             <EventBanner key={event.id} event={event} />
           ))}
         </div>
@@ -628,62 +720,72 @@ function ZoEvents() {
           />
         </div>
 
-        <button
-          type="button"
-          aria-label="Previous event"
-          onClick={() =>
-            setIdx((i) => (i - 1 + ZO_EVENTS.length) % ZO_EVENTS.length)
-          }
-          className="absolute left-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-zui-stroke bg-zui-dark/80 opacity-0 backdrop-blur-sm transition-opacity hover:bg-zui-dark group-hover:opacity-100"
-        >
-          <IconChevronLeft size={14} strokeWidth={2.5} className="text-zui-white" />
-        </button>
-        <button
-          type="button"
-          aria-label="Next event"
-          onClick={() => setIdx((i) => (i + 1) % ZO_EVENTS.length)}
-          className="absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-zui-stroke bg-zui-dark/80 opacity-0 backdrop-blur-sm transition-opacity hover:bg-zui-dark group-hover:opacity-100"
-        >
-          <IconChevronRight size={14} strokeWidth={2.5} className="text-zui-white" />
-        </button>
+        {events.length > 1 && (
+          <>
+            <button
+              type="button"
+              aria-label="Previous event"
+              onClick={() =>
+                setIdx((i) => (i - 1 + events.length) % events.length)
+              }
+              className="absolute left-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-zui-stroke bg-zui-dark/80 opacity-0 backdrop-blur-sm transition-opacity hover:bg-zui-dark group-hover:opacity-100"
+            >
+              <IconChevronLeft size={14} strokeWidth={2.5} className="text-zui-white" />
+            </button>
+            <button
+              type="button"
+              aria-label="Next event"
+              onClick={() => setIdx((i) => (i + 1) % events.length)}
+              className="absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-zui-stroke bg-zui-dark/80 opacity-0 backdrop-blur-sm transition-opacity hover:bg-zui-dark group-hover:opacity-100"
+            >
+              <IconChevronRight size={14} strokeWidth={2.5} className="text-zui-white" />
+            </button>
+          </>
+        )}
       </div>
 
-      <div className="flex items-center justify-center gap-1.5">
-        {ZO_EVENTS.map((e, i) => (
-          <button
-            type="button"
-            key={e.id}
-            onClick={() => setIdx(i)}
-            aria-label={`Go to event ${i + 1}`}
-            className={`h-1.5 rounded-full transition-all ${
-              i === idx ? "w-6 bg-zui-green" : "w-1.5 bg-zui-white/25"
-            }`}
-          />
-        ))}
-      </div>
+      {events.length > 1 && (
+        <div className="flex items-center justify-center gap-1.5">
+          {events.map((e, i) => (
+            <button
+              type="button"
+              key={e.id}
+              onClick={() => setIdx(i)}
+              aria-label={`Go to event ${i + 1}`}
+              className={`h-1.5 rounded-full transition-all ${
+                i === idx ? "w-6 bg-zui-green" : "w-1.5 bg-zui-white/25"
+              }`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 function EventBanner({ event }: { event: ZoEvent }) {
-  const [day, dateNum] = event.date.split(" · ");
+  const { day, date, time } = formatEventDate(event.start_at);
+  const houseColor = event.house ? HOUSE_COLORS[event.house] : FALLBACK_COLOR;
+
   return (
     <a
-      href="#"
+      href={event.url ?? "#"}
+      target={event.url ? "_blank" : undefined}
+      rel="noopener noreferrer"
       className="group relative flex h-full w-full shrink-0 basis-full flex-col"
     >
       <div className="relative flex-1">
-        {event.image ? (
+        {event.cover_url ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={event.image}
+              src={event.cover_url}
               alt=""
               className="absolute inset-0 h-full w-full object-cover"
             />
             <div
               className="absolute inset-0 mix-blend-multiply"
-              style={{ backgroundColor: `${event.color}22` }}
+              style={{ backgroundColor: `${houseColor}22` }}
             />
           </>
         ) : (
@@ -691,7 +793,7 @@ function EventBanner({ event }: { event: ZoEvent }) {
             <div
               className="absolute inset-0"
               style={{
-                backgroundColor: event.color,
+                backgroundColor: houseColor,
                 backgroundImage:
                   "repeating-linear-gradient(45deg, rgba(255,255,255,0.1) 0 14px, transparent 14px 28px)",
               }}
@@ -711,32 +813,36 @@ function EventBanner({ event }: { event: ZoEvent }) {
                   textShadow: "0 3px 6px rgba(0,0,0,0.35)",
                 }}
               >
-                {dateNum.split(" ")[1] || dateNum}
+                {date.split(" ")[0]}
               </span>
               <span
                 className="mt-1 text-xs font-black uppercase tracking-[0.25em] text-white/80"
                 style={{ textShadow: "0 1px 2px rgba(0,0,0,0.3)" }}
               >
-                {dateNum.split(" ")[0]}
+                {date.split(" ")[1] ?? ""}
               </span>
             </div>
           </>
         )}
 
         <div className="absolute right-3 top-3 flex flex-col items-end gap-1.5">
-          <span className="rounded-full border border-zui-stroke bg-zui-dark/80 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-zui-white backdrop-blur-sm">
-            {event.tag}
-          </span>
-          <span
-            className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white"
-            style={{ textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-zui-green" />
-            {event.house}
-          </span>
+          {event.location && (
+            <span className="rounded-full border border-zui-stroke bg-zui-dark/80 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-zui-white backdrop-blur-sm">
+              {event.location}
+            </span>
+          )}
+          {event.house && (
+            <span
+              className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white"
+              style={{ textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-zui-green" />
+              {event.house}
+            </span>
+          )}
         </div>
 
-        {event.image && (
+        {event.cover_url && (
           <div className="absolute left-4 top-4 flex flex-col leading-none">
             <span
               className="text-[11px] font-black uppercase tracking-[0.2em] text-white"
@@ -752,7 +858,7 @@ function EventBanner({ event }: { event: ZoEvent }) {
                 textShadow: "0 2px 4px rgba(0,0,0,0.55)",
               }}
             >
-              {dateNum}
+              {date}
             </span>
           </div>
         )}
@@ -764,7 +870,7 @@ function EventBanner({ event }: { event: ZoEvent }) {
         </h4>
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-medium uppercase tracking-wider text-zui-white/50">
-            {event.time}
+            {time}
           </span>
           <span className="flex h-6 w-6 items-center justify-center rounded-full border border-zui-green/40 bg-zui-green text-zui-dark transition-transform group-hover:translate-x-0.5">
             <IconArrowRight size={10} strokeWidth={2.5} />
@@ -879,6 +985,7 @@ function RarityBadge({ rarity }: { rarity: Rarity }) {
 }
 
 function BountyCard({ bounty }: { bounty: Bounty }) {
+  const { isLoggedIn, showLoginModal } = useAuth();
   const rarity = getRarity(bounty.reward);
   const xp = getXP(bounty.reward);
   const style = RARITY_STYLES[rarity];
@@ -889,6 +996,11 @@ function BountyCard({ bounty }: { bounty: Bounty }) {
 
   const handleAccept = (e: React.MouseEvent<HTMLAnchorElement>) => {
     track("bounty_click", { bountyId: bounty.id, source: bounty.source });
+    if (!isLoggedIn) {
+      e.preventDefault();
+      showLoginModal(["mobile"]);
+      return;
+    }
     if (!bounty.id.startsWith("demo-")) {
       fetch(`${basePath}/api/bounties/${bounty.id}/apply`, {
         method: "POST",
@@ -1019,6 +1131,21 @@ function BountyCard({ bounty }: { bounty: Bounty }) {
 }
 
 function BountyTable({ bounties }: { bounties: Bounty[] }) {
+  const { isLoggedIn, showLoginModal } = useAuth();
+  const onRowClick = (bounty: Bounty) => {
+    track("bounty_click", { bountyId: bounty.id, source: bounty.source });
+    if (!isLoggedIn) {
+      showLoginModal(["mobile"]);
+      return;
+    }
+    if (!bounty.id.startsWith("demo-")) {
+      fetch(`${basePath}/api/bounties/${bounty.id}/apply`, {
+        method: "POST",
+        keepalive: true,
+      }).catch(() => {});
+    }
+    if (bounty.url) window.open(bounty.url, "_blank");
+  };
   return (
     <div className="overflow-hidden rounded-xl border border-zui-stroke bg-zui-lighter">
       <table className="w-full">
@@ -1054,16 +1181,7 @@ function BountyTable({ bounties }: { bounties: Bounty[] }) {
             return (
               <tr
                 key={bounty.id}
-                onClick={() => {
-                  track("bounty_click", { bountyId: bounty.id, source: bounty.source });
-                  if (!bounty.id.startsWith("demo-")) {
-                    fetch(`${basePath}/api/bounties/${bounty.id}/apply`, {
-                      method: "POST",
-                      keepalive: true,
-                    }).catch(() => {});
-                  }
-                  if (bounty.url) window.open(bounty.url, "_blank");
-                }}
+                onClick={() => onRowClick(bounty)}
                 className={`cursor-pointer transition-colors hover:bg-zui-light/40 ${
                   idx !== bounties.length - 1
                     ? "border-b border-dashed border-zui-stroke"

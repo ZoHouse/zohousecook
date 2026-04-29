@@ -1,4 +1,21 @@
--- Earn app — initial schema (idempotent). Safe to run on a DB that already has `bounties`.
+-- Earn app — initial schema (idempotent).
+-- The `public.users` table already exists and is owned by the broader Zo
+-- platform. Earn does NOT create or alter it. We only reference it via FK.
+
+CREATE TABLE IF NOT EXISTS "earn_profiles" (
+  "user_id"     TEXT PRIMARY KEY,
+  "handle"      TEXT NOT NULL UNIQUE,
+  "title"       TEXT NOT NULL DEFAULT 'Zo Newbie',
+  "level"       INTEGER NOT NULL DEFAULT 1,
+  "xp"          INTEGER NOT NULL DEFAULT 0,
+  "xp_max"      INTEGER NOT NULL DEFAULT 500,
+  "streak"      INTEGER NOT NULL DEFAULT 0,
+  "quests_done" INTEGER NOT NULL DEFAULT 0,
+  "combo"       INTEGER NOT NULL DEFAULT 0,
+  "created_at"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "earn_profiles_user_fk" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE
+);
 
 CREATE TABLE IF NOT EXISTS "bounties" (
   "id"            TEXT PRIMARY KEY,
@@ -18,9 +35,6 @@ CREATE TABLE IF NOT EXISTS "bounties" (
   "created_at"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
-ALTER TABLE "bounties" ADD COLUMN IF NOT EXISTS "reward_amount" INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE "bounties" ADD COLUMN IF NOT EXISTS "image_url" TEXT;
 
 CREATE UNIQUE INDEX IF NOT EXISTS "bounties_source_source_id_key" ON "bounties"("source", "source_id");
 CREATE INDEX IF NOT EXISTS "bounties_status_created_at_idx" ON "bounties"("status", "created_at");
@@ -45,20 +59,6 @@ CREATE TABLE IF NOT EXISTS "grants" (
   "description" TEXT,
   "color"       TEXT,
   "active"      BOOLEAN NOT NULL DEFAULT TRUE,
-  "created_at"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updated_at"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS "users" (
-  "id"          TEXT PRIMARY KEY,
-  "handle"      TEXT NOT NULL UNIQUE,
-  "title"       TEXT NOT NULL DEFAULT 'Zo Newbie',
-  "level"       INTEGER NOT NULL DEFAULT 1,
-  "xp"          INTEGER NOT NULL DEFAULT 0,
-  "xp_max"      INTEGER NOT NULL DEFAULT 500,
-  "streak"      INTEGER NOT NULL DEFAULT 0,
-  "quests_done" INTEGER NOT NULL DEFAULT 0,
-  "combo"       INTEGER NOT NULL DEFAULT 0,
   "created_at"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS "analytics_events" (
 CREATE INDEX IF NOT EXISTS "analytics_events_name_created_idx" ON "analytics_events"("name", "created_at");
 CREATE INDEX IF NOT EXISTS "analytics_events_user_idx"         ON "analytics_events"("user_id");
 
--- Seed: 8 achievements (mirrors hardcoded set in page.tsx)
+-- Seed: 8 achievements
 INSERT INTO "achievements"("id","label","description","icon","color","sort_order") VALUES
   ('first-blood',  'First Blood',   'First quest claimed',     'IconSwords',   '#FF9E4C', 1),
   ('centurion',    'Centurion',     '100 contributions',       'IconShield',   '#6A77DD', 2),
