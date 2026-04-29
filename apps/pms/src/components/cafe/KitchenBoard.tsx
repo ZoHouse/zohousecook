@@ -255,7 +255,12 @@ interface OrderCardProps {
 function OrderCard({ order, onAdvance, onCancel, onViewDetail }: OrderCardProps) {
   const status = order.kitchen_status as KitchenStatus
   const advanceLabel = ADVANCE_ACTION_LABELS[status]
-  const tableLabel = order.table?.code || order.mode.replace('_', ' ')
+  // Table label: prefer the cafe_tables.label (e.g. "Garden 4") over the
+  // bare code, and fall back to the order mode capitalised when there's no
+  // table (pickup / room_service). "Table " prefix only when we have a table.
+  const tableLabel = order.table
+    ? `Table ${order.table.label || order.table.code}`
+    : order.mode.replace('_', ' ')
   const activeItems = order.order_items.filter((i) => i.item_status === 'active')
 
   return (
@@ -294,18 +299,33 @@ function OrderCard({ order, onAdvance, onCancel, onViewDetail }: OrderCardProps)
         </Space>
       </div>
 
-      {/* Table / mode */}
-      <Text
-        style={{
-          fontSize: 12,
-          color: 'rgba(255,255,255,0.55)',
-          display: 'block',
-          marginBottom: 6,
-          textTransform: 'capitalize',
-        }}
-      >
-        {tableLabel}
-      </Text>
+      {/* Customer name + table — chefs need this to know WHO and WHERE the
+          food is going, especially during dine-in service. */}
+      <div style={{ marginBottom: 6 }}>
+        {order.customer_name && (
+          <Text
+            strong
+            style={{
+              fontSize: 13,
+              color: 'rgba(255,255,255,0.95)',
+              display: 'block',
+              lineHeight: 1.3,
+            }}
+          >
+            {order.customer_name}
+          </Text>
+        )}
+        <Text
+          style={{
+            fontSize: 12,
+            color: 'rgba(255,255,255,0.55)',
+            display: 'block',
+            textTransform: 'capitalize',
+          }}
+        >
+          {tableLabel}
+        </Text>
+      </div>
 
       {/* Items list */}
       <div style={{ marginBottom: 8 }}>
