@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@zo/auth";
 import {
   Navbar,
@@ -220,14 +221,14 @@ function Shell({
             onClose={() => setIsMobileMenuOpen(false)}
           >
             {navItems.map((item, idx) => (
-              <a
+              <Link
                 key={`mobile-link-${idx}`}
                 href={item.link}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="text-base font-medium tracking-wide text-zui-white"
               >
                 {item.name}
-              </a>
+              </Link>
             ))}
           </MobileNavMenu>
         </MobileNav>

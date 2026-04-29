@@ -1,5 +1,6 @@
 "use client";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 import { IconMenu2, IconX } from "@tabler/icons-react";
 import {
   motion,
@@ -123,7 +124,7 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
       )}
     >
       {items.map((item, idx) => (
-        <a
+        <Link
           onMouseEnter={() => setHovered(idx)}
           onClick={onItemClick}
           className="relative px-4 py-2 text-zui-white/80 transition-colors hover:text-zui-white"
@@ -137,7 +138,7 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
             />
           )}
           <span className="relative z-20">{item.name}</span>
-        </a>
+        </Link>
       ))}
     </motion.div>
   );
@@ -230,7 +231,7 @@ export const MobileNavToggle = ({
 export const NavbarLogo = () => {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
   return (
-    <a
+    <Link
       href="/"
       className="relative z-20 mr-4 flex items-center space-x-2 px-2 py-1 text-sm font-normal text-zui-white"
     >
@@ -245,7 +246,7 @@ export const NavbarLogo = () => {
       <span className="font-headline text-2xl tracking-tight text-zui-white">
         Earn
       </span>
-    </a>
+    </Link>
   );
 };
 

@@ -37,6 +37,9 @@ const nextConfig = {
   env: {
     APP_ID: process.env.APP_ID || "earn",
     DATABASE_URL: process.env.DATABASE_URL || "",
+    API_BASE_URL: process.env.API_BASE_URL || "",
+    API_BASE_URL_ZOSTEL: process.env.API_BASE_URL_ZOSTEL || "",
+    WEB_BASE_URL: process.env.WEB_BASE_URL || "",
     NEXT_PUBLIC_BASE_PATH: basePath,
   },
 };

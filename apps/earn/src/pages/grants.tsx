@@ -9,8 +9,11 @@ import {
   MobileNavMenu,
 } from "@/components/ui/resizable-navbar";
 import { useState } from "react";
-import Image from "next/image";
+import Link from "next/link";
 import { IconGift, IconSparkles } from "@tabler/icons-react";
+import { AuthCorner } from "@/components/AuthCorner";
+
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 const navItems = [
   { name: "Bounties", link: "/" },
@@ -27,7 +30,7 @@ export default function GrantsPage() {
         <NavBody>
           <NavbarLogo />
           <NavItems items={navItems} />
-          <div />
+          <AuthCorner />
         </NavBody>
 
         <MobileNav>
@@ -44,14 +47,14 @@ export default function GrantsPage() {
             onClose={() => setIsMobileMenuOpen(false)}
           >
             {navItems.map((item, idx) => (
-              <a
+              <Link
                 key={`mobile-link-${idx}`}
                 href={item.link}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="text-base font-medium tracking-wide text-zui-white"
               >
                 {item.name}
-              </a>
+              </Link>
             ))}
           </MobileNavMenu>
         </MobileNav>
@@ -59,11 +62,13 @@ export default function GrantsPage() {
 
       <section className="mx-auto max-w-6xl px-4 pb-24 pt-32">
         <div className="mb-14 flex items-center justify-center gap-4">
-          <Image src="/money.png" alt="Money" width={48} height={48} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`${basePath}/money.png`} alt="Money" width={48} height={48} />
           <h1 className="text-center font-headline text-6xl leading-[1.05] tracking-tight text-zui-white md:text-7xl">
             Grants Program
           </h1>
-          <Image src="/money.png" alt="Money" width={48} height={48} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`${basePath}/money.png`} alt="Money" width={48} height={48} />
         </div>
 
         <ComingSoon
@@ -77,7 +82,14 @@ export default function GrantsPage() {
       <footer className="border-t border-zui-stroke bg-zui-lighter px-4 py-12">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 md:flex-row">
           <div className="flex items-center gap-2.5">
-            <Image src="/logo.png" alt="Zo" width={28} height={28} className="invert" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`${basePath}/logo.png`}
+              alt="Zo"
+              width={28}
+              height={28}
+              className="invert"
+            />
             <span className="font-headline text-2xl tracking-tight text-zui-white">
               Marketplace
             </span>
