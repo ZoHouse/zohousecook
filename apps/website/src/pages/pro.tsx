@@ -2,6 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import Script from "next/script";
 import { useState } from "react";
+import { useRouter } from "next/router";
 import { useAuth, useProfile } from "@zo/auth";
 import { toast } from "sonner";
 import {
@@ -23,11 +24,72 @@ const RAZORPAY_KEY_ID = (
 ).trim();
 
 const BENEFITS = [
-  "Daily creator bed drops and bounties across Zostel inventory.",
-  "Passport referrals with recurring booking commission.",
-  "Revenue unlocks for participating creator content.",
-  "Priority access to Passport-led quests, badges, and monetization lanes.",
+  "Daily bed drops and bounties across Zostel inventory.",
+  "7% recurring commission on Passport referrals.",
+  "Revenue unlocks on participating creator content.",
+  "Priority access to quests, badges, and monetization lanes.",
 ];
+
+interface HeroCopy {
+  pill: string;
+  pillTone: "amber" | "emerald" | "neutral";
+  headline: string;
+  body: string;
+}
+
+function heroCopy(
+  founder: boolean,
+  subscription: PassportSubscription | null,
+  firstName: string | null,
+): HeroCopy {
+  const greeting = firstName ? `${firstName}, ` : "";
+
+  if (founder) {
+    return {
+      pill: "Founder Member",
+      pillTone: "amber",
+      headline: firstName
+        ? `${firstName}, your Founder Pass already covers Passport Pro.`
+        : "Your Founder Pass already covers Passport Pro.",
+      body: "You landed here from the Passport tap. There's nothing to buy — your Founder NFT keeps Pro live for as long as it sits in your connected wallet.",
+    };
+  }
+
+  if (subscription?.is_active && subscription?.is_paid) {
+    return {
+      pill: "Pro Member",
+      pillTone: "emerald",
+      headline: `${greeting}Passport Pro is live on your account.`,
+      body: subscription.cancelled_at
+        ? "Cancellation is queued — you keep Pro until the cycle ends. Resubscribe any time below."
+        : "Daily bed drops, referral commission, and revenue unlocks are all working in your favour. Manage billing on the right.",
+    };
+  }
+
+  if (subscription?.status === "pending") {
+    return {
+      pill: "Payment pending",
+      pillTone: "amber",
+      headline: `${greeting}finish checkout to switch on Pro.`,
+      body: "We've created your subscription with Razorpay. Tap Continue checkout to complete the first payment and Pro flips on instantly.",
+    };
+  }
+
+  return {
+    pill: "Become Pro",
+    pillTone: "neutral",
+    headline: "Earn from your Zo identity.",
+    body: "Daily creator bed drops, recurring commission on Passport referrals, and revenue unlocks for participating posts. ₹499/month, cancel any time.",
+  };
+}
+
+const HERO_PILL_CLASSES: Record<HeroCopy["pillTone"], string> = {
+  amber:
+    "border-amber-200/15 bg-amber-200/8 text-amber-100/85",
+  emerald:
+    "border-emerald-200/15 bg-emerald-200/8 text-emerald-100/85",
+  neutral: "border-white/12 bg-white/6 text-white/70",
+};
 
 function normalizePhone(phone: string | null | undefined): string | undefined {
   const digits = (phone || "").replace(/\D/g, "").slice(-10);
@@ -144,7 +206,7 @@ function statusPill(
 ): { label: string; className: string } {
   if (founder) {
     return {
-      label: "Founder-backed Pro",
+      label: "Founder Membership",
       className:
         "bg-amber-300/90 text-black border border-amber-200/80 shadow-[0_0_28px_rgba(245,158,11,0.22)]",
     };
@@ -189,11 +251,46 @@ function statusPill(
   };
 }
 
+// Dev-only `?view=free|pending|pro|founder` lets you preview each hero state
+// without juggling test accounts. Disabled in production builds — the override
+// only fires when NODE_ENV !== 'production'.
+type PreviewView = "free" | "pending" | "pro" | "founder";
+const PREVIEW_VIEWS: PreviewView[] = ["free", "pending", "pro", "founder"];
+
+function buildPreviewSubscription(view: PreviewView): PassportSubscription | null {
+  const baseAmount = 49900000000; // 499 * 10^8 (matches formatAmount decimals=8)
+  const baseCurrency = { symbol: "₹", decimals: 8 };
+  const inThirtyDays = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  if (view === "pro")
+    return {
+      is_active: true,
+      is_paid: true,
+      status: "active",
+      amount: baseAmount,
+      currency: baseCurrency,
+      ref_id: "preview-active",
+      renews_at: inThirtyDays,
+      last_charged_at: lastWeek,
+    };
+  if (view === "pending")
+    return {
+      is_active: false,
+      is_paid: false,
+      status: "pending",
+      amount: baseAmount,
+      currency: baseCurrency,
+      ref_id: "preview-pending",
+    };
+  return null; // free / founder
+}
+
 export default function ProPage() {
+  const router = useRouter();
   const { isLoggedIn, showLoginModal } = useAuth();
   const { profile } = useProfile();
   const {
-    subscription,
+    subscription: realSubscription,
     isLoading,
     refresh,
     subscribe,
@@ -204,8 +301,24 @@ export default function ProPage() {
   const [isOpeningCheckout, setIsOpeningCheckout] = useState(false);
 
   const rawProfile = profile as Record<string, unknown> | null;
-  const founder = isFounderProfile(rawProfile);
+  const realFounder = isFounderProfile(rawProfile);
+
+  const previewView: PreviewView | null =
+    process.env.NODE_ENV !== "production" &&
+    typeof router.query.view === "string" &&
+    PREVIEW_VIEWS.includes(router.query.view as PreviewView)
+      ? (router.query.view as PreviewView)
+      : null;
+
+  const founder = previewView ? previewView === "founder" : realFounder;
+  const subscription = previewView ? buildPreviewSubscription(previewView) : realSubscription;
   const status = statusPill(subscription, founder);
+  const firstName =
+    ((rawProfile?.full_name as string | undefined) || "").split(" ")[0] ||
+    (rawProfile?.custom_nickname as string | undefined) ||
+    (rawProfile?.nickname as string | undefined) ||
+    null;
+  const hero = heroCopy(founder, subscription, firstName);
   const hasPendingSubscription =
     subscription?.status === "pending" && !!subscription?.ref_id;
   const hasActivePaidSubscription =
@@ -271,6 +384,10 @@ export default function ProPage() {
       subscription_id: targetSubscription.ref_id,
       name: "Zo World",
       description: "Passport Pro",
+      // recurring=1 tells Checkout to enumerate methods that support
+      // mandates (UPI AutoPay, eMandate cards, eNach netbanking) instead
+      // of one-shot payment instruments.
+      recurring: 1,
       prefill: {
         name:
           (rawProfile?.full_name as string | undefined) ||
@@ -279,6 +396,35 @@ export default function ProPage() {
           undefined,
         email: (rawProfile?.email_address as string | undefined) || undefined,
         contact: normalizePhone(rawProfile?.mobile_number as string | undefined),
+      },
+      // Surface UPI AutoPay first (mobile-first audience), then cards on
+      // eMandate, then netbanking eNach. Razorpay drops any block whose
+      // underlying method isn't enabled on the merchant account, so this
+      // is safe to ship before every method is fully turned on at the
+      // dashboard. eMandate / eNach are flows on top of card / netbanking,
+      // not separate methods — Razorpay activates them automatically for
+      // mandate-capable payments.
+      config: {
+        display: {
+          blocks: {
+            upi: {
+              name: "UPI AutoPay",
+              instruments: [{ method: "upi" }],
+            },
+            cards: {
+              name: "Card (eMandate)",
+              instruments: [{ method: "card" }],
+            },
+            netbanking: {
+              name: "Netbanking (eNach)",
+              instruments: [{ method: "netbanking" }],
+            },
+          },
+          sequence: ["block.upi", "block.cards", "block.netbanking"],
+          preferences: {
+            show_default_blocks: false,
+          },
+        },
       },
       theme: { color: "#d4a63a" },
       handler: () => {
@@ -381,7 +527,7 @@ export default function ProPage() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_30%),linear-gradient(180deg,#0b0a0d_0%,#050505_100%)]" />
         </div>
 
-        <div className="relative mx-auto max-w-6xl px-6 py-10 sm:py-14">
+        <div className="relative mx-auto max-w-6xl px-5 py-8 sm:px-6 sm:py-14">
           <div className="flex items-center justify-between gap-4">
             <Link
               href="/passport"
@@ -399,20 +545,20 @@ export default function ProPage() {
 
           <div className="mt-10 grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
             <section>
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-200/15 bg-amber-200/8 px-4 py-2 text-xs uppercase tracking-[0.24em] text-amber-100/80">
-                Live Pro Membership
+              <div
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs uppercase tracking-[0.24em] ${HERO_PILL_CLASSES[hero.pillTone]}`}
+              >
+                {hero.pill}
               </div>
 
               <h1
-                className={`${syneClassName} mt-6 max-w-3xl text-4xl font-bold leading-[1.02] sm:text-5xl lg:text-6xl`}
+                className={`${syneClassName} mt-5 max-w-3xl text-[28px] font-bold leading-[1.06] sm:mt-6 sm:text-5xl sm:leading-[1.02] lg:text-6xl`}
               >
-                Passport Pro turns your Zo identity into a live revenue surface.
+                {hero.headline}
               </h1>
 
-              <p className={`${rubikClassName} mt-5 max-w-2xl text-base leading-7 text-white/65 sm:text-lg`}>
-                Billing points at the production Passport backend and opens the
-                live Razorpay subscription flow for Passport Pro. Founder-backed
-                Pro still resolves separately from this paid membership path.
+              <p className={`${rubikClassName} mt-4 max-w-2xl text-[15px] leading-[1.55] text-white/65 sm:mt-5 sm:text-lg sm:leading-7`}>
+                {hero.body}
               </p>
 
               <div className="mt-8 grid gap-3 sm:grid-cols-2">
@@ -425,21 +571,15 @@ export default function ProPage() {
                   </div>
                 ))}
               </div>
-
-              <div className="mt-8 rounded-3xl border border-amber-200/15 bg-amber-200/8 p-5 text-sm leading-6 text-amber-50/85">
-                Founder Members do not need to buy a separate plan. While the
-                backend sees a valid Founder token in a connected wallet, this
-                account should resolve to Pro access automatically.
-              </div>
             </section>
 
-            <section className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.10)_0%,rgba(255,255,255,0.03)_100%)] p-6 shadow-[0_25px_80px_rgba(0,0,0,0.35)] backdrop-blur">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.22em] text-white/45">
+            <section className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.10)_0%,rgba(255,255,255,0.03)_100%)] p-5 shadow-[0_25px_80px_rgba(0,0,0,0.35)] backdrop-blur sm:rounded-[28px] sm:p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs uppercase tracking-[0.22em] text-white/45 sm:text-sm">
                     Current Access
                   </p>
-                  <h2 className={`${syneClassName} mt-3 text-3xl font-bold`}>
+                  <h2 className={`${syneClassName} mt-2 text-2xl font-bold sm:mt-3 sm:text-3xl`}>
                     {priceLabel}
                     <span className="ml-2 text-sm font-normal text-white/45">
                       / month
@@ -447,7 +587,7 @@ export default function ProPage() {
                   </h2>
                 </div>
                 <span
-                  className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${status.className}`}
+                  className={`whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${status.className}`}
                 >
                   {status.label}
                 </span>
