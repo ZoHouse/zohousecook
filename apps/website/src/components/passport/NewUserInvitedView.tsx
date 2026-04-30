@@ -19,7 +19,7 @@ export function NewUserInvitedView({
   };
 
   const handleGetPro = () => {
-    showLoginModal(undefined, "/passport#pro");
+    showLoginModal(undefined, "/pro");
   };
 
   const chainAvatar = fixAvatarUrl(chainInviterAvatarUrl || undefined);

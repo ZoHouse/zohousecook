@@ -117,6 +117,14 @@ export function PublicPassportView({ handle, viewerState, initialData }: PublicP
     }
   };
 
+  const handleBecomeMember = () => {
+    if (viewerState === "logged_out") {
+      showLoginModal(undefined, "/pro");
+      return;
+    }
+    router.push("/pro");
+  };
+
   const passportCard = (
     <div className="flex flex-col gap-5">
       {/* Spacer so the avatar can overflow the top of the card */}
@@ -246,7 +254,7 @@ export function PublicPassportView({ handle, viewerState, initialData }: PublicP
       <BookStaysPlaceholder />
 
       <PassportPlusUpsell
-        onBecomeMember={handlePrimary}
+        onBecomeMember={handleBecomeMember}
         onUnlockAndGo={handlePrimary}
       />
     </div>

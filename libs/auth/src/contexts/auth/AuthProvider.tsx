@@ -278,6 +278,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
     };
     console.log("Setting device headers:", customAxiosHeaders);
     setZoServerHeaders(customAxiosHeaders);
+    setZoPassportServerHeaders(customAxiosHeaders);
     setUser(user);
     setTimeout(() => {
       setLoggedIn(true);
