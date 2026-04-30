@@ -34,7 +34,7 @@ interface HeroCopy {
   pill: string;
   pillTone: "amber" | "emerald" | "neutral";
   headline: string;
-  body: string;
+  body?: string;
 }
 
 function heroCopy(
@@ -51,7 +51,6 @@ function heroCopy(
       headline: firstName
         ? `${firstName}, your Founder Pass already covers Passport Pro.`
         : "Your Founder Pass already covers Passport Pro.",
-      body: "You landed here from the Passport tap. There's nothing to buy — your Founder NFT keeps Pro live for as long as it sits in your connected wallet.",
     };
   }
 
@@ -557,9 +556,11 @@ export default function ProPage() {
                 {hero.headline}
               </h1>
 
-              <p className={`${rubikClassName} mt-4 max-w-2xl text-[15px] leading-[1.55] text-white/65 sm:mt-5 sm:text-lg sm:leading-7`}>
-                {hero.body}
-              </p>
+              {hero.body && (
+                <p className={`${rubikClassName} mt-4 max-w-2xl text-[15px] leading-[1.55] text-white/65 sm:mt-5 sm:text-lg sm:leading-7`}>
+                  {hero.body}
+                </p>
+              )}
 
               <div className="mt-8 grid gap-3 sm:grid-cols-2">
                 {BENEFITS.map((benefit) => (
