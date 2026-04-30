@@ -13,6 +13,9 @@ console.log(
   `[INFO] NFT Airdrop slug: ${process.env.NFT_AIRDROP_COLLECTION_SLUG}`
 );
 
+const isVercelDeployment =
+  process.env.VERCEL === "1" || Boolean(process.env.VERCEL_ENV);
+
 /**
  * @type {import('@nx/next/plugins/with-nx').WithNxOptions}
  **/
@@ -23,7 +26,10 @@ const nextConfig = {
     svgr: false,
   },
   basePath: process.env.NEXT_BASE_PATH || "",
-  assetPrefix: process.env.NEXT_ASSET_PREFIX || "",
+  // Vercel should serve website bundles from the deployment itself. Local
+  // env files with NEXT_ASSET_PREFIX can otherwise poison CLI uploads and
+  // send _next assets to a CDN that is not configured for this build.
+  assetPrefix: isVercelDeployment ? "" : process.env.NEXT_ASSET_PREFIX || "",
   images: {
     domains: [
       "static.cdn.zo.xyz",
@@ -139,4 +145,3 @@ const plugins = [
 ];
 
 module.exports = composePlugins(...plugins)(nextConfig);
-
