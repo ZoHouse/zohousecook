@@ -17,6 +17,29 @@ html {
 body {
   overflow-x: hidden;
   scroll-behavior: smooth;
+  /* iOS standalone PWA: avoid the rubber-band overscroll exposing the
+     browser-chrome white background behind the dark shell. */
+  overscroll-behavior-y: none;
+}
+
+/* PWA / iOS standalone: only push body inside the safe area when actually
+   running standalone. Outside standalone (Mobile Safari with chrome) the
+   browser already handles inset, and adding padding there would create a
+   visible bar at top. */
+@media all and (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Components that need to bleed back to the edge inside standalone
+     can apply `pwa-edge-to-edge`. */
+  .pwa-edge-to-edge {
+    margin-top: calc(-1 * env(safe-area-inset-top));
+    margin-bottom: calc(-1 * env(safe-area-inset-bottom));
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 :root {
