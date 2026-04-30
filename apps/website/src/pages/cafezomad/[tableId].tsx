@@ -10,27 +10,6 @@ import { formatPaise } from '../../components/cafezomad/types'
 import type { MenuCategory, MenuItem, CafeOrderWithItems, CartItem, Tab } from '../../components/cafezomad/types'
 import cafeZomadLogo from '../../assets/cafezomad/logo.png'
 
-// Razorpay Checkout is loaded via <Script> below; surface it on window for TS.
-declare global {
-  interface Window {
-    Razorpay?: new (options: RazorpayCheckoutOptions) => { open: () => void }
-  }
-}
-
-interface RazorpayCheckoutOptions {
-  key: string
-  amount: number
-  currency: string
-  order_id: string
-  name: string
-  description?: string
-  notes?: Record<string, string>
-  prefill?: { name?: string; contact?: string; email?: string }
-  theme?: { color?: string }
-  handler?: (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => void
-  modal?: { ondismiss?: () => void }
-}
-
 interface CreateRazorpayOrderResponse {
   razorpay_order_id: string
   amount: number
@@ -100,7 +79,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [isOrdering, setIsOrdering] = useState(false)
   const [paymentInFlight, setPaymentInFlight] = useState<{ orderId: string; status: 'opening' | 'awaiting' | 'confirming' } | null>(null)
-  const [orderPlaced, setOrderPlaced] = useState<{ id: string; display_number: number; total: number } | null>(null)
+  const [orderPlaced, setOrderPlaced] = useState<{ id: string; display_number: number; total: number; kitchen_status: string } | null>(null)
   const [showCategories, setShowCategories] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
@@ -429,7 +408,9 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   // kicking off Razorpay. If the new credit total fully covers the order,
   // the RPC flips it to zo_card/paid server-side and we skip Razorpay.
   const completeDraftPayment = useCallback(async (order: CafeOrderWithItems) => {
-    const existingCreditsRupees = Math.floor((order.food_credit_applied_paise || 0) / 100)
+    // ceil — matches the slider rendering math (an over-cover order stores
+    // food_credit_applied_paise above the order's net total).
+    const existingCreditsRupees = Math.ceil((order.food_credit_applied_paise || 0) / 100)
     const localCreditsRupees = draftCreditOverrides[order.id] ?? existingCreditsRupees
 
     setPaymentInFlight({ orderId: order.id, status: 'opening' })
@@ -521,6 +502,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         id: data.id,
         display_number: data.display_number,
         total: data.total,
+        kitchen_status: data.kitchen_status,
       })
       setActiveTab('orders')
       fetchOrders()
@@ -665,7 +647,11 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
           <div className="flex items-center justify-between">
             <div>
               <div className="font-bold text-sm">Order #{orderPlaced.display_number} placed!</div>
-              <div className="text-xs text-white/80 mt-0.5">Kitchen has been notified · {formatPaise(orderPlaced.total)}</div>
+              <div className="text-xs text-white/80 mt-0.5">
+                {orderPlaced.kitchen_status === 'draft'
+                  ? `Pay ${formatPaise(orderPlaced.total)} to send to kitchen`
+                  : `Kitchen has been notified · ${formatPaise(orderPlaced.total)}`}
+              </div>
             </div>
             <svg className="w-5 h-5 text-white/60 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -954,9 +940,12 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                     const orderGross = order.subtotal + order.service_charge + order.tax_amount
                     const credit = order.food_credit_applied_paise || 0
                     const dueAfterCredit = order.total
-                    const existingCreditsRupees = Math.floor(credit / 100)
+                    // ceil — let credits absorb the GST paise tail so a ₹52.50
+                    // order can be fully covered with 53 rupees of $food rather
+                    // than getting stuck with ₹0.50 below Razorpay's ₹1 minimum.
+                    const existingCreditsRupees = Math.ceil(credit / 100)
                     const maxCreditsRupees = needsPayment
-                      ? Math.min(foodBalance + existingCreditsRupees, Math.floor(orderGross / 100))
+                      ? Math.min(foodBalance + existingCreditsRupees, Math.ceil(orderGross / 100))
                       : 0
                     const localCreditsRupees = draftCreditOverrides[order.id] ?? existingCreditsRupees
                     const newDuePaise = Math.max(0, orderGross - localCreditsRupees * 100)
@@ -1110,10 +1099,10 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                       <span className="text-orange-400 font-semibold text-sm">$food Balance</span>
                       <span className="text-orange-400 font-mono font-bold">{foodBalance}</span>
                     </div>
-                    <input type="range" min={0} max={Math.min(foodBalance, Math.floor(totalAmount / 100))} value={foodCreditAmount} onChange={(e) => setFoodCreditAmount(Number(e.target.value))} className="w-full" style={{ accentColor: '#f97316' }} />
+                    <input type="range" min={0} max={Math.min(foodBalance, Math.ceil(totalAmount / 100))} value={foodCreditAmount} onChange={(e) => setFoodCreditAmount(Number(e.target.value))} className="w-full" style={{ accentColor: '#f97316' }} />
                     <div className="flex justify-between text-xs mt-2">
                       <span className="text-white/50">Apply: ₹{foodCreditAmount}</span>
-                      <span className="text-white font-semibold">To pay: {formatPaise(totalAmount - foodCreditAmount * 100)}</span>
+                      <span className="text-white font-semibold">To pay: {formatPaise(Math.max(0, totalAmount - foodCreditAmount * 100))}</span>
                     </div>
                   </div>
                 )}
