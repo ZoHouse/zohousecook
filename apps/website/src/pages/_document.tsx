@@ -10,7 +10,13 @@ export default function Document() {
           name="viewport"
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
-        <link rel="manifest" href="/manifest.webmanifest" />
+        {/* PWA manifest + icons hosted on cdn.zo.xyz because /public/ files
+            are not served on this Vercel deployment (project-wide; same
+            workaround zo-house uses for its assets). */}
+        <link
+          rel="manifest"
+          href="https://cdn.zo.xyz/gallery/media/documents/3d1a83d2-e0b9-426f-97d7-497d18c9c595_20260501155309.webmanifest"
+        />
         <meta name="theme-color" content="#0a0a0a" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -19,10 +25,28 @@ export default function Document() {
           content="black-translucent"
         />
         <meta name="apple-mobile-web-app-title" content="Zo World" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png" />
-        <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
-        <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
+        <link
+          rel="apple-touch-icon"
+          sizes="180x180"
+          href="https://cdn.zo.xyz/gallery/media/images/435ad40a-5647-4cd8-8b95-c728d9d42bbc_20260501155218.png"
+        />
+        <link
+          rel="apple-touch-icon"
+          sizes="192x192"
+          href="https://cdn.zo.xyz/gallery/media/images/dee484ca-41c7-4797-a9e8-0ad0af64be9f_20260501155218.png"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="192x192"
+          href="https://cdn.zo.xyz/gallery/media/images/dee484ca-41c7-4797-a9e8-0ad0af64be9f_20260501155218.png"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="512x512"
+          href="https://cdn.zo.xyz/gallery/media/images/98b0ac2a-69ea-42a7-bd67-30fe47a58ad4_20260501061938.png"
+        />
         <link
           href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
