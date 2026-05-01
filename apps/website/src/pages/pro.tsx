@@ -383,6 +383,8 @@ export default function ProPage() {
       subscription_id: targetSubscription.ref_id,
       name: "Zo World",
       description: "Passport Pro",
+      image:
+        "https://cdn.zo.xyz/gallery/media/images/98b0ac2a-69ea-42a7-bd67-30fe47a58ad4_20260501061938.png",
       // recurring=1 tells Checkout to enumerate methods that support
       // mandates (UPI AutoPay, eMandate cards, eNach netbanking) instead
       // of one-shot payment instruments.
