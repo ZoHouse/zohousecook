@@ -3,6 +3,8 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type PropertyKind, type ZoProperty } from './properties';
 import { useZostelOperators, type ZostelOperator } from '../../hooks/useZostelOperators';
+import { usePoiData } from './poi/usePoiData';
+import { mountPoiLayers } from './poi/mountPoiLayers';
 
 // Zostel API `type_code` → our PropertyKind. H/B = Zostel, P = Plus, HO = Zo House, S = Zo Selections.
 function kindFromTypeCode(tc?: string): PropertyKind {
@@ -112,6 +114,8 @@ export function MapModal({ open, onClose }: MapModalProps) {
     () => (operators ? operators.map(operatorToProperty) : []),
     [operators],
   );
+  const { data: poiData } = usePoiData(open);
+  const poiUnmount = useRef<(() => void) | null>(null);
 
   const showAll = () => {
     if (!map.current) return;
@@ -327,6 +331,20 @@ export function MapModal({ open, onClose }: MapModalProps) {
       map.current = null;
     };
   }, [open, properties.length]);
+
+  // Mount POI overlay once both the map style is loaded AND the GeoJSON has
+  // arrived. Property pins (HTML markers) and POIs (Mapbox source+layer)
+  // coexist; layer mount is independent of marker creation.
+  useEffect(() => {
+    if (status.kind !== 'ready') return;
+    if (!poiData) return;
+    if (!map.current) return;
+    poiUnmount.current = mountPoiLayers(map.current, poiData);
+    return () => {
+      poiUnmount.current?.();
+      poiUnmount.current = null;
+    };
+  }, [status.kind, poiData]);
 
   if (!open) return null;
 
