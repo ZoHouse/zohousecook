@@ -12,8 +12,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { IconBriefcase, IconSparkles } from "@tabler/icons-react";
 import { AuthCorner } from "@/components/AuthCorner";
-
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+import { LOGO_URL } from "@/lib/assets";
 
 const navItems = [
   { name: "Bounties", link: "/" },
@@ -98,7 +97,7 @@ export default function ProjectsPage() {
           <div className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={`${basePath}/logo.png`}
+              src={LOGO_URL}
               alt="Zo"
               width={28}
               height={28}
