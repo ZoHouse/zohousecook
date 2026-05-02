@@ -82,10 +82,12 @@ export function SideNavRail({ onOpenMap, handle }: SideNavRailProps) {
     // Self-positioned global nav — same viewport-anchored slot on every
     // passport page (lobby, quests, badges, earnings). Callers just mount
     // <SideNavRail/> without wrapping positioning divs.
-    // Mobile: below the 76px TopBar chrome. Desktop: middle-right, fixed to
-    // viewport so it never shifts when switching routes.
+    // Mobile: tracks below the TopBar — safe-area-aware so iOS PWA install
+    // (where the status bar reserves ~47px) does not overlap the rank pill.
+    // Desktop: middle-right, fixed to viewport so it never shifts when
+    // switching routes.
     <nav
-      className={`fixed z-[10] top-[76px] right-3 md:top-1/2 md:right-6 md:-translate-y-1/2 flex flex-col items-center w-11 gap-3 md:w-16 md:gap-4 ${rubikClassName}`}
+      className={`fixed z-[10] top-[calc(env(safe-area-inset-top,0px)+76px)] right-3 md:top-1/2 md:right-6 md:-translate-y-1/2 flex flex-col items-center w-11 gap-3 md:w-16 md:gap-4 ${rubikClassName}`}
       aria-label="Lobby sections"
     >
       {NAV_ITEMS.map((item) => {
