@@ -515,10 +515,14 @@ export default function ProPage() {
     <>
       <Head>
         <title>Passport Pro · Zo World</title>
+        <meta
+          name="description"
+          content="Earn from your Zo identity. Daily creator bed drops, recurring commission on Passport referrals, and revenue unlocks for participating posts. ₹499/month, cancel anytime."
+        />
       </Head>
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="afterInteractive"
+        strategy="lazyOnload"
       />
 
       <main className="min-h-screen bg-[#08070a] text-white overflow-hidden">
