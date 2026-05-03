@@ -22,12 +22,12 @@ const Login: React.FC<LoginProps> = () => {
 
   const handleSuccessFullLogin = () => {
     setStep("ENTRY");
-    router.push("/dashboard");
+    router.push("/passport");
   };
 
   useEffect(() => {
     if (isConnected && step === "WALLET") {
-      router.push("/dashboard");
+      router.push("/passport");
     }
   }, [isConnected, router, step]);
 

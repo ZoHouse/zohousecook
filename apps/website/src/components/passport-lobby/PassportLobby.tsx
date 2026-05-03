@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { useProfile } from '@zo/auth';
 import { MeshGradient } from '@paper-design/shaders-react';
 import { useMyXp } from '../../hooks/useMyXp';
@@ -36,6 +37,7 @@ const JET_BLACK_GOLD_COLORS = [
 ];
 
 export function PassportLobby() {
+  const router = useRouter();
   const { profile } = useProfile();
   const { myXp } = useMyXp();
   const ig = useInstagramConnect();
@@ -48,8 +50,6 @@ export function PassportLobby() {
   const [igModalOpen, setIgModalOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
-  if (!profile) return null;
-
   const handle = profile?.custom_nickname || profile?.nickname || 'Citizen';
   const avatarUrl = profile?.pfp_image || profile?.avatar?.image;
   const xpTotal = myXp?.xp ?? 0;
@@ -59,12 +59,20 @@ export function PassportLobby() {
   const openUpsell = (f: ProUpsellFeature) => setUpsell(f);
   const closeUpsell = () => setUpsell(null);
 
+  useEffect(() => {
+    if (router.query.settings === 'profile') {
+      setSettingsOpen(true);
+    }
+  }, [router.query.settings]);
+
   const handleShare = useCallback(() => {
     // Copy link + open the full share modal (IG story, X, copy link etc)
     const url = `${window.location.origin}/@${handle}`;
     navigator.clipboard.writeText(url).then(() => toast.success('Profile link copied!')).catch(() => {});
     setShareOpen(true);
   }, [handle]);
+
+  if (!profile) return null;
 
   // IG modal "Connect" button → close modal + redirect to Meta OAuth.
   const handleIgConnect = () => {

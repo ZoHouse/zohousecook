@@ -64,6 +64,16 @@ const nextConfig = {
     // live standalone app.
     return [
       {
+        source: "/dashboard",
+        destination: "/passport?settings=profile",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/:path*",
+        destination: "/passport?settings=profile",
+        permanent: false,
+      },
+      {
         source: "/house",
         destination: "https://zo.house",
         permanent: true,
@@ -84,7 +94,6 @@ const nextConfig = {
 
     const subApps = [
       { path: "pm", devPort: 4204, vercelUrl: process.env.REWRITE_PMS_URL || "https://zozozo-pm-samurais-dojo.vercel.app" },
-      { path: "dashboard", devPort: 4203, vercelUrl: process.env.REWRITE_DASHBOARD_URL || "https://zozozo-dashboard-samurais-dojo.vercel.app" },
       { path: "admin", devPort: 4201, vercelUrl: process.env.REWRITE_ADMIN_URL || "https://zozozo-admin-samurais-dojo.vercel.app" },
       { path: "ops", devPort: 4210, vercelUrl: process.env.REWRITE_OPS_URL || "https://zozozo-ops-samurais-dojo.vercel.app" },
       { path: "checkin", devPort: 4206, vercelUrl: process.env.REWRITE_CHECKIN_URL || "https://zozozo-checkin-samurais-dojo.vercel.app" },
