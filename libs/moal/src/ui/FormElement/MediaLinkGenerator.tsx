@@ -2,7 +2,7 @@ import Icon from "@zo/assets/icons";
 import { useMutationApi } from "@zo/auth";
 import { cn } from "@zo/utils/font";
 import { useVisibilityState } from "@zo/utils/hooks";
-import { Media } from "apps/admin/src/config";
+import { Media } from "@zo/definitions/admin";
 import { SidebarMini } from "libs/moal/src";
 import React, { ChangeEvent, useEffect, useRef, useState } from "react";
 import { showToast } from "../../utils";
