@@ -1,5 +1,19 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/dashboard",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "/passport?settings=profile",
+      "permanent": false
+    },
+    {
+      "source": "/dashboard/:path*",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "/passport?settings=profile",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/pm",
@@ -10,16 +24,6 @@
       "source": "/pm/:path*",
       "has": [{ "type": "host", "value": "zozozo.work" }],
       "destination": "https://zozozo-pm-samurais-dojo.vercel.app/pm/:path*"
-    },
-    {
-      "source": "/dashboard",
-      "has": [{ "type": "host", "value": "zozozo.work" }],
-      "destination": "https://zozozo-dashboard-samurais-dojo.vercel.app/dashboard"
-    },
-    {
-      "source": "/dashboard/:path*",
-      "has": [{ "type": "host", "value": "zozozo.work" }],
-      "destination": "https://zozozo-dashboard-samurais-dojo.vercel.app/dashboard/:path*"
     },
     {
       "source": "/admin",

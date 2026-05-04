@@ -297,7 +297,11 @@ export default function PassportPage({
     if (!isPassportRoute) return;
     if (isLoggedIn === false) return; // explicitly logged out — keep them here
     const target = profileHandle || (hintValid ? ownerHint : null);
-    if (target) router.replace(`/@${target}`);
+    if (target) {
+      const queryStart = router.asPath.indexOf("?");
+      const queryString = queryStart >= 0 ? router.asPath.slice(queryStart) : "";
+      router.replace(`/@${target}${queryString}`);
+    }
   }, [isPassportRoute, isLoggedIn, profileHandle, ownerHint, hintValid, router]);
 
   useCaptureReferrer(isVisitorView ? urlHandle : null);
