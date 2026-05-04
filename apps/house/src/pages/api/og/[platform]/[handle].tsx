@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
+import { HOUSE_MEDIA } from "../../../../config/house-media";
 
 export const config = {
   runtime: "edge",
@@ -9,7 +10,6 @@ export const config = {
 const SUPABASE_URL =
   process.env.SUPABASE_URL || "https://elvaqxadfewcsohrswsi.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const PUBLIC_BASE = process.env.WEB_BASE_URL || "https://zo.house";
 
 const VALID_PLATFORMS = new Set(["x", "l", "g", "i", "y", "u"]);
 
@@ -122,7 +122,7 @@ export default async function handler(req: NextRequest) {
 
     const name = lead.full_name || "Zo Citizen";
     const avatar = avatarUrl(platform, handle);
-    const ticketBg = `${PUBLIC_BASE}/ticket.jpg`;
+    const ticketBg = HOUSE_MEDIA.applyTicketBg;
 
     const [playfairItalic, inter] = await Promise.all([
       loadGoogleFont("Playfair Display", 700, true),
