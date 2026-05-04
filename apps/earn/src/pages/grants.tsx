@@ -12,8 +12,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { IconGift, IconSparkles } from "@tabler/icons-react";
 import { AuthCorner } from "@/components/AuthCorner";
-
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+import { LOGO_URL, MONEY_URL } from "@/lib/assets";
 
 const navItems = [
   { name: "Bounties", link: "/" },
@@ -63,12 +62,12 @@ export default function GrantsPage() {
       <section className="mx-auto max-w-6xl px-4 pb-24 pt-32">
         <div className="mb-14 flex items-center justify-center gap-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`${basePath}/money.png`} alt="Money" width={48} height={48} />
+          <img src={MONEY_URL} alt="Money" width={48} height={48} />
           <h1 className="text-center font-headline text-6xl leading-[1.05] tracking-tight text-zui-white md:text-7xl">
             Grants Program
           </h1>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`${basePath}/money.png`} alt="Money" width={48} height={48} />
+          <img src={MONEY_URL} alt="Money" width={48} height={48} />
         </div>
 
         <ComingSoon
@@ -84,7 +83,7 @@ export default function GrantsPage() {
           <div className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={`${basePath}/logo.png`}
+              src={LOGO_URL}
               alt="Zo"
               width={28}
               height={28}

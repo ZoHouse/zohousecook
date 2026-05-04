@@ -1,5 +1,6 @@
 "use client";
 import { cn } from "@/lib/utils";
+import { LOGO_URL } from "@/lib/assets";
 import Link from "next/link";
 import { IconMenu2, IconX } from "@tabler/icons-react";
 import {
@@ -229,7 +230,6 @@ export const MobileNavToggle = ({
 };
 
 export const NavbarLogo = () => {
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
   return (
     <Link
       href="/"
@@ -237,7 +237,7 @@ export const NavbarLogo = () => {
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={`${basePath}/logo.png`}
+        src={LOGO_URL}
         alt="Zo World logo"
         width={32}
         height={32}
