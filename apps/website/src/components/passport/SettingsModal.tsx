@@ -1251,7 +1251,7 @@ function MembershipSection({ onClose }: { onClose: () => void }) {
                 type="button"
                 onClick={() => void handleCancel()}
                 disabled={isUnsubscribing}
-                className="flex-1 px-3 py-2 text-[12px] font-medium bg-red-500 text-white rounded-md hover:bg-red-400 disabled:opacity-60 flex items-center justify-center gap-2"
+                className="flex-1 min-h-[44px] px-3 py-2.5 text-[12px] font-medium bg-red-500 text-white rounded-md hover:bg-red-400 disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {isUnsubscribing ? <Spinner size={12} /> : "Confirm cancel"}
               </button>
@@ -1259,7 +1259,7 @@ function MembershipSection({ onClose }: { onClose: () => void }) {
                 type="button"
                 onClick={() => setConfirming(false)}
                 disabled={isUnsubscribing}
-                className="px-3 py-2 text-[12px] text-white/60 hover:text-white"
+                className="min-h-[44px] px-3 py-2.5 text-[12px] text-white/60 hover:text-white"
               >
                 Keep Pro
               </button>
@@ -1269,7 +1269,7 @@ function MembershipSection({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="mt-3 w-full px-3 py-2 text-[12px] font-medium text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 hover:bg-red-500/5 rounded-md transition-colors"
+            className="mt-3 w-full min-h-[44px] px-3 py-2.5 text-[12px] font-medium text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 hover:bg-red-500/5 rounded-md transition-colors"
           >
             Cancel renewal at cycle end
           </button>
