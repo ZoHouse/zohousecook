@@ -1,9 +1,9 @@
 import { useQuery } from "react-query";
 import { useAuth } from "@zo/auth";
-// zoPassportServer isn't re-exported via @zo/auth yet (only contexts/hooks/components
+// zoServer isn't re-exported via @zo/auth yet (only contexts/hooks/components
 // are). Matches the pattern apps/pms uses for zostelServer - direct relative import
 // from libs/auth/src/utils.
-import { zoPassportServer } from "../../../../libs/auth/src/utils";
+import { zoServer } from "../../../../libs/auth/src/utils";
 
 /**
  * Game of Life v2 profile extensions. Optional so consumers can safely read
@@ -59,14 +59,12 @@ export interface PassportProfileV2 {
 }
 
 /**
- * Fetches /api/v1/profile/me/ via zoPassportServer so v2 fields (season_level,
- * streak, tier, badges, passport_roles, etc.) flow in from the mock or Daya's
- * staging without touching the existing useProfile hook (which stays on the
- * real Zo API for auth + legacy shape).
+ * Fetches /api/v1/profile/me/ via zoServer to surface v2 fields (season_level,
+ * streak, tier, badges, passport_roles, etc.) without touching the existing
+ * useProfile hook (which stays on the legacy shape for auth flows).
  *
- * In prod where API_BASE_URL_PASSPORT is unset, this falls back to hitting
- * api.io.zo.xyz and returns the same v1 shape useProfile does - v2 fields are
- * simply undefined until Daya ships them.
+ * Endpoint hits api.io.zo.xyz directly. v2 fields will be undefined until
+ * Daya's backend ships them — graceful no-op on missing keys.
  */
 export function usePassportProfile() {
   const { isLoggedIn } = useAuth();
@@ -74,7 +72,7 @@ export function usePassportProfile() {
   const query = useQuery<PassportProfileV2>(
     ["passport", "profile", "me"],
     async () => {
-      const res = await zoPassportServer.get<PassportProfileV2>(
+      const res = await zoServer.get<PassportProfileV2>(
         "/api/v1/profile/me/",
       );
       return res.data;
