@@ -9,6 +9,7 @@ import { useWindowSize } from "@zo/utils/hooks";
 import React, { useEffect } from "react";
 import { Toaster } from "sonner";
 import { Head, Main } from "../components/common";
+import { LiveLocationProvider } from "../components/LiveLocationProvider";
 import { InstallPrompt } from "../components/pwa/InstallPrompt";
 import { registerServiceWorker } from "../lib/registerServiceWorker";
 
@@ -76,9 +77,11 @@ function CustomApp({ Component, pageProps }: AppProps) {
           isZostelLoginRequired={ZOSTEL_ENABLED}
           allowedLoginTypes={ZOSTEL_ENABLED ? ["mobile"] : undefined}
         >
-          <Head />
-          <Main Component={Component} pageProps={pageProps} />
-          <InstallPrompt />
+          <LiveLocationProvider>
+            <Head />
+            <Main Component={Component} pageProps={pageProps} />
+            <InstallPrompt />
+          </LiveLocationProvider>
         </AuthProvider>
       </ConditionalZostelAuth>
       <Toaster

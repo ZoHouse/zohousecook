@@ -1,6 +1,6 @@
 import { useAuth } from "@zo/auth";
 import { useMutation, useQuery, useQueryClient } from "react-query";
-import { zoPassportServer } from "../../../../libs/auth/src/utils";
+import { zoServer } from "../../../../libs/auth/src/utils";
 
 export interface PassportPlanSummary {
   key?: string | null;
@@ -116,11 +116,18 @@ export function usePassportSubscription() {
   const queryClient = useQueryClient();
   const queryKey = ["passport", "subscription", "current"];
 
+  // Subscription endpoint is part of Daya's Game-of-Life v2 bundle. Until ship,
+  // 404 is the steady state — swallow it so the console stays clean.
   const statusQuery = useQuery(
     queryKey,
     async () => {
-      const res = await zoPassportServer.get("/api/v1/passport/subscription/");
-      return res.data;
+      try {
+        const res = await zoServer.get("/api/v1/passport/subscription/");
+        return res.data;
+      } catch (e) {
+        if ((e as { response?: { status?: number } })?.response?.status === 404) return null;
+        throw e;
+      }
     },
     {
       enabled: isLoggedIn === true,
@@ -136,7 +143,7 @@ export function usePassportSubscription() {
     string
   >(
     async (planPricing) => {
-      const res = await zoPassportServer.post("/api/v1/passport/subscribe/", {
+      const res = await zoServer.post("/api/v1/passport/subscribe/", {
         plan_pricing: planPricing,
       });
       return {
@@ -158,7 +165,7 @@ export function usePassportSubscription() {
     void
   >(
     async () => {
-      const res = await zoPassportServer.post("/api/v1/passport/unsubscribe/");
+      const res = await zoServer.post("/api/v1/passport/unsubscribe/");
       return {
         raw: res.data,
         subscription: extractPassportSubscription(res.data),

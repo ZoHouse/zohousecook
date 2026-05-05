@@ -22,7 +22,7 @@ import { rubikClassName, syneClassName } from "../components/utils/font";
 
 const PRO_PLAN_PRICING_ID = (
   process.env.NEXT_PUBLIC_PASSPORT_PRO_PLAN_PRICING_ID ||
-  ((process.env.API_BASE_URL_PASSPORT || process.env.API_BASE_URL || "").trim() ===
+  ((process.env.API_BASE_URL || "").trim() ===
   "https://api.io.zo.xyz"
     ? "06aa8e5a-ac66-494c-9a0e-c9bb25542757"
     : "")

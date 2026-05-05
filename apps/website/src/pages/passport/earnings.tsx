@@ -16,7 +16,7 @@ import { useMyXp } from '../../hooks/useMyXp';
  *
  * Two columns: Creator (submissions + bed drops + bounty + views) and
  * Affiliate (passport unlocks + referral commissions). Hardcoded sample data
- * for now — when Daya ships the v2 endpoint, wire via zoPassportServer.
+ * for now — when Daya ships the v2 endpoint, wire via zoServer.
  */
 
 const GREEN = '#B4FF00';
@@ -245,7 +245,7 @@ export default function EarningsPage() {
                     className="text-[13px] font-medium text-left hover:underline"
                     style={{ color: GREEN }}
                     onClick={() => {
-                      // TODO: wire to withdrawal flow via zoPassportServer
+                      // TODO: wire to withdrawal flow via zoServer
                       alert('Withdrawal flow coming soon');
                     }}
                   >

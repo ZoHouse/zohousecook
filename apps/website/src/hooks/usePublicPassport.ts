@@ -1,12 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
-// Resolve against API_BASE_URL_PASSPORT (mock locally, staging on preview,
-// unset in prod so it falls back to API_BASE_URL = api.io.zo.xyz). Mirrors
-// zoPassportServer's baseURL in libs/auth/src/utils.ts.
 const PASSPORT_ENDPOINT = `${
-  process.env.API_BASE_URL_PASSPORT ||
-  process.env.API_BASE_URL ||
-  "https://api.io.zo.xyz"
+  process.env.API_BASE_URL || "https://api.io.zo.xyz"
 }/api/v1/passport`;
 
 export type PassportLockState = "" | "locked" | "unlocked_free" | "unlocked_pro";

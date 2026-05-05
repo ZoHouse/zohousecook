@@ -1,9 +1,10 @@
+import { AxiosError } from "axios";
 import { useQuery } from "react-query";
 import { useAuth } from "@zo/auth";
-// zoPassportServer lives in libs/auth/src/utils.ts alongside zoServer and
+// zoServer lives in libs/auth/src/utils.ts alongside zoServer and
 // zostelServer. It isn't re-exported via @zo/auth yet, so import via the
 // same relative path usePassportProfile / useSeason use.
-import { zoPassportServer } from "../../../../libs/auth/src/utils";
+import { zoServer } from "../../../../libs/auth/src/utils";
 
 export type QuestStatus =
   | "live"
@@ -57,18 +58,26 @@ export interface TodayQuestsResponse {
 export function useTodayQuests() {
   const { isLoggedIn } = useAuth();
 
-  const query = useQuery<TodayQuestsResponse>(
+  // Quests endpoint is part of Daya's Game-of-Life v2 bundle. Until ship,
+  // 404 is the steady state — swallow + don't retry to keep console clean.
+  const query = useQuery<TodayQuestsResponse | null>(
     ["passport", "quests", "today"],
     async () => {
-      const res = await zoPassportServer.get<TodayQuestsResponse>(
-        "/api/v1/passport/quests/today/",
-      );
-      return res.data;
+      try {
+        const res = await zoServer.get<TodayQuestsResponse>(
+          "/api/v1/passport/quests/today/",
+        );
+        return res.data;
+      } catch (e) {
+        if (e instanceof AxiosError && e.response?.status === 404) return null;
+        throw e;
+      }
     },
     {
       enabled: isLoggedIn === true,
       staleTime: 60 * 1000,
       refetchOnWindowFocus: false,
+      retry: false,
     },
   );
 

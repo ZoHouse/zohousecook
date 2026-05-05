@@ -154,7 +154,7 @@ function statusPillStyle(status: Quest['status']): React.CSSProperties {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Sample data — matches the v2 shape. Swap for zoPassportServer call later.
+// Sample data — matches the v2 shape. Swap for zoServer call later.
 // ────────────────────────────────────────────────────────────────────────────
 
 // Today's Loot drop — separate from quests. Only rendered when imminent (<24h).
