@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 let cache: GeoJSON.FeatureCollection | null = null;
 let inflight: Promise<GeoJSON.FeatureCollection> | null = null;
 
-const POIS_URL = '/api/pois.geojson';
+const POIS_URL = '/api/pois';
 
 function fetchPois(): Promise<GeoJSON.FeatureCollection> {
   if (cache) return Promise.resolve(cache);
