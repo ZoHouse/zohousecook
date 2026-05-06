@@ -43,6 +43,7 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 const navItems = [
   { name: "Quests", link: "/" },
+  { name: "Leaderboard", link: "/leaderboard" },
   { name: "Projects", link: "/projects" },
   { name: "Grants", link: "/grants" },
 ];

@@ -1,6 +1,12 @@
 import { useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@zo/auth";
-import { IconArrowRight, IconLogout, IconUser } from "@tabler/icons-react";
+import {
+  IconArrowRight,
+  IconLogout,
+  IconUser,
+  IconUserCircle,
+} from "@tabler/icons-react";
 import { NavChip } from "./NavChip";
 
 type Player = {
@@ -79,6 +85,14 @@ export function AuthCorner({
               </p>
             )}
           </div>
+          <Link
+            href="/profile"
+            onClick={() => setMenuOpen(false)}
+            className="flex w-full items-center gap-2 border-b border-zui-stroke px-3 py-2 text-left text-xs font-medium text-zui-white hover:bg-zui-light/60"
+          >
+            <IconUserCircle size={13} />
+            Your profile
+          </Link>
           <button
             type="button"
             onClick={() => {

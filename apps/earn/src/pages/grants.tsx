@@ -15,7 +15,8 @@ import { AuthCorner } from "@/components/AuthCorner";
 import { LOGO_URL, MONEY_URL } from "@/lib/assets";
 
 const navItems = [
-  { name: "Bounties", link: "/" },
+  { name: "Quests", link: "/" },
+  { name: "Leaderboard", link: "/leaderboard" },
   { name: "Projects", link: "/projects" },
   { name: "Grants", link: "/grants" },
 ];
