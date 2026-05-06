@@ -49,7 +49,20 @@ function GoldPill({ size, label, href }: GoldPillProps) {
         fit="cover"
         style={{ position: 'absolute', inset: 0, zIndex: 0 }}
       />
-      <span aria-hidden className="relative z-10" style={{ fontSize: fontSize + 2 }}>✦</span>
+      {/* Inline SVG sparkle — replaces the ✦ Unicode glyph (U+2726), which
+          falls back to tofu on Android system fonts that don't include it
+          (Erum's screenshot showed the broken-glyph box on her device). */}
+      <svg
+        aria-hidden
+        className="relative z-10"
+        width={fontSize + 2}
+        height={fontSize + 2}
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        style={{ flexShrink: 0 }}
+      >
+        <path d="M12 1.5L13.6 9.4L21.5 11L13.6 12.6L12 20.5L10.4 12.6L2.5 11L10.4 9.4Z" />
+      </svg>
       <span className="relative z-10">{label}</span>
     </>
   );
