@@ -23,6 +23,7 @@ function setCookie(res: NextApiResponse, value: string) {
     "HttpOnly",
     "SameSite=Lax",
   ];
+  if (process.env.NODE_ENV === "production") parts.push("Secure");
   res.setHeader("Set-Cookie", parts.join("; "));
 }
 
