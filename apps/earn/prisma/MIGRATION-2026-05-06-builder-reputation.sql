@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS builder_ships (
   kind         text NOT NULL,             -- 'pr_merged' | 'release' | 'commit' | 'product_launch' | 'x_post' | 'star_earned' | 'npm_publish' | 'repo_created'
   ref          text,                      -- canonical URL
   repo         text,                      -- 'owner/name' for github events
+  title        text,                      -- pre-rendered display string
   metadata     jsonb,
   is_private   boolean NOT NULL DEFAULT false,
   occurred_at  timestamptz NOT NULL,

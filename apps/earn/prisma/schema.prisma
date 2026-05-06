@@ -17,6 +17,8 @@ model User {
   achievements    UserAchievement[]
   earnProfile     EarnProfile?
   builderAccounts BuilderAccount[]
+  builderShips    BuilderShip[]
+  builderProducts BuilderProduct[]
 
   @@map("users")
 }
@@ -39,6 +41,48 @@ model BuilderAccount {
   @@unique([userId, provider])
   @@index([userId])
   @@map("builder_accounts")
+}
+
+// Normalized ship event stream. One row = one shippable thing.
+// See lib/github-ingest.ts for how these are populated.
+model BuilderShip {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  source     String   // 'github' | 'x' | 'zo-bounty'
+  kind       String   // 'pr_merged' | 'release' | 'commit' | 'product_launch' | 'x_post' | 'star_earned' | 'npm_publish' | 'repo_created'
+  ref        String?
+  repo       String?
+  title      String?
+  metadata   Json?
+  isPrivate  Boolean  @default(false) @map("is_private")
+  occurredAt DateTime @map("occurred_at")
+  ingestedAt DateTime @default(now()) @map("ingested_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, occurredAt])
+  @@index([kind, occurredAt])
+  @@map("builder_ships")
+}
+
+// Auto-detected products: GitHub repos with a homepage URL.
+// Builder toggles `isPublic` on the profile page.
+model BuilderProduct {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  repoFullName String   @map("repo_full_name")
+  homepageUrl  String   @map("homepage_url")
+  name         String
+  language     String?
+  stars        Int      @default(0)
+  isPublic     Boolean  @default(true) @map("is_public")
+  detectedAt   DateTime @default(now()) @map("detected_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, repoFullName])
+  @@index([userId])
+  @@map("builder_products")
 }
 
 model EarnProfile {

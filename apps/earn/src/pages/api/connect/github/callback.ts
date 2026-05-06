@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getUser } from "@/lib/auth";
 import { exchangeCodeForToken, fetchGitHubUser } from "@/lib/github-oauth";
+import { ingestGitHubFor } from "@/lib/github-ingest";
 import { encrypt } from "@/lib/crypto";
 import { prisma } from "@/lib/prisma";
 
@@ -64,6 +65,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         scope,
       },
     });
+
+    // Backfill last 30 days. If this fails the connection still succeeds —
+    // user can refresh later. Don't block the redirect on ingest errors.
+    try {
+      const { shipsAdded, productsAdded } = await ingestGitHubFor(
+        identity.user.id,
+        accessToken,
+        ghUser.login,
+      );
+      console.log(
+        `[earn] github ingest for ${ghUser.login}: +${shipsAdded} ships, +${productsAdded} products`,
+      );
+    } catch (err) {
+      console.error("[earn] github ingest failed (connection still OK):", err);
+    }
 
     clearStateCookie(res);
     return res.redirect(302, "/profile?connected=github");
