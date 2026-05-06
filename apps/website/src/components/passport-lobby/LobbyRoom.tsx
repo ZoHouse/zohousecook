@@ -2,30 +2,42 @@ import type { ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { MeshGradient } from '@paper-design/shaders-react';
+import { useProfile } from '@zo/auth';
 import pedestal from '../../assets/passport-lobby/scene/pedestal.svg';
+import { usePassportSubscription } from '../../hooks/usePassportSubscription';
+import { isFounderProfile } from '../../lib/passport/proStatus';
 
-// Gold-palette shader for the CTA — shimmer that reads as polished metal.
+// Gold-palette shader — shared between Buy-Pro CTA and Pro Badge so the
+// gold treatment reads as the same status, just two states.
 const GOLD_SHADER_COLORS = ['#FFF3B0', '#FFE38A', '#F5C542', '#C88A1C'];
 
-function UnlimitedAccessCta({ size = 'md' }: { size?: 'sm' | 'md' }) {
+interface GoldPillProps {
+  size: 'sm' | 'md';
+  label: string;
+  // When omitted, the pill renders as a non-clickable badge.
+  href?: string;
+}
+
+function GoldPill({ size, label, href }: GoldPillProps) {
   const padding = size === 'sm' ? '10px 20px' : '14px 28px';
   const fontSize = size === 'sm' ? 12 : 14;
-  return (
-    <Link
-      href="/pro"
-      className="relative overflow-hidden inline-flex items-center gap-2 font-semibold transition-all active:scale-[0.97] hover:brightness-110"
-      style={{
-        padding,
-        fontSize,
-        borderRadius: 999,
-        color: '#3A2900',
-        background: '#F5C542',
-        boxShadow: '0 6px 22px rgba(245,197,66,0.45), 0 2px 10px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(120,70,0,0.4)',
-        letterSpacing: '0.01em',
-        textShadow: '0 1px 0 rgba(255,255,255,0.35)',
-        isolation: 'isolate',
-      }}
-    >
+  const sharedStyle: React.CSSProperties = {
+    padding,
+    fontSize,
+    borderRadius: 999,
+    color: '#3A2900',
+    background: '#F5C542',
+    boxShadow:
+      '0 6px 22px rgba(245,197,66,0.45), 0 2px 10px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(120,70,0,0.4)',
+    letterSpacing: '0.01em',
+    textShadow: '0 1px 0 rgba(255,255,255,0.35)',
+    isolation: 'isolate',
+  };
+  const innerClass =
+    'relative overflow-hidden inline-flex items-center gap-2 font-semibold transition-all';
+  const interactiveClass = href ? 'active:scale-[0.97] hover:brightness-110' : '';
+  const inner = (
+    <>
       <MeshGradient
         colors={GOLD_SHADER_COLORS}
         speed={1.4}
@@ -38,9 +50,43 @@ function UnlimitedAccessCta({ size = 'md' }: { size?: 'sm' | 'md' }) {
         style={{ position: 'absolute', inset: 0, zIndex: 0 }}
       />
       <span aria-hidden className="relative z-10" style={{ fontSize: fontSize + 2 }}>✦</span>
-      <span className="relative z-10">Get Unlimited Access</span>
-    </Link>
+      <span className="relative z-10">{label}</span>
+    </>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className={`${innerClass} ${interactiveClass}`} style={sharedStyle}>
+        {inner}
+      </Link>
+    );
+  }
+  return (
+    <div
+      className={innerClass}
+      style={sharedStyle}
+      role="status"
+      aria-label="Pro citizen"
+    >
+      {inner}
+    </div>
+  );
+}
+
+function UnlimitedAccessCta({ size = 'md' }: { size?: 'sm' | 'md' }) {
+  const { profile } = useProfile();
+  const { subscription } = usePassportSubscription();
+
+  // Founders inherit Pro automatically. Paid + active subscription is the
+  // citizen path. Either flips the CTA into the Pro badge.
+  const isPro =
+    isFounderProfile(profile) ||
+    !!(subscription?.is_active && subscription?.is_paid);
+
+  if (isPro) {
+    return <GoldPill size={size} label="Pro Citizen" />;
+  }
+  return <GoldPill size={size} label="Get Unlimited Access" href="/pro" />;
 }
 
 export interface LobbyRoomProps {
