@@ -24,6 +24,7 @@ import {
   IconArrowRight,
   IconCheck,
   IconBolt,
+  IconAlertTriangle,
 } from "@tabler/icons-react";
 import { AuthCorner } from "@/components/AuthCorner";
 import { LOGO_URL } from "@/lib/assets";
@@ -64,6 +65,8 @@ export default function ProfilePage() {
 
   const justConnected =
     typeof router.query.connected === "string" ? router.query.connected : null;
+  const oauthError =
+    typeof router.query.error === "string" ? router.query.error : null;
 
   useEffect(() => {
     if (isLoggedIn === false) {
@@ -149,6 +152,23 @@ export default function ProfilePage() {
                   : justConnected === "x"
                   ? "X connected — scanning recent posts…"
                   : "Connected"}
+              </div>
+            )}
+
+            {oauthError && (
+              <div className="mb-6 flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+                <IconAlertTriangle size={16} strokeWidth={2.5} />
+                {oauthError === "oauth_not_configured"
+                  ? "GitHub OAuth isn't set up yet — admin needs to add credentials."
+                  : oauthError === "oauth_state_mismatch"
+                  ? "Connection link expired or tampered. Try again."
+                  : oauthError === "oauth_invalid"
+                  ? "GitHub returned an invalid response. Try again."
+                  : oauthError === "not_signed_in"
+                  ? "You need to be signed in to connect."
+                  : oauthError === "oauth_failed"
+                  ? "Couldn't complete the connection. Try again."
+                  : `Couldn't connect: ${oauthError.replace(/^oauth_/, "")}`}
               </div>
             )}
 

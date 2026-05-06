@@ -12,12 +12,33 @@ datasource db {
 // or is nullable) when a fresh anon visitor needs an identity. Gamification
 // fields live in `earn_profiles` keyed by this id.
 model User {
-  id           String            @id
-  applications Application[]
-  achievements UserAchievement[]
-  earnProfile  EarnProfile?
+  id              String            @id
+  applications    Application[]
+  achievements    UserAchievement[]
+  earnProfile     EarnProfile?
+  builderAccounts BuilderAccount[]
 
   @@map("users")
+}
+
+// Connected third-party accounts for builder reputation. One row per
+// (user, provider). Tokens are AES-256-GCM encrypted at the app layer.
+model BuilderAccount {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  provider     String   // 'github' | 'x'
+  providerId   String   @map("provider_id")
+  handle       String
+  accessToken  String   @map("access_token")
+  refreshToken String?  @map("refresh_token")
+  scope        String?
+  connectedAt  DateTime @default(now()) @map("connected_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
+  @@map("builder_accounts")
 }
 
 model EarnProfile {
