@@ -263,8 +263,10 @@ export function PublicPassportView({ handle, viewerState, initialData }: PublicP
   return (
     <div className="flex-1 min-h-screen bg-[#111]">
       {/* Global HUD — RankPill for the viewer (when logged in) + side nav on
-          every passport surface. Desktop rail: mid-right. Mobile rail: below
-          the pill (top-20) so they don't stack on top of each other. */}
+          every passport surface. SideNavRail self-positions for mobile +
+          desktop, so it mounts once. The previous mobile/desktop split mounted
+          it twice in the SSR markup, which crawlers + accessibility tools
+          flagged as duplicate <nav> elements. */}
       {isLoggedIn && (
         <TopBar
           xp={viewerXp?.xp ?? 0}
@@ -272,12 +274,7 @@ export function PublicPassportView({ handle, viewerState, initialData }: PublicP
           avatarUrl={viewerProfile?.pfp_image || viewerProfile?.avatar?.image}
         />
       )}
-      <div className="fixed top-1/2 right-4 md:right-6 -translate-y-1/2 z-[10] hidden md:block">
-        <SideNavRail handle={handle} onOpenMap={() => setMapOpen(true)} />
-      </div>
-      <div className="fixed top-[76px] right-3 z-[10] md:hidden">
-        <SideNavRail handle={handle} onOpenMap={() => setMapOpen(true)} />
-      </div>
+      <SideNavRail handle={handle} onOpenMap={() => setMapOpen(true)} />
 
       <div className="max-w-[1280px] mx-auto px-4 pt-24 xl:pt-32 pb-16 md:pr-32">
         <div className="flex flex-col xl:flex-row xl:gap-10 gap-8">

@@ -88,7 +88,12 @@ export default function BadgesPage() {
 
         {/* Global HUD — left: back + page title, right: RankPill, below right: nav rail. */}
         <PageHeaderPill title="Badges" />
-        <TopBar xp={myXp?.xp ?? 0} rank={myXp?.rank ?? 0} avatarUrl={profile?.pfp_image || profile?.avatar?.image} />
+        <TopBar
+          xp={myXp?.xp ?? 0}
+          rank={myXp?.rank ?? 0}
+          avatarUrl={profile?.pfp_image || profile?.avatar?.image}
+          onOpenSettings={() => router.push('/passport?settings=profile')}
+        />
         {/* SideNavRail self-positions globally (same slot on every page) */}
         <SideNavRail handle={displayHandle} onOpenMap={() => setMapOpen(true)} />
 

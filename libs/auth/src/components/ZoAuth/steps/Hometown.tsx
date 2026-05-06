@@ -94,7 +94,7 @@ const Hometown: FC<HometownProps> = ({ advanceOnboarding }) => {
             : "bg-white/10 text-white/30 cursor-not-allowed"
         }`}
       >
-        {isSaving ? "Saving..." : "That's me"}
+        {isSaving ? "Saving..." : "That's home"}
       </button>
     </div>
   );
