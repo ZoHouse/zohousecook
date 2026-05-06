@@ -1,3 +1,4 @@
+import { fixAvatarUrl } from '../../hooks/usePublicPassport';
 import { rubikClassName } from '../utils/font';
 
 export interface RankPillProps {
@@ -16,6 +17,13 @@ export function RankPill({ rank, xp, avatarUrl, onClick }: RankPillProps) {
         'aria-label': 'Open profile settings',
       }
     : {};
+
+  // Run through fixAvatarUrl so static.cdn.zo.xyz / nsfp.cdn.zo.xyz are
+  // proxied via proxy.cdn.zo.xyz — the originals occasionally serve without
+  // CORS headers, which Android Chrome treats as a load failure when used
+  // as a CSS background-image. <img> is more forgiving than backgroundImage
+  // on Android in general, so render the avatar as a real image element.
+  const safeAvatarUrl = fixAvatarUrl(avatarUrl);
 
   return (
     <Wrapper
@@ -42,16 +50,30 @@ export function RankPill({ rank, xp, avatarUrl, onClick }: RankPillProps) {
       }}
     >
       <span
-        className="bg-pink-500 bg-cover bg-center flex-shrink-0"
+        className="flex-shrink-0 overflow-hidden"
         style={{
           width: 30,
           height: 30,
           borderRadius: 512,
           border: '2px solid rgba(255,255,255,0.16)',
-          ...(avatarUrl ? { backgroundImage: `url(${avatarUrl})` } : {}),
+          background: '#EC4899', // pink fallback — visible if image fails
         }}
         aria-hidden
-      />
+      >
+        {safeAvatarUrl ? (
+          <img
+            src={safeAvatarUrl}
+            alt=""
+            loading="lazy"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+            }}
+          />
+        ) : null}
+      </span>
       <div className="flex items-baseline" style={{ gap: 8 }}>
         <span style={{ fontSize: 14, fontWeight: 500, color: '#FFFFFF', letterSpacing: '0.01em' }}>
           #{rank || '\u2014'}
