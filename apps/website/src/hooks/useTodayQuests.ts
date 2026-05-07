@@ -1,4 +1,3 @@
-import { AxiosError } from "axios";
 import { useQuery } from "react-query";
 import { useAuth } from "@zo/auth";
 // zoServer lives in libs/auth/src/utils.ts alongside zoServer and
@@ -50,28 +49,113 @@ export interface TodayQuest {
 }
 
 export interface TodayQuestsResponse {
-  season: { key: string; name: string };
-  date: string;
+  season?: { key: string; name: string };
+  date?: string;
   quests: TodayQuest[];
+}
+
+// Shape returned by GET /api/v1/passport/quests/ (Daya's deployed CAS-backed
+// endpoint). Display fields (category/status/visibility) come back as
+// title-case strings, not integer enum keys.
+interface DeployedQuestParticipation {
+  id: string;
+  status: "Assigned" | "Submitted" | "Qualified" | "Disqualified";
+  proof_url: string;
+  booking_ref_id: string | null;
+  is_paid_subscriber: boolean;
+  qualified_at: string | null;
+  disqualification_reason: string;
+  claims: unknown[];
+}
+
+interface DeployedQuestReward {
+  id: string;
+  category: "Bed Drop" | "Bounty" | "Content Monetization" | "XP" | string;
+  credit_amount: number;
+  xp_amount: number;
+  description: string;
+  rule?: unknown;
+}
+
+interface DeployedQuest {
+  pid: string;
+  slug: string;
+  category: "Creator" | "Tripper" | "Tribemaker" | string;
+  status: "Live" | "Closed" | "Results Declared" | "Expired" | string;
+  title: string;
+  description: string;
+  starts_at: string;
+  ends_at: string;
+  result_declares_at: string | null;
+  claim_expires_at: string | null;
+  rewards: DeployedQuestReward[];
+  participations: DeployedQuestParticipation[];
+}
+
+interface DeployedQuestsListResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: DeployedQuest[];
+}
+
+function mapReward(r?: DeployedQuestReward): QuestReward | undefined {
+  if (!r) return undefined;
+  if (r.category === "XP" || r.xp_amount > 0) {
+    return { type: "xp", amount: r.xp_amount };
+  }
+  if (r.category === "Bed Drop") {
+    return { type: "bed_drop" };
+  }
+  return { type: "credit", amount: r.credit_amount };
+}
+
+function mapStatus(quest: DeployedQuest): QuestStatus {
+  if (quest.status === "Expired") return "expired";
+  const p = quest.participations?.[0];
+  if (!p) return "live";
+  switch (p.status) {
+    case "Submitted":
+      return "submitted";
+    case "Qualified":
+      return "verified";
+    case "Disqualified":
+      return "rejected";
+    case "Assigned":
+    default:
+      return "live";
+  }
+}
+
+function transform(deployed: DeployedQuest): TodayQuest {
+  const p = deployed.participations?.[0];
+  return {
+    user_quest_id: p?.id ?? deployed.pid,
+    quest_id: deployed.pid,
+    name: deployed.title,
+    description: deployed.description,
+    cover_image: null,
+    role_names: [deployed.category],
+    cadence: "daily",
+    live_at: deployed.starts_at,
+    expires_at: deployed.ends_at,
+    submission_deadline_at: deployed.claim_expires_at ?? deployed.ends_at,
+    status: mapStatus(deployed),
+    reward_pool: { reward: mapReward(deployed.rewards?.[0]) },
+    submitted_at: p?.status === "Submitted" ? null : null,
+  };
 }
 
 export function useTodayQuests() {
   const { isLoggedIn } = useAuth();
 
-  // Quests endpoint is part of Daya's Game-of-Life v2 bundle. Until ship,
-  // 404 is the steady state — swallow + don't retry to keep console clean.
-  const query = useQuery<TodayQuestsResponse | null>(
+  const query = useQuery<TodayQuestsResponse>(
     ["passport", "quests", "today"],
     async () => {
-      try {
-        const res = await zoServer.get<TodayQuestsResponse>(
-          "/api/v1/passport/quests/today/",
-        );
-        return res.data;
-      } catch (e) {
-        if (e instanceof AxiosError && e.response?.status === 404) return null;
-        throw e;
-      }
+      const res = await zoServer.get<DeployedQuestsListResponse>(
+        "/api/v1/passport/quests/",
+      );
+      return { quests: (res.data.results ?? []).map(transform) };
     },
     {
       enabled: isLoggedIn === true,
