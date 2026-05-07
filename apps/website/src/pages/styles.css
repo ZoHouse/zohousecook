@@ -17,6 +17,29 @@ html {
 body {
   overflow-x: hidden;
   scroll-behavior: smooth;
+  /* iOS standalone PWA: avoid the rubber-band overscroll exposing the
+     browser-chrome white background behind the dark shell. */
+  overscroll-behavior-y: none;
+}
+
+/* PWA / iOS standalone: only push body inside the safe area when actually
+   running standalone. Outside standalone (Mobile Safari with chrome) the
+   browser already handles inset, and adding padding there would create a
+   visible bar at top. */
+@media all and (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Components that need to bleed back to the edge inside standalone
+     can apply `pwa-edge-to-edge`. */
+  .pwa-edge-to-edge {
+    margin-top: calc(-1 * env(safe-area-inset-top));
+    margin-bottom: calc(-1 * env(safe-area-inset-bottom));
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 :root {
@@ -804,4 +827,17 @@ body {
 .shiny-gold {
   color: #d4af37 !important;
   -webkit-text-fill-color: #d4af37 !important;
+}
+
+/* iOS auto-zoom prevention.
+ * Safari on iOS zooms in when an <input>/<textarea>/<select> with font-size < 16px
+ * receives focus. Enforce 16px only at mobile widths so desktop layouts are untouched.
+ * Applies to text-ish inputs (not submit/checkbox/radio/range which don't zoom anyway).
+ */
+@media (max-width: 767px) {
+  input:not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }

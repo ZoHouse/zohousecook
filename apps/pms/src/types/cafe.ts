@@ -76,7 +76,7 @@ export interface CafeTable {
   created_at: string
 }
 
-export type KitchenStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'served' | 'cancelled'
+export type KitchenStatus = 'draft' | 'new' | 'accepted' | 'preparing' | 'ready' | 'served' | 'cancelled'
 export type PaymentStatus = 'pending' | 'paid' | 'refunded'
 export type PaymentMode = 'razorpay' | 'cash' | 'zo_card'
 
@@ -112,11 +112,14 @@ export interface CafeOrder {
   table_id: string | null
   customer_phone: string | null
   customer_name: string | null
+  customer_email: string | null
   zo_user_id: string | null
   created_by: string | null
   mode: OrderMode
   kitchen_status: KitchenStatus | null
   display_number: number
+  // FUDR-style human-readable ID: <property_code><YYMMDD>-<seq> (populated by RPC in PR B)
+  human_order_id: string | null
   subtotal: number
   service_charge: number
   tax_amount: number
@@ -124,6 +127,9 @@ export interface CafeOrder {
   payment_status: PaymentStatus
   payment_mode: PaymentMode
   payment_id: string | null
+  // Gateway fee breakdown (Razorpay). NULL = wallet-only or webhook pending.
+  gateway_fee_paise: number | null
+  gateway_gst_paise: number | null
   notes: string | null
   food_credit_applied_paise: number
   created_at: string
@@ -135,11 +141,13 @@ export interface OrderItem {
   order_id: string
   menu_item_id: string
   name: string
-  price: number // paise, final unit price including customization deltas
+  price: number // paise, final unit per-unit price including customization deltas
   quantity: number
   customizations: Record<string, string | string[]> | null
   item_status: 'active' | 'cancelled'
   cancelled_at: string | null
+  // Per-item free-text (e.g. "Item not available" when kitchen flags a line)
+  remark: string | null
 }
 
 // --- Joined types for UI ---

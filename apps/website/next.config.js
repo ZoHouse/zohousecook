@@ -13,6 +13,9 @@ console.log(
   `[INFO] NFT Airdrop slug: ${process.env.NFT_AIRDROP_COLLECTION_SLUG}`
 );
 
+const isVercelDeployment =
+  process.env.VERCEL === "1" || Boolean(process.env.VERCEL_ENV);
+
 /**
  * @type {import('@nx/next/plugins/with-nx').WithNxOptions}
  **/
@@ -23,7 +26,10 @@ const nextConfig = {
     svgr: false,
   },
   basePath: process.env.NEXT_BASE_PATH || "",
-  assetPrefix: process.env.NEXT_ASSET_PREFIX || "",
+  // Vercel should serve website bundles from the deployment itself. Local
+  // env files with NEXT_ASSET_PREFIX can otherwise poison CLI uploads and
+  // send _next assets to a CDN that is not configured for this build.
+  assetPrefix: isVercelDeployment ? "" : process.env.NEXT_ASSET_PREFIX || "",
   images: {
     domains: [
       "static.cdn.zo.xyz",
@@ -36,7 +42,8 @@ const nextConfig = {
   },
   env: {
     APP_ID: process.env.APP_ID || "",
-    API_BASE_URL: process.env.API_BASE_URL || "",
+    API_BASE_URL: process.env.API_BASE_URL || "https://api.io.zo.xyz",
+    API_BASE_URL_PASSPORT: process.env.API_BASE_URL_PASSPORT || "",
     API_BASE_URL_INSTAGRAM: process.env.API_BASE_URL_INSTAGRAM || "",
     API_SOCKET_URL: process.env.API_SOCKET_URL || "",
     WEB_BASE_URL: process.env.WEB_BASE_URL || "https://zo.xyz",
@@ -56,6 +63,16 @@ const nextConfig = {
     // redirect both zozozo.work/house and zo.xyz/house traffic to the
     // live standalone app.
     return [
+      {
+        source: "/dashboard",
+        destination: "/passport?settings=profile",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/:path*",
+        destination: "/passport?settings=profile",
+        permanent: false,
+      },
       {
         source: "/house",
         destination: "https://zo.house",
@@ -77,7 +94,6 @@ const nextConfig = {
 
     const subApps = [
       { path: "pm", devPort: 4204, vercelUrl: process.env.REWRITE_PMS_URL || "https://zozozo-pm-samurais-dojo.vercel.app" },
-      { path: "dashboard", devPort: 4203, vercelUrl: process.env.REWRITE_DASHBOARD_URL || "https://zozozo-dashboard-samurais-dojo.vercel.app" },
       { path: "admin", devPort: 4201, vercelUrl: process.env.REWRITE_ADMIN_URL || "https://zozozo-admin-samurais-dojo.vercel.app" },
       { path: "ops", devPort: 4210, vercelUrl: process.env.REWRITE_OPS_URL || "https://zozozo-ops-samurais-dojo.vercel.app" },
       { path: "checkin", devPort: 4206, vercelUrl: process.env.REWRITE_CHECKIN_URL || "https://zozozo-checkin-samurais-dojo.vercel.app" },
@@ -87,6 +103,9 @@ const nextConfig = {
     ];
 
     const rewrites = [
+      { source: "/@:handle/earnings", destination: "/passport/earnings?handle=:handle" },
+      { source: "/@:handle/quests", destination: "/passport/quests?handle=:handle" },
+      { source: "/@:handle/badges", destination: "/passport/badges?handle=:handle" },
       { source: "/@:handle", destination: "/passport" },
     ];
     for (const app of subApps) {
@@ -135,4 +154,3 @@ const plugins = [
 ];
 
 module.exports = composePlugins(...plugins)(nextConfig);
-

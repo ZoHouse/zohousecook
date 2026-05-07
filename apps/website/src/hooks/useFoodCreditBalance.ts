@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../config/supabase'
 
 function normalizePhone(phone: string): string {
@@ -8,13 +8,14 @@ function normalizePhone(phone: string): string {
 interface UseFoodCreditBalanceResult {
   balance: number
   isLoading: boolean
+  refresh: () => void
 }
 
 export function useFoodCreditBalance(phone: string | null): UseFoodCreditBalanceResult {
   const [balance, setBalance] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     if (!phone) {
       setBalance(0)
       return
@@ -24,7 +25,6 @@ export function useFoodCreditBalance(phone: string | null): UseFoodCreditBalance
       setBalance(0)
       return
     }
-
     setIsLoading(true)
     supabase
       .from('food_credit_wallets')
@@ -37,5 +37,7 @@ export function useFoodCreditBalance(phone: string | null): UseFoodCreditBalance
       })
   }, [phone])
 
-  return { balance, isLoading }
+  useEffect(() => { refresh() }, [refresh])
+
+  return { balance, isLoading, refresh }
 }

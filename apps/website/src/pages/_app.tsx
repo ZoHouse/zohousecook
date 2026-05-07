@@ -9,6 +9,9 @@ import { useWindowSize } from "@zo/utils/hooks";
 import React, { useEffect } from "react";
 import { Toaster } from "sonner";
 import { Head, Main } from "../components/common";
+import { LiveLocationProvider } from "../components/LiveLocationProvider";
+import { InstallPrompt } from "../components/pwa/InstallPrompt";
+import { registerServiceWorker } from "../lib/registerServiceWorker";
 
 // On zozozo.work (staging), ZOSTEL_APP_ID is set → wrap in Zostel auth for unified login
 // On zo.xyz (production), it's not set → skip Zostel auth (website is public)
@@ -21,6 +24,12 @@ function ConditionalZostelAuth({ children }: { children: React.ReactNode }) {
 
 function CustomApp({ Component, pageProps }: AppProps) {
   const { isMobile } = useWindowSize();
+
+  // Register the PWA service worker once on mount (production hosts only — see
+  // registerServiceWorker.ts for the host allowlist).
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
 
   useEffect(() => {
     if (isMobile) {
@@ -68,8 +77,11 @@ function CustomApp({ Component, pageProps }: AppProps) {
           isZostelLoginRequired={ZOSTEL_ENABLED}
           allowedLoginTypes={ZOSTEL_ENABLED ? ["mobile"] : undefined}
         >
-          <Head />
-          <Main Component={Component} pageProps={pageProps} />
+          <LiveLocationProvider>
+            <Head />
+            <Main Component={Component} pageProps={pageProps} />
+            <InstallPrompt />
+          </LiveLocationProvider>
         </AuthProvider>
       </ConditionalZostelAuth>
       <Toaster

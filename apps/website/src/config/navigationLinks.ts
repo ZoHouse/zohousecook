@@ -2,7 +2,13 @@ import { NavigationLinksType } from "../components/common/Header";
 
 const navigationLinks: NavigationLinksType = {
   "/": {
-    links: [],
+    links: [
+      {
+        label: "Passport",
+        href: "/passport",
+        showOnWebHeader: false,
+      },
+    ],
   },
   "/whitefield": {
     links: [

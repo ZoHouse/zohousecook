@@ -1,5 +1,6 @@
 export function OrderStatusBadge({ status }: { status: string | null }) {
   const config: Record<string, { bg: string; label: string }> = {
+    draft: { bg: 'bg-yellow-100 text-yellow-800', label: 'Awaiting Payment' },
     new: { bg: 'bg-blue-100 text-blue-700', label: 'New' },
     accepted: { bg: 'bg-amber-100 text-amber-700', label: 'Accepted' },
     preparing: { bg: 'bg-orange-100 text-orange-700', label: 'Preparing' },

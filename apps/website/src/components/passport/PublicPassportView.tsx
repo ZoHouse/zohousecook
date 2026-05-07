@@ -1,7 +1,12 @@
 import React, { useState } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@zo/auth";
-import { usePublicPassport } from "../../hooks/usePublicPassport";
+import { usePublicPassport, type PublicPassport } from "../../hooks/usePublicPassport";
+import { SideNavRail } from "../passport-lobby/SideNavRail";
+import { MapModal } from "../passport-lobby/MapModal";
+import { TopBar } from "../passport-lobby/TopBar";
+import { useProfile as useMyProfile } from "@zo/auth";
+import { useMyXp } from "../../hooks/useMyXp";
 import { ViewerState } from "./PassportPitch";
 import { ShareQuestButtons } from "./ShareQuestButtons";
 import ShareModal from "./ShareModal";
@@ -13,6 +18,7 @@ import StampsGrid from "./StampsGrid";
 interface PublicPassportViewProps {
   handle: string;
   viewerState: ViewerState;
+  initialData?: PublicPassport | null;
 }
 
 type PublicData = NonNullable<ReturnType<typeof usePublicPassport>["data"]>;
@@ -66,11 +72,16 @@ function adaptRoles(data: PublicData) {
   return { displayNames: data.roles.map((r) => r.label) };
 }
 
-export function PublicPassportView({ handle, viewerState }: PublicPassportViewProps) {
+export function PublicPassportView({ handle, viewerState, initialData }: PublicPassportViewProps) {
   const router = useRouter();
-  const { showLoginModal } = useAuth();
-  const { data, isLoading, isError } = usePublicPassport(handle);
+  const { isLoggedIn, showLoginModal } = useAuth();
+  const { data, isLoading, isError } = usePublicPassport(handle, initialData);
+  // Viewer's own profile, for the global RankPill. Does not affect the viewed
+  // passport data — that still comes from usePublicPassport(handle) above.
+  const { profile: viewerProfile } = useMyProfile();
+  const { myXp: viewerXp } = useMyXp();
   const [shareOpen, setShareOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -104,6 +115,14 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
     } else {
       router.push("/passport");
     }
+  };
+
+  const handleBecomeMember = () => {
+    if (viewerState === "logged_out") {
+      showLoginModal(undefined, "/pro");
+      return;
+    }
+    router.push("/pro");
   };
 
   const passportCard = (
@@ -235,7 +254,7 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
       <BookStaysPlaceholder />
 
       <PassportPlusUpsell
-        onBecomeMember={handlePrimary}
+        onBecomeMember={handleBecomeMember}
         onUnlockAndGo={handlePrimary}
       />
     </div>
@@ -243,7 +262,24 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
 
   return (
     <div className="flex-1 min-h-screen bg-[#111]">
-      <div className="max-w-[1280px] mx-auto px-4 pt-24 xl:pt-32 pb-16">
+      {/* Global HUD — RankPill for the viewer (when logged in) + side nav on
+          every passport surface. Desktop rail: mid-right. Mobile rail: below
+          the pill (top-20) so they don't stack on top of each other. */}
+      {isLoggedIn && (
+        <TopBar
+          xp={viewerXp?.xp ?? 0}
+          rank={viewerXp?.rank ?? 0}
+          avatarUrl={viewerProfile?.pfp_image || viewerProfile?.avatar?.image}
+        />
+      )}
+      <div className="fixed top-1/2 right-4 md:right-6 -translate-y-1/2 z-[10] hidden md:block">
+        <SideNavRail handle={handle} onOpenMap={() => setMapOpen(true)} />
+      </div>
+      <div className="fixed top-[76px] right-3 z-[10] md:hidden">
+        <SideNavRail handle={handle} onOpenMap={() => setMapOpen(true)} />
+      </div>
+
+      <div className="max-w-[1280px] mx-auto px-4 pt-24 xl:pt-32 pb-16 md:pr-32">
         <div className="flex flex-col xl:flex-row xl:gap-10 gap-8">
           <div className="w-full xl:w-[380px] xl:flex-shrink-0">
             {passportCard}
@@ -251,6 +287,8 @@ export function PublicPassportView({ handle, viewerState }: PublicPassportViewPr
           <div className="flex-1 min-w-0">{pitchPanel}</div>
         </div>
       </div>
+
+      <MapModal open={mapOpen} onClose={() => setMapOpen(false)} />
 
       <ShareModal
         isOpen={shareOpen}

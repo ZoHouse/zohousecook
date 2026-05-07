@@ -1,8 +1,12 @@
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { type PropertyKind, type ZoProperty } from './properties';
 import { useZostelOperators, type ZostelOperator } from '../../hooks/useZostelOperators';
+import { usePoiData } from './poi/usePoiData';
+import { mountPoiLayers } from './poi/mountPoiLayers';
+import { useLiveLocation } from '../LiveLocationProvider';
+import { NearbyPoiBar } from './NearbyPoiBar';
 
 // Zostel API `type_code` → our PropertyKind. H/B = Zostel, P = Plus, HO = Zo House, S = Zo Selections.
 function kindFromTypeCode(tc?: string): PropertyKind {
@@ -99,28 +103,73 @@ export interface MapModalProps {
 export function MapModal({ open, onClose }: MapModalProps) {
   const container = useRef<HTMLDivElement | null>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const [status, setStatus] = useState<
+    | { kind: 'idle' }
+    | { kind: 'no-token' }
+    | { kind: 'loading' }
+    | { kind: 'error'; message: string }
+    | { kind: 'ready' }
+  >({ kind: 'idle' });
 
   const { operators } = useZostelOperators(open);
   const properties = useMemo<ZoProperty[]>(
     () => (operators ? operators.map(operatorToProperty) : []),
     [operators],
   );
+  const { data: poiData } = usePoiData(open);
+  const poiUnmount = useRef<(() => void) | null>(null);
+  const showPoiRef = useRef<((lng: number, lat: number, props: GeoJSON.GeoJsonProperties, mode?: 'fly' | 'soft') => void) | null>(null);
 
-  const showAll = () => {
-    if (!map.current) return;
-    const bounds = new mapboxgl.LngLatBounds();
-    properties.forEach((p) => bounds.extend([p.lng, p.lat]));
-    map.current.fitBounds(bounds, {
-      padding: { top: 100, bottom: 100, left: 80, right: 80 },
-      pitch: 35,
-      bearing: 0,
-      duration: 1400,
-      maxZoom: 5,
+  // Every Map button click is treated as explicit "show me where I am" intent →
+  // force a fresh GPS read + whereabouts POST. refresh() dedupes via inflight
+  // ref, so rapid re-opens collapse to a single request.
+  const { location: liveLocation, refresh: refreshLocation, isUpdating: locationUpdating } =
+    useLiveLocation();
+  useEffect(() => {
+    if (open) refreshLocation().catch(() => undefined);
+  }, [open, refreshLocation]);
+
+  // Latest viewer location, refreshed on every render. POI popup callbacks
+  // read through this ref so they never close over stale data.
+  const liveLocationRef = useRef(liveLocation);
+  useEffect(() => { liveLocationRef.current = liveLocation; }, [liveLocation]);
+
+  // If whereabouts arrives AFTER the map was already created (we'd have
+  // fallen back to BLRxZo), gently fly the camera to the user's real location
+  // once it lands. Runs once per modal open.
+  const hasFlownToLiveOnce = useRef(false);
+  useEffect(() => {
+    if (!open) { hasFlownToLiveOnce.current = false; return; }
+    if (!map.current || !liveLocation || hasFlownToLiveOnce.current) return;
+    hasFlownToLiveOnce.current = true;
+    map.current.flyTo({
+      center: [liveLocation.long, liveLocation.lat],
+      zoom: Math.max(map.current.getZoom(), 16.5),  // 3D-buildings-friendly
+      pitch: 62,
+      bearing: map.current.getBearing(),
+      duration: 1600,
+      curve: 1.4,
+      speed: 0.7,
+      essential: true,
     });
-    // Zooming out past the focus threshold will also clear focus via `zoomend`,
-    // but fire the `zoom` event manually in case we fit within threshold.
-    map.current.once('moveend', () => {
-      // Brief trigger — moveend will call updateMarkerVisibility which re-evaluates focus
+  }, [open, liveLocation]);
+
+// Recenter button: force a fresh GPS fix, fly there. Honors user intent
+  // ("where am I right now") even if cached whereabouts is fresh. Falls back
+  // to the cached liveLocation if the live refresh fails (e.g. permission
+  // denied) — at least flies to the last known location instead of nothing.
+  const handleRecenter = async () => {
+    const fresh = await refreshLocation();
+    const target = fresh ?? liveLocation;
+    if (!map.current || !target) return;
+    map.current.flyTo({
+      center: [target.long, target.lat],
+      zoom: Math.max(map.current.getZoom(), 16.5),
+      pitch: 72,
+      bearing: map.current.getBearing(),
+      speed: 1.2,
+      curve: 1.5,
+      essential: true,
     });
   };
 
@@ -134,19 +183,32 @@ export function MapModal({ open, onClose }: MapModalProps) {
   }, [open, onClose]);
 
   useEffect(() => {
-    if (!open || !container.current || map.current) return;
-    if (!mapboxgl.accessToken) return;
-    if (properties.length === 0) return; // wait for live operator data
+    if (!open) return;
+    if (!mapboxgl.accessToken) {
+      setStatus({ kind: 'no-token' });
+      return;
+    }
+    if (properties.length === 0) {
+      setStatus({ kind: 'loading' });
+      return;
+    }
+    if (!container.current || map.current) return;
+    setStatus({ kind: 'loading' });
 
-    // Open zoomed-in on BLRxZo (primary property) so 3D buildings + skyline read immediately.
-    // Users navigate to other properties by tapping their pillars, or "Show all" to fit the planet.
+    // Default center: viewer's live location (Erum's ask #4). Falls back to
+    // BLRxZo only if no whereabouts is loaded yet — and the camera will
+    // gently fly to the user's location once it arrives (handled by the
+    // liveLocation effect below).
     const primary = properties.find((p) => p.id === 'BNGHO812') ?? properties[0];
+    const initialCenter: [number, number] = liveLocation
+      ? [liveLocation.long, liveLocation.lat]
+      : [primary.lng, primary.lat];
 
     map.current = new mapboxgl.Map({
       container: container.current,
       style: 'mapbox://styles/mapbox/standard',
-      center: [primary.lng, primary.lat],
-      zoom: 16.2,
+      center: initialCenter,
+      zoom: 16.5,        // close enough for Standard-style 3D buildings to render
       pitch: 72,
       bearing: -18,
       interactive: true,
@@ -155,10 +217,12 @@ export function MapModal({ open, onClose }: MapModalProps) {
       projection: { name: 'globe' },
     });
 
-    map.current.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'bottom-right');
+    // Zoom/compass control top-left — clears the entire bottom for the carousel.
+    map.current.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'top-left');
 
     map.current.on('style.load', () => {
       if (!map.current) return;
+      setStatus({ kind: 'ready' });
       try {
         map.current.setConfigProperty('basemap', 'lightPreset', 'dusk');
         map.current.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
@@ -169,6 +233,14 @@ export function MapModal({ open, onClose }: MapModalProps) {
       } catch {
         // Older style versions — ignore
       }
+    });
+
+    map.current.on('error', (e) => {
+      // Surface any Mapbox runtime error (bad token, style 404, tile fetch fail)
+      // so the modal doesn't sit dark and silent.
+      const message = (e.error && (e.error.message || String(e.error))) || 'Mapbox error';
+      console.error('[MapModal] mapbox error:', e);
+      setStatus({ kind: 'error', message });
     });
 
     // Track all markers so we can hide all-but-focused when zoomed in close.
@@ -273,17 +345,32 @@ export function MapModal({ open, onClose }: MapModalProps) {
       });
       map.current.on('moveend', syncMarkers);
 
-      // Initial sync — we open zoomed in on BLRxZo, so mark it focused.
-      focusedId = primary.id;
+      // Don't auto-focus any property on open — that hides all other Zo
+      // Houses at high zoom (the WhiteField pillar would vanish when opening
+      // centered on BLR). Focus only kicks in when the user explicitly clicks
+      // a pillar, then returns to "show all" once they pan away.
       syncMarkers();
 
-      // Ambient slow rotate around the current center — disable once user interacts
+      // Ambient slow rotate around the current center — disable once user
+      // interacts. CRITICAL: setBearing() is an instant camera op that CANCELS
+      // any in-flight flyTo/easeTo. So this rotation MUST also bail while the
+      // map is currently animating, otherwise it kills our carousel flyTo every
+      // 80ms (the carousel arrow click doesn't fire mousedown/touchstart on
+      // the map canvas, so the original userInteracted guard wouldn't catch it).
       let bearing = -18;
       let userInteracted = false;
       const markInteracted = () => { userInteracted = true; };
       map.current.on('mousedown', markInteracted);
       map.current.on('touchstart', markInteracted);
       map.current.on('dragstart', markInteracted);
+      // Any programmatic camera move (e.g. carousel flyTo, recenter) also
+      // counts — once we've moved the camera, ambient rotation has done its
+      // job and shouldn't fight subsequent navigation.
+      map.current.on('movestart', (e) => {
+        // originalEvent absent → programmatic move; we still want to kill rotation
+        // because the user has clearly engaged with the map.
+        if (!e.originalEvent) markInteracted();
+      });
 
       const rotate = setInterval(() => {
         if (!map.current) {
@@ -291,6 +378,9 @@ export function MapModal({ open, onClose }: MapModalProps) {
           return;
         }
         if (userInteracted) return;
+        // Defensive: never tick while an animation is running, otherwise
+        // setBearing cancels it.
+        if (map.current.isMoving() || map.current.isEasing()) return;
         bearing += 0.015;
         map.current.setBearing(bearing);
       }, 80);
@@ -302,7 +392,24 @@ export function MapModal({ open, onClose }: MapModalProps) {
       map.current?.remove();
       map.current = null;
     };
-  }, [open]);
+  }, [open, properties.length]);
+
+  // Mount POI overlay once both the map style is loaded AND the GeoJSON has
+  // arrived. Property pins (HTML markers) and POIs (Mapbox source+layer)
+  // coexist; layer mount is independent of marker creation.
+  useEffect(() => {
+    if (status.kind !== 'ready') return;
+    if (!poiData) return;
+    if (!map.current) return;
+    const layers = mountPoiLayers(map.current, poiData, () => liveLocationRef.current);
+    poiUnmount.current = layers.unmount;
+    showPoiRef.current = layers.showPoi;
+    return () => {
+      poiUnmount.current?.();
+      poiUnmount.current = null;
+      showPoiRef.current = null;
+    };
+  }, [status.kind, poiData]);
 
   if (!open) return null;
 
@@ -330,25 +437,81 @@ export function MapModal({ open, onClose }: MapModalProps) {
           </svg>
         </button>
 
+        {/* Recenter to my live location (Erum's ask #5) */}
         <button
           type="button"
-          onClick={showAll}
-          className="absolute top-3 left-3 z-10 px-3 py-2 rounded-full backdrop-blur-sm border border-white/10 flex items-center gap-2 transition-all hover:bg-black/85 active:scale-95"
-          style={{ background: 'rgba(0,0,0,0.7)' }}
-          aria-label="Frame all Zo properties on the map"
+          onClick={handleRecenter}
+          disabled={locationUpdating}
+          aria-label="Recenter on my location"
+          className="absolute top-16 right-3 z-10 w-10 h-10 rounded-full bg-black/70 text-white flex items-center justify-center backdrop-blur-sm border border-white/10 hover:bg-black/90 transition disabled:opacity-60"
         >
-          <span className="w-2 h-2 rounded-full bg-[#FF2F8E] animate-pulse" aria-hidden />
-          <span className="text-white text-sm font-medium">
-            Zo World · {properties.length > 0 ? `${properties.length} properties` : 'loading…'}
-          </span>
-          <span className="text-white/50 text-xs ml-1">·&nbsp;view all</span>
+          {locationUpdating ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="animate-spin">
+              <path d="M21 12a9 9 0 1 1-6.2-8.55" />
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <line x1="12" y1="2" x2="12" y2="5" />
+              <line x1="12" y1="19" x2="12" y2="22" />
+              <line x1="2" y1="12" x2="5" y2="12" />
+              <line x1="19" y1="12" x2="22" y2="12" />
+            </svg>
+          )}
         </button>
+
 
         <div
           ref={container}
-          className="w-full h-full overflow-hidden"
-          style={{ borderRadius: 24, border: '1px solid rgba(255,255,255,0.1)' }}
-        />
+          className="w-full h-full overflow-hidden relative"
+          style={{ borderRadius: 24, border: '1px solid rgba(255,255,255,0.1)', background: '#0a0a0a' }}
+        >
+          {(status.kind === 'no-token' ||
+            status.kind === 'loading' ||
+            status.kind === 'error') && (
+            <div className="absolute inset-0 flex items-center justify-center text-center px-8 pointer-events-none">
+              <div className="text-white/80 text-sm">
+                {status.kind === 'no-token' && (
+                  <>
+                    <div className="font-semibold mb-1">Map unavailable</div>
+                    <div className="text-xs text-white/50">
+                      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN is not set in the env for
+                      this deploy.
+                    </div>
+                  </>
+                )}
+                {status.kind === 'loading' && (
+                  <div className="text-xs text-white/50">
+                    {properties.length === 0
+                      ? 'Loading properties…'
+                      : 'Loading map…'}
+                  </div>
+                )}
+                {status.kind === 'error' && (
+                  <>
+                    <div className="font-semibold mb-1">Map failed to load</div>
+                    <div className="text-xs text-white/50 max-w-[320px] mx-auto">
+                      {status.message}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Bottom carousel: nearest POIs sorted by distance from viewer.
+              Tap or arrow → flyTo + opens popup via the showPoi callback we
+              captured from mountPoiLayers. */}
+          {status.kind === 'ready' && poiData && (
+            <NearbyPoiBar
+              geojson={poiData}
+              viewer={liveLocation}
+              onSelect={(lng, lat, props, mode) => {
+                showPoiRef.current?.(lng, lat, props, mode);
+              }}
+            />
+          )}
+        </div>
       </div>
 
       <style jsx global>{`
@@ -379,10 +542,20 @@ export function MapModal({ open, onClose }: MapModalProps) {
           padding: 4px 8px;
           right: 2px;
           top: 2px;
+          border: none;
+          outline: none;
+          box-shadow: none;
+          background: transparent;
         }
-        .mapboxgl-popup.zo-map-popup .mapboxgl-popup-close-button:hover {
+        .mapboxgl-popup.zo-map-popup .mapboxgl-popup-close-button:hover,
+        .mapboxgl-popup.zo-map-popup .mapboxgl-popup-close-button:focus,
+        .mapboxgl-popup.zo-map-popup .mapboxgl-popup-close-button:focus-visible,
+        .mapboxgl-popup.zo-map-popup .mapboxgl-popup-close-button:active {
           color: #fff;
           background: transparent;
+          border: none;
+          outline: none;
+          box-shadow: none;
         }
         .mapboxgl-popup.zo-map-popup .mapboxgl-popup-tip {
           border-top-color: rgba(32, 32, 32, 0.9);

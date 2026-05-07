@@ -1,9 +1,35 @@
 // NOTE: Full focus trap is tracked as a follow-up. Esc-close + scrim-close +
 // close-button are wired.
 import React, { useEffect, useState, useMemo, useCallback } from "react";
+import Link from "next/link";
+import { toast } from "sonner";
 import { useAuth, useProfile, useMutationApi, useQueryApi } from "@zo/auth";
+import { MeshGradient } from "@paper-design/shaders-react";
 import { useMyNfts } from "../../hooks/useMyNfts";
 import useInstagramConnect from "../../hooks/useInstagramConnect";
+import {
+  getPassportApiErrorMessage,
+  usePassportSubscription,
+} from "../../hooks/usePassportSubscription";
+import {
+  describeBilling,
+  formatAmount,
+  formatDate,
+  isFounderProfile,
+} from "../../lib/passport/proStatus";
+
+// Samurai FX #09 — Obsidian. Liquid metal, quiet luxury, 8 near-blacks with
+// thin light streaks. Used as the settings modal surface.
+const OBSIDIAN_COLORS = [
+  '#000000',
+  '#14151C',
+  '#1E1B24',
+  '#55535E',
+  '#1D1D26',
+  '#111117',
+  '#0A0A0D',
+  '#000000',
+];
 
 function Spinner({ size = 16 }: { size?: number }) {
   return (
@@ -1063,7 +1089,7 @@ function ProfileSection() {
         validate={checkNicknameAvailable}
         transform={nicknameTransform}
       />
-      <EditableRow label="Full name" value={profile?.first_name || ""} field="first_name" onSave={handleSave} />
+      <EditableRow label="First name" value={profile?.first_name || ""} field="first_name" onSave={handleSave} />
       <EditableRow label="Middle name" value={profile?.middle_name || ""} field="middle_name" onSave={handleSave} />
       <EditableRow label="Last name" value={profile?.last_name || ""} field="last_name" onSave={handleSave} />
       <EditableRow label="Bio" value={profile?.bio || ""} field="bio" type="textarea" onSave={handleSave} />
@@ -1084,6 +1110,189 @@ function ProfileSection() {
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+}
+
+function MembershipSection({ onClose }: { onClose: () => void }) {
+  const { isLoggedIn } = useAuth();
+  const { profile } = useProfile();
+  const {
+    subscription,
+    isLoading,
+    refresh,
+    unsubscribe,
+    isUnsubscribing,
+  } = usePassportSubscription();
+  const [confirming, setConfirming] = useState(false);
+
+  if (isLoggedIn !== true) return null;
+
+  const founder = isFounderProfile(profile);
+  const hasActivePaid = !!subscription?.is_active && !!subscription?.is_paid;
+  const cancellationQueued = hasActivePaid && !!subscription?.cancelled_at;
+  const canCancel = hasActivePaid && !cancellationQueued;
+  const isPending = subscription?.status === "pending";
+
+  // Modal-native pill: subtle tints over the obsidian surface, not the
+  // saturated emerald/amber the /pro hero uses. Matches the "Primary" pill
+  // pattern (line 251) and the Founder badge in ProfileStrip (line 651).
+  const pillLabel = founder
+    ? "Founder"
+    : hasActivePaid
+      ? cancellationQueued ? "Ending Soon" : "Pro"
+      : isPending
+        ? "Pending"
+        : "Free";
+  const pillClass = founder
+    ? "bg-white/15 text-white border-white/20"
+    : hasActivePaid && !cancellationQueued
+      ? "bg-green-500/20 text-green-400 border-green-500/30"
+      : cancellationQueued
+        ? "bg-white/10 text-white/70 border-white/15"
+        : isPending
+          ? "bg-amber-500/15 text-amber-300/90 border-amber-500/25"
+          : "bg-white/10 text-white/60 border-white/15";
+
+  const priceLabel = formatAmount(
+    subscription?.amount,
+    subscription?.currency?.symbol,
+    subscription?.currency?.decimals,
+  );
+
+  const handleCancel = async () => {
+    try {
+      await unsubscribe();
+      toast.success(
+        "Cancellation requested. Your Pro access stays live until the current billing cycle ends.",
+      );
+      void refresh();
+      setConfirming(false);
+    } catch (error) {
+      toast.error(
+        getPassportApiErrorMessage(error, "Failed to cancel Passport Pro."),
+      );
+    }
+  };
+
+  return (
+    <section>
+      <SectionHeader
+        title="Membership"
+        right={
+          <span
+            className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${pillClass}`}
+          >
+            {pillLabel}
+          </span>
+        }
+      />
+
+      <div className="rounded-md border border-white/10 bg-white/[0.03] p-4">
+        {founder ? (
+          <>
+            <p className="text-sm text-white/85">
+              Founder Pass already includes Passport Pro.
+            </p>
+            <p className="mt-1 text-[11px] text-white/50">
+              Daily bed drops, referral commission, and revenue unlocks are unlocked through your Founder membership.
+            </p>
+          </>
+        ) : hasActivePaid ? (
+          <>
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-sm text-white/90">Passport Pro</p>
+              <p className="text-sm text-white/90">
+                {priceLabel}
+                <span className="text-[11px] text-white/45"> / month</span>
+              </p>
+            </div>
+            <p className="mt-2 text-[11px] leading-5 text-white/55">
+              {describeBilling(subscription)}
+            </p>
+            {subscription?.last_charged_at && (
+              <p className="mt-1 text-[11px] text-white/45">
+                Last charged {formatDate(subscription.last_charged_at)}
+              </p>
+            )}
+          </>
+        ) : isPending ? (
+          <>
+            <p className="text-sm text-white/85">
+              Payment pending — finish checkout to switch on Pro.
+            </p>
+            <p className="mt-1 text-[11px] text-white/50">
+              {describeBilling(subscription)}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-white/85">Free Passport.</p>
+            <p className="mt-1 text-[11px] text-white/50">
+              Upgrade to earn from daily bed drops, referral commission, and revenue unlocks.
+            </p>
+          </>
+        )}
+
+        {isLoading && !subscription && (
+          <div className="mt-3 flex items-center gap-2 text-[11px] text-white/40">
+            <Spinner size={12} /> Loading membership…
+          </div>
+        )}
+      </div>
+
+      {/* Action row */}
+      {canCancel && (
+        confirming ? (
+          <div className="mt-3 flex flex-col gap-2 rounded-md bg-red-500/10 border border-red-500/20 p-3">
+            <p className="text-[11px] text-red-200/90">
+              You'll keep Pro until {formatDate(subscription?.renews_at) || "the cycle ends"}. No refund for the current cycle.
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void handleCancel()}
+                disabled={isUnsubscribing}
+                className="flex-1 min-h-[44px] px-3 py-2.5 text-[12px] font-medium bg-red-500 text-white rounded-md hover:bg-red-400 disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {isUnsubscribing ? <Spinner size={12} /> : "Confirm cancel"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirming(false)}
+                disabled={isUnsubscribing}
+                className="min-h-[44px] px-3 py-2.5 text-[12px] text-white/60 hover:text-white"
+              >
+                Keep Pro
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            className="mt-3 w-full min-h-[44px] px-3 py-2.5 text-[12px] font-medium text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 hover:bg-red-500/5 rounded-md transition-colors"
+          >
+            Cancel renewal at cycle end
+          </button>
+        )
+      )}
+
+      {!canCancel && (founder || isPending || !hasActivePaid) && (
+        <div className="mt-2 flex justify-end">
+          <Link
+            href="/pro"
+            onClick={onClose}
+            className="px-2.5 py-1 text-[11px] text-white/60 hover:text-white border border-white/10 hover:border-white/25 rounded-md transition-colors"
+          >
+            {founder
+              ? "View Pro page"
+              : isPending
+                ? "Continue checkout"
+                : "Become Pro"}
+          </Link>
+        </div>
+      )}
+    </section>
+  );
 }
 
 function LogoutSection({ onClose }: { onClose: () => void }) {
@@ -1134,12 +1343,35 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         onClick={onClose}
       />
       <div
-        className="relative w-full max-w-[640px] h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:rounded-[24px] rounded-none flex flex-col overflow-hidden backdrop-blur-[48px] border border-white/10"
+        className="relative w-full max-w-[640px] h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:rounded-[24px] rounded-none flex flex-col overflow-hidden border border-white/10"
         style={{
-          background: "linear-gradient(135deg, rgba(41,41,41,0.95), rgba(0,0,0,0.95))",
+          background: "#0A0A0D",
           boxShadow: "inset 0px -1px 24px rgba(255,255,255,0.4)",
         }}
       >
+        {/* Samurai FX #09 Obsidian — liquid metal surface behind the content */}
+        <div
+          aria-hidden
+          className="absolute inset-0 pointer-events-none"
+          style={{ zIndex: 0 }}
+        >
+          <MeshGradient
+            colors={OBSIDIAN_COLORS}
+            speed={0.83}
+            scale={0.4}
+            distortion={0}
+            swirl={0.1}
+            grainMixer={0.01}
+            grainOverlay={0}
+            fit="cover"
+            style={{ width: '100%', height: '100%' }}
+          />
+        </div>
+
+        {/* Content wrapper lifts above the shader. min-h-0 so the flex-1 scroll
+            region inside can shrink below intrinsic content height (otherwise
+            the inner overflow-y-auto can't activate on iOS / Chrome mobile). */}
+        <div className="relative flex flex-col h-full min-h-0" style={{ zIndex: 1 }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-shrink-0">
           <h2 id="settings-modal-title" className="text-lg font-bold text-white">Settings</h2>
           <button
@@ -1163,7 +1395,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </button>
         </div>
         <ProfileStrip />
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4">
+          <MembershipSection onClose={onClose} />
           <ProfileSection />
           <LocationSection />
           <CulturesSection />
@@ -1173,6 +1406,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <SocialsSection />
           <FounderNftsSection />
           <LogoutSection onClose={onClose} />
+        </div>
         </div>
       </div>
     </div>

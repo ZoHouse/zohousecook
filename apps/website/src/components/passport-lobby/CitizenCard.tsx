@@ -160,7 +160,7 @@ export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare 
           />
         )}
 
-        {/* Share button — top-left corner */}
+        {/* Share button — top-right corner. Visible chrome 30×30; transparent hit area padded to 44×44. */}
         {onShare && (
           <button
             onClick={(e) => {
@@ -168,23 +168,40 @@ export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare 
               onShare();
             }}
             aria-label="Share profile"
-            className="absolute top-3 right-3 z-10 flex items-center justify-center transition-all hover:bg-white/20 active:scale-90"
+            className="absolute z-10 flex items-center justify-center active:scale-90 transition-transform"
             style={{
-              width: 30,
-              height: 30,
-              borderRadius: 8,
-              background: 'rgba(0,0,0,0.45)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              top: 6,
+              right: 6,
+              width: 44,
+              height: 44,
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
               transform: 'translateZ(30px)',
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-              <polyline points="16 6 12 2 8 6" />
-              <line x1="12" y1="2" x2="12" y2="15" />
-            </svg>
+            <span
+              aria-hidden
+              className="flex items-center justify-center transition-colors hover:bg-white/20"
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 8,
+                background: 'rgba(0,0,0,0.45)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+              }}
+            >
+              {/* Classic "share" icon — three nodes (top-right, bottom-right, left) connected by two lines */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="5" r="3" />
+                <circle cx="6" cy="12" r="3" />
+                <circle cx="18" cy="19" r="3" />
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+              </svg>
+            </span>
           </button>
         )}
 

@@ -1,7 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useZoAuth } from "../hooks/useZoAuth";
 import { HOUSE_MEDIA } from "../config/house-media";
 import { track } from "../lib/analytics/track";
+import {
+  VirtualTicket,
+  parseHandleFromSocials,
+  pickTitle,
+} from "./VirtualTicket";
 
 const STAGES = ["Idea", "Prototype", "Launched", "Growing"];
 const ROLES = ["Founder", "Engineer", "Designer", "Researcher", "Creator", "Operator"];
@@ -35,6 +40,8 @@ export function ApplyModal({ open, onClose }: ApplyModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [waitlistNumber, setWaitlistNumber] = useState<number | null>(null);
+  const [shareSlug, setShareSlug] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -92,6 +99,12 @@ export function ApplyModal({ open, onClose }: ApplyModalProps) {
         return;
       }
       // apply_submit_success is fired by the API route (Chunk 4) — no client fire here.
+      if (typeof data?.waitlist_number === "number") {
+        setWaitlistNumber(data.waitlist_number);
+      }
+      if (typeof data?.share_slug === "string") {
+        setShareSlug(data.share_slug);
+      }
       setSubmitted(true);
     } catch (err) {
       track("apply_submit_error", { error_code: "network" });
@@ -123,26 +136,12 @@ export function ApplyModal({ open, onClose }: ApplyModalProps) {
       <div className="min-h-screen w-full flex flex-col items-center py-16 md:py-24 px-4 md:px-8">
         <div className="w-full max-w-2xl">
           {submitted ? (
-            <div className="text-center py-24">
-              <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#d4af37] mb-4">
-                Zo House
-              </p>
-              <h2 className="text-4xl md:text-5xl font-medium tracking-tight mb-4 text-white">
-                You&apos;re{" "}
-                <span className="font-[family-name:var(--font-headline)] italic shiny-gold">
-                  in.
-                </span>
-              </h2>
-              <p className="text-neutral-400 text-lg mb-8">
-                We&apos;ll review your application and get back to you soon.
-              </p>
-              <button
-                onClick={onClose}
-                className="text-sm text-neutral-500 hover:text-white transition-colors underline underline-offset-4"
-              >
-                Back to Zo House
-              </button>
-            </div>
+            <SubmittedTicket
+              form={form}
+              waitlistNumber={waitlistNumber}
+              shareSlug={shareSlug}
+              onClose={onClose}
+            />
           ) : (
             <>
               {/* Banner */}
@@ -210,6 +209,13 @@ export function ApplyModal({ open, onClose }: ApplyModalProps) {
                   />
                 </Field>
 
+                <BlurGate
+                  locked={
+                    !form.name.trim() ||
+                    !form.email.trim() ||
+                    !form.phone.trim()
+                  }
+                >
                 <Field label="Current city" required>
                   <input
                     required
@@ -222,14 +228,14 @@ export function ApplyModal({ open, onClose }: ApplyModalProps) {
                   />
                 </Field>
 
-                <Field label="LinkedIn / X / Personal website" required>
+                <Field label="LinkedIn, X or GitHub" required>
                   <input
                     required
                     value={form.socials}
                     onChange={(e) => update("socials", e.target.value)}
                     onFocus={() => track("apply_field_focus", { field: "socials" })}
                     onBlur={(e) => track("apply_field_blur", { field: "socials", was_filled: !!e.target.value.trim() })}
-                    placeholder="x.com/yourhandle"
+                    placeholder="linkedin.com/in/you · x.com/you · github.com/you"
                     className="apply-input"
                   />
                 </Field>
@@ -358,6 +364,7 @@ export function ApplyModal({ open, onClose }: ApplyModalProps) {
                 >
                   {submitting ? "Submitting..." : "Submit Application"}
                 </button>
+                </BlurGate>
               </form>
             </>
           )}
@@ -403,6 +410,110 @@ function Field({
         {required && <span className="text-[#d4af37] ml-1">*</span>}
       </label>
       {children}
+    </div>
+  );
+}
+
+function BlurGate({
+  locked,
+  children,
+}: {
+  locked: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative">
+      <div
+        className="flex flex-col gap-7 transition-[filter,opacity] duration-500"
+        style={{
+          filter: locked ? "blur(8px)" : "none",
+          opacity: locked ? 0.5 : 1,
+          pointerEvents: locked ? "none" : "auto",
+          userSelect: locked ? "none" : "auto",
+        }}
+        aria-hidden={locked}
+      >
+        {children}
+      </div>
+      {locked && (
+        <div className="absolute inset-0 flex flex-col items-center justify-start pt-16 text-center px-6 pointer-events-none">
+          <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#d4af37] mb-2">
+            Locked
+          </p>
+          <p className="text-white text-base md:text-lg font-medium tracking-tight max-w-xs">
+            Fill your name, email and phone to continue.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SubmittedTicket({
+  form,
+  waitlistNumber,
+  shareSlug,
+  onClose,
+}: {
+  form: { name: string; socials: string; email: string };
+  waitlistNumber: number | null;
+  shareSlug: string | null;
+  onClose: () => void;
+}) {
+  const handle = useMemo(
+    () => parseHandleFromSocials(form.socials, form.name),
+    [form.socials, form.name]
+  );
+  const title = useMemo(
+    () => pickTitle(form.email || form.name || handle),
+    [form.email, form.name, handle]
+  );
+  const ticketNo = useMemo(() => {
+    if (typeof waitlistNumber === "number" && waitlistNumber > 0) {
+      return String(waitlistNumber).padStart(6, "0");
+    }
+    // Fallback when the count query failed — keep a stable per-applicant code
+    // so the ticket still renders something.
+    const seed = `${form.email}${form.name}${handle}`;
+    let hash = 0;
+    for (let i = 0; i < seed.length; i += 1) {
+      hash = (hash * 33 + seed.charCodeAt(i)) >>> 0;
+    }
+    return String(hash % 1_000_000).padStart(6, "0");
+  }, [waitlistNumber, form.email, form.name, handle]);
+
+  return (
+    <div className="text-center py-8 md:py-12">
+      <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#d4af37] mb-4">
+        Zo House
+      </p>
+      <h2 className="text-4xl md:text-5xl font-medium tracking-tight mb-3 text-white">
+        You&apos;re{" "}
+        <span className="font-[family-name:var(--font-headline)] italic shiny-gold">
+          waitlisted.
+        </span>
+      </h2>
+      <p className="text-neutral-400 text-base md:text-lg mb-8">
+        Your waitlist pass. Share it, see you soon.
+      </p>
+      <div className="flex justify-center">
+        <div className="origin-top sm:scale-[0.78]">
+          <VirtualTicket
+            name={form.name || "Zo Citizen"}
+            handle={handle}
+            title={title}
+            ticketNo={ticketNo}
+            socials={form.socials}
+            shareSlug={shareSlug}
+          />
+        </div>
+      </div>
+      <button
+        onClick={onClose}
+        className="text-sm text-neutral-500 hover:text-white transition-colors underline underline-offset-4 mt-4"
+      >
+        Back to Zo House
+      </button>
     </div>
   );
 }

@@ -1,0 +1,218 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Existing master users table — earn does NOT alter its schema.
+// We only INSERT new rows (with `id` only; every other column has a default
+// or is nullable) when a fresh anon visitor needs an identity. Gamification
+// fields live in `earn_profiles` keyed by this id.
+model User {
+  id              String            @id
+  applications    Application[]
+  achievements    UserAchievement[]
+  earnProfile     EarnProfile?
+  builderAccounts BuilderAccount[]
+  builderShips    BuilderShip[]
+  builderProducts BuilderProduct[]
+
+  @@map("users")
+}
+
+// Connected third-party accounts for builder reputation. One row per
+// (user, provider). Tokens are AES-256-GCM encrypted at the app layer.
+model BuilderAccount {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  provider     String   // 'github' | 'x'
+  providerId   String   @map("provider_id")
+  handle       String
+  accessToken  String   @map("access_token")
+  refreshToken String?  @map("refresh_token")
+  scope        String?
+  connectedAt  DateTime @default(now()) @map("connected_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
+  @@map("builder_accounts")
+}
+
+// Normalized ship event stream. One row = one shippable thing.
+// See lib/github-ingest.ts for how these are populated.
+model BuilderShip {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  source     String   // 'github' | 'x' | 'zo-bounty'
+  kind       String   // 'pr_merged' | 'release' | 'commit' | 'product_launch' | 'x_post' | 'star_earned' | 'npm_publish' | 'repo_created'
+  ref        String?
+  repo       String?
+  title      String?
+  metadata   Json?
+  isPrivate  Boolean  @default(false) @map("is_private")
+  occurredAt DateTime @map("occurred_at")
+  ingestedAt DateTime @default(now()) @map("ingested_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, occurredAt])
+  @@index([kind, occurredAt])
+  @@map("builder_ships")
+}
+
+// Auto-detected products: GitHub repos with a homepage URL.
+// Builder toggles `isPublic` on the profile page.
+model BuilderProduct {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  repoFullName String   @map("repo_full_name")
+  homepageUrl  String   @map("homepage_url")
+  name         String
+  language     String?
+  stars        Int      @default(0)
+  isPublic     Boolean  @default(true) @map("is_public")
+  detectedAt   DateTime @default(now()) @map("detected_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, repoFullName])
+  @@index([userId])
+  @@map("builder_products")
+}
+
+model EarnProfile {
+  userId     String   @id @map("user_id")
+  handle     String   @unique
+  title      String   @default("Zo Newbie")
+  level      Int      @default(1)
+  xp         Int      @default(0)
+  xpMax      Int      @default(500) @map("xp_max")
+  streak     Int      @default(0)
+  questsDone Int      @default(0) @map("quests_done")
+  combo      Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("earn_profiles")
+}
+
+model Bounty {
+  id           String        @id @default(uuid())
+  title        String
+  description  String?
+  reward       String
+  rewardAmount Int           @default(0) @map("reward_amount")
+  tags         String[]
+  deadline     String?
+  source       String
+  sourceId     String        @map("source_id")
+  url          String?
+  imageUrl     String?       @map("image_url")
+  applicants   Int           @default(0)
+  status       String        @default("open")
+  color        String?
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  applications Application[]
+
+  @@unique([source, sourceId])
+  @@index([status, createdAt])
+  @@index([source])
+  @@map("bounties")
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  color       String?
+  members     Int      @default(0)
+  status      String   @default("active")
+  url         String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("projects")
+}
+
+model Grant {
+  id          String   @id @default(uuid())
+  title       String
+  amount      String
+  description String?
+  color       String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("grants")
+}
+
+model Application {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  bountyId  String   @map("bounty_id")
+  status    String   @default("applied")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bounty Bounty @relation(fields: [bountyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bountyId])
+  @@index([bountyId])
+  @@map("applications")
+}
+
+model Achievement {
+  id          String            @id
+  label       String
+  description String?
+  icon        String?
+  color       String?
+  sortOrder   Int               @default(0) @map("sort_order")
+  users       UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  userId        String   @map("user_id")
+  achievementId String   @map("achievement_id")
+  unlockedAt    DateTime @default(now()) @map("unlocked_at")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@id([userId, achievementId])
+  @@map("user_achievements")
+}
+
+model SeasonNode {
+  id        Int     @id
+  label     String
+  category  String?
+  sortOrder Int     @default(0) @map("sort_order")
+
+  @@map("season_nodes")
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(uuid())
+  name       String
+  userId     String?  @map("user_id")
+  bountyId   String?  @map("bounty_id")
+  source     String?
+  properties Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([name, createdAt])
+  @@index([userId])
+  @@map("analytics_events")
+}

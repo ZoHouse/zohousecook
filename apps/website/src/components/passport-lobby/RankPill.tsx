@@ -7,9 +7,6 @@ export interface RankPillProps {
   onClick?: () => void;
 }
 
-const GRADIENT_PASSPORT_BORDER =
-  'linear-gradient(138deg, #A7D921 0%, #DCFF80 4%, #3C4B14 55%, #587312 76%, #89B020 95%)';
-
 export function RankPill({ rank, xp, avatarUrl, onClick }: RankPillProps) {
   const Wrapper = onClick ? 'button' : 'div';
   const wrapperProps = onClick
@@ -29,12 +26,19 @@ export function RankPill({ rank, xp, avatarUrl, onClick }: RankPillProps) {
       style={{
         gap: 10,
         padding: '4px 16px 4px 4px',
-        borderRadius: 100,
-        background: '#202020',
-        border: '2px solid transparent',
-        backgroundImage: `linear-gradient(#202020, #202020), ${GRADIENT_PASSPORT_BORDER}`,
-        backgroundOrigin: 'border-box',
-        backgroundClip: 'padding-box, border-box',
+        borderRadius: 999,
+        // Match PageHeaderPill glass treatment so the left + right HUD anchors
+        // read as one cohesive system. No more green gradient edge.
+        background:
+          'linear-gradient(180deg, rgba(28,28,34,0.92) 0%, rgba(14,14,18,0.92) 100%)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        boxShadow:
+          '0 4px 18px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        // 30px avatar + 4px vertical padding = 38px. Bump to 44px for WCAG.
+        minHeight: 44,
+        minWidth: onClick ? 44 : undefined,
       }}
     >
       <span

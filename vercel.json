@@ -1,5 +1,19 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/dashboard",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "/passport?settings=profile",
+      "permanent": false
+    },
+    {
+      "source": "/dashboard/:path*",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "/passport?settings=profile",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/pm",
@@ -10,16 +24,6 @@
       "source": "/pm/:path*",
       "has": [{ "type": "host", "value": "zozozo.work" }],
       "destination": "https://zozozo-pm-samurais-dojo.vercel.app/pm/:path*"
-    },
-    {
-      "source": "/dashboard",
-      "has": [{ "type": "host", "value": "zozozo.work" }],
-      "destination": "https://zozozo-dashboard-samurais-dojo.vercel.app/dashboard"
-    },
-    {
-      "source": "/dashboard/:path*",
-      "has": [{ "type": "host", "value": "zozozo.work" }],
-      "destination": "https://zozozo-dashboard-samurais-dojo.vercel.app/dashboard/:path*"
     },
     {
       "source": "/admin",
@@ -80,6 +84,36 @@
       "source": "/meme/:path*",
       "has": [{ "type": "host", "value": "zozozo.work" }],
       "destination": "https://zozozo-meme-samurais-dojo.vercel.app/meme/:path*"
+    },
+    {
+      "source": "/earn",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-earn-samurais-dojo.vercel.app/earn"
+    },
+    {
+      "source": "/earn/:path*",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-earn-samurais-dojo.vercel.app/earn/:path*"
+    },
+    {
+      "source": "/earn",
+      "has": [{ "type": "host", "value": "zo.house" }],
+      "destination": "https://zozozo-earn-samurais-dojo.vercel.app/earn"
+    },
+    {
+      "source": "/earn/:path*",
+      "has": [{ "type": "host", "value": "zo.house" }],
+      "destination": "https://zozozo-earn-samurais-dojo.vercel.app/earn/:path*"
+    },
+    {
+      "source": "/social-engine",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-social-engine-samurais-dojo.vercel.app/social-engine"
+    },
+    {
+      "source": "/social-engine/:path*",
+      "has": [{ "type": "host", "value": "zozozo.work" }],
+      "destination": "https://zozozo-social-engine-samurais-dojo.vercel.app/social-engine/:path*"
     }
   ]
 }

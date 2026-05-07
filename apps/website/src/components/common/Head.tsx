@@ -9,16 +9,8 @@ const Head: React.FC<HeadProps> = () => {
     <>
       <NextHead>
         <link rel="preconnect" href="https://use.typekit.net" />
-        <link rel="prefetch" href="https://static.cdn.zo.xyz" />
-        <link
-          rel="shortcut icon"
-          href="https://static.cdn.zo.xyz/media/zo-v2-dynamic.svg"
-          type="image/svg+xml"
-        />
-        <link
-          rel="icon"
-          href="https://static.cdn.zo.xyz/media/zo-v2-dynamic.svg"
-        />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="icon" href="/favicon.ico" />
         <title>Zo World</title>
       </NextHead>
     </>

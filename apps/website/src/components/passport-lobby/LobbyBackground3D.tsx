@@ -1,117 +1,97 @@
-import { useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { MeshReflectorMaterial } from '@react-three/drei';
+import { useEffect, useMemo } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
 import { EffectComposer, Bloom, ChromaticAberration } from '@react-three/postprocessing';
 import { MeshGradient } from '@paper-design/shaders-react';
 import * as THREE from 'three';
 
-const CA_OFFSET = new THREE.Vector2(0.015, 0.015);
-
-// Obsidian (samurai-fx #09) — 8 near-blacks with thin light streaks. Liquid metal.
-const ABYSS_COLORS = [
-  '#000000',
-  '#14151C',
-  '#1E1B24',
-  '#55535E',
-  '#1D1D26',
-  '#111117',
-  '#0A0A0D',
-  '#000000',
+// Samurai FX #09 — Obsidian params, re-palette'd as liquid CHROME.
+// Metallic needs sharp highlight-to-shadow stratification — that's the optical
+// cue your brain reads as "polished metal" vs "flat silver paint". Palette
+// cycles: pure highlight → light steel → mid steel → DEEP cool shadow → mid
+// steel → light → highlight. Slight cool undertone (blue-gray, not warm).
+const CHROME_COLORS = [
+  '#FFFFFF',
+  '#DDE3EC',
+  '#9AA5B3',
+  '#3F4652',
+  '#1E232B',
+  '#6B7480',
+  '#C0C7D1',
+  '#FFFFFF',
 ];
 
-const CUBE_W = 14;
-const CUBE_H = 7;
-const CUBE_D = 10;
-const FLOOR_Y = -CUBE_H / 2;
+/** Aspect-aware camera framing. No scene geometry yet; kept for future additions. */
+function AspectAwareCamera() {
+  const { size, camera } = useThree();
+  const aspect = size.width / Math.max(size.height, 1);
 
-function WireCube() {
-  const edges = useMemo(() => {
-    const box = new THREE.BoxGeometry(CUBE_W, CUBE_H, CUBE_D);
-    const geom = new THREE.EdgesGeometry(box);
-    box.dispose();
-    return geom;
-  }, []);
-  return (
-    <lineSegments geometry={edges}>
-      <lineBasicMaterial color="#ffffff" transparent opacity={0.85} toneMapped={false} />
-    </lineSegments>
-  );
+  useEffect(() => {
+    let fov: number;
+    let pos: [number, number, number];
+
+    if (aspect > 1.0) {
+      fov = 58;
+      pos = [0, 0, 4.8];
+    } else if (aspect >= 0.5) {
+      fov = 72;
+      pos = [0, 0.4, 3.8];
+    } else {
+      fov = 78;
+      pos = [0, 0.5, 3.2];
+    }
+
+    const persp = camera as THREE.PerspectiveCamera;
+    persp.fov = fov;
+    persp.position.set(pos[0], pos[1], pos[2]);
+    persp.lookAt(0, 0, -1);
+    persp.updateProjectionMatrix();
+  }, [aspect, camera]);
+
+  return null;
 }
 
-/**
- * A pure-white emissive orb. Combined with high Bloom + ChromaticAberration
- * it blooms into an iridescent rainbow halo — the prism-refraction look.
- */
-function LightSource({ position, size = 0.45 }: { position: [number, number, number]; size?: number }) {
-  return (
-    <mesh position={position}>
-      <sphereGeometry args={[size, 24, 24]} />
-      <meshBasicMaterial color="#ffffff" toneMapped={false} />
-    </mesh>
-  );
-}
-
-function ReflectiveFloor() {
-  return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, FLOOR_Y, 0]}>
-      <planeGeometry args={[CUBE_W, CUBE_D]} />
-      <MeshReflectorMaterial
-        blur={[300, 100]}
-        resolution={1024}
-        mixBlur={1}
-        mixStrength={55}
-        roughness={0.75}
-        depthScale={1}
-        minDepthThreshold={0.4}
-        maxDepthThreshold={1.4}
-        color="#050505"
-        metalness={0.6}
-        mirror={0.7}
-      />
-    </mesh>
-  );
-}
-
-function Scene() {
+function Scene({ isLowEnd }: { isLowEnd: boolean }) {
   return (
     <>
-      <ambientLight intensity={0.15} />
+      <AspectAwareCamera />
 
-      <WireCube />
-      <ReflectiveFloor />
+      <ambientLight intensity={0.4} />
 
-      {/* Bright white lights — Bloom + ChromaticAberration turn these into
-          iridescent prism-refraction halos. */}
-      <LightSource position={[-4.2, -0.2, -4.9]} size={0.55} />
-      <LightSource position={[4.2, -0.2, -4.9]} size={0.55} />
-      <LightSource position={[0, 0.4, -4.95]} size={0.5} />
-      <LightSource position={[-6.9, 0.3, -1.5]} size={0.4} />
-      <LightSource position={[6.9, 0.3, -1.5]} size={0.4} />
-
-      {/* God-ray from above */}
-      <spotLight
-        position={[0, 3.2, -2]}
-        intensity={10}
-        angle={0.6}
-        penumbra={0.9}
-        color="#ffffff"
-        distance={14}
-      />
-
-      <EffectComposer multisampling={4}>
+      {/* Chrome has deep shadows now, so highlights have room to pop without
+          blowing out. Bloom kicks only on the brightest highlight streaks. */}
+      <EffectComposer multisampling={isLowEnd ? 0 : 4}>
         <Bloom
-          intensity={5}
-          luminanceThreshold={0.5}
-          luminanceSmoothing={0.5}
-          mipmapBlur
+          intensity={isLowEnd ? 0.4 : 0.7}
+          luminanceThreshold={0.8}
+          luminanceSmoothing={0.35}
+          mipmapBlur={!isLowEnd}
         />
-        <ChromaticAberration offset={CA_OFFSET} radialModulation={false} modulationOffset={0} />
+        <ChromaticAberration
+          offset={isLowEnd ? new THREE.Vector2(0.003, 0.003) : new THREE.Vector2(0.005, 0.005)}
+          radialModulation={false}
+          modulationOffset={0}
+        />
       </EffectComposer>
     </>
   );
 }
 
+/**
+ * Low-end heuristic: dial down Bloom + ChromaticAberration on weak devices
+ * so we stay at 60fps. Browser-only — component is ssr:false via dynamic import.
+ */
+function detectLowEnd(): boolean {
+  if (typeof window === 'undefined') return false;
+  const cores = navigator.hardwareConcurrency ?? 8;
+  if (cores < 4) return true;
+  if (/Android/i.test(navigator.userAgent)) return true;
+  if (window.matchMedia?.('(max-width: 480px) and (max-resolution: 2dppx)').matches) return true;
+  return false;
+}
+
 export function LobbyBackground3D() {
+  const isLowEnd = useMemo(detectLowEnd, []);
+
   return (
     <div
       aria-hidden
@@ -122,25 +102,26 @@ export function LobbyBackground3D() {
         pointerEvents: 'none',
       }}
     >
-      {/* Obsidian liquid-metal shader — slow breathing darkness behind the 3D scene */}
+      {/* Obsidian params + chrome palette = liquid chrome. Swirl bumped
+          slightly for more reflection flow; grain mix bumped for metal tooth. */}
       <MeshGradient
-        colors={ABYSS_COLORS}
-        speed={0.8}
-        scale={1.6}
+        colors={CHROME_COLORS}
+        speed={0.83}
+        scale={0.4}
         distortion={0}
-        swirl={0.1}
-        grainMixer={0.01}
-        grainOverlay={0}
+        swirl={0.25}
+        grainMixer={0.04}
+        grainOverlay={0.02}
         fit="cover"
         style={{ position: 'absolute', inset: 0 }}
       />
       <Canvas
         camera={{ position: [0, 0, 4.8], fov: 58 }}
-        gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
-        dpr={[1, 1.75]}
+        gl={{ antialias: !isLowEnd, alpha: true, powerPreference: 'high-performance' }}
+        dpr={isLowEnd ? [1, 1.25] : [1, 1.75]}
         style={{ position: 'absolute', inset: 0 }}
       >
-        <Scene />
+        <Scene isLowEnd={isLowEnd} />
       </Canvas>
     </div>
   );

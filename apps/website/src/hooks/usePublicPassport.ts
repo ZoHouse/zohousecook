@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-const PASSPORT_ENDPOINT = "https://api.nsfp.io.zo.xyz/api/v1/passport";
+const PASSPORT_ENDPOINT = `${
+  process.env.API_BASE_URL || "https://api.io.zo.xyz"
+}/api/v1/passport`;
 
 export type PassportLockState = "" | "locked" | "unlocked_free" | "unlocked_pro";
 
@@ -67,16 +69,15 @@ function normaliseRoles(raw: unknown): PublicPassport["roles"] {
     .filter((r): r is { key: string; label: string } => r !== null);
 }
 
-async function fetchPublicPassport(
+// Pure — takes the raw /api/v1/passport/{handle}/ body and produces the shape
+// consumers use. Exported so getServerSideProps can build the same object
+// once server-side and pass it as initialData, killing the duplicate client
+// fetch on refresh.
+export function normalisePublicPassport(
+  raw: Record<string, unknown>,
   handle: string,
-): Promise<PublicPassport | null> {
+): PublicPassport {
   const nickname = handle.endsWith(".zo") ? handle : `${handle}.zo`;
-  const res = await fetch(
-    `${PASSPORT_ENDPOINT}/${encodeURIComponent(nickname)}/`,
-  );
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`passport fetch failed: ${res.status}`);
-  const raw = (await res.json()) as Record<string, unknown>;
   const stats = (raw.stats as Record<string, unknown>) || {};
   return {
     handle,
@@ -115,14 +116,45 @@ async function fetchPublicPassport(
   };
 }
 
-export function usePublicPassport(handle: string | null) {
-  const [data, setData] = useState<PublicPassport | null>(null);
-  const [isLoading, setIsLoading] = useState(!!handle);
+async function fetchPublicPassport(
+  handle: string,
+): Promise<PublicPassport | null> {
+  const nickname = handle.endsWith(".zo") ? handle : `${handle}.zo`;
+  const res = await fetch(
+    `${PASSPORT_ENDPOINT}/${encodeURIComponent(nickname)}/`,
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`passport fetch failed: ${res.status}`);
+  const raw = (await res.json()) as Record<string, unknown>;
+  return normalisePublicPassport(raw, handle);
+}
+
+/**
+ * Fetches public passport data for a handle. Accepts optional `initialData`
+ * seeded from SSR — when the seed's handle matches, the hook skips the client
+ * fetch entirely, eliminating the duplicate round-trip on refresh of /@handle.
+ */
+export function usePublicPassport(
+  handle: string | null,
+  initialData?: PublicPassport | null,
+) {
+  const seed =
+    initialData && handle && initialData.handle === handle ? initialData : null;
+  const [data, setData] = useState<PublicPassport | null>(seed);
+  const [isLoading, setIsLoading] = useState(!!handle && !seed);
   const [isError, setIsError] = useState(false);
+  // Tracks the handle we last have good data for so a handle change forces a
+  // refetch but a same-handle remount doesn't.
+  const fetchedHandleRef = useRef<string | null>(seed?.handle ?? null);
 
   useEffect(() => {
     if (!handle) {
       setData(null);
+      setIsLoading(false);
+      return;
+    }
+    if (fetchedHandleRef.current === handle) {
+      setIsLoading(false);
       return;
     }
     let cancelled = false;
@@ -132,6 +164,7 @@ export function usePublicPassport(handle: string | null) {
       .then((res) => {
         if (cancelled) return;
         setData(res);
+        fetchedHandleRef.current = handle;
       })
       .catch(() => {
         if (cancelled) return;

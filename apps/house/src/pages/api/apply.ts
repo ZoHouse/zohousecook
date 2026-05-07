@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { parseSocialIdentity } from "../../lib/social-handle";
 
 const SUPABASE_URL =
   process.env.SUPABASE_URL || "https://elvaqxadfewcsohrswsi.supabase.co";
@@ -131,12 +132,22 @@ export default async function handler(
     auth: { persistSession: false },
   });
 
+  // Resolve a per-applicant share slug ("<platform>/<handle>") used by
+  // /p/[platform]/[handle] and the OG card route. Falls back to an
+  // unguessable random handle under the "u" namespace if socials don't
+  // resolve to a known platform.
+  const identity = parseSocialIdentity(body.socials || "");
+  const baseSlug = identity
+    ? `${identity.platform}/${identity.handle}`
+    : `u/${randomHandle()}`;
+  const shareSlug = await reserveShareSlug(client, baseSlug);
+
   // No unique constraint on email — plain insert. Duplicates are triaged
   // in the sales admin UI.
   const { data, error } = await client
     .from("pipeline_leads")
-    .insert(lead)
-    .select("id")
+    .insert({ ...lead, share_slug: shareSlug })
+    .select("id, created_at")
     .single();
 
   if (error) {
@@ -144,5 +155,58 @@ export default async function handler(
     return res.status(500).json({ error: error.message });
   }
 
-  return res.status(200).json({ ok: true, id: data?.id });
+  // Position on the zo.house waitlist (1-indexed). Race-safe via created_at
+  // ordering; if the count query fails we return null and the client falls
+  // back to a deterministic hash so the ticket still renders.
+  let waitlistNumber: number | null = null;
+  if (data?.created_at) {
+    const { count, error: countError } = await client
+      .from("pipeline_leads")
+      .select("*", { count: "exact", head: true })
+      .eq("source", "zo.house")
+      .lte("created_at", data.created_at);
+    if (!countError && typeof count === "number") {
+      waitlistNumber = count;
+    }
+  }
+
+  return res.status(200).json({
+    ok: true,
+    id: data?.id,
+    waitlist_number: waitlistNumber,
+    share_slug: shareSlug,
+  });
+}
+
+function randomHandle(): string {
+  // 8-char base36 random — ~10^12 keyspace, enough to avoid collisions for
+  // unparseable-socials applicants without growing the URL.
+  return Math.random().toString(36).slice(2, 10).padEnd(8, "x");
+}
+
+// Find the first available slug. Tries baseSlug, then baseSlug-2, baseSlug-3...
+// until SELECT confirms a row with that share_slug doesn't exist. We do a
+// pre-check rather than relying on the UNIQUE constraint alone because
+// Supabase doesn't surface the conflict cleanly through a single insert call.
+async function reserveShareSlug(
+  client: SupabaseClient,
+  baseSlug: string
+): Promise<string> {
+  for (let i = 0; i < 25; i += 1) {
+    const candidate = i === 0 ? baseSlug : `${baseSlug}-${i + 1}`;
+    const { data, error } = await client
+      .from("pipeline_leads")
+      .select("id")
+      .eq("share_slug", candidate)
+      .maybeSingle();
+    if (error) {
+      // Don't block apply on a slug-lookup failure — fall through to the
+      // base slug and let the UNIQUE constraint catch any race.
+      return candidate;
+    }
+    if (!data) return candidate;
+  }
+  // 25 collisions in a row is implausible — append a random suffix to
+  // guarantee uniqueness.
+  return `${baseSlug}-${randomHandle().slice(0, 4)}`;
 }

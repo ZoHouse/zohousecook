@@ -8,7 +8,13 @@ import tripperIcon from '../../assets/passport-lobby/cards/tripper-icon.svg';
 import creatorIcon from '../../assets/passport-lobby/cards/creator-icon.svg';
 import tribeBuilderIcon from '../../assets/passport-lobby/cards/tribe-builder-icon.svg';
 
-export interface PassesDockProps { onUpsell: (feature: ProUpsellFeature) => void }
+export interface PassesDockProps {
+  onUpsell: (feature: ProUpsellFeature) => void;
+  /** Optional mobile-only slot rendered flush above the 3 tier buttons inside
+   *  the same floating dock container. Used for the SeasonLevelBar so it
+   *  stacks directly above the role cards with no gap. */
+  mobileTopSlot?: React.ReactNode;
+}
 
 interface TierTile {
   feature: ProUpsellFeature | null; // null = disabled (Coming Soon)
@@ -28,21 +34,26 @@ interface TierTile {
   barPct?: number;
 }
 
+// Exact palette from the approved mockup — blue / deep violet / magenta.
+// Mobile + desktop render the same treatment; only icon, label, and level
+// differentiate per card.
 const TILES: TierTile[] = [
   {
     feature: 'tripper-tier',
-    label: 'Tripper',
+    label: 'Traveller',
     icon: tripperIcon,
     level: 6,
     xpText: '1200/2300 XP',
-    cardBg: 'linear-gradient(180deg, #0D4DFF 0%, #01184B 100%)',
+    cardBg: 'linear-gradient(180deg, #4A8BFF 0%, #1A52D9 60%, #0A2A80 100%)',
     shaderColors: ['#2F6BE8', '#5A9BFF'],
     shaderPositions: 42,
-    glowBg: 'linear-gradient(180deg, rgba(71,148,255,1) 18%, rgba(201,219,255,0.6) 71%)',
+    glowBg:
+      'linear-gradient(180deg, rgba(90,155,255,0.75) 18%, rgba(201,219,255,0.35) 71%)',
     glowBlur: 96,
-    labelFill: '#05143a',
-    levelFill: '#05143a',
-    barFill: 'linear-gradient(-31deg, #D1E2FF 0%, #81B0F7 30%, #307FF5 100%)',
+    labelFill: 'rgba(255,255,255,0.82)',
+    levelFill: 'rgba(255,255,255,0.82)',
+    barFill:
+      'linear-gradient(-31deg, #D1E2FF 0%, #81B0F7 30%, #307FF5 100%)',
     barPct: 26,
   },
   {
@@ -51,14 +62,16 @@ const TILES: TierTile[] = [
     icon: creatorIcon,
     level: 1,
     xpText: 'LV 0 • XP 0',
-    cardBg: 'linear-gradient(180deg, #33005B 0%, #10001D 100%)',
+    cardBg: 'linear-gradient(180deg, #3A0A5C 0%, #250442 60%, #0F0020 100%)',
     shaderColors: ['#8A26C2', '#C26BE8'],
     shaderPositions: 67,
-    glowBg: 'linear-gradient(180deg, rgba(149,13,255,1) 18%, rgba(212,156,255,0.3) 53%)',
+    glowBg:
+      'linear-gradient(180deg, rgba(149,13,255,0.6) 18%, rgba(212,156,255,0.2) 53%)',
     glowBlur: 160,
-    labelFill: '#1a0033',
-    levelFill: '#1a0033',
-    barFill: 'linear-gradient(-31deg, #EED1FF 0%, #D481F7 30%, #B330F5 100%)',
+    labelFill: 'rgba(255,255,255,0.78)',
+    levelFill: 'rgba(255,255,255,0.82)',
+    barFill:
+      'linear-gradient(-31deg, #EED1FF 0%, #D481F7 30%, #B330F5 100%)',
     barPct: 26,
   },
   {
@@ -67,14 +80,16 @@ const TILES: TierTile[] = [
     icon: tribeBuilderIcon,
     level: 2,
     xpText: '1200/2300 XP',
-    cardBg: 'linear-gradient(180deg, #FF0DC2 0%, #4B0137 100%)',
+    cardBg: 'linear-gradient(180deg, #E845B8 0%, #B01A82 60%, #4B0137 100%)',
     shaderColors: ['#E61AA3', '#FF66C4'],
     shaderPositions: 23,
-    glowBg: 'linear-gradient(180deg, rgba(255,71,215,1) 18%, rgba(255,201,246,0.6) 71%)',
+    glowBg:
+      'linear-gradient(180deg, rgba(255,71,215,0.7) 18%, rgba(255,201,246,0.35) 71%)',
     glowBlur: 96,
-    labelFill: '#2b001f',
-    levelFill: '#2b001f',
-    barFill: 'linear-gradient(-31deg, #FFD1FD 0%, #F381F7 30%, #F530EB 100%)',
+    labelFill: 'rgba(255,255,255,0.82)',
+    levelFill: 'rgba(255,255,255,0.85)',
+    barFill:
+      'linear-gradient(-31deg, #FFD1FD 0%, #F381F7 30%, #F530EB 100%)',
     barPct: 26,
   },
 ];
@@ -243,16 +258,56 @@ function MobileTierButton({ tile, onUpsell }: { tile: TierTile; onUpsell: Passes
       disabled={disabled}
       onClick={disabled ? undefined : () => onUpsell(tile.feature as ProUpsellFeature)}
       aria-label={disabled ? `${tile.label} — Coming Soon` : `${tile.label} tier`}
-      className="flex-1 flex flex-col items-center gap-1 py-3.5 px-2 transition-all active:scale-95 disabled:opacity-50"
+      className="relative overflow-hidden flex-1 flex flex-col items-center gap-1 py-3.5 px-2 transition-all active:scale-95 disabled:opacity-50"
       style={{
         background: tile.cardBg,
         borderRadius: 18,
         border: '1px solid rgba(255,255,255,0.12)',
         boxShadow: `0 4px 14px ${accent}55, inset 0 1px 0 rgba(255,255,255,0.28)`,
+        isolation: 'isolate',
       }}
     >
-      <Image src={tile.icon} alt="" width={40} height={40} style={{ width: 40, height: 40, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
+      {/* Same Warp shader desktop uses, so mobile matches luminance — slightly
+          tuned (smaller proportion, lower rotation angle) for the compact tile. */}
+      <Warp
+        colors={tile.shaderColors}
+        shape="stripes"
+        shapeScale={0.35}
+        distortion={0.38}
+        swirl={0.1}
+        swirlIterations={3}
+        proportion={0.55}
+        softness={0.6}
+        speed={0.3}
+        scale={0.9}
+        rotation={-77}
+        fit="cover"
+        style={{ position: 'absolute', inset: 0, zIndex: 0 }}
+      />
+      {/* Corner glow blob — same purpose as desktop, scaled to mobile footprint. */}
+      <div
+        aria-hidden
+        className="absolute pointer-events-none"
+        style={{
+          left: -18,
+          top: -22,
+          width: 88,
+          height: 88,
+          background: tile.glowBg,
+          filter: `blur(${Math.round(tile.glowBlur * 0.65)}px)`,
+          zIndex: 1,
+        }}
+      />
+      <Image
+        src={tile.icon}
+        alt=""
+        width={40}
+        height={40}
+        className="relative z-[2]"
+        style={{ width: 40, height: 40, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }}
+      />
       <span
+        className="relative z-[2]"
         style={{
           fontSize: 13,
           fontWeight: 700,
@@ -265,6 +320,7 @@ function MobileTierButton({ tile, onUpsell }: { tile: TierTile; onUpsell: Passes
       </span>
       {tile.level !== undefined && (
         <span
+          className="relative z-[2]"
           style={{
             fontSize: 11,
             fontWeight: 700,
@@ -280,20 +336,34 @@ function MobileTierButton({ tile, onUpsell }: { tile: TierTile; onUpsell: Passes
   );
 }
 
-function MobileTierNav({ onUpsell }: PassesDockProps) {
+function MobileTierNav({ onUpsell, mobileTopSlot }: PassesDockProps) {
   return (
     <nav
       aria-label="Tier progression"
       className={`${rubikClassName} fixed bottom-0 left-0 right-0 z-[15] md:hidden`}
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
+      {mobileTopSlot && (
+        <div
+          className="mb-2"
+          style={{
+            marginLeft: 'max(12px, env(safe-area-inset-left, 12px))',
+            marginRight: 'max(12px, env(safe-area-inset-right, 12px))',
+          }}
+        >
+          {mobileTopSlot}
+        </div>
+      )}
       <div
-        className="mx-3 mb-3 flex items-center justify-between gap-2.5 p-2.5"
+        className="mb-3 flex items-center justify-between gap-2.5 p-2.5"
         style={{
           background: '#0d0d10',
           borderRadius: 26,
           border: '1px solid rgba(255,255,255,0.14)',
           boxShadow: '0 10px 32px rgba(0,0,0,0.75)',
+          // Landscape notched phones: keep the dock clear of the left/right safe-area insets (min 12px to match mx-3).
+          marginLeft: 'max(12px, env(safe-area-inset-left, 12px))',
+          marginRight: 'max(12px, env(safe-area-inset-right, 12px))',
         }}
       >
         {TILES.map((tile) => (
@@ -304,11 +374,11 @@ function MobileTierNav({ onUpsell }: PassesDockProps) {
   );
 }
 
-export function PassesDock({ onUpsell }: PassesDockProps) {
+export function PassesDock({ onUpsell, mobileTopSlot }: PassesDockProps) {
   return (
     <>
       {/* Mobile: floating bottom nav with 3 tier buttons */}
-      <MobileTierNav onUpsell={onUpsell} />
+      <MobileTierNav onUpsell={onUpsell} mobileTopSlot={mobileTopSlot} />
 
       {/* Desktop: full tier cards, centered at bottom */}
       <div

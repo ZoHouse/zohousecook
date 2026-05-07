@@ -66,12 +66,6 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
             src={`${process.env.MEDIA_BASE_URL}/gallery/media/videos/3f49b592-4115-4117-8c80-c1a9e1d889a1_20240925123905.mp4`}
           />
 
-          {/* Travel and Adventure Image */}
-          <img
-            className="w-14 md:w-32 absolute top-[25%] right-0 md:top-0 md:right-0 -rotate-[15deg] z-20"
-            src={`${process.env.MEDIA_BASE_URL}/gallery/media/images/9685203b-b49f-4c52-9caf-7869cce83eb0_20240823082641.png?w=400`}
-            alt="Travel and Adventure"
-          />
         </div>
 
         {/* Video Section */}
@@ -85,12 +79,6 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
             playsInline
           ></video>
         </div>
-        <img
-          className="w-20 md:w-[200px] absolute aspect-square bottom-[0%] md:bottom-0 right-[50%] translate-x-[50%] md:translate-x-0 md:right-[15%] -rotate-[30deg]"
-          src={`${process.env.MEDIA_BASE_URL}/gallery/media/images/21fec23a-6a98-4ece-8483-5d6017e18102_20240823082620.png?w=400`}
-          alt="science and tech"
-        />
-
         <div className="w-[120px] h-[156px] md:w-[260px] md:h-[340px] overflow-hidden absolute left-0 bottom-[5%] md:bottom-[5%] -rotate-[9deg] rounded-2xl inner-border">
           <video
             className="w-full h-full object-cover z-100"
@@ -102,11 +90,6 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
           ></video>
         </div>
 
-        <img
-          className="w-20 md:w-[200px] absolute top-[15%] md:top-0 z-10 -left-5 md:left-0"
-          src={`${process.env.MEDIA_BASE_URL}/gallery/media/images/75adf59a-9b67-41e7-a067-1bcea94c4082_20240823082424.png?w=320`}
-          alt="science and tech"
-        />
       </section>
       <hr className="w-[80%] md:w-[60%] horizontal-divider my-10" />
     </>

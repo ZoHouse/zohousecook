@@ -1,5 +1,5 @@
+import Link from "next/link";
 import React from "react";
-import { toast } from "sonner";
 import GlowCard from "./GlowCard";
 import { syneClassName, rubikClassName } from "../utils/font";
 
@@ -97,12 +97,12 @@ const WhyPassportPlus: React.FC = () => {
               </div>
             </div>
 
-            <button
-              className="mt-6 w-full bg-white/90 hover:bg-white text-[#111] rounded-xl h-14 font-medium text-base transition-colors"
-              onClick={() => toast("Coming Soon")}
+            <Link
+              href="/pro"
+              className="mt-6 inline-flex w-full items-center justify-center bg-white/90 hover:bg-white text-[#111] rounded-xl h-14 font-medium text-base transition-colors"
             >
               Become a Member
-            </button>
+            </Link>
           </div>
         </div>
       </GlowCard>

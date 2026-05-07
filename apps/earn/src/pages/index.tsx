@@ -1,0 +1,1157 @@
+import {
+  Navbar,
+  NavBody,
+  MobileNav,
+  NavbarLogo,
+  MobileNavHeader,
+  MobileNavToggle,
+  MobileNavMenu,
+} from "@/components/ui/resizable-navbar";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useAuth } from "@zo/auth";
+import {
+  IconCoin,
+  IconUsers,
+  IconClock,
+  IconLayoutGrid,
+  IconTable,
+  IconExternalLink,
+  IconFlame,
+  IconBolt,
+  IconTrophy,
+  IconShield,
+  IconStar,
+  IconCrown,
+  IconSwords,
+  IconTarget,
+  IconDiamond,
+  IconLock,
+  IconCheck,
+  IconMapPin,
+  IconRoute,
+  IconCalendarEvent,
+  IconArrowRight,
+  IconChevronLeft,
+  IconChevronRight,
+} from "@tabler/icons-react";
+import { track } from "@/lib/track";
+import { AuthCorner } from "@/components/AuthCorner";
+import { NavChip } from "@/components/NavChip";
+
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
+const navItems = [
+  { name: "Quests", link: "/" },
+  { name: "Leaderboard", link: "/leaderboard" },
+  { name: "Projects", link: "/projects" },
+  { name: "Grants", link: "/grants" },
+];
+
+type Bounty = {
+  id: string;
+  title: string;
+  description: string | null;
+  reward: string;
+  applicants: number;
+  deadline: string | null;
+  tags: string[];
+  color: string | null;
+  source: string;
+  url: string | null;
+  imageUrl?: string | null;
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  superteam: "Superteam",
+  layer3: "Layer3",
+  gitcoin: "Gitcoin",
+  dework: "Dework",
+  replit: "Replit",
+  github: "GitHub",
+};
+
+type Rarity = "common" | "rare" | "epic" | "legendary";
+
+const RARITY_STYLES: Record<
+  Rarity,
+  { label: string; bg: string; border: string; text: string; glow: string; icon: typeof IconStar }
+> = {
+  common: {
+    label: "Common",
+    bg: "bg-zui-light",
+    border: "border-zui-stroke",
+    text: "text-zui-white/80",
+    glow: "",
+    icon: IconShield,
+  },
+  rare: {
+    label: "Rare",
+    bg: "bg-zui-blue/15",
+    border: "border-zui-blue/40",
+    text: "text-zui-blue",
+    glow: "hover:shadow-[0_0_24px_0_rgba(106,119,221,0.45)]",
+    icon: IconStar,
+  },
+  epic: {
+    label: "Epic",
+    bg: "bg-zui-purple/15",
+    border: "border-zui-purple/40",
+    text: "text-zui-pink",
+    glow: "hover:shadow-[0_0_28px_0_rgba(152,3,206,0.5)]",
+    icon: IconDiamond,
+  },
+  legendary: {
+    label: "Legendary",
+    bg: "bg-zui-yellow/15",
+    border: "border-zui-yellow/40",
+    text: "text-zui-yellow",
+    glow: "legendary-glow",
+    icon: IconCrown,
+  },
+};
+
+function parseReward(reward: string): number {
+  if (!reward) return 0;
+  const numeric = Number(reward.replace(/[^0-9.]/g, ""));
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function getRarity(reward: string): Rarity {
+  const amount = parseReward(reward);
+  if (amount >= 5000) return "legendary";
+  if (amount >= 1000) return "epic";
+  if (amount >= 250) return "rare";
+  return "common";
+}
+
+function getXP(reward: string): number {
+  const amount = parseReward(reward);
+  return Math.max(50, Math.round(amount * 2));
+}
+
+type Player = {
+  handle: string;
+  level: number;
+  title: string;
+  xp: number;
+  xpMax: number;
+  streak: number;
+  questsDone: number;
+  combo: number;
+  achievements: Array<{
+    id: string;
+    label: string;
+    desc: string | null;
+    icon: string | null;
+    color: string | null;
+    unlocked: boolean;
+  }>;
+};
+
+const DEFAULT_PLAYER: Player = {
+  handle: "ZoBuilder_01",
+  level: 12,
+  title: "Bounty Hunter",
+  xp: 2340,
+  xpMax: 3000,
+  streak: 7,
+  questsDone: 18,
+  combo: 3,
+  achievements: [],
+};
+
+export default function Home() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [bounties, setBounties] = useState<Bounty[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sourceFilter, setSourceFilter] = useState<string | null>(null);
+  const [player, setPlayer] = useState<Player>(DEFAULT_PLAYER);
+  const [seasonPath, setSeasonPath] = useState<PathNode[]>(DEFAULT_SEASON_PATH);
+
+  useEffect(() => {
+    async function fetchBounties() {
+      try {
+        const params = new URLSearchParams();
+        if (sourceFilter) params.set("source", sourceFilter);
+        const res = await fetch(`${basePath}/api/bounties?${params.toString()}`);
+        const data = await res.json();
+        setBounties(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Failed to fetch bounties:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchBounties();
+    track("source_filter", { source: sourceFilter ?? "all" });
+  }, [sourceFilter]);
+
+  useEffect(() => {
+    track("page_view", { properties: { path: "/" } });
+    fetch(`${basePath}/api/me`)
+      .then((r) => r.json())
+      .then((data: Player) => setPlayer((p) => ({ ...p, ...data })))
+      .catch(() => {});
+    fetch(`${basePath}/api/season-path`)
+      .then((r) => r.json())
+      .then((data: { path: PathNode[] }) => {
+        if (Array.isArray(data?.path) && data.path.length > 0) setSeasonPath(data.path);
+      })
+      .catch(() => {});
+  }, []);
+
+  const xpPct = Math.min(100, Math.round((player.xp / player.xpMax) * 100));
+
+  return (
+    <div className="min-h-screen bg-zui-dark font-sans text-zui-white">
+      <Navbar>
+        <NavBody>
+          <div className="flex items-center gap-6">
+            <NavbarLogo />
+            <nav className="flex items-center gap-1 text-sm font-medium tracking-wide text-zui-white/70">
+              {navItems.map((item, idx) => (
+                <Link
+                  key={`nav-link-${idx}`}
+                  href={item.link}
+                  className="rounded-md border border-transparent px-3 py-1.5 transition-colors hover:border-zui-stroke hover:bg-zui-light/60 hover:text-zui-white"
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </nav>
+          </div>
+          <div className="flex items-center gap-3">
+            <AuthCorner xpPct={xpPct} player={player} />
+          </div>
+        </NavBody>
+
+        <MobileNav>
+          <MobileNavHeader>
+            <NavbarLogo />
+            <MobileNavToggle
+              isOpen={isMobileMenuOpen}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            />
+          </MobileNavHeader>
+
+          <MobileNavMenu
+            isOpen={isMobileMenuOpen}
+            onClose={() => setIsMobileMenuOpen(false)}
+          >
+            {navItems.map((item, idx) => (
+              <Link
+                key={`mobile-link-${idx}`}
+                href={item.link}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="text-base font-medium tracking-wide text-zui-white"
+              >
+                {item.name}
+              </Link>
+            ))}
+          </MobileNavMenu>
+        </MobileNav>
+      </Navbar>
+
+      <div className="lg:hidden">
+        <PlayerChip xpPct={xpPct} player={player} />
+      </div>
+
+      <div className="flex flex-col lg:flex-row lg:items-start">
+        <main className="min-w-0 flex-1 px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pt-32">
+          <section id="bounties">
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <IconSwords size={16} className="text-zui-green" />
+              <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-zui-white/50">
+                Quest Board
+              </span>
+            </div>
+            <h2 className="font-headline text-6xl leading-[1.05] tracking-tight text-zui-white md:text-7xl">
+              Open Quests
+            </h2>
+            <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-medium uppercase tracking-[0.15em] text-zui-white/40">
+              <span className="text-zui-white">{bounties.length || "—"}</span> live
+              <span className="text-zui-white/20">·</span>
+              <span className="text-zui-white">$128K</span> paid
+              <span className="text-zui-white/20">·</span>
+              <span className="text-zui-white">1,200</span> hunters
+              <span className="text-zui-white/20">·</span>
+              <span className="text-zui-white">85</span> guilds
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setSourceFilter(null)}
+                className={`rounded-full border px-3.5 py-1 text-xs font-medium tracking-wide transition-colors ${
+                  !sourceFilter
+                    ? "border-zui-green bg-zui-green text-zui-dark"
+                    : "border-zui-stroke bg-zui-light/40 text-zui-white/70 hover:border-zui-white/30 hover:text-zui-white"
+                }`}
+              >
+                All
+              </button>
+              {Object.entries(SOURCE_LABELS).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setSourceFilter(key)}
+                  className={`rounded-full border px-3.5 py-1 text-xs font-medium tracking-wide transition-colors ${
+                    sourceFilter === key
+                      ? "border-zui-green bg-zui-green text-zui-dark"
+                      : "border-zui-stroke bg-zui-light/40 text-zui-white/70 hover:border-zui-white/30 hover:text-zui-white"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1 rounded-lg border border-zui-stroke bg-zui-light/40 p-1">
+              <button
+                onClick={() => setViewMode("cards")}
+                className={`rounded-md p-2 transition-colors ${
+                  viewMode === "cards"
+                    ? "bg-zui-green text-zui-dark"
+                    : "text-zui-white/60 hover:bg-zui-light hover:text-zui-white"
+                }`}
+              >
+                <IconLayoutGrid size={18} />
+              </button>
+              <button
+                onClick={() => setViewMode("table")}
+                className={`rounded-md p-2 transition-colors ${
+                  viewMode === "table"
+                    ? "bg-zui-green text-zui-dark"
+                    : "text-zui-white/60 hover:bg-zui-light hover:text-zui-white"
+                }`}
+              >
+                <IconTable size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-lg font-medium text-zui-white/40">Loading quests...</div>
+          </div>
+        ) : bounties.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="text-lg font-medium text-zui-white/40">No quests found</div>
+            <p className="mt-2 text-sm text-zui-white/30">
+              Run the scraper to populate quests.
+            </p>
+          </div>
+        ) : viewMode === "cards" ? (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {bounties.map((bounty) => (
+              <BountyCard key={bounty.id} bounty={bounty} />
+            ))}
+          </div>
+        ) : (
+          <BountyTable bounties={bounties} />
+        )}
+          </section>
+        </main>
+
+        <aside className="px-4 pb-16 sm:px-6 lg:sticky lg:top-28 lg:ml-auto lg:w-[460px] lg:shrink-0 lg:self-start lg:pr-4 ">
+          <ZoEvents />
+        </aside>
+      </div>
+
+    </div>
+  );
+}
+
+function PlayerChip({ xpPct, player }: { xpPct: number; player: Player }) {
+  const trophiesWon = player.achievements.filter((a) => a.unlocked).length;
+  const trophiesTotal = player.achievements.length || 8;
+  return (
+    <section className="mx-auto max-w-6xl px-4 pt-24 md:pt-28">
+      <div className="flex items-center gap-3 rounded-xl border border-zui-stroke bg-zui-lighter px-3 py-2.5 md:gap-4 md:px-4 md:py-3">
+        <div className="relative shrink-0">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-zui-green/40 bg-zui-green md:h-11 md:w-11">
+            <span className="text-base font-bold text-zui-dark md:text-lg">Z</span>
+          </div>
+          <span className="absolute -bottom-1.5 -right-1.5 rounded-md border border-zui-yellow/60 bg-zui-yellow px-1 py-0.5 text-[9px] font-bold leading-none text-zui-dark">
+            LV {player.level}
+          </span>
+        </div>
+
+        <div className="hidden min-w-0 flex-col md:flex">
+          <span className="truncate text-sm font-bold uppercase leading-tight text-zui-white">
+            {player.handle}
+          </span>
+          <span className="text-[10px] font-medium uppercase tracking-wider text-zui-white/50">
+            {player.title}
+          </span>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="mb-0.5 flex items-center justify-between">
+            <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-zui-white">
+              <IconBolt size={10} className="text-zui-yellow" /> XP
+            </span>
+            <span className="text-[9px] font-bold tabular-nums text-zui-white/50">
+              {player.xp.toLocaleString()} / {player.xpMax.toLocaleString()}
+            </span>
+          </div>
+          <div className="relative h-2.5 w-full overflow-hidden rounded-sm border border-zui-stroke bg-zui-dark">
+            <div className="xp-bar-fill h-full" style={{ width: `${xpPct}%` }} />
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          <MiniPill
+            icon={<IconFlame size={12} className="flame-flicker text-zui-orange" />}
+            value={`${player.streak}d`}
+            title="Streak"
+          />
+          <MiniPill
+            icon={<IconTrophy size={12} className="text-zui-yellow" />}
+            value={`${trophiesWon}/${trophiesTotal}`}
+            title="Trophies"
+            hideOnMobile
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MiniPill({
+  icon,
+  value,
+  title,
+  hideOnMobile,
+}: {
+  icon: React.ReactNode;
+  value: string;
+  title: string;
+  hideOnMobile?: boolean;
+}) {
+  return (
+    <div
+      title={title}
+      className={`flex items-center gap-1 rounded-md border border-zui-stroke bg-zui-light/60 px-1.5 py-1 ${
+        hideOnMobile ? "hidden sm:flex" : ""
+      }`}
+    >
+      {icon}
+      <span className="text-[11px] font-bold tabular-nums text-zui-white">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+type PathStatus = "done" | "current" | "locked";
+type PathNode = { id: number; status: PathStatus; label: string };
+
+const DEFAULT_SEASON_PATH: PathNode[] = [
+  { id: 1, status: "done", label: "Intro" },
+  { id: 2, status: "done", label: "First Blood" },
+  { id: 3, status: "done", label: "Solana" },
+  { id: 4, status: "done", label: "React" },
+  { id: 5, status: "current", label: "Layer3" },
+  { id: 6, status: "locked", label: "Content" },
+  { id: 7, status: "locked", label: "Design" },
+  { id: 8, status: "locked", label: "AI Agents" },
+  { id: 9, status: "locked", label: "Web3" },
+  { id: 10, status: "locked", label: "Boss" },
+];
+
+type ZoEvent = {
+  id: string;
+  title: string;
+  start_at: string;
+  end_at: string | null;
+  cover_url: string | null;
+  url: string | null;
+  location: string | null;
+  house: "BLRxZo" | "WTFxZo" | null;
+};
+
+const CAROUSEL_INTERVAL_MS = 4500;
+
+const HOUSE_COLORS: Record<NonNullable<ZoEvent["house"]>, string> = {
+  BLRxZo: "#66DF48",
+  WTFxZo: "#FFD600",
+};
+
+const FALLBACK_COLOR = "#9803CE";
+
+function formatEventDate(iso: string) {
+  const d = new Date(iso);
+  const day = d.toLocaleDateString("en-IN", { weekday: "short" });
+  const date = d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  const time = d.toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+  return { day, date, time };
+}
+
+function ZoEvents() {
+  const [idx, setIdx] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [events, setEvents] = useState<ZoEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${basePath}/api/events`)
+      .then((r) => r.json())
+      .then((data: { events?: ZoEvent[] }) => {
+        if (cancelled) return;
+        setEvents(Array.isArray(data?.events) ? data.events : []);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (paused || events.length < 2) return;
+    const timer = setInterval(() => {
+      setIdx((i) => (i + 1) % events.length);
+    }, CAROUSEL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [paused, events.length]);
+
+  const Header = (
+    <div className="flex items-center justify-between px-1">
+      <div className="flex items-center gap-2">
+        <IconCalendarEvent size={14} className="text-zui-green" />
+        <span className="text-[11px] font-medium uppercase tracking-widest text-zui-white">
+          This week at Zo
+        </span>
+      </div>
+      <a
+        href="https://lu.ma/zohouse"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-0.5 text-[10px] font-medium uppercase tracking-wider text-zui-white/50 transition-colors hover:text-zui-white"
+      >
+        All
+        <IconArrowRight size={11} />
+      </a>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {Header}
+        <div
+          className="flex items-center justify-center rounded-xl border border-zui-stroke bg-zui-lighter text-[11px] font-medium uppercase tracking-wider text-zui-white/40"
+          style={{ aspectRatio: "9 / 16" }}
+        >
+          Loading events…
+        </div>
+      </div>
+    );
+  }
+
+  if (events.length === 0) {
+    return (
+      <div className="space-y-3">
+        {Header}
+        <div
+          className="flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-zui-stroke bg-zui-lighter px-4 text-center"
+          style={{ aspectRatio: "9 / 16" }}
+        >
+          <span className="text-[11px] font-medium uppercase tracking-wider text-zui-white/40">
+            No upcoming events
+          </span>
+          <span className="text-[10px] text-zui-white/30">
+            Check back soon
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {Header}
+
+      <div
+        className="group relative overflow-hidden rounded-xl border border-zui-stroke bg-zui-lighter shadow-[0_8px_32px_0_rgba(0,0,0,0.4)]"
+        style={{ aspectRatio: "9 / 16" }}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+      >
+        <div
+          className="flex h-full transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          style={{ transform: `translateX(-${idx * 100}%)` }}
+        >
+          {events.map((event) => (
+            <EventBanner key={event.id} event={event} />
+          ))}
+        </div>
+
+        <div className="absolute inset-x-0 top-0 z-10 h-1 bg-zui-white/10">
+          <div
+            key={`${idx}-${paused}`}
+            className="h-full bg-zui-green"
+            style={{
+              width: "100%",
+              animation: paused
+                ? "none"
+                : `zoEventProgress ${CAROUSEL_INTERVAL_MS}ms linear forwards`,
+            }}
+          />
+        </div>
+
+        {events.length > 1 && (
+          <>
+            <button
+              type="button"
+              aria-label="Previous event"
+              onClick={() =>
+                setIdx((i) => (i - 1 + events.length) % events.length)
+              }
+              className="absolute left-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-zui-stroke bg-zui-dark/80 opacity-0 backdrop-blur-sm transition-opacity hover:bg-zui-dark group-hover:opacity-100"
+            >
+              <IconChevronLeft size={14} strokeWidth={2.5} className="text-zui-white" />
+            </button>
+            <button
+              type="button"
+              aria-label="Next event"
+              onClick={() => setIdx((i) => (i + 1) % events.length)}
+              className="absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-zui-stroke bg-zui-dark/80 opacity-0 backdrop-blur-sm transition-opacity hover:bg-zui-dark group-hover:opacity-100"
+            >
+              <IconChevronRight size={14} strokeWidth={2.5} className="text-zui-white" />
+            </button>
+          </>
+        )}
+      </div>
+
+      {events.length > 1 && (
+        <div className="flex items-center justify-center gap-1.5">
+          {events.map((e, i) => (
+            <button
+              type="button"
+              key={e.id}
+              onClick={() => setIdx(i)}
+              aria-label={`Go to event ${i + 1}`}
+              className={`h-1.5 rounded-full transition-all ${
+                i === idx ? "w-6 bg-zui-green" : "w-1.5 bg-zui-white/25"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EventBanner({ event }: { event: ZoEvent }) {
+  const { day, date, time } = formatEventDate(event.start_at);
+  const houseColor = event.house ? HOUSE_COLORS[event.house] : FALLBACK_COLOR;
+
+  return (
+    <a
+      href={event.url ?? "#"}
+      target={event.url ? "_blank" : undefined}
+      rel="noopener noreferrer"
+      className="group relative flex h-full w-full shrink-0 basis-full flex-col"
+    >
+      <div className="relative flex-1">
+        {event.cover_url ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={event.cover_url}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div
+              className="absolute inset-0 mix-blend-multiply"
+              style={{ backgroundColor: `${houseColor}22` }}
+            />
+          </>
+        ) : (
+          <>
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundColor: houseColor,
+                backgroundImage:
+                  "repeating-linear-gradient(45deg, rgba(255,255,255,0.1) 0 14px, transparent 14px 28px)",
+              }}
+            />
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+              <span
+                className="text-sm font-black uppercase tracking-[0.3em] text-white/80"
+                style={{ textShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
+              >
+                {day}
+              </span>
+              <span
+                className="mt-1 font-black tracking-tight text-white"
+                style={{
+                  fontSize: "96px",
+                  lineHeight: 1,
+                  textShadow: "0 3px 6px rgba(0,0,0,0.35)",
+                }}
+              >
+                {date.split(" ")[0]}
+              </span>
+              <span
+                className="mt-1 text-xs font-black uppercase tracking-[0.25em] text-white/80"
+                style={{ textShadow: "0 1px 2px rgba(0,0,0,0.3)" }}
+              >
+                {date.split(" ")[1] ?? ""}
+              </span>
+            </div>
+          </>
+        )}
+
+        <div className="absolute right-3 top-3 flex flex-col items-end gap-1.5">
+          {event.location && (
+            <span className="rounded-full border border-zui-stroke bg-zui-dark/80 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-zui-white backdrop-blur-sm">
+              {event.location}
+            </span>
+          )}
+          {event.house && (
+            <span
+              className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white"
+              style={{ textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-zui-green" />
+              {event.house}
+            </span>
+          )}
+        </div>
+
+        {event.cover_url && (
+          <div className="absolute left-4 top-4 flex flex-col leading-none">
+            <span
+              className="text-[11px] font-black uppercase tracking-[0.2em] text-white"
+              style={{ textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}
+            >
+              {day}
+            </span>
+            <span
+              className="mt-1 font-black tracking-tight text-white"
+              style={{
+                fontSize: "36px",
+                lineHeight: 1,
+                textShadow: "0 2px 4px rgba(0,0,0,0.55)",
+              }}
+            >
+              {date}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-zui-stroke bg-zui-lighter px-4 py-3">
+        <h4 className="mb-1.5 line-clamp-2 text-sm font-bold leading-tight text-zui-white">
+          {event.title}
+        </h4>
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-zui-white/50">
+            {time}
+          </span>
+          <span className="flex h-6 w-6 items-center justify-center rounded-full border border-zui-green/40 bg-zui-green text-zui-dark transition-transform group-hover:translate-x-0.5">
+            <IconArrowRight size={10} strokeWidth={2.5} />
+          </span>
+        </div>
+      </div>
+    </a>
+  );
+}
+
+function SeasonPath({ nodes }: { nodes: PathNode[] }) {
+  const doneCount = nodes.filter((n) => n.status === "done").length;
+  const progressPct = Math.max(
+    0,
+    Math.min(100, ((doneCount - 0.5) / Math.max(1, nodes.length - 1)) * 100),
+  );
+
+  return (
+    <div className="rounded-2xl border border-zui-stroke bg-zui-lighter px-5 py-4 md:px-6 md:py-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <IconRoute size={14} className="text-zui-green" />
+          <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-zui-white">
+            Season 1 Path · The First Hunt
+          </span>
+          <span className="hidden rounded-full border border-zui-green/40 bg-zui-green/15 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-zui-green sm:inline">
+            Live
+          </span>
+        </div>
+        <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-zui-white/50">
+          {doneCount} / {nodes.length} cleared
+        </span>
+      </div>
+
+      <div className="relative overflow-x-auto pb-1">
+        <div className="relative min-w-[720px]">
+          <div
+            className="absolute left-5 right-5 top-[21px] border-t-[2px] border-dashed border-zui-stroke"
+            aria-hidden
+          />
+          <div
+            className="absolute top-[21px] h-[2px] bg-zui-green"
+            style={{ left: "20px", width: `calc(${progressPct}% - 10px)` }}
+            aria-hidden
+          />
+
+          <div className="relative flex justify-between">
+            {nodes.map((node) => (
+              <PathNodeMarker key={node.id} node={node} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PathNodeMarker({ node }: { node: PathNode }) {
+  const base =
+    "relative z-10 flex h-10 w-10 items-center justify-center rounded-full border-[2px] transition-all";
+  const styles =
+    node.status === "done"
+      ? "bg-zui-green border-zui-green/60"
+      : node.status === "current"
+      ? "bg-zui-yellow border-zui-yellow/60 ring-4 ring-zui-yellow/25"
+      : "bg-zui-light border-zui-stroke opacity-70";
+
+  return (
+    <a
+      href="#bounties"
+      className="group flex flex-col items-center gap-1"
+      title={node.label}
+    >
+      <div className={`${base} ${styles} ${node.status === "current" ? "animate-pulse" : ""}`}>
+        {node.status === "done" && (
+          <IconCheck size={18} strokeWidth={3} className="text-zui-dark" />
+        )}
+        {node.status === "current" && (
+          <IconMapPin size={16} strokeWidth={2.5} className="text-zui-dark" />
+        )}
+        {node.status === "locked" && (
+          <IconLock size={13} className="text-zui-white/40" />
+        )}
+      </div>
+      <span
+        className={`text-[9px] font-medium uppercase tracking-wider ${
+          node.status === "locked" ? "text-zui-white/30" : "text-zui-white"
+        } whitespace-nowrap`}
+      >
+        {node.label}
+      </span>
+      {node.status === "current" && (
+        <span className="-mt-0.5 text-[8px] font-bold uppercase tracking-widest text-zui-green">
+          You
+        </span>
+      )}
+    </a>
+  );
+}
+
+function RarityBadge({ rarity }: { rarity: Rarity }) {
+  const style = RARITY_STYLES[rarity];
+  const Icon = style.icon;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${style.bg} ${style.border} ${style.text}`}
+    >
+      <Icon size={11} />
+      {style.label}
+    </span>
+  );
+}
+
+function BountyCard({ bounty }: { bounty: Bounty }) {
+  const { isLoggedIn, showLoginModal } = useAuth();
+  const rarity = getRarity(bounty.reward);
+  const xp = getXP(bounty.reward);
+  const style = RARITY_STYLES[rarity];
+  const slotsMax = 20;
+  const slotsFilled = Math.min(slotsMax, bounty.applicants);
+  const progressPct = Math.round((slotsFilled / slotsMax) * 100);
+  const isHot = bounty.applicants >= 10;
+
+  const handleAccept = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    track("bounty_click", { bountyId: bounty.id, source: bounty.source });
+    if (!isLoggedIn) {
+      e.preventDefault();
+      showLoginModal(["mobile"]);
+      return;
+    }
+    if (!bounty.id.startsWith("demo-")) {
+      fetch(`${basePath}/api/bounties/${bounty.id}/apply`, {
+        method: "POST",
+        keepalive: true,
+      }).catch(() => {});
+    }
+    if (!bounty.url) {
+      e.preventDefault();
+    }
+  };
+
+  return (
+    <a
+      href={bounty.url || "#"}
+      target={bounty.url ? "_blank" : undefined}
+      rel="noopener noreferrer"
+      onClick={handleAccept}
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border border-zui-stroke bg-zui-lighter transition-all hover:-translate-y-1 hover:border-zui-white/20 ${style.glow}`}
+    >
+      <div className="rarity-sheen pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-xl" />
+
+      <div
+        className="h-1 w-full"
+        style={{ backgroundColor: bounty.color || "#66DF48" }}
+      />
+
+      <div className={`flex items-center justify-between border-b border-zui-stroke bg-zui-light/40 px-4 py-2`}>
+        <RarityBadge rarity={rarity} />
+        <div className="flex items-center gap-1.5">
+          {isHot && (
+            <span className="flex items-center gap-0.5 rounded-full border border-zui-orange/40 bg-zui-orange/15 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-zui-orange">
+              <IconFlame size={10} /> Hot
+            </span>
+          )}
+          <span className="flex items-center gap-0.5 rounded-full border border-zui-yellow/40 bg-zui-yellow/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zui-yellow">
+            <IconBolt size={10} /> +{xp} XP
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-1 flex-col p-6">
+        <div className="mb-3 flex items-start gap-3">
+          <div
+            className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zui-stroke"
+            style={{ backgroundColor: bounty.color || "#202020" }}
+          >
+            {bounty.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={bounty.imageUrl}
+                alt=""
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <span className="text-xl font-bold text-zui-white">
+                {bounty.title.charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              <span
+                className="rounded-full border border-zui-stroke px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zui-white"
+                style={{ backgroundColor: `${bounty.color || "#202020"}33` }}
+              >
+                {SOURCE_LABELS[bounty.source] || bounty.source}
+              </span>
+              {bounty.tags.slice(0, 2).map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-zui-stroke bg-zui-light/40 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zui-white/70"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+            <h3 className="text-base font-semibold leading-snug text-zui-white">
+              {bounty.title}
+            </h3>
+          </div>
+        </div>
+        {bounty.description && (
+          <p className="mb-4 flex-1 text-sm text-zui-white/60">
+            {bounty.description}
+          </p>
+        )}
+
+        <div className="mb-3">
+          <div className="mb-1 flex items-center justify-between text-[10px] font-medium uppercase tracking-wider">
+            <span className="flex items-center gap-1 text-zui-white/50">
+              <IconUsers size={11} />
+              Slots Filled
+            </span>
+            <span className="text-zui-white">
+              {slotsFilled} / {slotsMax}
+            </span>
+          </div>
+          <div className="relative h-2 w-full overflow-hidden rounded-sm border border-zui-stroke bg-zui-dark">
+            <div
+              className="h-full bg-gradient-to-r from-zui-green via-zui-neon to-zui-green"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between border-t border-dashed border-zui-stroke pt-3">
+          <div className="flex items-center gap-1 text-base font-bold text-zui-white">
+            <IconCoin size={18} className="text-zui-yellow" />
+            {bounty.reward}
+          </div>
+          <div className="flex items-center gap-3 text-xs text-zui-white/50">
+            {bounty.deadline && (
+              <span className="flex items-center gap-1">
+                <IconClock size={14} />
+                {bounty.deadline}
+              </span>
+            )}
+            <span className="flex items-center gap-1 rounded-full border border-zui-green/60 bg-zui-green px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-zui-dark transition-transform group-hover:scale-105">
+              Accept
+              {bounty.url && <IconExternalLink size={11} />}
+            </span>
+          </div>
+        </div>
+      </div>
+    </a>
+  );
+}
+
+function BountyTable({ bounties }: { bounties: Bounty[] }) {
+  const { isLoggedIn, showLoginModal } = useAuth();
+  const onRowClick = (bounty: Bounty) => {
+    track("bounty_click", { bountyId: bounty.id, source: bounty.source });
+    if (!isLoggedIn) {
+      showLoginModal(["mobile"]);
+      return;
+    }
+    if (!bounty.id.startsWith("demo-")) {
+      fetch(`${basePath}/api/bounties/${bounty.id}/apply`, {
+        method: "POST",
+        keepalive: true,
+      }).catch(() => {});
+    }
+    if (bounty.url) window.open(bounty.url, "_blank");
+  };
+  return (
+    <div className="overflow-hidden rounded-xl border border-zui-stroke bg-zui-lighter">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-zui-stroke bg-zui-light/40">
+            <th className="px-5 py-4 text-left text-xs font-medium uppercase tracking-wider text-zui-white/60">
+              Quest
+            </th>
+            <th className="px-5 py-4 text-left text-xs font-medium uppercase tracking-wider text-zui-white/60">
+              Rarity
+            </th>
+            <th className="px-5 py-4 text-left text-xs font-medium uppercase tracking-wider text-zui-white/60">
+              Source
+            </th>
+            <th className="px-5 py-4 text-left text-xs font-medium uppercase tracking-wider text-zui-white/60">
+              Slots
+            </th>
+            <th className="px-5 py-4 text-left text-xs font-medium uppercase tracking-wider text-zui-white/60">
+              Reward · XP
+            </th>
+            <th className="px-5 py-4 text-left text-xs font-medium uppercase tracking-wider text-zui-white/60">
+              Deadline
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {bounties.map((bounty, idx) => {
+            const rarity = getRarity(bounty.reward);
+            const xp = getXP(bounty.reward);
+            const slotsMax = 20;
+            const slotsFilled = Math.min(slotsMax, bounty.applicants);
+            const progressPct = Math.round((slotsFilled / slotsMax) * 100);
+            return (
+              <tr
+                key={bounty.id}
+                onClick={() => onRowClick(bounty)}
+                className={`cursor-pointer transition-colors hover:bg-zui-light/40 ${
+                  idx !== bounties.length - 1
+                    ? "border-b border-dashed border-zui-stroke"
+                    : ""
+                }`}
+              >
+                <td className="px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="h-8 w-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: bounty.color || "#66DF48" }}
+                    />
+                    <div>
+                      <p className="font-bold leading-tight text-zui-white">
+                        {bounty.title}
+                      </p>
+                      {bounty.description && (
+                        <p className="mt-0.5 text-xs text-zui-white/50">
+                          {bounty.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-5 py-4">
+                  <RarityBadge rarity={rarity} />
+                </td>
+                <td className="px-5 py-4">
+                  <span
+                    className="rounded-md border border-zui-stroke px-2 py-0.5 text-xs font-bold uppercase text-zui-white"
+                    style={{ backgroundColor: `${bounty.color || "#202020"}33` }}
+                  >
+                    {SOURCE_LABELS[bounty.source] || bounty.source}
+                  </span>
+                </td>
+                <td className="px-5 py-4">
+                  <div className="flex w-28 flex-col gap-1">
+                    <div className="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zui-white/70">
+                      <span>
+                        {slotsFilled}/{slotsMax}
+                      </span>
+                    </div>
+                    <div className="relative h-2 w-full overflow-hidden rounded-sm border border-zui-stroke bg-zui-dark">
+                      <div
+                        className="h-full bg-gradient-to-r from-zui-green to-zui-neon"
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
+                  </div>
+                </td>
+                <td className="px-5 py-4">
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1 text-sm font-bold text-zui-white">
+                      <IconCoin size={16} className="text-zui-yellow" />
+                      {bounty.reward}
+                    </div>
+                    <div className="flex items-center gap-0.5 text-[10px] font-bold uppercase text-zui-yellow">
+                      <IconBolt size={10} />
+                      +{xp} XP
+                    </div>
+                  </div>
+                </td>
+                <td className="px-5 py-4">
+                  <div className="flex items-center gap-1 text-sm text-zui-white/60">
+                    {bounty.deadline ? (
+                      <>
+                        <IconClock size={14} />
+                        {bounty.deadline}
+                      </>
+                    ) : (
+                      <span className="text-zui-white/30">—</span>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}

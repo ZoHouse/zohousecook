@@ -1,5 +1,5 @@
+import Link from "next/link";
 import React from "react";
-import { toast } from "sonner";
 import GlowCard from "./GlowCard";
 import { syneClassName } from "../utils/font";
 
@@ -64,15 +64,18 @@ const PassportProCard: React.FC = () => {
 
         {/* Actions */}
         <div className="flex items-center justify-between mt-2">
-          <button className="text-white/70 font-medium text-sm hover:text-white transition-colors">
+          <Link
+            href="/pro"
+            className="text-white/70 font-medium text-sm hover:text-white transition-colors"
+          >
             Check all benefits
-          </button>
-          <button
-            className="bg-white/90 hover:bg-white text-[#111] rounded-xl px-6 py-3 font-medium text-sm transition-colors"
-            onClick={() => toast("Coming Soon")}
+          </Link>
+          <Link
+            href="/pro"
+            className="inline-flex items-center justify-center bg-white/90 hover:bg-white text-[#111] rounded-xl px-6 py-3 font-medium text-sm transition-colors"
           >
             Become a Member
-          </button>
+          </Link>
         </div>
       </div>
     </GlowCard>

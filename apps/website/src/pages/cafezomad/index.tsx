@@ -30,10 +30,10 @@ export default function CafeZomadIndex() {
               Welcome back, {user.first_name || 'citizen'}
             </p>
             <button
-              onClick={() => router.push('/cafezomad/menu')}
+              onClick={() => router.push('/cafezomad/nodes')}
               className="w-full bg-orange-500 text-black py-4 text-base font-bold tracking-wide rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all"
             >
-              Check Menu
+              View Nodes
             </button>
             <button
               onClick={() => router.push('/cafezomad/biohack')}
@@ -45,10 +45,10 @@ export default function CafeZomadIndex() {
         ) : (
           <>
             <button
-              onClick={() => router.push('/cafezomad/menu')}
+              onClick={() => router.push('/cafezomad/nodes')}
               className="w-full bg-orange-500 text-black py-4 text-base font-bold tracking-wide rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all"
             >
-              View Menu
+              View Nodes
             </button>
             <button
               onClick={() => showLoginModal()}

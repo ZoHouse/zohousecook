@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { NextPage } from "next";
-import { Drawer, Empty, Segmented, Spin, Table, Tabs, Tag } from "antd";
+import { Button, DatePicker, Drawer, Empty, message, Modal, Segmented, Space, Spin, Table, Tabs, Tag } from "antd";
+import { DownloadOutlined } from "@ant-design/icons";
 import type { TableColumnsType } from "antd";
+import dayjs, { Dayjs } from "dayjs";
 import ZoHouseGuard from "../../components/helpers/app/ZoHouseGuard";
 import { Page, PageContent, PageHeader } from "../../components/ui";
 import { usePropertyId } from "../../hooks/cafe/usePropertyId";
@@ -11,6 +13,12 @@ import {
   STATUS_TAG_COLORS,
 } from "../../lib/cafe/kitchen-status";
 import { formatPaise } from "../../lib/cafe/order-calculator";
+import {
+  downloadCsv,
+  exportOrders,
+  exportOrderItems,
+  exportPayout,
+} from "../../lib/cafe/export-fudr";
 import type { KitchenStatus } from "../../types/cafe";
 
 const PAGE_SIZE = 25;
@@ -57,7 +65,6 @@ function OrderDrawer({
       .from("cafe_order_items")
       .select("*")
       .eq("order_id", order.id)
-      .order("created_at", { ascending: true })
       .then(({ data }) => {
         setItems(data || []);
         setLoading(false);
@@ -94,7 +101,9 @@ function OrderDrawer({
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
           <span style={{ color: "rgba(255,255,255,0.45)" }}>Table</span>
-          <span style={{ fontWeight: 500 }}>{order.table_label || order.table_id?.substring(0, 8) || "—"}</span>
+          <span style={{ fontWeight: 500 }}>
+            {order.table?.label || order.table?.code || order.mode?.replace(/_/g, " ") || "—"}
+          </span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
           <span style={{ color: "rgba(255,255,255,0.45)" }}>Time</span>
@@ -153,21 +162,55 @@ function OrderDrawer({
         </div>
       )}
 
-      {/* Total */}
-      <div
-        style={{
-          marginTop: 16,
-          paddingTop: 12,
-          borderTop: "1px solid rgba(255,255,255,0.08)",
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: 15,
-          fontWeight: 700,
-        }}
-      >
-        <span>Total</span>
-        <span>{formatPaise(order.total || 0)}</span>
-      </div>
+      {/* Totals — multi-economy display ($food + Razorpay/cash legs) */}
+      {(() => {
+        const orderGross = (order.subtotal || 0) + (order.service_charge || 0) + (order.tax_amount || 0)
+        const credit = order.food_credit_applied_paise || 0
+        const due = order.total || 0
+        const finalLabel =
+          order.payment_status === 'paid' ? 'Paid (Razorpay / Cash)' :
+          order.payment_status === 'refunded' ? 'Refunded' :
+          'To Pay (Razorpay / Cash)'
+        return (
+          <div
+            style={{
+              marginTop: 16,
+              paddingTop: 12,
+              borderTop: "1px solid rgba(255,255,255,0.08)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+              <span>Subtotal</span><span>{formatPaise(order.subtotal || 0)}</span>
+            </div>
+            {(order.service_charge || 0) > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                <span>Service Charge</span><span>{formatPaise(order.service_charge || 0)}</span>
+              </div>
+            )}
+            {(order.tax_amount || 0) > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                <span>Tax (5%)</span><span>{formatPaise(order.tax_amount || 0)}</span>
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, marginTop: 4, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <span>Order Total</span><span>{formatPaise(orderGross)}</span>
+            </div>
+            {credit > 0 && (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#fa8c16" }}>
+                  <span>$food applied</span><span>−{formatPaise(credit)}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, marginTop: 4, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <span>{finalLabel}</span><span>{formatPaise(due)}</span>
+                </div>
+              </>
+            )}
+          </div>
+        )
+      })()}
     </Drawer>
   );
 }
@@ -254,12 +297,29 @@ function OrdersTab({ propertyId }: { propertyId: string }) {
       ),
     },
     {
+      // Order Total = gross (subtotal + service + tax). Listed as the
+      // headline because that's the food's value; how it was paid (cash
+      // vs $food) appears as a tooltip-eligible second line below for
+      // orders that used $food credits.
       title: "Total",
       key: "total",
-      width: 80,
-      render: (_: unknown, r: Order) => (
-        <span style={{ fontWeight: 600 }}>{formatPaise(r.total || 0)}</span>
-      ),
+      width: 110,
+      render: (_: unknown, r: Order) => {
+        const gross = (r.subtotal || 0) + (r.service_charge || 0) + (r.tax_amount || 0)
+        const credit = r.food_credit_applied_paise || 0
+        const due = r.total || 0
+        return (
+          <div style={{ lineHeight: 1.2 }}>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>{formatPaise(gross)}</div>
+            {credit > 0 && (
+              <div style={{ fontSize: 10, color: "#fa8c16", fontFamily: 'monospace' }}>
+                {formatPaise(credit)} $food
+                {due > 0 && ` + ${formatPaise(due)}`}
+              </div>
+            )}
+          </div>
+        )
+      },
     },
     {
       title: "Status",
@@ -555,15 +615,142 @@ function GuestsTab({ propertyId }: { propertyId: string }) {
   );
 }
 
+// ─── Export Modal ─────────────────────────────────────────────────────────────
+
+type ExportKind = "orders" | "items" | "payout";
+
+function ExportModal({
+  open,
+  onClose,
+  propertyId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  propertyId: string;
+}) {
+  const [range, setRange] = useState<[Dayjs, Dayjs]>(() => {
+    const now = dayjs();
+    return [now.startOf("month"), now.endOf("month")];
+  });
+  const [busy, setBusy] = useState<ExportKind | null>(null);
+
+  const runExport = async (kind: ExportKind) => {
+    if (!range[0] || !range[1]) {
+      message.warning("Pick a date range first");
+      return;
+    }
+    const fromDate = range[0].format("YYYY-MM-DD");
+    const toDate = range[1].format("YYYY-MM-DD");
+    const dateSlug = `${range[0].format("YYYYMMDD")}-${range[1].format("YYYYMMDD")}`;
+
+    setBusy(kind);
+    try {
+      let csv: string;
+      let filename: string;
+      if (kind === "orders") {
+        csv = await exportOrders({ propertyId, fromDate, toDate });
+        filename = `cafe-orders-${dateSlug}.csv`;
+      } else if (kind === "items") {
+        csv = await exportOrderItems({ propertyId, fromDate, toDate });
+        filename = `cafe-order-items-${dateSlug}.csv`;
+      } else {
+        csv = await exportPayout({ propertyId, fromDate, toDate });
+        filename = `cafe-payout-${dateSlug}.csv`;
+      }
+      downloadCsv(csv, filename);
+      message.success(`Downloaded ${filename}`);
+    } catch (err) {
+      console.error("export failed:", err);
+      message.error(err instanceof Error ? err.message : "Export failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      title="Export orders (FUDR-parity CSVs)"
+      onCancel={onClose}
+      footer={null}
+      width={520}
+      destroyOnClose
+    >
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 13, marginBottom: 6, color: "rgba(255,255,255,0.55)" }}>
+          Date range (IST, inclusive)
+        </div>
+        <DatePicker.RangePicker
+          value={range}
+          onChange={(v) => { if (v && v[0] && v[1]) setRange([v[0], v[1]]); }}
+          style={{ width: "100%" }}
+          allowClear={false}
+        />
+      </div>
+
+      <Space direction="vertical" style={{ width: "100%" }} size={8}>
+        <Button
+          icon={<DownloadOutlined />}
+          loading={busy === "orders"}
+          disabled={!!busy}
+          onClick={() => runExport("orders")}
+          block
+        >
+          Orders (22 cols — matches fudr-orders.xlsx)
+        </Button>
+        <Button
+          icon={<DownloadOutlined />}
+          loading={busy === "items"}
+          disabled={!!busy}
+          onClick={() => runExport("items")}
+          block
+        >
+          Order Items (11 cols — matches order-items.xlsx)
+        </Button>
+        <Button
+          icon={<DownloadOutlined />}
+          loading={busy === "payout"}
+          disabled={!!busy}
+          onClick={() => runExport("payout")}
+          block
+        >
+          Payout / Ledger (18 cols)
+        </Button>
+      </Space>
+
+      <div style={{ marginTop: 12, fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+        Column names (including the "Paymet Type" typo) match FUDR exactly so
+        existing pivots keep working.
+      </div>
+    </Modal>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const CafeOrdersPage: NextPage = () => {
   const { propertyId, isLoading: propLoading } = usePropertyId();
+  const [exportOpen, setExportOpen] = useState(false);
 
   return (
     <ZoHouseGuard>
       <Page>
-        <PageHeader title="Orders" icon="Slip" />
+        <PageHeader
+          title="Orders"
+          icon="Slip"
+          buttons={
+            propertyId
+              ? [
+                  {
+                    label: "Export",
+                    onClick: () => setExportOpen(true),
+                    type: "secondary" as const,
+                    icon: "Download" as const,
+                  },
+                ]
+              : []
+          }
+        />
         <PageContent>
           {propLoading || !propertyId ? (
             <div className="flex justify-center py-16"><Spin size="large" /></div>
@@ -586,6 +773,14 @@ const CafeOrdersPage: NextPage = () => {
           )}
         </PageContent>
       </Page>
+
+      {propertyId && (
+        <ExportModal
+          open={exportOpen}
+          onClose={() => setExportOpen(false)}
+          propertyId={propertyId}
+        />
+      )}
     </ZoHouseGuard>
   );
 };
