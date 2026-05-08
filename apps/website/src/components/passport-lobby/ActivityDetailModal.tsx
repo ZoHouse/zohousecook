@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import Image from 'next/image';
 import type { LobbyActivityItem } from '../../hooks/useLobbyActivities';
 import { formatDistance } from '../LiveLocationProvider';
 import { rubikClassName } from '../utils/font';
@@ -109,13 +108,11 @@ export function ActivityDetailModal({ activity, onClose }: ActivityDetailModalPr
         {/* Hero: cover image with bottom-fade to pearl. */}
         <div className="relative" style={{ height: 280, flexShrink: 0 }}>
           {cover && (
-            <Image
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
               src={cover}
               alt=""
-              fill
-              sizes="(max-width: 768px) 100vw, 480px"
-              style={{ objectFit: 'cover' }}
-              priority
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
             />
           )}
           {/* Soft fade to pearl base so the title sits readable on light theme. */}

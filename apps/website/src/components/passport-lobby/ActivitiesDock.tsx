@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import Image from 'next/image';
 import { useLobbyActivities, type LobbyActivityItem } from '../../hooks/useLobbyActivities';
 import { formatDistance } from '../LiveLocationProvider';
 import { rubikClassName } from '../utils/font';
@@ -54,7 +53,8 @@ function ActivityCard({
       />
       {cover && (
         <div className="relative" style={{ width: '100%', height: 116 }}>
-          <Image src={cover} alt="" fill sizes="300px" style={{ objectFit: 'cover' }} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={cover} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           {/* Soft pearl fade so text below reads cleanly on light theme. */}
           <div
             aria-hidden
