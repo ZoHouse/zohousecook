@@ -10,6 +10,7 @@ import { MapModal } from '../../components/passport-lobby/MapModal';
 import { TopBar } from '../../components/passport-lobby/TopBar';
 import { PageHeaderPill } from '../../components/passport-lobby/PageHeaderPill';
 import { useMyXp } from '../../hooks/useMyXp';
+import { useTodayQuests, type TodayQuest } from '../../hooks/useTodayQuests';
 import chestIcon from '../../assets/passport-lobby/treasure-chest.png';
 
 /**
@@ -582,12 +583,38 @@ function QuestDetailModal({ q, onClose }: { q: Quest | null; onClose: () => void
 // Page
 // ────────────────────────────────────────────────────────────────────────────
 
+function todayQuestToQuest(tq: TodayQuest): Quest {
+  return {
+    user_quest_id: tq.user_quest_id,
+    quest_id: tq.quest_id,
+    name: tq.name,
+    description: tq.description,
+    cover_image: tq.cover_image || '',
+    role_ids: tq.role_ids ?? tq.role_names?.map((r) => r.toLowerCase()) ?? [],
+    role_names: tq.role_names ?? [],
+    culture_id: tq.culture_id ?? null,
+    journey_role: (tq.journey_role as Quest['journey_role']) ?? 'side',
+    cadence: (tq.cadence as Quest['cadence']) ?? 'daily',
+    rarity: (tq.rarity as Quest['rarity']) ?? 'common',
+    difficulty: (tq.difficulty as Quest['difficulty']) ?? 'easy',
+    qualifying_actions: tq.qualifying_actions ?? [],
+    verification_method: tq.verification_method ?? '',
+    reward_pool: tq.reward_pool ?? { draw_method: '', reward: { type: 'xp', amount: 0 } },
+    live_at: tq.live_at ?? '',
+    submission_deadline_at: tq.submission_deadline_at ?? tq.expires_at ?? '',
+    expires_at: tq.expires_at ?? '',
+    status: tq.status as Quest['status'] ?? 'open',
+    tier_access: (tq.tier_access as Quest['tier_access']) ?? 'free_min',
+  };
+}
+
 export default function QuestsPage() {
   const router = useRouter();
   const { profile } = useProfile();
   const { myXp } = useMyXp();
   const [mapOpen, setMapOpen] = useState(false);
   const [activeQuest, setActiveQuest] = useState<Quest | null>(null);
+  const { quests: realQuests, isLoading: questsLoading } = useTodayQuests();
 
   const rawQueryHandle = typeof router.query.handle === 'string' ? router.query.handle : undefined;
   const queryHandle = rawQueryHandle?.replace(/\.zo$/i, '');
@@ -597,8 +624,8 @@ export default function QuestsPage() {
   // Today's Loot banner only renders when the drop is imminent (<24h away).
   const lootShown = isLootImminent(SAMPLE_LOOT.opens_at);
 
-  // Quests sorted chronologically by upcoming deadline (soonest first).
-  const sortedQuests = [...SAMPLE_QUESTS].sort(
+  const questSource = realQuests.length > 0 ? realQuests.map(todayQuestToQuest) : SAMPLE_QUESTS;
+  const sortedQuests = [...questSource].sort(
     (a, b) => new Date(a.submission_deadline_at).getTime() - new Date(b.submission_deadline_at).getTime(),
   );
 
