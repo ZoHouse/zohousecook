@@ -26,6 +26,8 @@ export { LobbyRoom } from './LobbyRoom';
 export type { LobbyRoomProps } from './LobbyRoom';
 export { PassesDock } from './PassesDock';
 export type { PassesDockProps } from './PassesDock';
+export { ActivitiesDock } from './ActivitiesDock';
+export type { ActivitiesDockProps } from './ActivitiesDock';
 export { StubSection } from './StubSection';
 export type { StubSectionProps } from './StubSection';
 export { ActiveQuestCard } from './ActiveQuestCard';
