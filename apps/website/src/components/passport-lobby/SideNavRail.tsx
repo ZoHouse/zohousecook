@@ -50,28 +50,34 @@ function buildHref(route: NavItem['route'], urlHandle?: string): string {
   return urlHandle ? `/@${urlHandle}/${route}` : `/passport/${route}`;
 }
 
-// Solid pills — the 3D canvas below has ChromaticAberration so any backdrop-blur
-// picks up the aberrated colors and makes buttons look hazy. Solid bg sits cleanly
-// above the canvas.
+// Pearl-glass pills — match the iridescent lobby + activity modal language.
+// Light, frosted, with a soft purple shadow that blends into the pearl bg.
 const PILL_INACTIVE: React.CSSProperties = {
-  background: '#0d0d10',
-  border: '1px solid rgba(255,255,255,0.08)',
+  background: 'rgba(255,255,255,0.65)',
+  border: '1px solid rgba(255,255,255,0.85)',
   borderRadius: 14,
-  boxShadow: '0 2px 12px rgba(0,0,0,0.45)',
+  boxShadow:
+    '0 4px 14px rgba(120,100,160,0.18), inset 0 1px 0 rgba(255,255,255,0.95)',
+  backdropFilter: 'blur(14px)',
+  WebkitBackdropFilter: 'blur(14px)',
 };
 
 const PILL_ACTIVE: React.CSSProperties = {
   ...PILL_INACTIVE,
-  background: '#1a1a20',
-  border: '1px solid rgba(255,255,255,0.22)',
-  boxShadow: '0 2px 16px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.1)',
+  background:
+    'linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(242,224,236,0.85) 100%)',
+  border: '1px solid rgba(255,255,255,0.95)',
+  boxShadow:
+    '0 6px 18px rgba(120,100,160,0.28), inset 0 1px 0 rgba(255,255,255,1)',
 };
 
+// Convert the white-on-dark icon set to dark-on-light so it reads on the
+// pearl pills. `invert(1)` flips white → black; `brightness(0.85)` softens
+// it slightly so it doesn't scream at full black.
 const ICON_DROP_SHADOW: React.CSSProperties = {
-  filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))',
+  filter:
+    'invert(1) brightness(0.85) drop-shadow(0 1px 2px rgba(120,100,160,0.25))',
 };
-
-const LABEL_TEXT_SHADOW = '0 1px 3px rgba(0,0,0,0.8)';
 
 export function SideNavRail({ onOpenMap, handle }: SideNavRailProps) {
   const router = useRouter();
@@ -97,7 +103,7 @@ export function SideNavRail({ onOpenMap, handle }: SideNavRailProps) {
             key={item.route}
             href={buildHref(item.route, urlHandle)}
             className="flex flex-col items-center gap-1 w-11 md:w-16 md:gap-1.5 py-2 px-1 md:py-3 md:px-1.5 transition-all active:scale-95 hover:opacity-100"
-            style={{ ...(active ? PILL_ACTIVE : PILL_INACTIVE), opacity: active ? 1 : 0.82 }}
+            style={{ ...(active ? PILL_ACTIVE : PILL_INACTIVE), opacity: active ? 1 : 0.95 }}
             aria-current={active ? 'page' : undefined}
           >
             <Image
@@ -109,8 +115,8 @@ export function SideNavRail({ onOpenMap, handle }: SideNavRailProps) {
               style={ICON_DROP_SHADOW}
             />
             <span
-              className="text-[9px] md:text-xs font-medium text-center text-[#F5F5F5]"
-              style={{ textShadow: LABEL_TEXT_SHADOW }}
+              className="text-[9px] md:text-xs font-semibold text-center"
+              style={{ color: '#0A0A14' }}
             >
               {item.label}
             </span>
@@ -122,7 +128,7 @@ export function SideNavRail({ onOpenMap, handle }: SideNavRailProps) {
         <button
           onClick={onOpenMap}
           className="flex flex-col items-center gap-1 w-11 md:w-16 md:gap-1.5 py-2 px-1 md:py-3 md:px-1.5 mt-1 transition-all active:scale-95 hover:opacity-100"
-          style={{ ...PILL_INACTIVE, opacity: 0.88 }}
+          style={{ ...PILL_INACTIVE, opacity: 0.95 }}
           aria-label="Open map"
         >
           <Image
@@ -134,8 +140,8 @@ export function SideNavRail({ onOpenMap, handle }: SideNavRailProps) {
             style={ICON_DROP_SHADOW}
           />
           <span
-            className="text-[9px] md:text-xs font-medium text-center text-[#F5F5F5]"
-            style={{ textShadow: LABEL_TEXT_SHADOW }}
+            className="text-[9px] md:text-xs font-semibold text-center"
+            style={{ color: '#0A0A14' }}
           >
             Map
           </span>

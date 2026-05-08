@@ -47,26 +47,37 @@ export interface LobbyRoomProps {
   sideNav: ReactNode;
   hero: ReactNode;
   travelersPill: ReactNode;
+  /** Rendered immediately below the "Get Unlimited Access" CTA. */
+  belowCta?: ReactNode;
 }
 
 /**
  * Lobby scene — Fortnite-style lobby. Avatar center-stage, HUD around edges.
  * Map access lives inside the side-nav rail (passed in via sideNav slot).
  */
-export function LobbyRoom({ sideNav, hero, travelersPill }: LobbyRoomProps) {
+export function LobbyRoom({ sideNav, hero, travelersPill, belowCta }: LobbyRoomProps) {
   return (
     <>
-      {/* MOBILE: fill remaining viewport, content anchored low (above the tier nav). */}
-      <div className="relative md:hidden flex flex-col flex-1 overflow-hidden">
+      {/* MOBILE — three-row distribution inside one viewport.
+          Top: hero/pedestal/CTA cluster, slightly above optical center.
+          Bottom: activities carousel, with bottom clearance for the
+          PWA Install pill (~64px) so they don't overlap. */}
+      <div
+        className="relative md:hidden flex flex-col h-[100svh] overflow-hidden"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
         {sideNav}
 
-        <div className="relative z-[5] flex flex-col items-center justify-end flex-1 pt-20 pb-[260px]">
+        <div className="relative z-[5] flex flex-col items-center justify-center flex-1 pt-20 gap-1">
           {hero}
-          <div style={{ marginTop: -6 }} aria-hidden>
+          <div style={{ marginTop: -4 }} aria-hidden>
             <Image src={pedestal} alt="" width={179} height={65} style={{ width: 200, height: 'auto' }} />
           </div>
-          <div className="mt-4"><UnlimitedAccessCta size="sm" /></div>
+          <div className="mt-3"><UnlimitedAccessCta size="sm" /></div>
         </div>
+        {belowCta && (
+          <div className="relative z-[5] w-full pb-[72px]">{belowCta}</div>
+        )}
       </div>
 
       {/* DESKTOP: immersive Fortnite-style lobby */}
@@ -79,16 +90,13 @@ export function LobbyRoom({ sideNav, hero, travelersPill }: LobbyRoomProps) {
       >
         {sideNav}
 
-        {/* CENTER STAGE: hero card + pedestal + CTA. Bottom padding clears the
-            desktop PassesDock tier cards (~260px tall fixed at bottom-6); without
-            it, justify-center lets the pedestal + CTA drop behind the tier dock
-            on shorter viewports (1440p and below). */}
-        <div className="relative z-[5] flex flex-col items-center justify-center pt-[80px] lg:pt-40 pb-[320px]" style={{ minHeight: 'calc(100vh - 260px)' }}>
+        <div className="relative z-[5] flex flex-col items-center pt-[80px] lg:pt-32 pb-16" style={{ minHeight: 'calc(100vh - 120px)' }}>
           {hero}
           <div style={{ marginTop: 6 }} aria-hidden>
             <Image src={pedestal} alt="" width={179} height={65} style={{ width: 260, height: 'auto' }} />
           </div>
           <div className="mt-6"><UnlimitedAccessCta /></div>
+          {belowCta && <div className="mt-10 w-full">{belowCta}</div>}
         </div>
       </div>
     </>
