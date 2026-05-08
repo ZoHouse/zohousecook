@@ -599,7 +599,13 @@ function todayQuestToQuest(tq: TodayQuest): Quest {
     difficulty: (tq.difficulty as Quest['difficulty']) ?? 'easy',
     qualifying_actions: tq.qualifying_actions ?? [],
     verification_method: tq.verification_method ?? '',
-    reward_pool: tq.reward_pool ?? { draw_method: '', reward: { type: 'xp', amount: 0 } },
+    reward_pool: {
+      draw_method: tq.reward_pool?.draw_method ?? '',
+      reward: {
+        type: tq.reward_pool?.reward?.type ?? 'xp',
+        amount: tq.reward_pool?.reward?.amount ?? 0,
+      },
+    },
     live_at: tq.live_at ?? '',
     submission_deadline_at: tq.submission_deadline_at ?? tq.expires_at ?? '',
     expires_at: tq.expires_at ?? '',
