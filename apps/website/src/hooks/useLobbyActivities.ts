@@ -124,7 +124,7 @@ export function useLobbyActivities(limit = 10): UseLobbyActivitiesResult {
 
   // Step 2: nearest N operators.
   const nearestOps = useMemo(() => {
-    if (!location) return [] as ZostelOperator[];
+    if (!location) return [] as { op: ZostelOperator; meters: number; lat: number; lng: number }[];
     const ops = unwrapOperators(operatorsRaw)
       .map((op) => {
         const lat = +op.latitude;
