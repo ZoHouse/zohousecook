@@ -227,7 +227,7 @@ export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare 
           style={{
             fontSize: 24,
             fontWeight: 700,
-            color: '#FFFFFF',
+            color: '#0A0A0A',
             lineHeight: '1.2em',
             marginBottom: 2,
             position: 'relative',
@@ -241,12 +241,13 @@ export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare 
         <div
           style={{
             fontSize: 12,
-            fontWeight: 400,
-            color: 'rgba(255,255,255,0.55)',
+            fontWeight: 500,
+            color: 'rgba(0,0,0,0.7)',
             letterSpacing: '0.01em',
             position: 'relative',
             zIndex: 4,
             transform: 'translateZ(10px)',
+            whiteSpace: 'nowrap',
           }}
         >
           Citizen of Zo World
