@@ -7,10 +7,11 @@ interface HometownProps {
 }
 
 const LIBRARIES: ("places")[] = ["places"];
+const MIN_LENGTH = 2;
 
 const Hometown: FC<HometownProps> = ({ advanceOnboarding }) => {
   const { updateProfile } = useProfile();
-  const [input, setInput] = useState("");
+  const [text, setText] = useState("");
   const [selected, setSelected] = useState<{
     place_name: string;
     place_id: string;
@@ -28,22 +29,30 @@ const Hometown: FC<HometownProps> = ({ advanceOnboarding }) => {
   const handlePlaceChanged = () => {
     const place = autocompleteRef.current?.getPlace();
     if (!place || !place.geometry?.location) return;
-    const place_name = place.formatted_address || place.name || "";
     setSelected({
-      place_name,
+      place_name: place.formatted_address || place.name || "",
       place_id: place.place_id || "",
       lat: place.geometry.location.lat(),
       lng: place.geometry.location.lng(),
     });
-    setInput(place_name);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setText(v);
+    if (selected && v !== selected.place_name) setSelected(null);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") e.preventDefault();
   };
 
   const handleSubmit = () => {
-    const typed = input.trim();
-    if (!typed || isSaving) return;
+    const typed = text.trim();
+    if (typed.length < MIN_LENGTH || isSaving) return;
     setIsSaving(true);
 
-    const useStructured = selected && selected.place_name === typed;
+    const useStructured = !!(selected && selected.place_name === typed);
     const payload = useStructured
       ? {
           place_name: selected!.place_name,
@@ -61,15 +70,25 @@ const Hometown: FC<HometownProps> = ({ advanceOnboarding }) => {
     );
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInput(e.target.value);
-    if (selected && e.target.value !== selected.place_name) setSelected(null);
-  };
-
   const inputClass =
     "w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-lg outline-none focus:border-white/30 transition-colors mb-4";
 
-  const canSubmit = input.trim().length > 0 && !isSaving;
+  const canSubmit = text.trim().length >= MIN_LENGTH && !isSaving;
+
+  // Uncontrolled input — no `value` prop. Google Places mutates the DOM
+  // directly; a controlled input fights that and drops keystrokes. State
+  // stays synced via onChange because Google fires real input events on
+  // autocomplete.
+  const inputProps = {
+    type: "text" as const,
+    placeholder: "Bangalore, Bengaluru...",
+    className: inputClass,
+    onChange: handleInputChange,
+    onKeyDown: handleKeyDown,
+    autoFocus: true,
+    autoComplete: "off",
+    spellCheck: false,
+  };
 
   return (
     <div className="flex flex-1 flex-col items-start w-full">
@@ -84,27 +103,13 @@ const Hometown: FC<HometownProps> = ({ advanceOnboarding }) => {
           onPlaceChanged={handlePlaceChanged}
           types={["(cities)"]}
         >
-          <input
-            type="text"
-            placeholder="Bangalore, Bengaluru..."
-            className={inputClass}
-            value={input}
-            onChange={handleInputChange}
-            autoFocus
-          />
+          <input {...inputProps} />
         </Autocomplete>
       ) : (
-        <input
-          type="text"
-          placeholder="Bangalore, Bengaluru..."
-          className={inputClass}
-          value={input}
-          onChange={handleInputChange}
-          autoFocus
-        />
+        <input {...inputProps} />
       )}
 
-      {selected && selected.place_name === input && (
+      {selected && selected.place_name === text && (
         <span className="text-sm text-[#66DF48] mb-4">
           ✓ {selected.place_name}
         </span>
