@@ -16,7 +16,7 @@ export interface CitizenCardProps {
   xpTotal?: number;
   /** Kept in the interface for future binding; not rendered in the current card. */
   rankTitle?: string;
-  onUpsell: () => void;
+  onClick: () => void;
   onShare?: () => void;
 }
 
@@ -25,7 +25,7 @@ const CARD_RADIUS = 20;
 const MAX_TILT = 10; // degrees
 const HOVER_LIFT = 8; // translateZ
 
-export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare }: CitizenCardProps) {
+export function CitizenCard({ handle, displayName, avatarUrl, onClick, onShare }: CitizenCardProps) {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [tilt, setTilt] = useState<{
     rx: number;
@@ -67,11 +67,11 @@ export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare 
         ref={cardRef}
         role="button"
         tabIndex={0}
-        onClick={onUpsell}
+        onClick={onClick}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            onUpsell();
+            onClick();
           }
         }}
         onMouseMove={handleMouseMove}
