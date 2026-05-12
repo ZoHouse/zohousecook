@@ -9,13 +9,24 @@ export interface LobbyRoomProps {
   travelersPill: ReactNode;
   /** Rendered immediately below the "Get Unlimited Access" CTA. */
   belowCta?: ReactNode;
+  /** Overrides the default "Get Unlimited Access" CTA when provided. Used
+      by the lobby to morph the CTA into the active quest's action button. */
+  ctaMobile?: ReactNode;
+  ctaDesktop?: ReactNode;
 }
 
 /**
  * Lobby scene — Fortnite-style lobby. Avatar center-stage, HUD around edges.
  * Map access lives inside the side-nav rail (passed in via sideNav slot).
  */
-export function LobbyRoom({ sideNav, hero, travelersPill, belowCta }: LobbyRoomProps) {
+export function LobbyRoom({
+  sideNav,
+  hero,
+  travelersPill,
+  belowCta,
+  ctaMobile,
+  ctaDesktop,
+}: LobbyRoomProps) {
   return (
     <>
       {/* MOBILE — three-row distribution inside one viewport.
@@ -33,7 +44,7 @@ export function LobbyRoom({ sideNav, hero, travelersPill, belowCta }: LobbyRoomP
           <div style={{ marginTop: -4 }} aria-hidden>
             <Image src={pedestal} alt="" width={179} height={65} style={{ width: 200, height: 'auto' }} />
           </div>
-          <div className="mt-3"><UnlimitedAccessCta size="sm" /></div>
+          <div className="mt-3">{ctaMobile ?? <UnlimitedAccessCta size="sm" />}</div>
         </div>
         {belowCta && (
           <div className="relative z-[5] w-full pb-[72px]">{belowCta}</div>
@@ -55,7 +66,7 @@ export function LobbyRoom({ sideNav, hero, travelersPill, belowCta }: LobbyRoomP
           <div style={{ marginTop: 6 }} aria-hidden>
             <Image src={pedestal} alt="" width={179} height={65} style={{ width: 260, height: 'auto' }} />
           </div>
-          <div className="mt-6"><UnlimitedAccessCta /></div>
+          <div className="mt-6">{ctaDesktop ?? <UnlimitedAccessCta />}</div>
           {belowCta && <div className="mt-10 w-full">{belowCta}</div>}
         </div>
       </div>
