@@ -19,6 +19,7 @@ model User {
   builderAccounts BuilderAccount[]
   builderShips    BuilderShip[]
   builderProducts BuilderProduct[]
+  builderStats    BuilderStats?
 
   @@map("users")
 }
@@ -63,6 +64,27 @@ model BuilderShip {
   @@index([userId, occurredAt])
   @@index([kind, occurredAt])
   @@map("builder_ships")
+}
+
+// Score cache. One row per builder, recomputed by lib/scorer.ts after ingest.
+// 7-day rolling window for the three axes; lifetime fields are monotonic.
+model BuilderStats {
+  userId           String    @id @map("user_id")
+  shipScore        Int       @default(0) @map("ship_score")
+  reachScore       Int       @default(0) @map("reach_score")
+  consistencyScore Int       @default(0) @map("consistency_score")
+  lifetimeXp       Int       @default(0) @map("lifetime_xp")
+  lifetimeTitle    String    @default("Zo Newbie") @map("lifetime_title")
+  streakDays       Int       @default(0) @map("streak_days")
+  lastShipAt       DateTime? @map("last_ship_at")
+  computedAt       DateTime  @default(now()) @map("computed_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([shipScore(sort: Desc)])
+  @@index([reachScore(sort: Desc)])
+  @@index([consistencyScore(sort: Desc)])
+  @@map("builder_stats")
 }
 
 // Auto-detected products: GitHub repos with a homepage URL.

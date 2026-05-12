@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!identity) return res.status(401).json({ error: "not signed in" });
   const userId = identity.user.id;
 
-  const [accounts, ships, products] = await Promise.all([
+  const [accounts, ships, products, stats] = await Promise.all([
     prisma.builderAccount.findMany({
       where: { userId },
       select: { provider: true, handle: true, connectedAt: true },
@@ -27,6 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       where: { userId },
       orderBy: { detectedAt: "desc" },
     }),
+    prisma.builderStats.findUnique({ where: { userId } }),
   ]);
 
   const recentShips: BuilderShip[] = ships.map((s) => ({
@@ -52,17 +53,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     stars: p.stars,
   }));
 
-  // Scores stay zeroed until PR #4 (the scorer) lands. The shape is here so
-  // the UI doesn't break, but the values reflect "no score computed yet".
   return res.status(200).json({
     userId,
     handle: identity.profile.handle,
-    title: identity.profile.title,
+    title: stats?.lifetimeTitle ?? identity.profile.title,
     level: identity.profile.level,
-    scores7d: { ship: 0, reach: 0, consistency: 0 },
-    lifetimeXp: identity.profile.xp,
-    streakDays: identity.profile.streak,
-    lastShipAt: recentShips[0]?.occurredAt ?? null,
+    scores7d: {
+      ship: stats?.shipScore ?? 0,
+      reach: stats?.reachScore ?? 0,
+      consistency: stats?.consistencyScore ?? 0,
+    },
+    lifetimeXp: stats?.lifetimeXp ?? identity.profile.xp,
+    streakDays: stats?.streakDays ?? identity.profile.streak,
+    lastShipAt:
+      stats?.lastShipAt?.toISOString() ?? recentShips[0]?.occurredAt ?? null,
     accounts: accounts.map((a) => ({
       provider: a.provider as "github" | "x",
       handle: a.handle,
