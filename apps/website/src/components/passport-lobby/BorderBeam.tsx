@@ -22,6 +22,13 @@ export interface BorderBeamProps {
  * with matching border-radius. Uses @property to animate the conic
  * gradient angle without transforming the element, so the mask stays
  * aligned with the border ring.
+ *
+ * Android-safety: older Android Chrome / WebView lacks mask-composite
+ * support. Without it, the conic gradient is unmasked and fills the
+ * inset area as a solid coloured slice — Erum saw this as a "broken
+ * icon" at the top-left of the hero card. The CSS below uses an
+ * `@supports` gate so unsupported browsers fall back to a plain static
+ * gradient border with no mask + no animation.
  */
 export function BorderBeam({
   radius = 20,
@@ -45,19 +52,42 @@ export function BorderBeam({
             position: 'absolute',
             inset: 0,
             borderRadius: radius,
-            padding: borderWidth,
-            background: `conic-gradient(from var(--border-beam-angle, 0deg), ${colorFrom} 0deg, ${colorTo} ${trailMid}deg, transparent ${trailDegrees}deg, transparent 360deg)`,
-            WebkitMask:
-              'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
-            WebkitMaskComposite: 'xor',
-            maskComposite: 'exclude',
-            animation: `border-beam-spin ${duration}s linear infinite`,
             pointerEvents: 'none',
             zIndex: 3,
             ...style,
           } as CSSProperties
         }
       />
+      <style jsx>{`
+        /* Fallback path — browsers without mask-composite support get a
+           static gradient border ring. No animation, no Houdini. */
+        .border-beam {
+          border: ${borderWidth}px solid ${colorFrom};
+        }
+
+        /* Houdini-capable path — animated conic-gradient masked to the
+           border ring. Triggers on every modern Chrome/Safari/Firefox
+           desktop + iOS Safari + Android Chrome 91+. */
+        @supports ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+          .border-beam {
+            border: 0;
+            padding: ${borderWidth}px;
+            background: conic-gradient(
+              from var(--border-beam-angle, 0deg),
+              ${colorFrom} 0deg,
+              ${colorTo} ${trailMid}deg,
+              transparent ${trailDegrees}deg,
+              transparent 360deg
+            );
+            -webkit-mask:
+              linear-gradient(#000 0 0) content-box,
+              linear-gradient(#000 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            animation: border-beam-spin ${duration}s linear infinite;
+          }
+        }
+      `}</style>
       <style jsx global>{`
         @property --border-beam-angle {
           syntax: '<angle>';
