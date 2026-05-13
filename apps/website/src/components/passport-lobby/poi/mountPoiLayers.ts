@@ -242,9 +242,11 @@ export function mountPoiLayers(
    *  - mode 'soft':  smooth ease — preserves user's zoom + pitch, just pans the camera and updates popup. Used by carousel browsing so rapid flipping feels responsive.
    */
   showPoi: (lng: number, lat: number, properties: GeoJSON.GeoJsonProperties, mode?: 'fly' | 'soft') => void;
+  /** Force-close the shared POI popup. Used by MapModal on nav start. */
+  closePopup: () => void;
 } {
   if (map.getSource(POI_SOURCE)) {
-    return { unmount: () => undefined, showPoi: () => undefined };
+    return { unmount: () => undefined, showPoi: () => undefined, closePopup: () => undefined };
   }
 
   console.log(`[poi] mountPoiLayers: ${geojson.features.length} features`);
@@ -497,6 +499,10 @@ export function mountPoiLayers(
   };
   container.addEventListener('click', handleWalkHereClick);
 
+  const closePopup = () => {
+    popup.remove();
+  };
+
   const unmount = () => {
     try {
       map.off('click', HITAREA_LAYER, handleClick);
@@ -516,5 +522,5 @@ export function mountPoiLayers(
     }
   };
 
-  return { unmount, showPoi: focusPoi };
+  return { unmount, showPoi: focusPoi, closePopup };
 }

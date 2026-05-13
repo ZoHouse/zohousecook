@@ -15,22 +15,17 @@ import { NavStepCard } from './NavStepCard';
 
 type RouteMode = 'explore' | 'preview' | 'navigating' | 'arrived';
 
-// Project a point `metres` ahead of `pos` along the given `headingDeg`.
-// Used to position the camera target slightly in front of the user during
-// nav so the puck sits in the lower portion of the screen, not dead-center.
-function projectAhead(
-  pos: { lng: number; lat: number },
-  headingDeg: number,
-  metres: number,
-): { lng: number; lat: number } {
-  const R = 6378137; // earth radius, metres
-  const headingRad = (headingDeg * Math.PI) / 180;
-  const dLat = ((metres * Math.cos(headingRad)) / R) * (180 / Math.PI);
-  const dLng =
-    ((metres * Math.sin(headingRad)) / (R * Math.cos((pos.lat * Math.PI) / 180))) *
-    (180 / Math.PI);
-  return { lng: pos.lng + dLng, lat: pos.lat + dLat };
-}
+// Camera pitch + zoom for nav mode. Pitch 70 = aggressive game-like FPV
+// where building extrusions form a canyon around the route. Zoom 18 is
+// street-level — close enough that walking pace feels responsive without
+// rendering being too expensive on mobile.
+const NAV_PITCH = 70;
+const NAV_ZOOM = 18;
+// Puck stays this many pixels BELOW screen center during nav. Negative
+// values would put it above. ~180px on a ~700px-tall modal lands the puck
+// in the lower third, with the route extending up into the distance —
+// matches Google Maps nav cam.
+const NAV_PUCK_OFFSET_Y = 180;
 
 // Zostel API `type_code` → our PropertyKind. H/B = Zostel, P = Plus, HO = Zo House, S = Zo Selections.
 function kindFromTypeCode(tc?: string): PropertyKind {
@@ -143,6 +138,7 @@ export function MapModal({ open, onClose }: MapModalProps) {
   const { data: poiData } = usePoiData(open);
   const poiUnmount = useRef<(() => void) | null>(null);
   const showPoiRef = useRef<((lng: number, lat: number, props: GeoJSON.GeoJsonProperties, mode?: 'fly' | 'soft') => void) | null>(null);
+  const closePoiPopupRef = useRef<(() => void) | null>(null);
 
   // Route state — set when a citizen taps "Walk here" on a POI popup. `data`
   // is null while the Directions request is in flight; populated when it
@@ -520,11 +516,13 @@ export function MapModal({ open, onClose }: MapModalProps) {
     const routeLayer = mountRouteLayer(map.current);
     poiUnmount.current = layers.unmount;
     showPoiRef.current = layers.showPoi;
+    closePoiPopupRef.current = layers.closePopup;
     routeLayerRef.current = routeLayer;
     return () => {
       poiUnmount.current?.();
       poiUnmount.current = null;
       showPoiRef.current = null;
+      closePoiPopupRef.current = null;
       routeLayer.unmount();
       routeLayerRef.current = null;
     };
@@ -558,6 +556,16 @@ export function MapModal({ open, onClose }: MapModalProps) {
       map.current?.off('click', handleBasemapClick);
     };
   }, [status.kind]);
+
+  // Defensive: any POI popup still open when nav starts gets force-closed.
+  // The mountPoiLayers Walk-Here delegate already calls popup.remove() at
+  // click time, but if a popup was opened via the carousel onSelect or
+  // marker click between Walk-Here and Start, we'd otherwise inherit it.
+  useEffect(() => {
+    if (routeMode === 'navigating') {
+      closePoiPopupRef.current?.();
+    }
+  }, [routeMode]);
 
   // Nav lifecycle — mount the user puck and swap projection to mercator
   // when entering nav (also kept during 'arrived' so the puck stays put on
@@ -603,22 +611,33 @@ export function MapModal({ open, onClose }: MapModalProps) {
     if (!navPosition) return;
     if (!map.current || !route?.data) return;
 
-    // 1) Move the puck (smoothly eased inside mountUserPuck).
-    userPuckRef.current?.setPosition(navPosition.lng, navPosition.lat, navPosition.heading);
+    // Bearing source: prefer real direction of travel from watchPosition.
+    // If unavailable (stationary, or desktop without GPS), fall back to the
+    // current step's `bearing_after` — Mapbox's "you should be facing this
+    // way along this step". Critical for desktop testing AND for the very
+    // first navPosition tick before any walking has happened — otherwise
+    // the camera inherits whatever bearing the preview fitBounds left and
+    // the route extends in a random direction.
+    const stepBearing = route.data.steps[activeStepIndex]?.maneuver.bearing_after;
+    const fallbackBearing = stepBearing ?? map.current.getBearing();
+    const bearing = navPosition.heading ?? fallbackBearing;
 
-    // 2) Camera follow — target ~25m ahead of the citizen along their
-    //    heading so the puck lands in the lower-center of the screen with
-    //    the route extending forward. easeTo cancels any in-flight ease,
-    //    so we don't need to guard against overlap.
-    const heading = navPosition.heading;
-    const userPos = { lng: navPosition.lng, lat: navPosition.lat };
-    const target = heading !== null ? projectAhead(userPos, heading, 25) : userPos;
-    const bearing = heading ?? map.current.getBearing();
+    // 1) Move the puck. Apply the same bearing fallback so the puck arrow
+    //    points along the step direction when real heading is unknown,
+    //    matching the camera orientation.
+    userPuckRef.current?.setPosition(navPosition.lng, navPosition.lat, bearing);
+
+    // 2) Camera follow — center on the citizen's actual position, then push
+    //    them down via screen-pixel `offset` so they sit in the lower third
+    //    of the modal. The route extends UP the screen into the distance.
+    //    easeTo cancels any in-flight ease, so we don't need to guard
+    //    against overlap.
     map.current.easeTo({
-      center: [target.lng, target.lat],
+      center: [navPosition.lng, navPosition.lat],
+      offset: [0, NAV_PUCK_OFFSET_Y],
       bearing,
-      pitch: 65,
-      zoom: Math.max(map.current.getZoom(), 18),
+      pitch: NAV_PITCH,
+      zoom: NAV_ZOOM,
       duration: 800,
       essential: true,
     });
