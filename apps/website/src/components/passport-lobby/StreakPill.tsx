@@ -9,9 +9,9 @@ export interface StreakPillProps {
 }
 
 /**
- * Daily streak indicator for the lobby HUD. Flame emoji + day count,
- * sibling to RankPill in the TopBar. Hidden when current is 0 or undefined,
- * so prod (no streak in v1 profile) stays visually unchanged.
+ * Daily streak indicator for the lobby HUD. Day count only — sibling to
+ * RankPill in the TopBar. Hidden when current is 0 or undefined, so prod
+ * (no streak in v1 profile) stays visually unchanged.
  */
 export function StreakPill({ current, freezeTokens = 0, onClick }: StreakPillProps) {
   if (!current || current <= 0) return null;
@@ -37,7 +37,6 @@ export function StreakPill({ current, freezeTokens = 0, onClick }: StreakPillPro
         color: '#FFFFFF',
       }}
     >
-      <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>🔥</span>
       <span style={{ fontSize: 12, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
         {current}
       </span>
