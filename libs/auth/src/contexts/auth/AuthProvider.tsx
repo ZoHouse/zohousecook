@@ -36,7 +36,7 @@ import { QueryCache, QueryClient, QueryClientProvider } from "react-query";
 import { http, WagmiProvider } from "wagmi";
 import { base, baseSepolia, goerli, mainnet, polygon } from "wagmi/chains";
 import { ZoAuth } from "../../components";
-import { setZoServerHeaders } from "../../utils";
+import { parseTokenExpiry, setZoServerHeaders } from "../../utils";
 import { AuthContext } from "./AuthContext";
 
 const wagmiConfig = getDefaultConfig({
@@ -61,26 +61,6 @@ interface Header extends HeadersDefaults {
   "client-device-secret"?: string;
   "client-key"?: string;
   Authorization?: string;
-}
-
-/**
- * Parse a persisted token-expiry value into a millisecond epoch timestamp.
- *
- * Accepts: numeric ms timestamps ("1745000000000"), numeric second
- * timestamps ("1745000000"), and ISO date strings ("2026-04-22T12:00:00Z").
- * Returns NaN for anything that can't be interpreted. The caller must
- * Number.isFinite() check before comparing against Date.now().
- */
-function parseTokenExpiry(raw: string | null | undefined): number {
-  if (!raw) return NaN;
-  const asNumber = Number(raw);
-  if (Number.isFinite(asNumber) && asNumber > 0) {
-    // Unix epoch in seconds crosses 1e10 around Nov 2286; anything smaller
-    // than 1e12 (year ~33688 in ms) must be seconds, not milliseconds.
-    return asNumber < 1e12 ? asNumber * 1000 : asNumber;
-  }
-  const asDate = new Date(raw).getTime();
-  return Number.isFinite(asDate) ? asDate : NaN;
 }
 
 interface AuthProviderProps {
