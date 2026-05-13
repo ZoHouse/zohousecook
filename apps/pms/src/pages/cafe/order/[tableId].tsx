@@ -168,66 +168,39 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   }
 
   // ── Place Order ────────────────────────────────────────────────────────────
+  // Goes through the place_cafe_order RPC (SECURITY DEFINER) rather than
+  // direct table inserts. The 20260404 security migration dropped anon
+  // INSERT policies on cafe_orders/cafe_order_items, so the old two-step
+  // insert was failing under RLS — orders were silently lost from the
+  // kitchen board. The RPC is atomic (no orphan rows), enforces the
+  // accepting_orders flag, validates server-side prices, applies the GST
+  // tail, and assigns display_number safely.
   const handlePlaceOrder = async () => {
     if (cart.length === 0 || !propertyId || isOrdering) return
     setIsOrdering(true)
     try {
-      // 1. Get next display number
-      const { data: lastOrder } = await supabase
-        .from('cafe_orders')
-        .select('display_number')
-        .eq('property_id', propertyId)
-        .order('display_number', { ascending: false })
-        .limit(1)
-        .single()
-
-      const displayNumber = (lastOrder?.display_number || 0) + 1
-      const totalAmount = cart.reduce((sum, c) => sum + c.price * c.quantity, 0)
-
-      // 2. Insert order
-      const { data: order, error: orderError } = await supabase
-        .from('cafe_orders')
-        .insert({
-          property_id: propertyId,
-          table_id: tableId,
-          mode: 'dine_in',
-          kitchen_status: 'new',
-          display_number: displayNumber,
-          subtotal: totalAmount,
-          service_charge: 0,
-          tax_amount: 0,
-          total: totalAmount,
-          payment_status: 'pending',
-          payment_mode: 'cash',
-        })
-        .select()
-        .single()
-
-      if (orderError || !order) {
-        throw new Error(orderError?.message || 'Failed to create order')
-      }
-
-      // 3. Insert order items
-      const { error: itemsError } = await supabase.from('cafe_order_items').insert(
-        cart.map((item) => ({
-          order_id: order.id,
+      const { data, error } = await supabase.rpc('place_cafe_order', {
+        p_property_id: propertyId,
+        p_table_id: tableId,
+        p_customer_name: null,
+        p_customer_phone: null,
+        p_zo_user_id: null,
+        p_items: cart.map((item) => ({
           menu_item_id: item.menu_item_id,
-          name: item.name,
-          price: item.price,
           quantity: item.quantity,
-          item_status: 'active',
-        }))
-      )
+        })),
+        p_food_credit_paise: 0,
+        p_customer_email: null,
+        p_payment_mode: 'cash',
+      })
 
-      if (itemsError) {
-        throw new Error(itemsError.message)
-      }
+      if (error) throw new Error(error.message)
+      if (!data) throw new Error('Order did not reach the kitchen — please try again')
 
-      // Success
       setCart([])
       setOrderPlaced(true)
       setActiveTab('orders')
-      fetchOrders()
+      await fetchOrders()
       setTimeout(() => setOrderPlaced(false), 3500)
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to place order')

@@ -41,10 +41,10 @@ const Citizen: FC<CitizenProps> = ({ advanceOnboarding }) => {
   return (
     <div className="flex flex-1 flex-col items-start w-full">
       <span className="text-xl md:text-2xl font-bold mb-1 md:mb-2">
-        Where are you a proud citizen?
+        Where are you a proud citizen of?
       </span>
       <span className="text-sm text-white/50 mb-4 md:mb-8">
-        Your homeland flag on your passport
+        We&apos;ll fly your country&apos;s flag on your passport
       </span>
 
       {selected && (
@@ -66,7 +66,10 @@ const Citizen: FC<CitizenProps> = ({ advanceOnboarding }) => {
             key={country.code}
             onClick={() => {
               setSelected(country);
-              setQuery(country.name);
+              // Clear the search so the dropdown shows the full list again,
+              // not a single-row "India" sitting under an input that also
+              // shows "India" — Erum flagged the duplicate as confusing.
+              setQuery("");
             }}
             className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
               selected?.code === country.code
@@ -90,7 +93,7 @@ const Citizen: FC<CitizenProps> = ({ advanceOnboarding }) => {
             : "bg-white/10 text-white/30 cursor-not-allowed"
         }`}
       >
-        {isSaving ? "Saving..." : "That's home"}
+        {isSaving ? "Saving..." : "That's my country"}
       </button>
     </div>
   );
