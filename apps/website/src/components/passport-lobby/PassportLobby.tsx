@@ -16,8 +16,12 @@ import { SideNavRail } from './SideNavRail';
 import { MapModal } from './MapModal';
 import { HeroStage } from './HeroStage';
 import { TravelersPill } from './TravelersPill';
-import { ActivitiesDock } from './ActivitiesDock';
+import { QuestsDock, actionForQuest, type DockQuest } from './QuestsDock';
+import { UnlimitedAccessCta } from './UnlimitedAccessCta';
+import { CameraCaptureModal, type CaptureKind } from './CameraCaptureModal';
 import { InstagramConnectModal } from './InstagramConnectModal';
+import { isGeomediaQuest } from '../../data/mock-quests';
+import { ProUpsellModal, type ProUpsellFeature } from '../pro';
 import { SettingsModal } from '../passport/SettingsModal';
 import ShareModal from '../passport/ShareModal';
 
@@ -43,16 +47,22 @@ export function PassportLobby() {
   const { profile: passportProfile } = usePassportProfile();
   const { season } = useSeason();
 
+  const [upsell, setUpsell] = useState<ProUpsellFeature | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [igModalOpen, setIgModalOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [selectedQuest, setSelectedQuest] = useState<DockQuest | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   const handle = profile?.custom_nickname || profile?.nickname || 'Citizen';
   const avatarUrl = profile?.pfp_image || profile?.avatar?.image;
   const xpTotal = myXp?.xp ?? 0;
   const rankTitle = myXp?.rankTitle ?? 'Citizen';
   const rank = myXp?.rank ?? 0;
+
+  const openUpsell = (f: ProUpsellFeature) => setUpsell(f);
+  const closeUpsell = () => setUpsell(null);
 
   useEffect(() => {
     if (router.query.settings === 'profile') {
@@ -67,15 +77,35 @@ export function PassportLobby() {
     setShareOpen(true);
   }, [handle]);
 
-  // No early return on !profile: useProfile.refetchProfile resets the
-  // cache mid-save, briefly nulling profile. Returning null here unmounted
-  // the lobby (and SettingsModal) on every edit — looked like a redirect.
+  if (!profile) return null;
 
   // IG modal "Connect" button → close modal + redirect to Meta OAuth.
   const handleIgConnect = () => {
     setIgModalOpen(false);
     ig.connect();
   };
+
+  // Per-quest action handler — wires the morphed CTA below the avatar to
+  // the selected quest's action (IG connect / camera capture / external book).
+  const questAction = selectedQuest ? actionForQuest(selectedQuest) : null;
+  const handleQuestAction = () => {
+    if (!questAction) return;
+    if (questAction.kind === 'instagram') {
+      ig.connect();
+    } else if (questAction.kind === 'geomedia') {
+      setCameraOpen(true);
+    } else if (questAction.kind === 'booking' && questAction.href) {
+      window.open(questAction.href, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  // Camera modal accepts the kinds the selected geomedia quest allows.
+  const cameraAllowed: CaptureKind[] =
+    selectedQuest && isGeomediaQuest(selectedQuest)
+      ? selectedQuest.data.geomedia.media_kinds.filter(
+          (k): k is CaptureKind => k === 'photo' || k === 'video',
+        )
+      : ['photo'];
 
   return (
     <div
@@ -164,10 +194,41 @@ export function PassportLobby() {
             />
           }
           travelersPill={<TravelersPill />}
-          belowCta={<ActivitiesDock />}
+          ctaMobile={
+            questAction ? (
+              <UnlimitedAccessCta size="sm" label={questAction.label} onClick={handleQuestAction} />
+            ) : undefined
+          }
+          ctaDesktop={
+            questAction ? (
+              <UnlimitedAccessCta label={questAction.label} onClick={handleQuestAction} />
+            ) : undefined
+          }
+          belowCta={
+            <QuestsDock
+              selectedQuest={selectedQuest}
+              onSelect={setSelectedQuest}
+            />
+          }
+        />
+
+        {/* In-page camera — fires when the morphed CTA is clicked on a
+            geomedia quest. Real submit POSTs to the participation endpoint
+            once that ships; mock surfaces a toast. */}
+        <CameraCaptureModal
+          open={cameraOpen}
+          allowed={cameraAllowed}
+          title={selectedQuest?.title ?? 'Capture'}
+          onClose={() => setCameraOpen(false)}
+          onCapture={(file) => {
+            toast.success(
+              `Captured ${file.type.startsWith('video') ? 'video' : 'photo'}. Submission coming once the upload API is wired.`,
+            );
+          }}
         />
       </div>
 
+      <ProUpsellModal feature={upsell} onClose={closeUpsell} />
       <MapModal open={mapOpen} onClose={() => setMapOpen(false)} />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <InstagramConnectModal open={igModalOpen} onClose={() => setIgModalOpen(false)} onConnect={handleIgConnect} />
