@@ -25,6 +25,7 @@ import {
   IconCheck,
   IconBolt,
   IconAlertTriangle,
+  IconRefresh,
 } from "@tabler/icons-react";
 import { AuthCorner } from "@/components/AuthCorner";
 import { LOGO_URL } from "@/lib/assets";
@@ -62,6 +63,38 @@ export default function ProfilePage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [profile, setProfile] = useState<SelfProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMsg, setRefreshMsg] = useState<string | null>(null);
+
+  const reloadProfile = () =>
+    fetch("/api/profile/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setProfile(d))
+      .catch(() => null);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    setRefreshMsg(null);
+    try {
+      const r = await fetch("/api/profile/refresh", { method: "POST" });
+      const d = await r.json();
+      if (r.ok) {
+        setRefreshMsg(
+          d.shipsAdded === 0
+            ? "Up to date — no new ships."
+            : `+${d.shipsAdded} ship${d.shipsAdded === 1 ? "" : "s"}, +${d.productsAdded} product${d.productsAdded === 1 ? "" : "s"}.`,
+        );
+        await reloadProfile();
+      } else {
+        setRefreshMsg(d.error ?? "Refresh failed.");
+      }
+    } catch {
+      setRefreshMsg("Refresh failed.");
+    } finally {
+      setRefreshing(false);
+      setTimeout(() => setRefreshMsg(null), 4000);
+    }
+  };
 
   const justConnected =
     typeof router.query.connected === "string" ? router.query.connected : null;
@@ -74,13 +107,8 @@ export default function ProfilePage() {
       return;
     }
     if (!isLoggedIn) return;
-    fetch("/api/profile/me")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        setProfile(d);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    reloadProfile().finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn]);
 
   const githubConnected =
@@ -244,9 +272,32 @@ export default function ProfilePage() {
               />
             </div>
 
-            <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-zui-white/60">
-              Recent ships
-            </h2>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zui-white/60">
+                Recent ships
+              </h2>
+              {githubConnected && (
+                <div className="flex items-center gap-3">
+                  {refreshMsg && (
+                    <span className="text-[10px] uppercase tracking-wider text-zui-green">
+                      {refreshMsg}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={onRefresh}
+                    disabled={refreshing}
+                    className="flex items-center gap-1.5 rounded-md border border-zui-stroke bg-zui-light/40 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-zui-white/70 transition hover:bg-zui-light/60 disabled:opacity-50"
+                  >
+                    <IconRefresh
+                      size={11}
+                      className={refreshing ? "animate-spin" : ""}
+                    />
+                    {refreshing ? "Refreshing…" : "Refresh"}
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="mb-10 overflow-hidden rounded-2xl border border-zui-stroke bg-zui-lighter">
               {profile.recentShips.length === 0 && (
                 <div className="px-4 py-10 text-center text-sm text-zui-white/50">

@@ -5,7 +5,7 @@ import { isValidObject } from "@zo/utils/object";
 import { isValidString, randomString } from "@zo/utils/string";
 import axios from "axios";
 import { ReactNode, useCallback, useEffect, useState } from "react";
-import { setZostelServerHeaders } from "../../utils";
+import { parseTokenExpiry, setZostelServerHeaders } from "../../utils";
 import { AuthContext } from "./AuthContext";
 
 interface AuthProviderProps {
@@ -39,13 +39,19 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children, localKey }) => {
         "Client-App-Id": process.env.ZOSTEL_APP_ID || "",
       };
       if (isValidString(initialTokenExpiry)) {
-        const parsedDate = +new Date(initialTokenExpiry || "");
+        // valid_till is persisted as a numeric epoch (ms or s) or ISO
+        // string. `+new Date("1745000000000")` returned NaN for pure-digit
+        // strings, NaN > now is false → setLoggedIn(false) on every
+        // refresh. Same bug PR #19 fixed on the zo provider; the fix is
+        // now shared via parseTokenExpiry in libs/auth/src/utils.ts.
+        const parsedDate = parseTokenExpiry(initialTokenExpiry);
         const parsedUser = getUserIfExists(initialUser);
         if (
           isValidObject(parsedUser) &&
           isValidString(parsedUser?.id) &&
           isValidString(initialToken) &&
-          parsedDate > +new Date()
+          Number.isFinite(parsedDate) &&
+          parsedDate > Date.now()
         ) {
           customAxiosHeaders["Client-User-Id"] = (parsedUser as any)?.user_id;
           customAxiosHeaders.Authorization = `Bearer ${initialToken}`;

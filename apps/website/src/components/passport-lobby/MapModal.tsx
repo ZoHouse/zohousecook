@@ -5,8 +5,27 @@ import { type PropertyKind, type ZoProperty } from './properties';
 import { useZostelOperators, type ZostelOperator } from '../../hooks/useZostelOperators';
 import { usePoiData } from './poi/usePoiData';
 import { mountPoiLayers } from './poi/mountPoiLayers';
-import { useLiveLocation } from '../LiveLocationProvider';
+import { mountRouteLayer, type RouteLayerHandles } from './poi/mountRouteLayer';
+import { fetchWalkingRoute, formatDuration, formatDistance, type RouteResult } from './poi/fetchRoute';
+import { mountUserPuck, type UserPuckHandles } from './poi/mountUserPuck';
+import { useContinuousLocation } from './poi/useContinuousLocation';
+import { useLiveLocation, distanceMeters } from '../LiveLocationProvider';
 import { NearbyPoiBar } from './NearbyPoiBar';
+import { NavStepCard } from './NavStepCard';
+
+type RouteMode = 'explore' | 'preview' | 'navigating' | 'arrived';
+
+// Camera pitch + zoom for nav mode. Pitch 70 = aggressive game-like FPV
+// where building extrusions form a canyon around the route. Zoom 18 is
+// street-level — close enough that walking pace feels responsive without
+// rendering being too expensive on mobile.
+const NAV_PITCH = 70;
+const NAV_ZOOM = 18;
+// Puck stays this many pixels BELOW screen center during nav. Negative
+// values would put it above. ~180px on a ~700px-tall modal lands the puck
+// in the lower third, with the route extending up into the distance —
+// matches Google Maps nav cam.
+const NAV_PUCK_OFFSET_Y = 180;
 
 // Zostel API `type_code` → our PropertyKind. H/B = Zostel, P = Plus, HO = Zo House, S = Zo Selections.
 function kindFromTypeCode(tc?: string): PropertyKind {
@@ -119,6 +138,40 @@ export function MapModal({ open, onClose }: MapModalProps) {
   const { data: poiData } = usePoiData(open);
   const poiUnmount = useRef<(() => void) | null>(null);
   const showPoiRef = useRef<((lng: number, lat: number, props: GeoJSON.GeoJsonProperties, mode?: 'fly' | 'soft') => void) | null>(null);
+  const closePoiPopupRef = useRef<(() => void) | null>(null);
+
+  // Route state — set when a citizen taps "Walk here" on a POI popup. `data`
+  // is null while the Directions request is in flight; populated when it
+  // resolves. Cleared on basemap tap or modal close. Layer handles live in a
+  // ref so the popup click callback can call drawRoute without re-rendering.
+  const [route, setRoute] = useState<{
+    from: [number, number];
+    to: [number, number];
+    poiId: string;
+    data: RouteResult | null;
+    error: string | null;
+  } | null>(null);
+  const routeLayerRef = useRef<RouteLayerHandles | null>(null);
+
+  // Nav-mode FSM. Transitions:
+  //   explore → preview      when fetchWalkingRoute resolves
+  //   preview → navigating   when citizen taps Start
+  //   navigating → arrived   when within 30 m of final destination
+  //   any → explore          on End / Close / basemap tap (preview only)
+  const [routeMode, setRouteMode] = useState<RouteMode>('explore');
+  const [activeStepIndex, setActiveStepIndex] = useState(0);
+  const userPuckRef = useRef<UserPuckHandles | null>(null);
+  // `prevProjection` lets us swap back to whatever the citizen had (globe)
+  // when nav ends.
+  const prevProjectionRef = useRef<mapboxgl.Projection | null>(null);
+
+  // Continuous geolocation — only runs while navigating. Bills no battery
+  // in explore / preview / arrived modes.
+  const { position: navPosition } = useContinuousLocation(routeMode === 'navigating');
+  const navPositionRef = useRef(navPosition);
+  useEffect(() => {
+    navPositionRef.current = navPosition;
+  }, [navPosition]);
 
   // Every Map button click is treated as explicit "show me where I am" intent →
   // force a fresh GPS read + whereabouts POST. refresh() dedupes via inflight
@@ -181,6 +234,16 @@ export function MapModal({ open, onClose }: MapModalProps) {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [open, onClose]);
+
+  // Clear route state + nav mode when modal closes — otherwise a re-open
+  // flashes the stale pill / step card before the map is even ready.
+  useEffect(() => {
+    if (!open) {
+      setRoute(null);
+      setRouteMode('explore');
+      setActiveStepIndex(0);
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -396,20 +459,214 @@ export function MapModal({ open, onClose }: MapModalProps) {
 
   // Mount POI overlay once both the map style is loaded AND the GeoJSON has
   // arrived. Property pins (HTML markers) and POIs (Mapbox source+layer)
-  // coexist; layer mount is independent of marker creation.
+  // coexist; layer mount is independent of marker creation. The route layer
+  // mounts in the same effect so it slots cleanly UNDER the POI symbol
+  // layer (mountRouteLayer uses `pois-symbol` as beforeId).
   useEffect(() => {
     if (status.kind !== 'ready') return;
     if (!poiData) return;
     if (!map.current) return;
-    const layers = mountPoiLayers(map.current, poiData, () => liveLocationRef.current);
+
+    const handleWalkHereRequested = (
+      from: [number, number],
+      to: [number, number],
+      poiId: string,
+    ) => {
+      setRoute({ from, to, poiId, data: null, error: null });
+      setRouteMode('preview');
+      setActiveStepIndex(0);
+      fetchWalkingRoute(from, to)
+        .then((result) => {
+          setRoute((prev) =>
+            prev && prev.poiId === poiId ? { ...prev, data: result } : prev,
+          );
+          routeLayerRef.current?.drawRoute(result.geometry);
+          // Reframe the camera to fit the whole route. Without this the user
+          // is still parked on the destination POI from the prior flyTo, so
+          // they never see where the route starts.
+          if (map.current && result.geometry.coordinates.length > 0) {
+            const bounds = new mapboxgl.LngLatBounds();
+            for (const [lng, lat] of result.geometry.coordinates) {
+              bounds.extend([lng, lat]);
+            }
+            map.current.fitBounds(bounds, {
+              padding: { top: 80, bottom: 200, left: 60, right: 60 },
+              pitch: 50,
+              bearing: map.current.getBearing(),
+              duration: 1400,
+              essential: true,
+            });
+          }
+        })
+        .catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : 'Route lookup failed';
+          console.error('[MapModal] fetchWalkingRoute failed:', err);
+          setRoute((prev) =>
+            prev && prev.poiId === poiId ? { ...prev, error: message } : prev,
+          );
+        });
+    };
+
+    const layers = mountPoiLayers(
+      map.current,
+      poiData,
+      () => liveLocationRef.current,
+      handleWalkHereRequested,
+    );
+    const routeLayer = mountRouteLayer(map.current);
     poiUnmount.current = layers.unmount;
     showPoiRef.current = layers.showPoi;
+    closePoiPopupRef.current = layers.closePopup;
+    routeLayerRef.current = routeLayer;
     return () => {
       poiUnmount.current?.();
       poiUnmount.current = null;
       showPoiRef.current = null;
+      closePoiPopupRef.current = null;
+      routeLayer.unmount();
+      routeLayerRef.current = null;
     };
   }, [status.kind, poiData]);
+
+  // Tap basemap (anywhere not on a POI / property pin) → clear route.
+  // Only honored in preview mode; we don't want an accidental basemap tap
+  // to kill an in-progress navigation. Read mode via ref so the handler
+  // doesn't need to be re-registered every time mode flips.
+  const routeModeRef = useRef(routeMode);
+  useEffect(() => {
+    routeModeRef.current = routeMode;
+  }, [routeMode]);
+  useEffect(() => {
+    if (!map.current) return;
+    const handleBasemapClick = (e: mapboxgl.MapMouseEvent) => {
+      if (!map.current) return;
+      // POI taps fire their own layer-scoped handler; skip basemap clearing
+      // if the click landed on a POI hit-area.
+      const features = map.current.queryRenderedFeatures(e.point, {
+        layers: ['pois-hitarea'],
+      });
+      if (features.length > 0) return;
+      if (routeModeRef.current !== 'preview') return;
+      setRoute(null);
+      setRouteMode('explore');
+      routeLayerRef.current?.clear();
+    };
+    map.current.on('click', handleBasemapClick);
+    return () => {
+      map.current?.off('click', handleBasemapClick);
+    };
+  }, [status.kind]);
+
+  // Defensive: any POI popup still open when nav starts gets force-closed.
+  // The mountPoiLayers Walk-Here delegate already calls popup.remove() at
+  // click time, but if a popup was opened via the carousel onSelect or
+  // marker click between Walk-Here and Start, we'd otherwise inherit it.
+  useEffect(() => {
+    if (routeMode === 'navigating') {
+      closePoiPopupRef.current?.();
+    }
+  }, [routeMode]);
+
+  // Nav lifecycle — mount the user puck and swap projection to mercator
+  // when entering nav (also kept during 'arrived' so the puck stays put on
+  // the destination). Tear down + restore projection on exit. 'navigating'
+  // → 'arrived' is intentionally NOT a re-mount because `isNavActive`
+  // doesn't change across that transition.
+  const isNavActive = routeMode === 'navigating' || routeMode === 'arrived';
+  useEffect(() => {
+    if (!isNavActive) return;
+    if (status.kind !== 'ready') return;
+    if (!map.current) return;
+
+    const puck = mountUserPuck(map.current);
+    userPuckRef.current = puck;
+
+    try {
+      prevProjectionRef.current = map.current.getProjection();
+      map.current.setProjection({ name: 'mercator' });
+    } catch (err) {
+      console.warn('[MapModal] setProjection mercator failed:', err);
+    }
+
+    return () => {
+      puck.unmount();
+      userPuckRef.current = null;
+      if (map.current && prevProjectionRef.current) {
+        try {
+          map.current.setProjection(prevProjectionRef.current);
+        } catch (err) {
+          console.warn('[MapModal] setProjection restore failed:', err);
+        }
+        prevProjectionRef.current = null;
+      }
+    };
+  }, [isNavActive, status.kind]);
+
+  // Position-update handler — fires on every watchPosition tick while
+  // routeMode === 'navigating'. Drives the puck, the camera, step
+  // advancement, and arrival detection. Skips when in 'arrived' so the
+  // camera stops following once we've arrived.
+  useEffect(() => {
+    if (routeMode !== 'navigating') return;
+    if (!navPosition) return;
+    if (!map.current || !route?.data) return;
+
+    // Bearing source: prefer real direction of travel from watchPosition.
+    // If unavailable (stationary, or desktop without GPS), fall back to the
+    // current step's `bearing_after` — Mapbox's "you should be facing this
+    // way along this step". Critical for desktop testing AND for the very
+    // first navPosition tick before any walking has happened — otherwise
+    // the camera inherits whatever bearing the preview fitBounds left and
+    // the route extends in a random direction.
+    const stepBearing = route.data.steps[activeStepIndex]?.maneuver.bearing_after;
+    const fallbackBearing = stepBearing ?? map.current.getBearing();
+    const bearing = navPosition.heading ?? fallbackBearing;
+
+    // 1) Move the puck. Apply the same bearing fallback so the puck arrow
+    //    points along the step direction when real heading is unknown,
+    //    matching the camera orientation.
+    userPuckRef.current?.setPosition(navPosition.lng, navPosition.lat, bearing);
+
+    // 2) Camera follow — center on the citizen's actual position, then push
+    //    them down via screen-pixel `offset` so they sit in the lower third
+    //    of the modal. The route extends UP the screen into the distance.
+    //    easeTo cancels any in-flight ease, so we don't need to guard
+    //    against overlap.
+    map.current.easeTo({
+      center: [navPosition.lng, navPosition.lat],
+      offset: [0, NAV_PUCK_OFFSET_Y],
+      bearing,
+      pitch: NAV_PITCH,
+      zoom: NAV_ZOOM,
+      duration: 800,
+      essential: true,
+    });
+
+    // 3) Step advancement — when within 25m of the NEXT maneuver point,
+    //    advance the active step. Mapbox 'step' i ends at maneuver[i+1].
+    const steps = route.data.steps;
+    if (activeStepIndex < steps.length - 1) {
+      const nextStep = steps[activeStepIndex + 1];
+      const [mLng, mLat] = nextStep.maneuver.location;
+      const dToNext = distanceMeters(
+        { lat: navPosition.lat, long: navPosition.lng },
+        { lat: mLat, long: mLng },
+      );
+      if (dToNext < 25) {
+        setActiveStepIndex(activeStepIndex + 1);
+      }
+    }
+
+    // 4) Arrival — within 30m of the destination POI, switch to arrived.
+    const [destLng, destLat] = route.to;
+    const dToDest = distanceMeters(
+      { lat: navPosition.lat, long: navPosition.lng },
+      { lat: destLat, long: destLng },
+    );
+    if (dToDest < 30) {
+      setRouteMode('arrived');
+    }
+  }, [navPosition, routeMode, route, activeStepIndex]);
 
   if (!open) return null;
 
@@ -501,8 +758,9 @@ export function MapModal({ open, onClose }: MapModalProps) {
 
           {/* Bottom carousel: nearest POIs sorted by distance from viewer.
               Tap or arrow → flyTo + opens popup via the showPoi callback we
-              captured from mountPoiLayers. */}
-          {status.kind === 'ready' && poiData && (
+              captured from mountPoiLayers. Hidden during navigating /
+              arrived — picking another POI mid-walk is redundant noise. */}
+          {status.kind === 'ready' && poiData && !isNavActive && (
             <NearbyPoiBar
               geojson={poiData}
               viewer={liveLocation}
@@ -510,6 +768,135 @@ export function MapModal({ open, onClose }: MapModalProps) {
                 showPoiRef.current?.(lng, lat, props, mode);
               }}
             />
+          )}
+
+          {/* Preview pill — top-center. Shows duration + distance plus a
+              Start CTA that flips to nav mode. Hidden while navigating
+              (NavStepCard takes over) and during arrived (Arrived pill
+              below replaces it). */}
+          {route && routeMode === 'preview' && (
+            <div
+              className="absolute left-1/2 top-3 -translate-x-1/2 z-10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className="flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full border border-white/10 backdrop-blur-md text-white text-xs"
+                style={{ background: 'rgba(0,0,0,0.7)' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00B4FF" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M13 5l7 7-7 7M5 12h15" />
+                </svg>
+                <span className="font-medium tracking-wide whitespace-nowrap">
+                  {route.error
+                    ? route.error
+                    : route.data
+                      ? `${formatDuration(route.data.duration)} · ${formatDistance(route.data.distance)}`
+                      : 'Finding route…'}
+                </span>
+                {route.data && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRouteMode('navigating');
+                      setActiveStepIndex(0);
+                    }}
+                    className="ml-1 px-3 py-1 rounded-full font-bold uppercase tracking-wider text-[10px]"
+                    style={{
+                      background: '#00B4FF',
+                      color: '#fff',
+                      boxShadow: '0 4px 12px rgba(0,180,255,0.35)',
+                    }}
+                  >
+                    Start
+                  </button>
+                )}
+                <button
+                  type="button"
+                  aria-label="Clear route"
+                  onClick={() => {
+                    setRoute(null);
+                    setRouteMode('explore');
+                    routeLayerRef.current?.clear();
+                  }}
+                  className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Navigating — NavStepCard at top. Live distance counts down off
+              the watchPosition stream via navPosition. */}
+          {route?.data && routeMode === 'navigating' && (() => {
+            const steps = route.data.steps;
+            const idx = Math.min(activeStepIndex, steps.length - 1);
+            const currentStep = steps[idx];
+            const isLastStep = idx >= steps.length - 1;
+            const nextTarget = isLastStep
+              ? route.to
+              : steps[idx + 1].maneuver.location;
+            const distanceToNext = navPosition
+              ? distanceMeters(
+                  { lat: navPosition.lat, long: navPosition.lng },
+                  { lat: nextTarget[1], long: nextTarget[0] },
+                )
+              : currentStep.distance;
+            const remaining = steps.slice(idx);
+            const totalRemainingDuration = remaining.reduce((s, st) => s + st.duration, 0);
+            const totalRemainingDistance = remaining.reduce((s, st) => s + st.distance, 0);
+            return (
+              <NavStepCard
+                step={currentStep}
+                distanceToNext={distanceToNext}
+                totalRemainingDuration={totalRemainingDuration}
+                totalRemainingDistance={totalRemainingDistance}
+                onEnd={() => {
+                  setRoute(null);
+                  setRouteMode('explore');
+                  setActiveStepIndex(0);
+                  routeLayerRef.current?.clear();
+                }}
+              />
+            );
+          })()}
+
+          {/* Arrived — celebratory pill with Complete CTA. Until quest
+              completion is wired through to the parent / Django, Complete
+              just clears state. */}
+          {route && routeMode === 'arrived' && (
+            <div
+              className="absolute left-1/2 top-3 -translate-x-1/2 z-10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className="flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full border border-white/10 backdrop-blur-md text-white text-xs"
+                style={{ background: 'rgba(0,0,0,0.78)' }}
+              >
+                <span className="text-base">🎉</span>
+                <span className="font-semibold tracking-wide whitespace-nowrap">You&apos;ve arrived</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRoute(null);
+                    setRouteMode('explore');
+                    setActiveStepIndex(0);
+                    routeLayerRef.current?.clear();
+                  }}
+                  className="ml-1 px-3 py-1 rounded-full font-bold uppercase tracking-wider text-[10px]"
+                  style={{
+                    background: '#00B4FF',
+                    color: '#fff',
+                    boxShadow: '0 4px 12px rgba(0,180,255,0.35)',
+                  }}
+                >
+                  Complete
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>

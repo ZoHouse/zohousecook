@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { NextPage } from 'next'
-import { message, Spin, Switch, Tag } from 'antd'
+import { Button, message, Spin, Switch, Tag } from 'antd'
 import ZoHouseGuard from '../../components/helpers/app/ZoHouseGuard'
 import { Page, PageContent, PageHeader } from '../../components/ui'
 import { KitchenBoard } from '../../components/cafe/KitchenBoard'
@@ -9,6 +9,11 @@ import { OrderDetailModal } from '../../components/cafe/OrderDetailModal'
 import { usePropertyId } from '../../hooks/cafe/usePropertyId'
 import type { CafeOrderWithItems, KitchenStatus } from '../../types/cafe'
 import { supabase } from '../../configs/supabase'
+import {
+  isKitchenAudioUnlocked,
+  playKitchenAlert,
+  unlockKitchenAudio,
+} from '../../lib/cafe/kitchen-alert'
 
 const CafeKitchenPage: NextPage = () => {
   const { propertyId, isLoading: propertyLoading } = usePropertyId()
@@ -22,6 +27,25 @@ const CafeKitchenPage: NextPage = () => {
   // staff-facing switch.
   const [acceptingOrders, setAcceptingOrders] = useState<boolean | null>(null)
   const [acceptingLoading, setAcceptingLoading] = useState(false)
+  const [soundReady, setSoundReady] = useState(false)
+
+  // AudioContext starts suspended until a user gesture resumes it. Listen
+  // for the first click/keydown anywhere on the kitchen page and unlock
+  // audio so subsequent order beeps actually play. After unlock, surface
+  // a "Sound ready" indicator so chefs know the alert will fire.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handler = () => {
+      unlockKitchenAudio()
+      setSoundReady(isKitchenAudioUnlocked())
+    }
+    window.addEventListener('pointerdown', handler, { once: true })
+    window.addEventListener('keydown', handler, { once: true })
+    return () => {
+      window.removeEventListener('pointerdown', handler)
+      window.removeEventListener('keydown', handler)
+    }
+  }, [])
 
   useEffect(() => {
     if (!propertyId) {
@@ -120,13 +144,30 @@ const CafeKitchenPage: NextPage = () => {
                         : 'New customer orders are blocked. Existing orders are unaffected.'}
                     </span>
                   </div>
-                  <Switch
-                    checked={acceptingOrders}
-                    loading={acceptingLoading}
-                    onChange={toggleAccepting}
-                    checkedChildren="On"
-                    unCheckedChildren="Off"
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        unlockKitchenAudio()
+                        playKitchenAlert()
+                        setSoundReady(isKitchenAudioUnlocked())
+                      }}
+                      title={
+                        soundReady
+                          ? 'Sound is unlocked — beep plays on every new order'
+                          : 'Click to unlock the order beep (browser blocks audio until you interact with the page)'
+                      }
+                    >
+                      {soundReady ? '🔔 Test sound' : '🔕 Enable sound'}
+                    </Button>
+                    <Switch
+                      checked={acceptingOrders}
+                      loading={acceptingLoading}
+                      onChange={toggleAccepting}
+                      checkedChildren="On"
+                      unCheckedChildren="Off"
+                    />
+                  </div>
                 </div>
               )}
               <KitchenBoard
