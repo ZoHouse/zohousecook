@@ -72,7 +72,9 @@ export function PassportLobby() {
     setShareOpen(true);
   }, [handle]);
 
-  if (!profile) return null;
+  // No early return on !profile: useProfile.refetchProfile resets the
+  // cache mid-save, briefly nulling profile. Returning null here unmounted
+  // the lobby (and SettingsModal) on every edit — looked like a redirect.
 
   // IG modal "Connect" button → close modal + redirect to Meta OAuth.
   const handleIgConnect = () => {
