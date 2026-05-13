@@ -190,11 +190,7 @@ export function PassportLobby() {
           sideNav={<SideNavRail onOpenMap={() => setMapOpen(true)} handle={handle} />}
           hero={
             <HeroStage
-              tier="free"
               citizenProps={{ handle, displayName: handle, avatarUrl, xpTotal, rankTitle, onShare: handleShare }}
-              xpInLevel={0}
-              xpLevelTotal={0}
-              onUpsell={() => openUpsell('3d-avatar')}
             />
           }
           travelersPill={<TravelersPill />}
