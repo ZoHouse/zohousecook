@@ -3,6 +3,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Google Places Autocomplete dropdown — must sit above the ZoAuth modal
+   (z-[115]) and any backdrop-filter stacking contexts. */
+.pac-container {
+  z-index: 99999 !important;
+}
+
 html,
 body,
 #__next,

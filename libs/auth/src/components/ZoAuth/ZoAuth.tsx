@@ -18,6 +18,7 @@ import MobileLogin from "./steps/MobileLogin";
 import Nickname from "./steps/Nickname";
 import OnboardingCheck from "./steps/OnboardingCheck";
 import Whereabouts from "./steps/Whereabouts";
+import WhereYouLive from "./steps/WhereYouLive";
 interface ZoAuthProps {
   hideModal: () => void;
   isZostelLoginRequired?: boolean;
@@ -35,6 +36,7 @@ export type ZoAuthStep =
   | "NICKNAME"
   | "AVATAR"
   | "WHEREABOUTS"
+  | "WHEREYOULIVE"
   | "CITIZEN"
   | "HOMETOWN"
   | "BIRTHDAY"
@@ -77,6 +79,7 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
     "NICKNAME",
     "AVATAR",
     "WHEREABOUTS",
+    "WHEREYOULIVE",
     "CITIZEN",
     "HOMETOWN",
     "BIRTHDAY",
@@ -182,6 +185,8 @@ const ZoAuth: React.FC<ZoAuthProps> = ({
         return <Avatar advanceOnboarding={advanceOnboarding} />;
       case "WHEREABOUTS":
         return <Whereabouts advanceOnboarding={advanceOnboarding} />;
+      case "WHEREYOULIVE":
+        return <WhereYouLive advanceOnboarding={advanceOnboarding} />;
       case "CITIZEN":
         return <Citizen advanceOnboarding={advanceOnboarding} />;
       case "HOMETOWN":

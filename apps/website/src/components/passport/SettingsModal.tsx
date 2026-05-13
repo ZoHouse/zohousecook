@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
+import axios from "axios";
 import { useAuth, useProfile, useMutationApi, useQueryApi } from "@zo/auth";
 import { MeshGradient } from "@paper-design/shaders-react";
 import { useMyNfts } from "../../hooks/useMyNfts";
@@ -46,11 +47,6 @@ function fixAvatarUrl(url?: string): string | undefined {
   return url
     .replace("static.cdn.zo.xyz", "proxy.cdn.zo.xyz")
     .replace("nsfp.cdn.zo.xyz", "proxy.cdn.zo.xyz");
-}
-
-function formatAddress(addr?: string) {
-  if (!addr) return "";
-  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
 function SectionHeader({ title, right }: { title: string; right?: React.ReactNode }) {
@@ -308,8 +304,15 @@ function LocationSection() {
       : Array.isArray(raw?.results)
       ? raw.results
       : [];
-    return list
-      .filter((c) => c?.code && c?.name)
+    // Dedupe by code — the CAS countries endpoint occasionally returns the
+    // same country under two ISO codes (e.g. "IN" + "IND"), which rendered
+    // as duplicate "India" entries in the dropdown.
+    const byCode = new Map<string, { code: string; name: string }>();
+    for (const c of list) {
+      if (!c?.code || !c?.name) continue;
+      if (!byCode.has(c.code)) byCode.set(c.code, c);
+    }
+    return Array.from(byCode.values())
       .map((c) => ({ value: c.code, label: c.name }))
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [countriesData]);
@@ -350,70 +353,6 @@ function LocationSection() {
       />
       <EditableRow label="Address" value={profile?.address || ""} field="address" type="textarea" onSave={handleSave} />
       <EditableRow label="Pincode" value={profile?.pincode || ""} field="pincode" onSave={handleSave} />
-    </section>
-  );
-}
-
-function WalletsSection() {
-  const { isLoggedIn } = useAuth();
-  const { refetchProfile } = useProfile();
-  const { data: userWallets, isLoading, refetch } = useQueryApi(
-    "AUTH_USER_WEB3_WALLETS",
-    { enabled: isLoggedIn === true },
-    "",
-    ""
-  );
-  const { mutate: updateWallet } = useMutationApi("AUTH_USER_WEB3_WALLETS", {}, "", "PUT");
-  const { mutate: deleteWallet } = useMutationApi("AUTH_USER_WEB3_WALLETS", {}, "", "DELETE");
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const wallets: any[] = (userWallets as any)?.data?.web3_wallets || [];
-
-  const setPrimary = (addr: string) => {
-    updateWallet(
-      { data: { wallet_address: addr, primary: true } },
-      {
-        onSuccess: () => {
-          refetch();
-          refetchProfile();
-        },
-      }
-    );
-  };
-  const remove = (addr: string) => {
-    deleteWallet(
-      { data: { wallet_address: addr } },
-      {
-        onSuccess: () => {
-          refetch();
-          refetchProfile();
-        },
-      }
-    );
-  };
-
-  return (
-    <section>
-      <SectionHeader title="Wallets" />
-      {isLoading ? (
-        <div className="flex items-center justify-center py-4">
-          <Spinner size={20} />
-        </div>
-      ) : wallets.length === 0 ? (
-        <p className="text-sm text-white/40 italic py-2">No wallets connected</p>
-      ) : (
-        wallets.map((w) => (
-          <ConnectedItemRow
-            key={w.wallet_address}
-            icon="W"
-            primary={formatAddress(w.wallet_address)}
-            secondary={w.wallet_address}
-            isPrimary={!!w.primary}
-            onMakePrimary={() => setPrimary(w.wallet_address)}
-            onRemove={() => remove(w.wallet_address)}
-          />
-        ))
-      )}
     </section>
   );
 }
@@ -1019,11 +958,17 @@ async function checkNicknameAvailable(draft: string): Promise<string | null> {
   const clean = draft.toLowerCase().replace(/\.zo$/, "").replace(/[^a-z0-9]/g, "");
   const withZo = `${clean}.zo`;
   try {
-    const res = await fetch(
-      `${process.env.API_BASE_URL || "https://api.io.zo.xyz"}/api/v1/profile/custom-nickname/available/?nickname=${withZo}`,
+    // Use axios so the request picks up the client-key + device-id + auth
+    // headers configured by setZoServerHeaders on axios.defaults.headers.
+    // Bare fetch() omitted them, so the server returned 403 with a
+    // {detail: "..."} body; the absent `available` field then tripped the
+    // "is taken" branch for every nickname tried.
+    const base = process.env.API_BASE_URL || "https://api.io.zo.xyz";
+    const { data } = await axios.get(
+      `${base}/api/v1/profile/custom-nickname/available/`,
+      { params: { nickname: withZo } },
     );
-    const data = await res.json();
-    if (!data.available) return `${withZo} is taken`;
+    if (!data?.available) return `${withZo} is taken`;
   } catch {
     return "Could not check availability";
   }
@@ -1400,7 +1345,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <ProfileSection />
           <LocationSection />
           <CulturesSection />
-          <WalletsSection />
           <EmailsSection />
           <PhonesSection />
           <SocialsSection />

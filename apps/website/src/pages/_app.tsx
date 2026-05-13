@@ -31,6 +31,22 @@ function CustomApp({ Component, pageProps }: AppProps) {
     registerServiceWorker();
   }, []);
 
+  // Swallow MetaMask's "Failed to connect to MetaMask" bootstrap rejection so
+  // Next.js's dev overlay stops blocking the page when the extension's
+  // background worker is sleeping. The error originates inside the extension
+  // (chrome-extension://.../inpage.js → Object.connect) — nothing we can fix.
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    const onRejection = (event: PromiseRejectionEvent) => {
+      const msg = String(event.reason?.message ?? event.reason ?? '');
+      if (msg.includes('Failed to connect to MetaMask')) {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener('unhandledrejection', onRejection);
+    return () => window.removeEventListener('unhandledrejection', onRejection);
+  }, []);
+
   useEffect(() => {
     if (isMobile) {
       return;
