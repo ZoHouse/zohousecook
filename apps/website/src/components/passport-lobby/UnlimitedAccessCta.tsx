@@ -1,14 +1,19 @@
 import Link from 'next/link';
 import { MeshGradient } from '@paper-design/shaders-react';
+import { useProfile } from '@zo/auth';
+import { usePassportSubscription } from '../../hooks/usePassportSubscription';
+import { isFounderProfile } from '../../lib/passport/proStatus';
 
 const GOLD_SHADER_COLORS = ['#FFF3B0', '#FFE38A', '#F5C542', '#C88A1C'];
 
 export interface UnlimitedAccessCtaProps {
   size?: 'sm' | 'md';
-  /** Override the default copy ("Get Unlimited Access"). */
+  /** Override the default copy ("Get Unlimited Access"). Ignored when the
+      viewer is already a Pro citizen — the component swaps to a non-
+      clickable "Pro Citizen" badge regardless. */
   label?: string;
-  /** When provided, renders as a button and runs this handler instead of
-      navigating. Lets callers wire login + onboarding flows behind the CTA. */
+  /** When provided, renders the CTA as a button and runs this handler
+      instead of navigating to /pro. Ignored when the viewer is Pro. */
   onClick?: () => void;
 }
 
@@ -17,6 +22,14 @@ export function UnlimitedAccessCta({
   label = 'Get Unlimited Access',
   onClick,
 }: UnlimitedAccessCtaProps) {
+  const { profile } = useProfile();
+  const { subscription } = usePassportSubscription();
+  // Founders inherit Pro automatically. Paid + active subscription is the
+  // citizen path. Either flips the CTA into the non-clickable Pro badge.
+  const isPro =
+    isFounderProfile(profile) ||
+    !!(subscription?.is_active && subscription?.is_paid);
+
   const padding = size === 'sm' ? '10px 20px' : '14px 28px';
   const fontSize = size === 'sm' ? 12 : 14;
   const sharedStyle = {
@@ -31,8 +44,27 @@ export function UnlimitedAccessCta({
     textShadow: '0 1px 0 rgba(255,255,255,0.35)',
     isolation: 'isolate' as const,
   };
-  const className =
-    'relative overflow-hidden inline-flex items-center gap-2 font-semibold transition-all active:scale-[0.97] hover:brightness-110';
+  const baseClass =
+    'relative overflow-hidden inline-flex items-center gap-2 font-semibold transition-all';
+  const interactiveClass = isPro ? '' : 'active:scale-[0.97] hover:brightness-110';
+  const className = `${baseClass} ${interactiveClass}`.trim();
+
+  // Inline SVG sparkle — replaces the ✦ Unicode glyph (U+2726), which
+  // falls back to tofu on Android system fonts that don't include it.
+  const sparkle = (
+    <svg
+      aria-hidden
+      className="relative z-10"
+      width={fontSize + 2}
+      height={fontSize + 2}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      style={{ flexShrink: 0 }}
+    >
+      <path d="M12 1.5L13.6 9.4L21.5 11L13.6 12.6L12 20.5L10.4 12.6L2.5 11L10.4 9.4Z" />
+    </svg>
+  );
+
   const inner = (
     <>
       <MeshGradient
@@ -46,12 +78,18 @@ export function UnlimitedAccessCta({
         fit="cover"
         style={{ position: 'absolute', inset: 0, zIndex: 0 }}
       />
-      <span aria-hidden className="relative z-10" style={{ fontSize: fontSize + 2 }}>
-        ✦
-      </span>
-      <span className="relative z-10">{label}</span>
+      {sparkle}
+      <span className="relative z-10">{isPro ? 'Pro Citizen' : label}</span>
     </>
   );
+
+  if (isPro) {
+    return (
+      <div className={className} style={sharedStyle} role="status" aria-label="Pro citizen">
+        {inner}
+      </div>
+    );
+  }
 
   if (onClick) {
     return (
