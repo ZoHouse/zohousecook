@@ -18,7 +18,6 @@ import { HeroStage } from './HeroStage';
 import { TravelersPill } from './TravelersPill';
 import { ActivitiesDock } from './ActivitiesDock';
 import { InstagramConnectModal } from './InstagramConnectModal';
-import { ProUpsellModal, type ProUpsellFeature } from '../pro';
 import { SettingsModal } from '../passport/SettingsModal';
 import ShareModal from '../passport/ShareModal';
 
@@ -44,7 +43,6 @@ export function PassportLobby() {
   const { profile: passportProfile } = usePassportProfile();
   const { season } = useSeason();
 
-  const [upsell, setUpsell] = useState<ProUpsellFeature | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [igModalOpen, setIgModalOpen] = useState(false);
@@ -55,9 +53,6 @@ export function PassportLobby() {
   const xpTotal = myXp?.xp ?? 0;
   const rankTitle = myXp?.rankTitle ?? 'Citizen';
   const rank = myXp?.rank ?? 0;
-
-  const openUpsell = (f: ProUpsellFeature) => setUpsell(f);
-  const closeUpsell = () => setUpsell(null);
 
   useEffect(() => {
     if (router.query.settings === 'profile') {
@@ -165,11 +160,7 @@ export function PassportLobby() {
           sideNav={<SideNavRail onOpenMap={() => setMapOpen(true)} handle={handle} />}
           hero={
             <HeroStage
-              tier="free"
               citizenProps={{ handle, displayName: handle, avatarUrl, xpTotal, rankTitle, onShare: handleShare }}
-              xpInLevel={0}
-              xpLevelTotal={0}
-              onUpsell={() => openUpsell('3d-avatar')}
             />
           }
           travelersPill={<TravelersPill />}
@@ -177,7 +168,6 @@ export function PassportLobby() {
         />
       </div>
 
-      <ProUpsellModal feature={upsell} onClose={closeUpsell} />
       <MapModal open={mapOpen} onClose={() => setMapOpen(false)} />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <InstagramConnectModal open={igModalOpen} onClose={() => setIgModalOpen(false)} onConnect={handleIgConnect} />

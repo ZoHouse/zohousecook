@@ -176,7 +176,7 @@ export function PublicPassportView({ handle, viewerState: _viewerState, initialD
               handle={handle}
               displayName={displayName}
               avatarUrl={avatarUrl}
-              onUpsell={() => setShareOpen(true)}
+              onClick={() => setShareOpen(true)}
               onShare={() => setShareOpen(true)}
             />
             <div style={{ marginTop: 4 }} aria-hidden>
