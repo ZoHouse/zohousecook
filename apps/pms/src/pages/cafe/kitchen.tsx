@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { NextPage } from 'next'
+import { useRouter } from 'next/router'
 import { Button, message, Spin, Switch, Tag } from 'antd'
 import ZoHouseGuard from '../../components/helpers/app/ZoHouseGuard'
 import { Page, PageContent, PageHeader } from '../../components/ui'
@@ -12,10 +13,16 @@ import { supabase } from '../../configs/supabase'
 import {
   isKitchenAudioUnlocked,
   playKitchenAlert,
+  setKitchenAudioUrl,
   unlockKitchenAudio,
 } from '../../lib/cafe/kitchen-alert'
 
 const CafeKitchenPage: NextPage = () => {
+  const router = useRouter()
+  const alertAudioUrl = useMemo(
+    () => `${router.basePath || ''}/kitchen-alert.webm`,
+    [router.basePath],
+  )
   const { propertyId, isLoading: propertyLoading } = usePropertyId()
   const [showCreateOrder, setShowCreateOrder] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<CafeOrderWithItems | null>(null)
@@ -29,15 +36,18 @@ const CafeKitchenPage: NextPage = () => {
   const [acceptingLoading, setAcceptingLoading] = useState(false)
   const [soundReady, setSoundReady] = useState(false)
 
-  // AudioContext starts suspended until a user gesture resumes it. Listen
-  // for the first click/keydown anywhere on the kitchen page and unlock
-  // audio so subsequent order beeps actually play. After unlock, surface
-  // a "Sound ready" indicator so chefs know the alert will fire.
+  // Audio setup: set the URL synchronously on mount so it survives HMR /
+  // remounts, then unlock on the first user gesture (browsers block audio
+  // until the page has been interacted with). After unlock, flip a
+  // "Sound ready" indicator so chefs know the alert will fire.
   useEffect(() => {
     if (typeof window === 'undefined') return
+    setKitchenAudioUrl(alertAudioUrl)
     const handler = () => {
       unlockKitchenAudio()
-      setSoundReady(isKitchenAudioUnlocked())
+      // unlock() resolves async (the priming play() returns a Promise),
+      // so check again on a short delay to flip the "Sound ready" indicator.
+      window.setTimeout(() => setSoundReady(isKitchenAudioUnlocked()), 100)
     }
     window.addEventListener('pointerdown', handler, { once: true })
     window.addEventListener('keydown', handler, { once: true })
@@ -45,7 +55,7 @@ const CafeKitchenPage: NextPage = () => {
       window.removeEventListener('pointerdown', handler)
       window.removeEventListener('keydown', handler)
     }
-  }, [])
+  }, [alertAudioUrl])
 
   useEffect(() => {
     if (!propertyId) {
@@ -148,9 +158,10 @@ const CafeKitchenPage: NextPage = () => {
                     <Button
                       size="small"
                       onClick={() => {
+                        setKitchenAudioUrl(alertAudioUrl)
                         unlockKitchenAudio()
                         playKitchenAlert()
-                        setSoundReady(isKitchenAudioUnlocked())
+                        window.setTimeout(() => setSoundReady(isKitchenAudioUnlocked()), 100)
                       }}
                       title={
                         soundReady

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import {
   Modal,
   Form,
+  Input,
   Select,
   InputNumber,
   Radio,
@@ -39,6 +40,7 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
   const [mode, setMode] = useState<OrderMode>('dine_in')
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash')
   const [tableId, setTableId] = useState<string | undefined>(undefined)
+  const [customerName, setCustomerName] = useState<string>('')
   const [notes, setNotes] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedMenuItemId, setSelectedMenuItemId] = useState<string | undefined>(undefined)
@@ -62,6 +64,7 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
       setMode('dine_in')
       setPaymentMode('cash')
       setTableId(undefined)
+      setCustomerName('')
       setNotes('')
       setSelectedMenuItemId(undefined)
       setSelectedQty(1)
@@ -153,6 +156,7 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
           service_charge: 0,
           tax_amount: taxAmount,
           total: total,
+          customer_name: customerName.trim() || null,
           notes: notes || null,
         })
         .select()
@@ -222,6 +226,18 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
             />
           </Form.Item>
         )}
+
+        {/* Customer name surfaces on the kitchen card so chefs know who the
+            order is for (especially useful for pickup / room_service). */}
+        <Form.Item label="Customer Name (optional)">
+          <Input
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            placeholder="e.g. Karthik"
+            maxLength={80}
+            allowClear
+          />
+        </Form.Item>
 
         <Divider style={{ margin: '12px 0' }} />
 

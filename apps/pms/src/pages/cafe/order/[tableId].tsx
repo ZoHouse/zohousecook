@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
+import { useAuth } from '@zo/auth'
 import { supabase } from '../../../configs/supabase'
 import { formatPaise } from '../../../lib/cafe/order-calculator'
 import type {
@@ -63,6 +64,13 @@ export default function CustomerOrderPage() {
 // ─── Content ───────────────────────────────────────────────────────────────────
 
 function CustomerOrderContent({ tableId }: { tableId: string }) {
+  // ── Auth ───────────────────────────────────────────────────────────────────
+  // Login is only enforced at Place Order time, not on page load — customers
+  // can browse the menu freely (low friction for QR-scan walk-ups).
+  const router = useRouter()
+  const { isLoggedIn, user, showLoginModal, logout } = useAuth()
+  const cartStorageKey = `cafe_cart_${tableId}`
+
   // ── State ──────────────────────────────────────────────────────────────────
   const [propertyId, setPropertyId] = useState<string | null>(null)
   const [tableInfo, setTableInfo] = useState<{ code: string; label: string | null } | null>(null)
@@ -81,6 +89,19 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   const [showSearch, setShowSearch] = useState(false)
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Restore cart on mount — covers the flow where the user tapped Place
+  // Order while logged out, got bounced through the login modal, and is
+  // now back on this page with auth in hand.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const saved = window.sessionStorage.getItem(cartStorageKey)
+    if (!saved) return
+    try {
+      const items = JSON.parse(saved)
+      if (Array.isArray(items) && items.length > 0) setCart(items)
+    } catch { /* corrupt payload — ignore */ }
+  }, [cartStorageKey])
 
   // ── Data: fetch table + property + menu ────────────────────────────────────
   useEffect(() => {
@@ -177,20 +198,36 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   // tail, and assigns display_number safely.
   const handlePlaceOrder = async () => {
     if (cart.length === 0 || !propertyId || isOrdering) return
+
+    // Auth gate — login is required before an order can be associated with
+    // a customer. Persist the cart so the user lands back on a populated
+    // cart screen after the login modal completes, instead of an empty one.
+    if (!isLoggedIn || !user) {
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(cartStorageKey, JSON.stringify(cart))
+      }
+      showLoginModal(['mobile'], router.asPath)
+      return
+    }
+
     setIsOrdering(true)
     try {
+      const fullName = [user.first_name, user.last_name]
+        .filter(Boolean)
+        .join(' ')
+        .trim()
       const { data, error } = await supabase.rpc('place_cafe_order', {
         p_property_id: propertyId,
         p_table_id: tableId,
-        p_customer_name: null,
-        p_customer_phone: null,
-        p_zo_user_id: null,
+        p_customer_name: fullName || null,
+        p_customer_phone: user.mobile_number || null,
+        p_zo_user_id: user.id || null,
         p_items: cart.map((item) => ({
           menu_item_id: item.menu_item_id,
           quantity: item.quantity,
         })),
         p_food_credit_paise: 0,
-        p_customer_email: null,
+        p_customer_email: user.email_address || null,
         p_payment_mode: 'cash',
       })
 
@@ -198,6 +235,9 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       if (!data) throw new Error('Order did not reach the kitchen — please try again')
 
       setCart([])
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem(cartStorageKey)
+      }
       setOrderPlaced(true)
       setActiveTab('orders')
       await fetchOrders()
@@ -694,9 +734,71 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
           </div>
         )}
 
-        {/* ── WALLET TAB ────────────────────────────────────────────────────── */}
+        {/* ── ACCOUNT TAB (profile + wallet placeholder) ──────────────────── */}
         {activeTab === 'wallet' && (
           <div className="px-4 py-4">
+            {/* Profile card */}
+            {isLoggedIn && user ? (
+              <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-5 mb-4">
+                <div className="flex items-center gap-4">
+                  {/* Avatar circle with initial */}
+                  <div className="shrink-0 w-14 h-14 rounded-2xl bg-orange-500 flex items-center justify-center text-black font-extrabold text-xl">
+                    {(user.first_name?.[0] || user.mobile_number?.slice(-1) || '?').toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-bold text-black truncate">
+                      {[user.first_name, user.last_name].filter(Boolean).join(' ') || 'Zo Citizen'}
+                    </p>
+                    {user.mobile_number && (
+                      <p className="text-sm text-black/55 font-medium mt-0.5 font-mono">
+                        {user.mobile_number}
+                      </p>
+                    )}
+                    {user.email_address && (
+                      <p className="text-xs text-black/40 font-medium mt-0.5 truncate">
+                        {user.email_address}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => logout()}
+                  className="mt-4 w-full py-2.5 rounded-xl bg-black/5 hover:bg-black/10 text-black/70 text-sm font-semibold transition-colors"
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-5 mb-4 text-center">
+                <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                  <svg
+                    className="w-7 h-7 text-orange-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.8}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
+                    />
+                  </svg>
+                </div>
+                <h2 className="text-lg font-extrabold text-black tracking-tight">Sign in</h2>
+                <p className="text-sm text-black/55 font-medium mt-1 mb-4">
+                  Log in to see your profile and order history
+                </p>
+                <button
+                  onClick={() => showLoginModal(['mobile'], router.asPath)}
+                  className="w-full bg-orange-500 text-black py-3 rounded-2xl text-sm font-bold tracking-wide active:scale-[0.98] transition-all"
+                >
+                  Sign in with phone
+                </button>
+              </div>
+            )}
+
+            {/* Zo Card placeholder */}
             <div className="rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 p-6 text-black mb-4 text-center">
               <div className="w-14 h-14 bg-black/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <svg
@@ -810,7 +912,11 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"
+                      d={
+                        active
+                          ? 'M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.75 20.118a8.25 8.25 0 0 1 16.5 0v.382a.75.75 0 0 1-.75.75H4.5a.75.75 0 0 1-.75-.75v-.382Z'
+                          : 'M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z'
+                      }
                     />
                   </svg>
                 ),
@@ -823,7 +929,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
               className={`relative flex items-center justify-center w-12 h-12 rounded-full transition-all ${
                 activeTab === tab.key
                   ? 'text-orange-600 bg-orange-50'
-                  : 'text-black/35 hover:text-black/60'
+                  : 'text-black/70 hover:text-black'
               }`}
             >
               {tab.badge !== undefined && (
