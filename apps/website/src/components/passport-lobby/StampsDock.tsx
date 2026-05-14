@@ -148,6 +148,9 @@ function EmptyState({ tab }: { tab: TabKey }) {
 export interface StampsDockProps {
   myXp: MyXpData | null;
   isLoading: boolean;
+  /** Owner's handle — passed through to the stamp detail modal so its share
+      action can build a /@handle/badges URL. */
+  handle?: string;
 }
 
 /**
@@ -155,7 +158,7 @@ export interface StampsDockProps {
  * Replaces QuestsDock in the badges page. Earned-only — locked stamps don't
  * render in v1. Tap a stamp → StampDetailModal.
  */
-export function StampsDock({ myXp, isLoading }: StampsDockProps) {
+export function StampsDock({ myXp, isLoading, handle }: StampsDockProps) {
   const [tab, setTab] = useState<TabKey>('city');
   const [selected, setSelected] = useState<StampDetail | null>(null);
 
@@ -270,7 +273,7 @@ export function StampsDock({ myXp, isLoading }: StampsDockProps) {
         </div>
       )}
 
-      <StampDetailModal stamp={selected} onClose={() => setSelected(null)} />
+      <StampDetailModal stamp={selected} handle={handle} onClose={() => setSelected(null)} />
     </div>
   );
 }

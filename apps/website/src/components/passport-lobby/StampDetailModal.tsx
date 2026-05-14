@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { toast } from 'sonner';
 import { stampUrlFor } from '../../lib/passport/stampUrl';
 import { rubikClassName, syneClassName } from '../utils/font';
 
@@ -25,16 +27,25 @@ const LAYER_EARN_HINT: Record<StampLayer, string> = {
 
 export interface StampDetailModalProps {
   stamp: StampDetail | null;
+  /** Owner's handle — used to build the share URL. Optional. */
+  handle?: string;
   onClose: () => void;
 }
 
 /**
  * Fullscreen centered stamp viewer — opens when a stamp tile is tapped in the
- * StampsDock. Same backdrop-blur + tap-to-dismiss pattern as the older
- * CountryModal that lived inside BadgesSection.
+ * StampsDock. Portaled to document.body so its z-index sits above the
+ * page-level stacking contexts created by TopBar / SideNavRail / LobbyRoom's
+ * belowCta wrapper.
  */
-export function StampDetailModal({ stamp, onClose }: StampDetailModalProps) {
+export function StampDetailModal({ stamp, handle, onClose }: StampDetailModalProps) {
   const [failed, setFailed] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Portal only renders after mount so SSR + first-paint stay clean.
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Reset image error state whenever the stamp swaps so a previously-failed
   // tile doesn't poison the next one.
@@ -52,16 +63,51 @@ export function StampDetailModal({ stamp, onClose }: StampDetailModalProps) {
     return () => window.removeEventListener('keydown', handler);
   }, [stamp, onClose]);
 
-  if (!stamp) return null;
+  if (!stamp || !mounted) return null;
 
   const url = stampUrlFor(stamp.name);
 
-  return (
+  const handleShare = async () => {
+    const shareUrl =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/@${handle || ''}/badges`
+        : '';
+    const layerLabel = LAYER_LABEL[stamp.layer].toLowerCase();
+    const title = `${stamp.name} stamp · Zo Passport`;
+    const text = handle
+      ? `${handle} unlocked the ${stamp.name} ${layerLabel} stamp on Zo Passport`
+      : `${stamp.name} ${layerLabel} stamp on Zo Passport`;
+
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title, text, url: shareUrl || undefined });
+        return;
+      } catch (err) {
+        // User cancelled or share failed silently — fall through to clipboard.
+        const e = err as { name?: string };
+        if (e?.name === 'AbortError') return;
+      }
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard && shareUrl) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success(`${stamp.name} stamp link copied`);
+        return;
+      } catch {
+        /* fall through */
+      }
+    }
+    toast.error('Could not share — try again');
+  };
+
+  const modal = (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={`${stamp.name} stamp`}
-      className={`fixed inset-0 z-[100] flex items-center justify-center p-6 ${rubikClassName}`}
+      className={`fixed inset-0 z-[1000] flex items-center justify-center p-6 ${rubikClassName}`}
+      style={{ isolation: 'isolate' }}
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
@@ -83,6 +129,49 @@ export function StampDetailModal({ stamp, onClose }: StampDetailModalProps) {
             padding: '28px 24px 24px',
           }}
         >
+          {/* Share button — mirror of the CitizenCard share icon. Top-left so
+              it doesn't fight the close button visually. */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              void handleShare();
+            }}
+            aria-label="Share stamp"
+            className="absolute z-10 flex items-center justify-center transition-transform active:scale-90"
+            style={{
+              top: 12,
+              left: 12,
+              width: 32,
+              height: 32,
+              borderRadius: 999,
+              background: 'rgba(0,0,0,0.4)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              color: '#fff',
+              lineHeight: 1,
+            }}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+            </svg>
+          </button>
+
           <button
             type="button"
             onClick={onClose}
@@ -195,4 +284,6 @@ export function StampDetailModal({ stamp, onClose }: StampDetailModalProps) {
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }
