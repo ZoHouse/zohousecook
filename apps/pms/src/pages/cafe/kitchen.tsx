@@ -1,6 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { NextPage } from 'next'
-import { useRouter } from 'next/router'
 import { Button, message, Spin, Switch, Tag } from 'antd'
 import ZoHouseGuard from '../../components/helpers/app/ZoHouseGuard'
 import { Page, PageContent, PageHeader } from '../../components/ui'
@@ -16,13 +15,12 @@ import {
   setKitchenAudioUrl,
   unlockKitchenAudio,
 } from '../../lib/cafe/kitchen-alert'
+// Import the audio asset through webpack so it gets fingerprinted and bundled
+// into the deploy. Files in apps/pms/public/ have historically 404'd on Vercel
+// for this monorepo — see project CLAUDE.md "Vercel / Next.js asset handling".
+import alertAudioUrl from '../../assets/audio/kitchen-alert.webm'
 
 const CafeKitchenPage: NextPage = () => {
-  const router = useRouter()
-  const alertAudioUrl = useMemo(
-    () => `${router.basePath || ''}/kitchen-alert.webm`,
-    [router.basePath],
-  )
   const { propertyId, isLoading: propertyLoading } = usePropertyId()
   const [showCreateOrder, setShowCreateOrder] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<CafeOrderWithItems | null>(null)
