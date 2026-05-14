@@ -24,11 +24,14 @@ export function UnlimitedAccessCta({
 }: UnlimitedAccessCtaProps) {
   const { profile } = useProfile();
   const { subscription } = usePassportSubscription();
-  // Founders inherit Pro automatically. Paid + active subscription is the
-  // citizen path. Either flips the CTA into the non-clickable Pro badge.
+  // Pro short-circuit only fires in idle/default mode. When the caller
+  // supplies onClick the CTA is being morphed into a quest action — a
+  // Pro citizen must still see and click that action, otherwise selecting
+  // a quest is a silent no-op for them.
   const isPro =
-    isFounderProfile(profile) ||
-    !!(subscription?.is_active && subscription?.is_paid);
+    !onClick &&
+    (isFounderProfile(profile) ||
+      !!(subscription?.is_active && subscription?.is_paid));
 
   const padding = size === 'sm' ? '10px 20px' : '14px 28px';
   const fontSize = size === 'sm' ? 12 : 14;
