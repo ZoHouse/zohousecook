@@ -166,6 +166,7 @@ export function PublicPassportView({ handle, viewerState: _viewerState, initialD
             xp={viewerXp?.xp ?? 0}
             rank={viewerXp?.rank ?? 0}
             avatarUrl={viewerProfile?.pfp_image || viewerProfile?.avatar?.image}
+            showNavMenu={false}
           />
         )}
 

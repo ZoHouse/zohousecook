@@ -10,7 +10,6 @@ import { useSeason } from '../../hooks/useSeason';
 import { TopBar } from './TopBar';
 import { SeasonLevelBar } from './SeasonLevelBar';
 import { LobbyRoom } from './LobbyRoom';
-import { SideNavRail } from './SideNavRail';
 import { MapModal } from './MapModal';
 import { TravelersPill } from './TravelersPill';
 import { UnlimitedAccessCta } from './UnlimitedAccessCta';
@@ -36,7 +35,7 @@ const IRIDESCENT_PEARL_COLORS = [
 /**
  * Owner view for /@{handle}/badges. Structurally identical to PassportLobby:
  *   - Same pearl iridescent mesh background
- *   - Same TopBar / SeasonLevelBar / SideNavRail / TravelersPill / MapModal
+ *   - Same TopBar / SeasonLevelBar / TravelersPill / MapModal
  *   - Same pedestal SVG, same CTA slot, same below-CTA slot
  * The only two swaps are the pedestal object (CitizenCard → BagHero) and the
  * below-CTA content (QuestsDock → StampsDock). CTA is a static Share button.
@@ -130,6 +129,8 @@ export function BadgesLobby() {
           onOpenSettings={() => setSettingsOpen(true)}
           streakCurrent={passportProfile?.streak?.current}
           streakFreezeTokens={passportProfile?.streak?.freeze_tokens}
+          handle={handle}
+          onOpenMap={() => setMapOpen(true)}
         />
 
         {passportProfile?.season_level != null && (
@@ -145,7 +146,6 @@ export function BadgesLobby() {
         )}
 
         <LobbyRoom
-          sideNav={<SideNavRail onOpenMap={() => setMapOpen(true)} handle={handle} />}
           hero={<BagHero earnedCount={earnedCount} onShare={handleShare} />}
           travelersPill={<TravelersPill />}
           ctaMobile={<UnlimitedAccessCta size="sm" label="Share my stamps" onClick={handleShare} />}
