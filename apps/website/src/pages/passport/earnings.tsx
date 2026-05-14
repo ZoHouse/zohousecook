@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth, useProfile } from '@zo/auth';
 import { Warp } from '@paper-design/shaders-react';
-import { SideNavRail } from '../../components/passport-lobby/SideNavRail';
 import { MapModal } from '../../components/passport-lobby/MapModal';
 import { TopBar } from '../../components/passport-lobby/TopBar';
 import { PageHeaderPill } from '../../components/passport-lobby/PageHeaderPill';
@@ -226,16 +225,16 @@ export default function EarningsPage() {
         />
         {/* Content wrapper lifts above the shader */}
         <div className="relative" style={{ zIndex: 1 }}>
-        {/* Global HUD — left: back + page title, right: RankPill, below right: nav rail. */}
+        {/* Global HUD — left: back + page title + RankPill. Top-right: NavMenuPill. */}
         <PageHeaderPill title="Dashboard" />
         <TopBar
           xp={myXp?.xp ?? 0}
           rank={myXp?.rank ?? 0}
           avatarUrl={profile?.pfp_image || profile?.avatar?.image}
           onOpenSettings={() => router.push('/passport?settings=profile')}
+          handle={displayHandle}
+          onOpenMap={() => setMapOpen(true)}
         />
-        {/* SideNavRail self-positions globally (same slot on every page) */}
-        <SideNavRail handle={displayHandle} onOpenMap={() => setMapOpen(true)} />
 
         <div className="px-6 md:px-10 pt-24 md:pt-28 pb-16 md:pr-32">
           {/* Top summary card */}

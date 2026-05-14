@@ -4,7 +4,6 @@ import pedestal from '../../assets/passport-lobby/scene/pedestal.svg';
 import { UnlimitedAccessCta } from './UnlimitedAccessCta';
 
 export interface LobbyRoomProps {
-  sideNav: ReactNode;
   hero: ReactNode;
   travelersPill: ReactNode;
   /** Rendered immediately below the "Get Unlimited Access" CTA. */
@@ -17,10 +16,9 @@ export interface LobbyRoomProps {
 
 /**
  * Lobby scene — Fortnite-style lobby. Avatar center-stage, HUD around edges.
- * Map access lives inside the side-nav rail (passed in via sideNav slot).
+ * Map access now lives inside the TopBar's NavMenuPill dropdown.
  */
 export function LobbyRoom({
-  sideNav,
   hero,
   travelersPill,
   belowCta,
@@ -37,8 +35,6 @@ export function LobbyRoom({
         className="relative md:hidden flex flex-col h-[100svh] overflow-hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        {sideNav}
-
         <div className="relative z-[5] flex flex-col items-center justify-center flex-1 pt-20 gap-1">
           {hero}
           <div style={{ marginTop: -4 }} aria-hidden>
@@ -59,8 +55,6 @@ export function LobbyRoom({
           background: 'transparent',
         }}
       >
-        {sideNav}
-
         <div className="relative z-[5] flex flex-col items-center pt-[80px] lg:pt-32 pb-16" style={{ minHeight: 'calc(100vh - 120px)' }}>
           {hero}
           <div style={{ marginTop: 6 }} aria-hidden>
