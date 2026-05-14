@@ -35,7 +35,7 @@ export interface StampDetailModalProps {
 /**
  * Fullscreen centered stamp viewer — opens when a stamp tile is tapped in the
  * StampsDock. Portaled to document.body so its z-index sits above the
- * page-level stacking contexts created by TopBar / SideNavRail / LobbyRoom's
+ * page-level stacking contexts created by TopBar / LobbyRoom's
  * belowCta wrapper.
  */
 export function StampDetailModal({ stamp, handle, onClose }: StampDetailModalProps) {

@@ -10,9 +10,9 @@ export interface PageHeaderPillProps {
   backLabel?: string;
 }
 
-// Glass pill geometry matches the active state of SideNavRail + the inner fill
-// of RankPill (minus the green gradient border) so the three HUD anchors read
-// as one system: 44px tall, same border, same shadow, same backdrop.
+// Glass pill geometry matches the inner fill of RankPill / NavMenuPill (minus
+// the green gradient border) so the HUD anchors read as one system: 44px tall,
+// same border, same shadow, same backdrop.
 const PILL_STYLE: React.CSSProperties = {
   height: 44,
   borderRadius: 999,
@@ -44,8 +44,8 @@ const CHEVRON_LEFT = (
 
 /**
  * Fixed top-left HUD for passport sub-pages: circular back button + title pill.
- * Pair with the existing <TopBar /> (RankPill) anchored top-right and <SideNavRail />
- * on the right edge. All three read as a single glass HUD.
+ * Pair with the existing <TopBar />, which anchors the RankPill on the left
+ * and the NavMenuPill dropdown on the right. Together they read as one glass HUD.
  *
  * PWA: respects env(safe-area-inset-top) / env(safe-area-inset-left) so the
  * pills don't tuck under the notch or home indicator in standalone mode.

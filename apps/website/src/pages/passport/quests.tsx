@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useProfile } from '@zo/auth';
 import { Warp } from '@paper-design/shaders-react';
-import { SideNavRail } from '../../components/passport-lobby/SideNavRail';
 import { MapModal } from '../../components/passport-lobby/MapModal';
 import { TopBar } from '../../components/passport-lobby/TopBar';
 import { PageHeaderPill } from '../../components/passport-lobby/PageHeaderPill';
@@ -675,18 +674,17 @@ export default function QuestsPage() {
         />
 
         <div className="relative" style={{ zIndex: 1 }}>
-          {/* Global HUD — three anchored pills that share the same 44px height
-              and glass treatment. Left: back + page title. Right: RankPill.
-              Below right: nav rail. */}
+          {/* Global HUD — left: back + page title. Top-left: RankPill.
+              Top-right: NavMenuPill (dropdown nav, mounted inside TopBar). */}
           <PageHeaderPill title="Quests" />
           <TopBar
             xp={myXp?.xp ?? 0}
             rank={myXp?.rank ?? 0}
             avatarUrl={profile?.pfp_image || profile?.avatar?.image}
             onOpenSettings={() => router.push('/passport?settings=profile')}
+            handle={displayHandle}
+            onOpenMap={() => setMapOpen(true)}
           />
-          {/* SideNavRail self-positions globally (same slot on every page) */}
-          <SideNavRail handle={displayHandle} onOpenMap={() => setMapOpen(true)} />
 
           <div className="px-6 md:px-10 pt-24 md:pt-28 pb-24 max-w-[840px] mx-auto md:pr-32">
             {/* Today's Loot — only when drop is imminent (<24h). Separate from quests. */}

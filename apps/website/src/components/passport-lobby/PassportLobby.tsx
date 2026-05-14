@@ -12,7 +12,6 @@ import { TopBar } from './TopBar';
 import { SeasonLevelBar } from './SeasonLevelBar';
 
 import { LobbyRoom } from './LobbyRoom';
-import { SideNavRail } from './SideNavRail';
 import { MapModal } from './MapModal';
 import { HeroStage } from './HeroStage';
 import { TravelersPill } from './TravelersPill';
@@ -170,6 +169,8 @@ export function PassportLobby() {
           onOpenSettings={() => setSettingsOpen(true)}
           streakCurrent={passportProfile?.streak?.current}
           streakFreezeTokens={passportProfile?.streak?.freeze_tokens}
+          handle={handle}
+          onOpenMap={() => setMapOpen(true)}
         />
 
         {/* Season XP meter (L1-L100). Desktop top-left only. Hidden on prod
@@ -187,7 +188,6 @@ export function PassportLobby() {
         )}
 
         <LobbyRoom
-          sideNav={<SideNavRail onOpenMap={() => setMapOpen(true)} handle={handle} />}
           hero={
             <HeroStage
               citizenProps={{ handle, displayName: handle, avatarUrl, xpTotal, rankTitle, onShare: handleShare }}
