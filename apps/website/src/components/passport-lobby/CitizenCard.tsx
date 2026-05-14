@@ -16,7 +16,7 @@ export interface CitizenCardProps {
   xpTotal?: number;
   /** Kept in the interface for future binding; not rendered in the current card. */
   rankTitle?: string;
-  onUpsell: () => void;
+  onClick: () => void;
   onShare?: () => void;
 }
 
@@ -25,7 +25,7 @@ const CARD_RADIUS = 20;
 const MAX_TILT = 10; // degrees
 const HOVER_LIFT = 8; // translateZ
 
-export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare }: CitizenCardProps) {
+export function CitizenCard({ handle, displayName, avatarUrl, onClick, onShare }: CitizenCardProps) {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [tilt, setTilt] = useState<{
     rx: number;
@@ -67,11 +67,11 @@ export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare 
         ref={cardRef}
         role="button"
         tabIndex={0}
-        onClick={onUpsell}
+        onClick={onClick}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            onUpsell();
+            onClick();
           }
         }}
         onMouseMove={handleMouseMove}
@@ -227,7 +227,7 @@ export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare 
           style={{
             fontSize: 24,
             fontWeight: 700,
-            color: '#FFFFFF',
+            color: '#0A0A0A',
             lineHeight: '1.2em',
             marginBottom: 2,
             position: 'relative',
@@ -241,12 +241,13 @@ export function CitizenCard({ handle, displayName, avatarUrl, onUpsell, onShare 
         <div
           style={{
             fontSize: 12,
-            fontWeight: 400,
-            color: 'rgba(255,255,255,0.55)',
+            fontWeight: 500,
+            color: 'rgba(0,0,0,0.7)',
             letterSpacing: '0.01em',
             position: 'relative',
             zIndex: 4,
             transform: 'translateZ(10px)',
+            whiteSpace: 'nowrap',
           }}
         >
           Citizen of Zo World

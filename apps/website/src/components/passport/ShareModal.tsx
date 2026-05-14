@@ -68,17 +68,93 @@ const ShareModal: React.FC<ShareModalProps> = ({
     }
   };
 
-  const handleTwitter = () => {
+  // Build the share canvas as a Blob for native-share-with-files paths.
+  // Returns null if canvas generation fails — caller falls back to text-only.
+  const buildShareBlob = async (): Promise<Blob | null> => {
+    try {
+      const name = displayName || cleanHandle;
+      const canvas = await buildStoryCanvas(name, cleanHandle, profileUrl, fixedAvatar);
+      return await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((blob) => resolve(blob), "image/png"),
+      );
+    } catch {
+      return null;
+    }
+  };
+
+  // Trigger a browser download of the canvas so the user can attach it
+  // manually on platforms that don't accept image-share via intent (X,
+  // desktop WhatsApp Web).
+  const downloadShareImage = async (filename: string): Promise<boolean> => {
+    const blob = await buildShareBlob();
+    if (!blob) return false;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    return true;
+  };
+
+  const handleTwitter = async () => {
+    // X mobile app drops `text=` when a separate `url=` field is also
+    // present — combine into one text param so the post renders pre-filled.
+    // Use x.com (the canonical domain post-rebrand; twitter.com still
+    // works but x.com is what the app expects).
+    const fullText = `${shareText} ${profileUrl}`;
+
+    // On mobile, try native share with the canvas as a file so the user
+    // gets the visual passport card alongside the text.
+    if (isMobileDevice() && navigator.canShare) {
+      const blob = await buildShareBlob();
+      if (blob) {
+        const file = new File([blob], "zo-passport.png", { type: "image/png" });
+        if (navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], text: fullText });
+            return;
+          } catch {
+            /* cancelled → fall through to intent URL */
+          }
+        }
+      }
+    }
+
+    // Desktop / fallback — download the creative so the user can attach it
+    // in the X composer, then open the X intent pre-filled with text+URL.
+    void downloadShareImage("zo-passport.png");
     window.open(
-      `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(profileUrl)}`,
+      `https://x.com/intent/tweet?text=${encodeURIComponent(fullText)}`,
       "_blank",
       "noopener,noreferrer",
     );
   };
 
-  const handleWhatsApp = () => {
+  const handleWhatsApp = async () => {
+    const fullText = `${shareText} ${profileUrl}`;
+
+    // On mobile, native share lets us attach the passport card as a file
+    // alongside the text.
+    if (isMobileDevice() && navigator.canShare) {
+      const blob = await buildShareBlob();
+      if (blob) {
+        const file = new File([blob], "zo-passport.png", { type: "image/png" });
+        if (navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], text: fullText });
+            return;
+          } catch {
+            /* cancelled → fall through to wa.me */
+          }
+        }
+      }
+    }
+
+    // Desktop / fallback — download the creative + open the wa.me intent.
+    void downloadShareImage("zo-passport.png");
     window.open(
-      `https://wa.me/?text=${encodeURIComponent(`${shareText} ${profileUrl}`)}`,
+      `https://wa.me/?text=${encodeURIComponent(fullText)}`,
       "_blank",
       "noopener,noreferrer",
     );

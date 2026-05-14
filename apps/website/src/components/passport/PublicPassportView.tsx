@@ -1,19 +1,17 @@
 import React, { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/router";
-import { useAuth } from "@zo/auth";
+import { MeshGradient } from "@paper-design/shaders-react";
+import { useAuth, useProfile as useMyProfile } from "@zo/auth";
 import { usePublicPassport, type PublicPassport } from "../../hooks/usePublicPassport";
-import { SideNavRail } from "../passport-lobby/SideNavRail";
-import { MapModal } from "../passport-lobby/MapModal";
 import { TopBar } from "../passport-lobby/TopBar";
-import { useProfile as useMyProfile } from "@zo/auth";
+import { CitizenCard } from "../passport-lobby/CitizenCard";
+import { UnlimitedAccessCta } from "../passport-lobby/UnlimitedAccessCta";
+import { HologramStatCard } from "../passport-lobby/HologramStatCard";
 import { useMyXp } from "../../hooks/useMyXp";
 import { ViewerState } from "./PassportPitch";
-import { ShareQuestButtons } from "./ShareQuestButtons";
 import ShareModal from "./ShareModal";
-import PassportIdentityCard from "./PassportIdentityCard";
-import PassportPlusUpsell from "./PassportPlusUpsell";
-import BookStaysPlaceholder from "./BookStaysPlaceholder";
-import StampsGrid from "./StampsGrid";
+import pedestal from "../../assets/passport-lobby/scene/pedestal.svg";
 
 interface PublicPassportViewProps {
   handle: string;
@@ -21,82 +19,50 @@ interface PublicPassportViewProps {
   initialData?: PublicPassport | null;
 }
 
-type PublicData = NonNullable<ReturnType<typeof usePublicPassport>["data"]>;
+const IRIDESCENT_PEARL_COLORS = [
+  "#FBF8F4",
+  "#F2E0EC",
+  "#E6D9F2",
+  "#FFFFFF",
+  "#DCEDE8",
+  "#F4E8D4",
+  "#DBE6F2",
+  "#FBF8F4",
+];
 
-function displayNameFor(data: PublicData): string {
-  return (
-    data.full_name ||
-    data.handle.charAt(0).toUpperCase() + data.handle.slice(1)
-  );
-}
-
-function primaryCtaCopy(state: ViewerState): string {
-  switch (state) {
-    case "logged_out":
-      return "Unlock Your Passport";
-    case "logged_in_no_passport":
-      return "Complete Your Passport";
-    case "free":
-    case "pro":
-      return "Go to My Passport";
-  }
-}
-
-function adaptProfile(data: PublicData) {
-  return {
-    avatar: { image: data.avatar_image || data.pfp_image || "" },
-    pfp_image: data.pfp_image,
-    custom_nickname: data.custom_nickname,
-    nickname: data.handle,
-    full_name: data.full_name,
-    place_name: data.place_name,
-    city: data.place_name,
-    country: data.country ? { name: data.country } : undefined,
-    cultures: [],
-  };
-}
-
-function adaptXp(data: PublicData) {
-  return {
-    xp: data.xp_total,
-    xpToNextTier: 0,
-    rankTitle: data.rank_title || "Citizen",
-    stats: {
-      destinations: data.stats.destinations,
-      properties: 0,
-    },
-  };
-}
-
-function adaptRoles(data: PublicData) {
-  return { displayNames: data.roles.map((r) => r.label) };
-}
-
-export function PublicPassportView({ handle, viewerState, initialData }: PublicPassportViewProps) {
+export function PublicPassportView({ handle, viewerState: _viewerState, initialData }: PublicPassportViewProps) {
   const router = useRouter();
   const { isLoggedIn, showLoginModal } = useAuth();
   const { data, isLoading, isError } = usePublicPassport(handle, initialData);
-  // Viewer's own profile, for the global RankPill. Does not affect the viewed
-  // passport data — that still comes from usePublicPassport(handle) above.
   const { profile: viewerProfile } = useMyProfile();
   const { myXp: viewerXp } = useMyXp();
   const [shareOpen, setShareOpen] = useState(false);
-  const [mapOpen, setMapOpen] = useState(false);
+
+  // Visitor unlock loop — viewer clicks "Get Unlimited Access" on someone else's
+  // public profile, gets routed through login if needed, then lands on
+  // /passport which handles onboarding + lobby for their own passport.
+  const handleUnlock = () => {
+    if (!isLoggedIn) {
+      showLoginModal(undefined, "/passport");
+      return;
+    }
+    router.push("/passport");
+  };
 
   if (isLoading) {
     return (
-      <div className="flex-1 min-h-screen bg-[#111] flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-2 border-white/20 border-t-white rounded-full" />
+      <div className="flex-1 min-h-screen bg-[#FBF8F4] flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-black/20 border-t-black rounded-full" />
       </div>
     );
   }
 
   if (isError || !data) {
     return (
-      <div className="flex-1 min-h-screen bg-[#111] flex items-center justify-center">
+      <div className="flex-1 min-h-screen bg-[#FBF8F4] flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-white text-2xl font-bold mb-2">Passport not found</h1>
-          <p className="text-white/50">
+          <h1 className="text-black text-2xl font-bold mb-2">Passport not found</h1>
+          <p className="text-black/50">
             {handle} hasn&apos;t unlocked their passport yet.
           </p>
         </div>
@@ -104,197 +70,150 @@ export function PublicPassportView({ handle, viewerState, initialData }: PublicP
     );
   }
 
-  const displayName = displayNameFor(data);
-  const inviterFirstName =
-    (data.full_name || "").split(" ")[0] ||
-    data.handle.charAt(0).toUpperCase() + data.handle.slice(1);
+  const displayName = handle;
+  const avatarUrl = data.avatar_image || undefined;
+  // Use non-breaking spaces so "Zo World" never wraps mid-phrase.
+  const inviteText = `${data.custom_nickname} has invited you to become a citizen of Zo World.`;
+  const isFounder = data.roles.some((r) => r.key === "founder");
+  const rankTitle = isFounder ? "Founder" : "Citizen";
 
-  const handlePrimary = () => {
-    if (viewerState === "logged_out") {
-      showLoginModal(undefined, "/passport");
-    } else {
-      router.push("/passport");
-    }
-  };
-
-  const handleBecomeMember = () => {
-    if (viewerState === "logged_out") {
-      showLoginModal(undefined, "/pro");
-      return;
-    }
-    router.push("/pro");
-  };
-
-  const passportCard = (
-    <div className="flex flex-col gap-5">
-      {/* Spacer so the avatar can overflow the top of the card */}
-      <div className="pt-14">
-        <PassportIdentityCard
-          profile={adaptProfile(data)}
-          myXp={adaptXp(data)}
-          roles={adaptRoles(data)}
-          onOpenShare={() => setShareOpen(true)}
-        />
-      </div>
-
-      {data.state === "unlocked_pro" && (
-        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-          <ShareQuestButtons
-            handle={handle}
-            displayName={displayName}
-            avatarUrl={data.avatar_image || data.pfp_image}
-          />
-        </div>
-      )}
-
-      <StampsGrid
-        stamps={data.stamps
-          .map((stamp) => {
-            const s = stamp as { key?: string; label?: string; image_url?: string };
-            return { name: s.label || "", imageUrl: s.image_url || null };
-          })
-          .filter((s) => s.name)}
-      />
-
-      {data.badges.length > 0 && (
-        <div>
-          <h2 className="text-[10px] text-white/40 uppercase tracking-wider mb-2">Badges</h2>
-          <div className="flex flex-wrap gap-2">
-            {data.badges.map((badge, i) => {
-              const b = badge as { key?: string; label?: string };
-              return (
-                <span
-                  key={b.key || i}
-                  className="px-3 py-1 rounded-full bg-white/10 text-white text-xs"
-                >
-                  {b.label || ""}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {data.trophies.length > 0 && (
-        <div>
-          <h2 className="text-[10px] text-white/40 uppercase tracking-wider mb-2">
-            Season Champions
-          </h2>
-          <div className="flex gap-2">
-            {data.trophies.map((trophy, i) => {
-              const t = trophy as { season?: string; medal?: string };
-              return (
-                <span
-                  key={i}
-                  className="px-3 py-1 rounded-full bg-white/10 text-white text-xs capitalize"
-                >
-                  {t.medal || ""} {t.season ? `• ${t.season}` : ""}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {data.tribe_sample.length > 0 && (
-        <div>
-          <h2 className="text-[10px] text-white/40 uppercase tracking-wider mb-2">
-            Tribe ({data.stats.tribe})
-          </h2>
-          <div className="flex -space-x-2">
-            {data.tribe_sample.map((member, i) => {
-              const m = member as { handle?: string };
-              return (
-                <div
-                  key={m.handle || i}
-                  className="w-8 h-8 rounded-full bg-white/10 border-2 border-[#111]"
-                  title={m.handle || ""}
-                />
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  const pitchPanel = (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-white text-3xl xl:text-4xl font-bold leading-tight">
-          {inviterFirstName} has shared
-          <br />
-          their passport with you
-        </h1>
-        <p className="text-white/60 text-sm mt-3">
-          Join Zo World to earn XP, collect stamps, and unlock stays across
-          108+ Zostel properties.
-        </p>
-      </div>
-
-      <button
-        onClick={handlePrimary}
-        className="w-full sm:w-auto sm:self-start py-4 px-8 rounded-full bg-white text-black font-semibold text-base hover:bg-white/90 transition-colors"
-      >
-        {primaryCtaCopy(viewerState)}
-      </button>
-
-      {data.state === "locked" && (
-        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-          <p className="text-white text-sm font-semibold mb-1">
-            {displayName}&apos;s passport is locked
-          </p>
-          <p className="text-white/50 text-xs">
-            They haven&apos;t completed onboarding yet. Drop in later to see
-            their stamps, badges, and tribe.
-          </p>
-        </div>
-      )}
-
-      <BookStaysPlaceholder />
-
-      <PassportPlusUpsell
-        onBecomeMember={handleBecomeMember}
-        onUnlockAndGo={handlePrimary}
-      />
-    </div>
-  );
+  // Public passport endpoint does not yet expose season_level or quest count;
+  // surface as "—" so the bento renders, and flag for the backend.
+  const stats = [
+    {
+      label: "",
+      value: rankTitle,
+      // Royal iridescence — violet/indigo/cyan/magenta
+      colors: ["#7C3AED", "#3B82F6", "#22D3EE", "#E879F9", "#7C3AED"],
+    },
+    {
+      label: "Total XP",
+      value: data.xp_total.toLocaleString(),
+      // Gold iridescence — amber/peach/yellow/orange
+      colors: ["#FFD24A", "#F5C542", "#FF9A3C", "#FFE38A", "#FFD24A"],
+    },
+    {
+      label: "Season Level",
+      value: "—",
+      // Emerald iridescence — mint/green/teal/lime
+      colors: ["#34D399", "#10B981", "#22D3EE", "#A7F3D0", "#34D399"],
+    },
+    {
+      label: "Destinations",
+      value: data.stats.destinations,
+      // Coral iridescence — pink/rose/peach/orange
+      colors: ["#FB7185", "#F472B6", "#FB923C", "#FFB4A2", "#FB7185"],
+    },
+    {
+      label: "Quests",
+      value: "—",
+      // Cyber iridescence — cyan/blue/aqua/teal
+      colors: ["#06B6D4", "#3B82F6", "#22D3EE", "#67E8F9", "#06B6D4"],
+    },
+    {
+      label: "Trophies",
+      value: data.trophies.length,
+      // Sunset iridescence — magenta/red/violet/orange
+      colors: ["#F43F5E", "#A855F7", "#FB7185", "#F97316", "#F43F5E"],
+    },
+  ];
 
   return (
-    <div className="flex-1 min-h-screen bg-[#111]">
-      {/* Global HUD — RankPill for the viewer (when logged in) + side nav on
-          every passport surface. Desktop rail: mid-right. Mobile rail: below
-          the pill (top-20) so they don't stack on top of each other. */}
-      {isLoggedIn && (
-        <TopBar
-          xp={viewerXp?.xp ?? 0}
-          rank={viewerXp?.rank ?? 0}
-          avatarUrl={viewerProfile?.pfp_image || viewerProfile?.avatar?.image}
+    <div
+      className="min-h-[100svh] md:h-screen md:overflow-hidden text-black relative"
+      style={{
+        background: "#FBF8F4",
+        WebkitTapHighlightColor: "transparent",
+        overscrollBehavior: "none",
+        touchAction: "manipulation",
+      }}
+    >
+      <div aria-hidden className="pointer-events-none fixed inset-0" style={{ zIndex: 0 }}>
+        <MeshGradient
+          colors={IRIDESCENT_PEARL_COLORS}
+          speed={0.12}
+          scale={0.7}
+          distortion={0.08}
+          swirl={0.1}
+          grainMixer={0.04}
+          grainOverlay={0.03}
+          fit="cover"
+          style={{ width: "100%", height: "100%" }}
         />
-      )}
-      <div className="fixed top-1/2 right-4 md:right-6 -translate-y-1/2 z-[10] hidden md:block">
-        <SideNavRail handle={handle} onOpenMap={() => setMapOpen(true)} />
       </div>
-      <div className="fixed top-[76px] right-3 z-[10] md:hidden">
-        <SideNavRail handle={handle} onOpenMap={() => setMapOpen(true)} />
-      </div>
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0) 0%, rgba(220,225,235,0.15) 75%, rgba(200,210,225,0.25) 100%)",
+          zIndex: 0,
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 80% 30% at 50% 0%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 60%)",
+          zIndex: 0,
+        }}
+      />
 
-      <div className="max-w-[1280px] mx-auto px-4 pt-24 xl:pt-32 pb-16 md:pr-32">
-        <div className="flex flex-col xl:flex-row xl:gap-10 gap-8">
-          <div className="w-full xl:w-[380px] xl:flex-shrink-0">
-            {passportCard}
+      <div className="relative z-[1] h-full">
+        {isLoggedIn && (
+          <TopBar
+            xp={viewerXp?.xp ?? 0}
+            rank={viewerXp?.rank ?? 0}
+            avatarUrl={viewerProfile?.pfp_image || viewerProfile?.avatar?.image}
+          />
+        )}
+
+        <div className="h-full flex flex-col md:flex-row md:items-center md:justify-center max-w-[1080px] mx-auto px-4 md:px-8 pt-20 md:pt-0 pb-6 md:pb-0 gap-6 md:gap-12">
+          {/* Card + pedestal + CTA */}
+          <div className="flex flex-col items-center flex-shrink-0">
+            <CitizenCard
+              handle={handle}
+              displayName={displayName}
+              avatarUrl={avatarUrl}
+              onClick={() => setShareOpen(true)}
+              onShare={() => setShareOpen(true)}
+            />
+            <div style={{ marginTop: 4 }} aria-hidden>
+              <Image
+                src={pedestal}
+                alt=""
+                width={179}
+                height={65}
+                style={{ width: 220, height: "auto" }}
+              />
+            </div>
+            <div className="mt-4">
+              <UnlimitedAccessCta size="sm" label="Unlock Your Passport" onClick={handleUnlock} />
+            </div>
           </div>
-          <div className="flex-1 min-w-0">{pitchPanel}</div>
+
+          {/* Info column */}
+          <div className="flex-1 flex flex-col gap-5 items-center md:items-start text-center md:text-left max-w-md md:max-w-[440px] w-full">
+            <p className="text-black/70 text-sm md:text-[15px] leading-snug">
+              {inviteText}
+            </p>
+
+            {/* Bento — 3×2 hologram grid */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full">
+              {stats.map(({ label, value, colors }, i) => (
+                <HologramStatCard key={label || `stat-${i}`} label={label} value={value} colors={colors} />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
-
-      <MapModal open={mapOpen} onClose={() => setMapOpen(false)} />
 
       <ShareModal
         isOpen={shareOpen}
         onClose={() => setShareOpen(false)}
         handle={handle}
-        avatarUrl={data.avatar_image || data.pfp_image}
+        avatarUrl={data.avatar_image}
         displayName={displayName}
       />
     </div>

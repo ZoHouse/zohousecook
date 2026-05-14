@@ -679,7 +679,12 @@ export default function QuestsPage() {
               and glass treatment. Left: back + page title. Right: RankPill.
               Below right: nav rail. */}
           <PageHeaderPill title="Quests" />
-          <TopBar xp={myXp?.xp ?? 0} rank={myXp?.rank ?? 0} avatarUrl={profile?.pfp_image || profile?.avatar?.image} />
+          <TopBar
+            xp={myXp?.xp ?? 0}
+            rank={myXp?.rank ?? 0}
+            avatarUrl={profile?.pfp_image || profile?.avatar?.image}
+            onOpenSettings={() => router.push('/passport?settings=profile')}
+          />
           {/* SideNavRail self-positions globally (same slot on every page) */}
           <SideNavRail handle={displayHandle} onOpenMap={() => setMapOpen(true)} />
 

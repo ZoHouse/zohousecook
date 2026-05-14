@@ -54,8 +54,8 @@ const Birthday: FC<BirthdayProps> = ({ advanceOnboarding }) => {
 
   return (
     <div className="flex flex-1 flex-col items-start w-full">
-      <span className="text-xl md:text-2xl font-bold mb-1 md:mb-2">When&apos;s your Zo Day?</span>
-      <span className="text-sm text-white/50 mb-4 md:mb-8">We celebrate you</span>
+      <span className="text-xl md:text-2xl font-bold mb-1 md:mb-2">When&apos;s your birthday?</span>
+      <span className="text-sm text-white/50 mb-4 md:mb-8">We celebrate you on your Zo Day</span>
 
       <div className="flex gap-2 w-full mb-4">
         <select

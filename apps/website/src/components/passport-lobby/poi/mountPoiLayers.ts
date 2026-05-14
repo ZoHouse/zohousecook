@@ -144,6 +144,7 @@ function buildPopupHTML(
     .join(' ');
   const description = String(props.description || '');
   const heroPic = props.hero_picture ? String(props.hero_picture) : '';
+  const poiId = String(props.id || '');
 
   const heroHtml = heroPic
     ? `<div style="position:relative;margin:-12px -16px 10px;height:140px;border-radius:8px 8px 0 0;overflow:hidden;background:#1a1a1a;">
@@ -159,6 +160,20 @@ function buildPopupHTML(
 
   const locationLine = [dest, country].filter(Boolean).join(', ');
 
+  // Walk here CTA — only when we know where the viewer is. Click is captured
+  // by a delegated listener on map.getContainer() in mountPoiLayers below.
+  const walkHereHtml = viewer
+    ? `<button type="button"
+         data-action="walk-here"
+         data-poi-id="${escapeHtml(poiId)}"
+         data-lng="${poiLngLat[0]}"
+         data-lat="${poiLngLat[1]}"
+         style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:7px 12px;border-radius:99px;background:#FF2F8E;border:none;color:#fff;font-family:Rubik,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;cursor:pointer;box-shadow:0 4px 12px rgba(255,47,142,0.35);">
+         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="M13 5l7 7-7 7M5 12h15"/></svg>
+         Walk here
+       </button>`
+    : '';
+
   // Fluid: min-width keeps it readable on big screens, popup container caps
   // total width via Mapbox Popup `maxWidth` so it never overflows phone screens.
   return `
@@ -171,6 +186,7 @@ function buildPopupHTML(
         <img src="${CULTURE_ICON_BASE}/${cultureKey}.png${CULTURE_ICON_QUERY}" alt="" style="width:14px;height:14px;border-radius:50%;" loading="lazy" />
         <span style="font-size:10px;color:#fff;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">${escapeHtml(cultureLabel)}</span>
       </div>
+      ${walkHereHtml}
     </div>
   `;
 }
@@ -208,6 +224,16 @@ export function mountPoiLayers(
    * time (not at mount time) so popups always show fresh distance.
    */
   getViewerLocation: () => { lat: number; long: number } | null = () => null,
+  /**
+   * Called when the citizen taps "Walk here" on a POI popup. The popup only
+   * shows the button when getViewerLocation() returned a value, so `from` is
+   * guaranteed-known at click time (we re-read at click time, not popup time).
+   */
+  onWalkHereRequested?: (
+    from: [number, number],
+    to: [number, number],
+    poiId: string,
+  ) => void,
 ): {
   unmount: () => void;
   /**
@@ -216,9 +242,11 @@ export function mountPoiLayers(
    *  - mode 'soft':  smooth ease — preserves user's zoom + pitch, just pans the camera and updates popup. Used by carousel browsing so rapid flipping feels responsive.
    */
   showPoi: (lng: number, lat: number, properties: GeoJSON.GeoJsonProperties, mode?: 'fly' | 'soft') => void;
+  /** Force-close the shared POI popup. Used by MapModal on nav start. */
+  closePopup: () => void;
 } {
   if (map.getSource(POI_SOURCE)) {
-    return { unmount: () => undefined, showPoi: () => undefined };
+    return { unmount: () => undefined, showPoi: () => undefined, closePopup: () => undefined };
   }
 
   console.log(`[poi] mountPoiLayers: ${geojson.features.length} features`);
@@ -451,11 +479,36 @@ export function mountPoiLayers(
   map.on('mouseenter', HITAREA_LAYER, setPointer);
   map.on('mouseleave', HITAREA_LAYER, unsetPointer);
 
+  // Delegated click listener for the "Walk here" button inside the popup
+  // HTML. Scoped to the map container — popup DOM lives inside it.
+  const container = map.getContainer();
+  const handleWalkHereClick = (e: Event) => {
+    const target = e.target as HTMLElement | null;
+    const btn = target?.closest('[data-action="walk-here"]') as HTMLElement | null;
+    if (!btn) return;
+    e.stopPropagation();
+    const lng = parseFloat(btn.dataset.lng ?? '');
+    const lat = parseFloat(btn.dataset.lat ?? '');
+    const poiId = btn.dataset.poiId ?? '';
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
+    const viewer = getViewerLocation();
+    if (!viewer) return; // shouldn't happen — button only renders when viewer known
+    // Auto-close popup so it doesn't block the route reveal + camera flight.
+    popup.remove();
+    onWalkHereRequested?.([viewer.long, viewer.lat], [lng, lat], poiId);
+  };
+  container.addEventListener('click', handleWalkHereClick);
+
+  const closePopup = () => {
+    popup.remove();
+  };
+
   const unmount = () => {
     try {
       map.off('click', HITAREA_LAYER, handleClick);
       map.off('mouseenter', HITAREA_LAYER, setPointer);
       map.off('mouseleave', HITAREA_LAYER, unsetPointer);
+      container.removeEventListener('click', handleWalkHereClick);
       popup.remove();
       if (map.getLayer(SYMBOL_LAYER)) map.removeLayer(SYMBOL_LAYER);
       if (map.getLayer(CIRCLE_LAYER)) map.removeLayer(CIRCLE_LAYER);
@@ -469,5 +522,5 @@ export function mountPoiLayers(
     }
   };
 
-  return { unmount, showPoi: focusPoi };
+  return { unmount, showPoi: focusPoi, closePopup };
 }
