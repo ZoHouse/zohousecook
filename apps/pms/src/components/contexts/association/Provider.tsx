@@ -64,25 +64,38 @@ const Provider: React.FC<ProviderProps> = ({ children }) => {
     });
   }, [allOperatorsResponse, scopeData]);
 
-  const { isFetching: isFetchingAssociations } = useQueryApi<{
-    operators: string[];
-  }>("AUTHORIZATION_MY_ASSOCIATION", {
-    enabled: isLoggedIn === true,
-    refetchOnMount: false,
-    refetchOnReconnect: false,
-    refetchOnWindowFocus: false,
-    onSuccess: (data) => {
-      const associations = data?.data?.associations;
-      if (associations && associations.length > 0) {
-        setAssociatedOperatorsQuery(
-          associations
-            .filter((a: GeneralObject) => a.model === "Operator")
-            .map((a: GeneralObject) => a.value)
-            .join(",")
-        );
-      }
-    },
-  });
+  const { isFetching: isFetchingAssociations, data: myAssociationsData } =
+    useQueryApi<{ data: { associations: GeneralObject[] } }>("AUTHORIZATION_MY_ASSOCIATION", {
+      enabled: isLoggedIn === true,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
+      refetchOnWindowFocus: false,
+      onSuccess: (data) => {
+        const associations = data?.data?.associations;
+        if (associations && associations.length > 0) {
+          setAssociatedOperatorsQuery(
+            associations
+              .filter(
+                (a: GeneralObject) =>
+                  String(a.model || "").toLowerCase() === "operator"
+              )
+              .map((a: GeneralObject) => a.value)
+              .join(",")
+          );
+        }
+      },
+    });
+
+  // Raw operator-model associations from the auth backend. Source of truth for
+  // "does this user have any Zostel operator association at all" — independent
+  // of whether CRS has resolved the operator's full data yet.
+  const operatorAssociations = useMemo<GeneralObject[]>(() => {
+    const associations = myAssociationsData?.data?.associations || [];
+    return associations.filter(
+      (a: GeneralObject) =>
+        String(a.model || "").toLowerCase() === "operator"
+    );
+  }, [myAssociationsData]);
 
   const selectedOperatorAccess = useMemo(() => {
     const permissions = scopeData?.data?.permissions || [];
@@ -102,18 +115,21 @@ const Provider: React.FC<ProviderProps> = ({ children }) => {
       operatorAccess.push("group:cas-admin");
     }
 
-    // Staff added via PMS have Zostel associations but may lack Zo backend permissions.
-    // Grant front-desk-manager fallback if user has operators but no Zo permissions.
+    // Staff added via PMS (e.g., chef, kitchen-staff) have a Zostel operator
+    // association but no Zo backend scope permission. Grant a front-desk-manager
+    // fallback so they can enter the app. We gate on the RAW operator
+    // associations (not the CRS-resolved operators) so the fallback fires
+    // even when CRS returns empty for the association's value.
     if (
       operatorAccess.length === 0 &&
-      associatedOperators.length > 0 &&
+      operatorAssociations.length > 0 &&
       isValidObject(selectedOperator)
     ) {
       operatorAccess.push("group:front-desk-manager");
     }
 
     return operatorAccess;
-  }, [scopeData, selectedOperator, associatedOperators]);
+  }, [scopeData, selectedOperator, operatorAssociations]);
 
   const effectiveRole = useMemo<
     | "none"
@@ -179,8 +195,37 @@ const Provider: React.FC<ProviderProps> = ({ children }) => {
   );
 
   useEffect(() => {
+    // Prefer the CRS-resolved operator (has full data: id, name, code, etc.).
     if (associatedOperators.length > 0 && !isValidObject(selectedOperator)) {
       setSelectedOperator(associatedOperators[0]);
+      return;
+    }
+    // Fallback: if CRS hasn't resolved (slow, empty, or filtered) but we know
+    // from the auth backend that the user has an operator association, seed
+    // a minimal stub so isValidObject(selectedOperator) is true and the
+    // front-desk-manager fallback can fire. The next effect tick replaces
+    // this stub with the full operator once CRS resolves.
+    if (
+      associatedOperators.length === 0 &&
+      operatorAssociations.length > 0 &&
+      !isValidObject(selectedOperator)
+    ) {
+      setSelectedOperator({ id: operatorAssociations[0].value });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [associatedOperators, operatorAssociations]);
+
+  // When CRS finally resolves and we have a stub selectedOperator (missing
+  // code/name), upgrade it to the full operator object.
+  useEffect(() => {
+    if (associatedOperators.length === 0) return;
+    if (!isValidObject(selectedOperator)) return;
+    if (selectedOperator.code) return; // already fully populated
+    const matched = associatedOperators.find(
+      (op: GeneralObject) => String(op.id) === String(selectedOperator.id)
+    );
+    if (matched) {
+      setSelectedOperator(matched);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [associatedOperators]);
