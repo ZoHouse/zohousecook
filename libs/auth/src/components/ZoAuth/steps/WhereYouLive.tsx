@@ -73,6 +73,26 @@ const WhereYouLive: FC<WhereYouLiveProps> = ({ advanceOnboarding }) => {
     );
   };
 
+  // Uncontrolled input — no `value` prop. Google Places mutates the DOM
+  // directly; a controlled input fights that and drops keystrokes (Erum
+  // + multiple onboarders got stuck on a single character because of
+  // this — same fix as Hometown step). State stays synced via onChange
+  // because Google fires real input events on autocomplete.
+  const inputProps = {
+    type: "text" as const,
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+      setDraft(e.target.value);
+      if (selected) setSelected(null);
+    },
+    placeholder: "Bangalore, San Francisco, Mumbai...",
+    className:
+      "w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-lg outline-none focus:border-white/30 transition-colors mb-4",
+    autoFocus: true,
+    autoComplete: "off",
+    spellCheck: false,
+    name: "where_do_you_live_search",
+  };
+
   return (
     <div className="flex flex-1 flex-col items-start w-full">
       <span className="text-xl md:text-2xl font-bold mb-1 md:mb-2">Where do you live?</span>
@@ -86,35 +106,12 @@ const WhereYouLive: FC<WhereYouLiveProps> = ({ advanceOnboarding }) => {
           onPlaceChanged={handlePlaceChanged}
           types={["(cities)"]}
         >
-          <input
-            type="text"
-            value={draft}
-            onChange={(e) => {
-              setDraft(e.target.value);
-              if (selected) setSelected(null);
-            }}
-            placeholder="Bangalore, San Francisco, Mumbai..."
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-lg outline-none focus:border-white/30 transition-colors mb-4"
-            autoFocus
-            autoComplete="off"
-            spellCheck={false}
-            name="where_do_you_live_search"
-          />
+          <input {...inputProps} />
         </Autocomplete>
       ) : (
         // Maps API failed / still loading — render a plain input so the
         // user can type a city manually and continue.
-        <input
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Bangalore, San Francisco, Mumbai..."
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-lg outline-none focus:border-white/30 transition-colors mb-4"
-          autoFocus
-          autoComplete="off"
-          spellCheck={false}
-          name="where_do_you_live_search"
-        />
+        <input {...inputProps} />
       )}
 
       {selected ? (

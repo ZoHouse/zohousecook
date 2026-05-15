@@ -25,6 +25,16 @@ const CARD_RADIUS = 20;
 const MAX_TILT = 10; // degrees
 const HOVER_LIFT = 8; // translateZ
 
+// 200px card – 24px padding = 176px content area. At Syne 700, ~14px/char at
+// 24px font; step down so the handle fits on one line.
+function nameFontSize(name: string): number {
+  const n = name.length;
+  if (n <= 10) return 24;
+  if (n <= 13) return 20;
+  if (n <= 16) return 17;
+  return 15;
+}
+
 export function CitizenCard({ handle, displayName, avatarUrl, onClick, onShare }: CitizenCardProps) {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [tilt, setTilt] = useState<{
@@ -221,11 +231,13 @@ export function CitizenCard({ handle, displayName, avatarUrl, onClick, onShare }
           <Avatar2D avatarUrl={avatarUrl} displayName={displayName} />
         </div>
 
-        {/* Name — Syne 700, 24px */}
+        {/* Name — Syne 700. Font auto-shrinks once the handle is longer than
+            samurai.zo (10 chars) so longer handles like bhangbuddy.zo stay on
+            one line inside the 176px content area. */}
         <div
           className={syneClassName}
           style={{
-            fontSize: 24,
+            fontSize: nameFontSize(displayName),
             fontWeight: 700,
             color: '#0A0A0A',
             lineHeight: '1.2em',
@@ -233,6 +245,9 @@ export function CitizenCard({ handle, displayName, avatarUrl, onClick, onShare }
             position: 'relative',
             zIndex: 4,
             transform: 'translateZ(14px)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           }}
         >
           {displayName}
