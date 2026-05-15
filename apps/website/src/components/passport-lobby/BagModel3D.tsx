@@ -17,11 +17,13 @@ import { stampUrlFor } from '../../lib/passport/stampUrl';
 // — heavier (~15 MB) but the geometry/materials are designed for stickers.
 import MODEL_URL from '../../assets/3d/carry_on.glb';
 
-// Gold tint applied to the suitcase's largest material (the body shell).
-// Keeps the original normal/roughness maps so surface detail reads.
-const GOLD_COLOR = new THREE.Color('#D4AF37');
-const GOLD_METALNESS = 0.55;
-const GOLD_ROUGHNESS = 0.42;
+// Orange tint on the suitcase's largest material (the body shell). Warm
+// saturated orange lets stamp art still pop while giving the bag a premium
+// travel-brand feel. Original normal/roughness maps are kept so panel
+// detail still shows through the recolor.
+const GOLD_COLOR = new THREE.Color('#E55A1C');
+const GOLD_METALNESS = 0.25;
+const GOLD_ROUGHNESS = 0.5;
 
 export interface BagModel3DProps {
   onClick?: () => void;
@@ -43,10 +45,13 @@ const MAX_STICKERS = 8;
 
 const STICKER_WORLD_SCALE = 0.26;
 
-// Stamps are rasterized through a canvas at this size before being uploaded
-// as a GPU texture. The source URLs are mostly SVGs whose intrinsic viewBox
-// is small (~64px), which would otherwise upscale-blur on the decal.
-const STICKER_TEXTURE_PX = 512;
+// Stamps are rasterized at this resolution via createImageBitmap before
+// being uploaded as a GPU texture. The source URLs are mostly SVGs whose
+// intrinsic viewBox is small (~64 px) — without explicit resize, the
+// browser rasterizes the SVG at viewBox size and any later upscale just
+// blurs that. createImageBitmap with resizeWidth/Height tells the rasterizer
+// to render the SVG (or resample the PNG) at the target size directly.
+const STICKER_TEXTURE_PX = 1024;
 
 // Minimum 3D-space distance between any two sticker centres on the bag's
 // face. Keeps random placement from clustering/overlapping.
@@ -70,41 +75,99 @@ function mulberry32(seed: number): () => number {
 }
 
 /**
- * Load a stamp URL into a sharp 512×512 CanvasTexture. The source SVGs
- * decode at their tiny intrinsic size; rasterizing through a canvas at a
- * controlled resolution gives the GPU enough texels to avoid mip-blur even
- * when the decal covers a large screen area.
+ * Load a stamp URL into a sharp ImageBitmap-backed texture at
+ * STICKER_TEXTURE_PX. createImageBitmap with resizeWidth/Height tells the
+ * browser to rasterize SVGs (or high-quality resample PNGs) at the requested
+ * resolution directly — without it, SVG sources rasterize at their tiny
+ * intrinsic viewBox and any later upscale just blurs.
  */
-function loadSharpStickerTexture(
+function makeTexture(source: ImageBitmap | HTMLCanvasElement, maxAniso: number) {
+  const tex = new THREE.CanvasTexture(source);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = maxAniso;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = true;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+/**
+ * Some Zostel-CDN stamp SVGs ship with only a `viewBox` and no intrinsic
+ * width/height. createImageBitmap then either fails or returns 0×0, leaving
+ * the decal blank. Re-write the root <svg> tag with explicit dimensions so
+ * the rasterizer renders at our target size.
+ */
+function svgWithExplicitSize(text: string, px: number): string {
+  // Drop any existing width/height on the root svg, then inject ours.
+  const cleaned = text.replace(
+    /<svg\b[^>]*?>/i,
+    (tag) => {
+      const stripped = tag
+        .replace(/\swidth="[^"]*"/i, '')
+        .replace(/\sheight="[^"]*"/i, '');
+      return stripped.replace(/<svg\b/i, `<svg width="${px}" height="${px}"`);
+    },
+  );
+  return cleaned;
+}
+
+async function loadSharpStickerTexture(
   url: string,
   maxAniso: number,
   onReady: (tex: THREE.Texture) => void,
-): void {
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.onload = () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = STICKER_TEXTURE_PX;
-    canvas.height = STICKER_TEXTURE_PX;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.clearRect(0, 0, STICKER_TEXTURE_PX, STICKER_TEXTURE_PX);
-    ctx.drawImage(img, 0, 0, STICKER_TEXTURE_PX, STICKER_TEXTURE_PX);
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = maxAniso;
-    tex.minFilter = THREE.LinearMipmapLinearFilter;
-    tex.magFilter = THREE.LinearFilter;
-    tex.generateMipmaps = true;
-    tex.needsUpdate = true;
-    onReady(tex);
-  };
-  img.onerror = () => {
+): Promise<void> {
+  try {
+    // Route through same-origin proxy so cross-origin stamps (Zostel CDN
+    // SVGs in particular) don't taint the WebGL texture upload. The proxy
+    // adds CORS headers and lets us read the raw bytes.
+    const proxied = `/api/stamp-proxy?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxied, { referrerPolicy: 'no-referrer' });
+    if (!res.ok) return;
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+
+    if (ct.includes('svg')) {
+      // SVG path — fetch as text, inject width/height, draw via Image to a
+      // canvas at STICKER_TEXTURE_PX. This is the only reliable way to get
+      // a viewBox-only SVG to rasterize at a chosen resolution.
+      const text = await res.text();
+      const sized = svgWithExplicitSize(text, STICKER_TEXTURE_PX);
+      const blob = new Blob([sized], { type: 'image/svg+xml' });
+      const objUrl = URL.createObjectURL(blob);
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error('svg image load failed'));
+          img.src = objUrl;
+        });
+        const canvas = document.createElement('canvas');
+        canvas.width = STICKER_TEXTURE_PX;
+        canvas.height = STICKER_TEXTURE_PX;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, STICKER_TEXTURE_PX, STICKER_TEXTURE_PX);
+        onReady(makeTexture(canvas, maxAniso));
+      } finally {
+        URL.revokeObjectURL(objUrl);
+      }
+      return;
+    }
+
+    // Raster path (PNG/JPG/WEBP) — createImageBitmap handles resize natively.
+    const blob = await res.blob();
+    const bitmap = await createImageBitmap(blob, {
+      resizeWidth: STICKER_TEXTURE_PX,
+      resizeHeight: STICKER_TEXTURE_PX,
+      resizeQuality: 'high',
+    });
+    onReady(makeTexture(bitmap, maxAniso));
+  } catch {
     /* keep decal blank on load failure */
-  };
-  img.src = url;
+  }
 }
 
 interface PlacedSticker {
@@ -449,8 +512,11 @@ function Scene({ stamps }: { stamps: string[] }) {
         makeDefault
         enableZoom={false}
         enablePan={false}
-        minPolarAngle={Math.PI / 2.2}
-        maxPolarAngle={Math.PI / 2.2}
+        // Polar locked above the equator → camera looks down at the bag,
+        // which pushes the bag into the lower portion of the canvas so it
+        // sits close to the pedestal below for a floating-on vibe.
+        minPolarAngle={Math.PI / 2.6}
+        maxPolarAngle={Math.PI / 2.6}
         rotateSpeed={0.8}
       />
     </>
@@ -479,6 +545,11 @@ export function BagModel3D({
       style={{
         width: size,
         height: size,
+        // Pull the pedestal up under the bag's wheels — without this the
+        // canvas's empty bottom pixels create a visible "floating" gap.
+        // The CTA + dock below shift up by the same amount, so the rest of
+        // the layout's spacing stays intact.
+        marginBottom: -55,
         background: 'transparent',
         // Hand touch drags to OrbitControls instead of the page swipe gesture.
         touchAction: 'none',
@@ -486,7 +557,7 @@ export function BagModel3D({
       aria-label="Stamp bag"
     >
       <Canvas
-        camera={{ position: [0, 0.75, 3], fov: 35 }}
+        camera={{ position: [0, 1.85, 3], fov: 35 }}
         dpr={[1, 2]}
         gl={{
           alpha: true,

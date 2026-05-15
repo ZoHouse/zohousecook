@@ -141,9 +141,21 @@ export function BadgesLobby() {
             />
           }
           travelersPill={<TravelersPill />}
-          ctaMobile={<UnlimitedAccessCta size="sm" label="Share my stamps" onClick={handleShare} />}
-          ctaDesktop={<UnlimitedAccessCta label="Share my stamps" onClick={handleShare} />}
-          belowCta={<StampsDock myXp={myXp} isLoading={xpLoading} handle={handle} />}
+          ctaMobile={
+            <div className="mt-2">
+              <UnlimitedAccessCta size="sm" label="Share my stamps" onClick={handleShare} />
+            </div>
+          }
+          ctaDesktop={
+            <div className="mt-2">
+              <UnlimitedAccessCta label="Share my stamps" onClick={handleShare} />
+            </div>
+          }
+          belowCta={
+            <div className="pt-6 md:pt-8">
+              <StampsDock myXp={myXp} isLoading={xpLoading} handle={handle} />
+            </div>
+          }
         />
       </div>
 
