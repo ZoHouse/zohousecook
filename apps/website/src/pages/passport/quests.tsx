@@ -416,10 +416,26 @@ export default function QuestsPage() {
               WebkitBackdropFilter: 'blur(20px) saturate(140%)',
             }}
             onClick={(e) => {
+              // Stop bubble so taps inside the detail (CTA, links, scroll)
+              // don't trigger any parent click handlers.
+              e.stopPropagation();
               if (e.target === e.currentTarget) setSelectedQuest(null);
             }}
           >
-            <div className="px-4 md:px-6 py-12">
+            {/* Same global TopBar (rank pill + nav dropdown) the citizen
+                gets on the rest of /passport, so they can hop to Lobby /
+                Badges / Earn / Map from inside the quest detail. */}
+            <TopBar
+              xp={xpTotal}
+              rank={rank}
+              avatarUrl={avatarUrl}
+              onOpenSettings={() => setSettingsOpen(true)}
+              streakCurrent={passportProfile?.streak?.current}
+              streakFreezeTokens={passportProfile?.streak?.freeze_tokens}
+              handle={handle}
+              onOpenMap={() => setMapOpen(true)}
+            />
+            <div className="px-4 md:px-6 pt-24 md:pt-28 pb-12">
               <QuestFullView quest={selectedQuest} onBack={() => setSelectedQuest(null)} />
             </div>
           </div>

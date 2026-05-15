@@ -7,7 +7,7 @@
  * a card flies the camera in and opens the POI's popup.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { distanceMeters, formatDistance } from "../LiveLocationProvider";
 
 interface PoiFeature {
@@ -50,6 +50,14 @@ interface NearbyPoiBarProps {
 
 export function NearbyPoiBar({ geojson, viewer, onSelect }: NearbyPoiBarProps) {
   const [index, setIndex] = useState(0);
+  const [dragDx, setDragDx] = useState(0);
+  // Swipe-gesture bookkeeping. We track start x/y to distinguish horizontal
+  // swipes from vertical scrolls, and a "this was a swipe, not a tap" flag so
+  // the card's onClick (fly-in) doesn't fire when the citizen swipes.
+  const touchStart = useRef<{ x: number; y: number; t: number } | null>(null);
+  const didSwipe = useRef(false);
+  const SWIPE_THRESHOLD = 50;
+  const HORIZONTAL_BIAS = 1.2;
 
   // Sort POIs by distance from viewer; keep top N.
   const nearby = useMemo<PoiFeature[]>(() => {
@@ -127,21 +135,66 @@ export function NearbyPoiBar({ geojson, viewer, onSelect }: NearbyPoiBarProps) {
     >
       <div
         className="rounded-2xl border border-white/10 backdrop-blur-md flex items-stretch gap-3 p-3 cursor-pointer transition-transform active:scale-[0.99]"
-        style={{ background: "rgba(0,0,0,0.7)" }}
+        style={{
+          background: "rgba(0,0,0,0.7)",
+          transform: dragDx ? `translateX(${dragDx}px)` : undefined,
+          transition: dragDx ? "none" : "transform 200ms ease-out",
+          touchAction: "pan-y",
+        }}
         role="button"
         tabIndex={0}
-        onClick={() => onSelect(
-          poi.lng, poi.lat,
-          {
-            id: poi.id, name: poi.name, description: poi.description,
-            destination: poi.destination, country: poi.country,
-            culture_key: poi.culture_key, hero_picture: poi.hero_picture,
-          },
-          // Soft pan even on direct card tap — the cinematic flyTo with
-          // pitch+zoom change felt jerky when the user is already close to
-          // the POI. 'fly' (hard) is reserved for direct marker taps on the map.
-          'soft',
-        )}
+        onTouchStart={(e) => {
+          const t = e.touches[0];
+          touchStart.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+          didSwipe.current = false;
+        }}
+        onTouchMove={(e) => {
+          if (!touchStart.current) return;
+          const t = e.touches[0];
+          const dx = t.clientX - touchStart.current.x;
+          const dy = t.clientY - touchStart.current.y;
+          if (Math.abs(dx) > Math.abs(dy) * HORIZONTAL_BIAS && Math.abs(dx) > 6) {
+            didSwipe.current = true;
+            // Clamp the visual drag so the card doesn't fly off-screen.
+            setDragDx(Math.max(-120, Math.min(120, dx)));
+          }
+        }}
+        onTouchEnd={(e) => {
+          const start = touchStart.current;
+          touchStart.current = null;
+          setDragDx(0);
+          if (!start) return;
+          const t = e.changedTouches[0];
+          const dx = t.clientX - start.x;
+          const dy = t.clientY - start.y;
+          if (
+            Math.abs(dx) > Math.abs(dy) * HORIZONTAL_BIAS &&
+            Math.abs(dx) > SWIPE_THRESHOLD
+          ) {
+            didSwipe.current = true;
+            if (dx < 0) setIndex((i) => Math.min(nearby.length - 1, i + 1));
+            else setIndex((i) => Math.max(0, i - 1));
+          }
+        }}
+        onClick={() => {
+          // Suppress fly-in when the touchend just registered as a swipe.
+          if (didSwipe.current) {
+            didSwipe.current = false;
+            return;
+          }
+          onSelect(
+            poi.lng, poi.lat,
+            {
+              id: poi.id, name: poi.name, description: poi.description,
+              destination: poi.destination, country: poi.country,
+              culture_key: poi.culture_key, hero_picture: poi.hero_picture,
+            },
+            // Soft pan even on direct card tap — the cinematic flyTo with
+            // pitch+zoom change felt jerky when the user is already close to
+            // the POI. 'fly' (hard) is reserved for direct marker taps on the map.
+            'soft',
+          );
+        }}
       >
         {/* Hero picture */}
         <div

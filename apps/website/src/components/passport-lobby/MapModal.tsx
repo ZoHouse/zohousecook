@@ -13,6 +13,10 @@ import { useLiveLocation, distanceMeters } from '../LiveLocationProvider';
 import { NearbyPoiBar } from './NearbyPoiBar';
 import { NavStepCard } from './NavStepCard';
 import { QuestFullView } from './QuestsDock';
+import { TopBar } from './TopBar';
+import { useProfile } from '@zo/auth';
+import { useMyXp } from '../../hooks/useMyXp';
+import { usePassportProfile } from '../../hooks/usePassportProfile';
 import type { Quest, QuestParticipation } from '../../data/mock-quests';
 import type { DockQuest } from './QuestsDock';
 
@@ -166,6 +170,17 @@ export function MapModal({ open, onClose }: MapModalProps) {
   // POI "Start" → render the same QuestFullView overlay used on the dashboard.
   // Synthesized from popup data-attrs (no real backend quest involved yet).
   const [questDetail, setQuestDetail] = useState<DockQuest | null>(null);
+
+  // Viewer identity for the TopBar mounted inside the quest-detail overlay,
+  // so the citizen has the same nav dropdown they get on other pages (Lobby,
+  // Quests, Badges, Earn, Map) without having to back out to a parent first.
+  const { profile: viewerProfile } = useProfile();
+  const { myXp } = useMyXp();
+  const { profile: passportProfile } = usePassportProfile();
+  const viewerHandle = viewerProfile?.custom_nickname || viewerProfile?.nickname || 'Citizen';
+  const viewerAvatarUrl = viewerProfile?.pfp_image || viewerProfile?.avatar?.image;
+  const viewerXp = myXp?.xp ?? 0;
+  const viewerRank = myXp?.rank ?? 0;
   const userPuckRef = useRef<UserPuckHandles | null>(null);
   // `prevProjection` lets us swap back to whatever the citizen had (globe)
   // when nav ends.
@@ -971,11 +986,32 @@ export function MapModal({ open, onClose }: MapModalProps) {
             WebkitBackdropFilter: 'blur(20px) saturate(140%)',
           }}
           onClick={(e) => {
+            // Backdrop tap closes; anything else (action button, links, scroll)
+            // must NOT bubble to MapModal's root onClose or the whole map
+            // closes and the citizen drops to the lobby.
+            e.stopPropagation();
             if (e.target === e.currentTarget) setQuestDetail(null);
           }}
         >
-          <div className="px-4 md:px-6 py-12">
-            <QuestFullView quest={questDetail} onBack={() => setQuestDetail(null)} />
+          {/* Same TopBar as the rest of /passport so the citizen has the
+              familiar nav dropdown (Lobby / Quests / Badges / Earn / Map)
+              while standing inside the quest detail. "Map" here just closes
+              the quest detail to reveal the live map underneath. */}
+          <TopBar
+            xp={viewerXp}
+            rank={viewerRank}
+            avatarUrl={viewerAvatarUrl}
+            streakCurrent={passportProfile?.streak?.current}
+            streakFreezeTokens={passportProfile?.streak?.freeze_tokens}
+            handle={viewerHandle}
+            onOpenMap={() => setQuestDetail(null)}
+          />
+          <div className="px-4 md:px-6 pt-24 md:pt-28 pb-12">
+            <QuestFullView
+              quest={questDetail}
+              onBack={() => setQuestDetail(null)}
+              backLabel="Map"
+            />
           </div>
         </div>
       )}

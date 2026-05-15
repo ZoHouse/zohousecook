@@ -610,9 +610,13 @@ export function QuestListCard({
 export function QuestFullView({
   quest,
   onBack,
+  backLabel = 'Quests',
 }: {
   quest: DockQuest;
   onBack: () => void;
+  /** Label for the top-left back pill. Defaults to 'Quests' (the /passport/quests
+      use). MapModal overrides with 'Map' since onBack returns the citizen to the map. */
+  backLabel?: string;
 }) {
   const theme = themeForQuest(quest);
   const reward = quest.rewards?.[0];
@@ -626,7 +630,7 @@ export function QuestFullView({
         <button
           type="button"
           onClick={onBack}
-          aria-label="Back to quests"
+          aria-label={`Back to ${backLabel.toLowerCase()}`}
           className="inline-flex items-center gap-1.5 transition-transform active:scale-[0.96]"
           style={{
             height: 36,
@@ -643,7 +647,7 @@ export function QuestFullView({
           }}
         >
           <span aria-hidden style={{ fontSize: 18, lineHeight: 1, marginTop: -2 }}>‹</span>
-          Quests
+          {backLabel}
         </button>
       </div>
 
