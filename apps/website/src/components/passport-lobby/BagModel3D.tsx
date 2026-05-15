@@ -323,11 +323,15 @@ function StickerLayer({ body, urls }: { body: THREE.Mesh; urls: string[] }) {
     // world axes. The two longest axes become the "face plane"; the shortest
     // axis becomes the face normal direction. For a flat suitcase that picks
     // the lid surface naturally.
-    const axes: Array<{ axis: 'x' | 'y' | 'z'; len: number }> = [
-      { axis: 'x', len: size.x },
-      { axis: 'y', len: size.y },
-      { axis: 'z', len: size.z },
-    ].sort((a, b) => a.len - b.len);
+    const axes: Array<{ axis: 'x' | 'y' | 'z'; len: number }> = (
+      [
+        { axis: 'x', len: size.x },
+        { axis: 'y', len: size.y },
+        { axis: 'z', len: size.z },
+      ] as const
+    )
+      .map((a) => ({ axis: a.axis, len: a.len }))
+      .sort((a, b) => a.len - b.len);
     const normalAxis = axes[0].axis;
     const planeAxes = [axes[1].axis, axes[2].axis] as Array<'x' | 'y' | 'z'>;
 
