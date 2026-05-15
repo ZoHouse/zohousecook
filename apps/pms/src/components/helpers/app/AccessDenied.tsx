@@ -1,8 +1,26 @@
 import { useAuth } from "@zo/auth";
-import { Button } from "antd";
+import { Button, Collapse } from "antd";
+import { useAssociation } from "../../../hooks";
 
 const AccessDenied = () => {
   const { logout } = useAuth();
+  const {
+    associatedOperators,
+    selectedOperator,
+    effectiveRole,
+    principals,
+  } = useAssociation();
+
+  const diagnostics = {
+    effectiveRole,
+    principals,
+    selectedOperator: {
+      id: selectedOperator?.id ?? null,
+      code: selectedOperator?.code ?? null,
+      name: selectedOperator?.name ?? null,
+    },
+    associatedOperatorsCount: associatedOperators?.length ?? 0,
+  };
 
   return (
     <div className="flex w-full h-full">
@@ -15,6 +33,28 @@ const AccessDenied = () => {
           <Button className="mt-4" type="primary" onClick={logout}>
             Logout
           </Button>
+          <Collapse
+            ghost
+            className="mt-6 max-w-md w-full"
+            items={[
+              {
+                key: "diag",
+                label: (
+                  <span className="text-xs text-zui-silver">
+                    Show debug details
+                  </span>
+                ),
+                children: (
+                  <pre
+                    className="text-xs bg-zui-bg/40 p-3 rounded border border-zui-light overflow-x-auto"
+                    style={{ whiteSpace: "pre-wrap" }}
+                  >
+                    {JSON.stringify(diagnostics, null, 2)}
+                  </pre>
+                ),
+              },
+            ]}
+          />
         </div>
       </div>
     </div>
