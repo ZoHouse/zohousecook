@@ -12,6 +12,9 @@ import { useContinuousLocation } from './poi/useContinuousLocation';
 import { useLiveLocation, distanceMeters } from '../LiveLocationProvider';
 import { NearbyPoiBar } from './NearbyPoiBar';
 import { NavStepCard } from './NavStepCard';
+import { QuestFullView } from './QuestsDock';
+import type { Quest, QuestParticipation } from '../../data/mock-quests';
+import type { DockQuest } from './QuestsDock';
 
 type RouteMode = 'explore' | 'preview' | 'navigating' | 'arrived';
 
@@ -160,6 +163,9 @@ export function MapModal({ open, onClose }: MapModalProps) {
   //   any → explore          on End / Close / basemap tap (preview only)
   const [routeMode, setRouteMode] = useState<RouteMode>('explore');
   const [activeStepIndex, setActiveStepIndex] = useState(0);
+  // POI "Start" → render the same QuestFullView overlay used on the dashboard.
+  // Synthesized from popup data-attrs (no real backend quest involved yet).
+  const [questDetail, setQuestDetail] = useState<DockQuest | null>(null);
   const userPuckRef = useRef<UserPuckHandles | null>(null);
   // `prevProjection` lets us swap back to whatever the citizen had (globe)
   // when nav ends.
@@ -507,11 +513,61 @@ export function MapModal({ open, onClose }: MapModalProps) {
         });
     };
 
+    const handleStartQuestRequested = (poi: {
+      poiId: string;
+      name: string;
+      description: string;
+      destination: string;
+      cover: string;
+      culture: string;
+      lng: number;
+      lat: number;
+      distanceMeters: number | null;
+    }) => {
+      // Synthesize a minimal DockQuest from the POI payload so QuestFullView
+      // can render against the same shape it uses on the dashboard. No real
+      // backend quest is loaded — this is a "view what this POI's quest
+      // looks like" affordance.
+      const synthesized: DockQuest = {
+        pid: poi.poiId || 'poi-quest',
+        slug: poi.poiId || 'poi-quest',
+        category: 'Tripper',
+        status: 'Live',
+        title: poi.name,
+        description: poi.description,
+        starts_at: new Date(Date.now() - 3600_000).toISOString(),
+        ends_at: new Date(Date.now() + 7 * 24 * 3600_000).toISOString(),
+        result_declares_at: null,
+        claim_expires_at: null,
+        rewards: [],
+        participations: [] as QuestParticipation[],
+        data: {
+          kind: 'geomedia',
+          cover_image: poi.cover || undefined,
+          location: {
+            name: poi.destination,
+            lat: poi.lat,
+            lng: poi.lng,
+          },
+          geomedia: {
+            prompt: poi.description || 'Capture this place.',
+            lat: poi.lat,
+            lng: poi.lng,
+            radius_m: 500,
+            media_kinds: ['photo'],
+          },
+        } as unknown as Quest['data'],
+        distance: poi.distanceMeters ?? undefined,
+      };
+      setQuestDetail(synthesized);
+    };
+
     const layers = mountPoiLayers(
       map.current,
       poiData,
       () => liveLocationRef.current,
       handleWalkHereRequested,
+      handleStartQuestRequested,
     );
     const routeLayer = mountRouteLayer(map.current);
     poiUnmount.current = layers.unmount;
@@ -864,17 +920,20 @@ export function MapModal({ open, onClose }: MapModalProps) {
             );
           })()}
 
-          {/* Arrived — celebratory pill with Complete CTA. Until quest
-              completion is wired through to the parent / Django, Complete
-              just clears state. */}
+          {/* Arrived — pearl pill with Complete CTA. */}
           {route && routeMode === 'arrived' && (
             <div
               className="absolute left-1/2 top-3 -translate-x-1/2 z-10"
               onClick={(e) => e.stopPropagation()}
             >
               <div
-                className="flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full border border-white/10 backdrop-blur-md text-white text-xs"
-                style={{ background: 'rgba(0,0,0,0.78)' }}
+                className="flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full backdrop-blur-md text-xs"
+                style={{
+                  background: 'rgba(255,255,255,0.85)',
+                  border: '1px solid rgba(255,255,255,0.95)',
+                  color: '#2A1B3D',
+                  boxShadow: '0 6px 18px rgba(120,100,160,0.22)',
+                }}
               >
                 <span className="text-base">🎉</span>
                 <span className="font-semibold tracking-wide whitespace-nowrap">You&apos;ve arrived</span>
@@ -888,9 +947,9 @@ export function MapModal({ open, onClose }: MapModalProps) {
                   }}
                   className="ml-1 px-3 py-1 rounded-full font-bold uppercase tracking-wider text-[10px]"
                   style={{
-                    background: '#00B4FF',
-                    color: '#fff',
-                    boxShadow: '0 4px 12px rgba(0,180,255,0.35)',
+                    background: '#2A1B3D',
+                    color: '#FBF8F4',
+                    boxShadow: '0 4px 12px rgba(42,27,61,0.32)',
                   }}
                 >
                   Complete
@@ -901,30 +960,47 @@ export function MapModal({ open, onClose }: MapModalProps) {
         </div>
       </div>
 
+      {/* POI "Start" → render the same QuestFullView overlay used on the
+          dashboard. Pearl-tinted scrim, click backdrop or back-arrow to close. */}
+      {questDetail && (
+        <div
+          className="fixed inset-0 z-[60] overflow-y-auto"
+          style={{
+            background: 'rgba(251, 248, 244, 0.78)',
+            backdropFilter: 'blur(20px) saturate(140%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setQuestDetail(null);
+          }}
+        >
+          <div className="px-4 md:px-6 py-12">
+            <QuestFullView quest={questDetail} onBack={() => setQuestDetail(null)} />
+          </div>
+        </div>
+      )}
+
       <style jsx global>{`
-        /* Glass-style Mapbox popup — matches TravelersPill treatment */
+        /* Pearl-canon Mapbox popup — matches lobby / dashboard / settings. */
         .mapboxgl-popup.zo-map-popup .mapboxgl-popup-content {
           padding: 12px 14px;
-          border-radius: 16px;
+          border-radius: 18px;
           background: linear-gradient(
-            157deg,
-            rgba(52, 52, 52, 0.85) 3%,
-            rgba(66, 65, 65, 0.85) 14%,
-            rgba(32, 32, 32, 0.9) 52%,
-            rgba(48, 48, 48, 0.85) 100%
+            180deg,
+            rgba(255, 255, 255, 0.95) 0%,
+            rgba(251, 248, 244, 0.92) 100%
           );
-          border: 1.5px solid transparent;
+          border: 1px solid rgba(255, 255, 255, 0.95);
           background-clip: padding-box;
           box-shadow:
-            0 8px 32px rgba(0, 0, 0, 0.6),
-            0 0 0 1px rgba(255, 255, 255, 0.08),
-            inset 0 1px 0 rgba(255, 255, 255, 0.08);
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
-          color: #fff;
+            inset 0 1px 0 rgba(255, 255, 255, 0.9),
+            0 12px 32px rgba(120, 100, 160, 0.28);
+          backdrop-filter: blur(18px) saturate(140%);
+          -webkit-backdrop-filter: blur(18px) saturate(140%);
+          color: #2a1b3d;
         }
         .mapboxgl-popup.zo-map-popup .mapboxgl-popup-close-button {
-          color: rgba(255, 255, 255, 0.55);
+          color: rgba(42, 27, 61, 0.55);
           font-size: 20px;
           padding: 4px 8px;
           right: 2px;
@@ -938,15 +1014,15 @@ export function MapModal({ open, onClose }: MapModalProps) {
         .mapboxgl-popup.zo-map-popup .mapboxgl-popup-close-button:focus,
         .mapboxgl-popup.zo-map-popup .mapboxgl-popup-close-button:focus-visible,
         .mapboxgl-popup.zo-map-popup .mapboxgl-popup-close-button:active {
-          color: #fff;
+          color: #2a1b3d;
           background: transparent;
           border: none;
           outline: none;
           box-shadow: none;
         }
         .mapboxgl-popup.zo-map-popup .mapboxgl-popup-tip {
-          border-top-color: rgba(32, 32, 32, 0.9);
-          border-bottom-color: rgba(52, 52, 52, 0.85);
+          border-top-color: rgba(251, 248, 244, 0.92);
+          border-bottom-color: rgba(255, 255, 255, 0.95);
         }
       `}</style>
     </div>

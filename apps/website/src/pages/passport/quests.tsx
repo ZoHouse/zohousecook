@@ -409,9 +409,11 @@ export default function QuestsPage() {
           <div
             className="fixed inset-0 z-[50] overflow-y-auto"
             style={{
-              background: 'rgba(10, 5, 25, 0.72)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
+              // Pearl-tinted scrim — matches the canon. Heavier blur than the
+              // dashboard underneath so the detail view feels lifted above it.
+              background: 'rgba(251, 248, 244, 0.78)',
+              backdropFilter: 'blur(20px) saturate(140%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(140%)',
             }}
             onClick={(e) => {
               if (e.target === e.currentTarget) setSelectedQuest(null);
