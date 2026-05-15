@@ -13,23 +13,23 @@ import { LobbyRoom } from './LobbyRoom';
 import { MapModal } from './MapModal';
 import { TravelersPill } from './TravelersPill';
 import { UnlimitedAccessCta } from './UnlimitedAccessCta';
-import { BagHero } from './BagHero';
+import { BagModel3D } from './BagModel3D';
 import { StampsDock } from './StampsDock';
 import { SettingsModal } from '../passport/SettingsModal';
 import ShareModal from '../passport/ShareModal';
 
-// Same iridescent pearl palette as PassportLobby — the badges page is the
-// same room with a different object on the pedestal, so it must share the
-// shell exactly.
+// Hologram-pearl palette — chromatic iridescent shift (lavender → mint →
+// peach → cyan → magenta) tuned for the badges room. Pulls more saturation
+// than PassportLobby's pearl since the bag pedestal reads as a foil object.
 const IRIDESCENT_PEARL_COLORS = [
-  '#FBF8F4',
-  '#F2E0EC',
-  '#E6D9F2',
-  '#FFFFFF',
-  '#DCEDE8',
-  '#F4E8D4',
-  '#DBE6F2',
-  '#FBF8F4',
+  '#9D7CFF',
+  '#5FE3C0',
+  '#FFB07A',
+  '#7AB8FF',
+  '#FF7ACF',
+  '#C8FF7A',
+  '#B07AFF',
+  '#FFD060',
 ];
 
 /**
@@ -73,31 +73,26 @@ export function BadgesLobby() {
 
   if (!profile) return null;
 
-  const earnedCount =
-    (myXp?.destinationNames?.length ?? 0) +
-    (myXp?.tripDestinations?.length ?? 0);
-
   return (
     <div
       className="min-h-[100svh] md:min-h-screen md:h-auto text-white relative"
       style={{
-        background: '#FBF8F4',
+        background: '#B89DFF',
         WebkitTapHighlightColor: 'transparent',
         overscrollBehavior: 'none',
         touchAction: 'manipulation',
       }}
     >
-      {/* Iridescent pearl mesh — slow, lacquered, low-distortion. Cloned from
-          PassportLobby so the room reads identical. */}
+      {/* Iridescent hologram mesh — full chromatic foil, no pearl wash. */}
       <div aria-hidden className="pointer-events-none fixed inset-0" style={{ zIndex: 0 }}>
         <MeshGradient
           colors={IRIDESCENT_PEARL_COLORS}
-          speed={0.12}
-          scale={0.7}
-          distortion={0.08}
-          swirl={0.1}
-          grainMixer={0.04}
-          grainOverlay={0.03}
+          speed={0.32}
+          scale={0.45}
+          distortion={0.4}
+          swirl={0.5}
+          grainMixer={0.08}
+          grainOverlay={0.06}
           fit="cover"
           style={{ width: '100%', height: '100%' }}
         />
@@ -107,16 +102,7 @@ export function BadgesLobby() {
         className="pointer-events-none fixed inset-0"
         style={{
           background:
-            'radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0) 0%, rgba(220,225,235,0.15) 75%, rgba(200,210,225,0.25) 100%)',
-          zIndex: 0,
-        }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 80% 30% at 50% 0%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 60%)',
+            'radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0) 0%, rgba(120,80,200,0.12) 70%, rgba(80,40,160,0.22) 100%)',
           zIndex: 0,
         }}
       />
@@ -146,7 +132,14 @@ export function BadgesLobby() {
         )}
 
         <LobbyRoom
-          hero={<BagHero earnedCount={earnedCount} onShare={handleShare} />}
+          hero={
+            <BagModel3D
+              stamps={[
+                ...(myXp?.destinationNames ?? []),
+                ...(myXp?.tripDestinations ?? []),
+              ]}
+            />
+          }
           travelersPill={<TravelersPill />}
           ctaMobile={<UnlimitedAccessCta size="sm" label="Share my stamps" onClick={handleShare} />}
           ctaDesktop={<UnlimitedAccessCta label="Share my stamps" onClick={handleShare} />}
