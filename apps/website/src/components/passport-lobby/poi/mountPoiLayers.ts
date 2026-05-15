@@ -147,46 +147,68 @@ function buildPopupHTML(
   const poiId = String(props.id || '');
 
   const heroHtml = heroPic
-    ? `<div style="position:relative;margin:-12px -16px 10px;height:140px;border-radius:8px 8px 0 0;overflow:hidden;background:#1a1a1a;">
+    ? `<div style="position:relative;margin:-12px -14px 10px;height:140px;border-radius:14px 14px 0 0;overflow:hidden;background:#FBF8F4;">
          <img src="${escapeHtml(heroPic)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" />
-         <div style="position:absolute;inset:0;background:linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%);"></div>
        </div>`
     : '';
 
   // Distance from viewer (Erum's ask #1). Hidden when no live location yet.
   const distHtml = viewer
-    ? `<span style="font-size:11px;color:rgba(255,255,255,0.5);margin-left:6px;">· ${fmtDist(haversineM(viewer.lat, viewer.long, poiLngLat[1], poiLngLat[0]))}</span>`
+    ? `<span style="font-size:11px;color:#9A8FB8;margin-left:6px;">· ${fmtDist(haversineM(viewer.lat, viewer.long, poiLngLat[1], poiLngLat[0]))}</span>`
     : '';
 
   const locationLine = [dest, country].filter(Boolean).join(', ');
 
-  // Walk here CTA — only when we know where the viewer is. Click is captured
-  // by a delegated listener on map.getContainer() in mountPoiLayers below.
-  const walkHereHtml = viewer
+  // Matched-pair button style — same height, font, radius. Width split
+  // equally via flex:1 in the row container below so they read as a pair.
+  const btnBase =
+    'flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 14px;border-radius:99px;font-family:Rubik,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;cursor:pointer;text-align:center;';
+
+  // Start — primary; opens the full quest detail view (same overlay used on
+  // the dashboard). MapModal listens for the delegated click and synthesizes
+  // a DockQuest from the data-attrs below.
+  const startHtml = `<button type="button"
+     data-action="start-quest"
+     data-poi-id="${escapeHtml(poiId)}"
+     data-lng="${poiLngLat[0]}"
+     data-lat="${poiLngLat[1]}"
+     data-name="${escapeHtml(name)}"
+     data-description="${escapeHtml(description)}"
+     data-destination="${escapeHtml(locationLine)}"
+     data-cover="${escapeHtml(heroPic)}"
+     data-culture="${escapeHtml(cultureLabel)}"
+     style="${btnBase}background:#2A1B3D;border:1px solid #2A1B3D;color:#FBF8F4;font-weight:800;box-shadow:0 6px 18px rgba(42,27,61,0.28);">
+     Start
+   </button>`;
+
+  // Directions — secondary; renders only when the viewer's location is known.
+  const directionsHtml = viewer
     ? `<button type="button"
-         data-action="walk-here"
+         data-action="directions"
          data-poi-id="${escapeHtml(poiId)}"
          data-lng="${poiLngLat[0]}"
          data-lat="${poiLngLat[1]}"
-         style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:7px 12px;border-radius:99px;background:#FF2F8E;border:none;color:#fff;font-family:Rubik,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;cursor:pointer;box-shadow:0 4px 12px rgba(255,47,142,0.35);">
-         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="M13 5l7 7-7 7M5 12h15"/></svg>
-         Walk here
+         style="${btnBase}background:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.95);color:#2A1B3D;box-shadow:0 4px 14px rgba(120,100,160,0.22);">
+         Directions
        </button>`
     : '';
 
-  // Fluid: min-width keeps it readable on big screens, popup container caps
-  // total width via Mapbox Popup `maxWidth` so it never overflows phone screens.
+  // Pearl-canon popup — white-on-pearl, dark text, glass border.
+  // Mapbox Popup `maxWidth` caps total width on phone screens.
   return `
-    <div style="font-family:Rubik,sans-serif;padding:12px 16px;min-width:200px;max-width:100%;box-sizing:border-box;color:#fff;">
+    <div style="font-family:Rubik,sans-serif;padding:12px 14px;min-width:220px;max-width:100%;box-sizing:border-box;color:#2A1B3D;">
       ${heroHtml}
-      <div style="font-size:14px;font-weight:600;color:#fff;line-height:1.3;margin-bottom:4px;word-wrap:break-word;">${escapeHtml(name)}</div>
-      ${locationLine || distHtml ? `<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:10px;">${escapeHtml(locationLine)}${distHtml}</div>` : ''}
-      ${description ? `<div style="font-size:12px;color:rgba(255,255,255,0.75);line-height:1.45;margin-bottom:10px;">${escapeHtml(description)}</div>` : ''}
-      <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:99px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);">
+      <div style="font-size:14px;font-weight:700;color:#2A1B3D;line-height:1.3;margin-bottom:4px;word-wrap:break-word;">${escapeHtml(name)}</div>
+      ${locationLine || distHtml ? `<div style="font-size:11px;color:#6B5B8E;margin-bottom:10px;font-weight:600;">${escapeHtml(locationLine)}${distHtml}</div>` : ''}
+      ${description ? `<div style="font-size:12px;color:#2A1B3D;line-height:1.5;margin-bottom:10px;">${escapeHtml(description)}</div>` : ''}
+      <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 9px;margin-bottom:10px;border-radius:99px;background:rgba(255,255,255,0.65);border:1px solid rgba(120,100,160,0.18);">
         <img src="${CULTURE_ICON_BASE}/${cultureKey}.png${CULTURE_ICON_QUERY}" alt="" style="width:14px;height:14px;border-radius:50%;" loading="lazy" />
-        <span style="font-size:10px;color:#fff;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">${escapeHtml(cultureLabel)}</span>
+        <span style="font-size:10px;color:#2A1B3D;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">${escapeHtml(cultureLabel)}</span>
       </div>
-      ${walkHereHtml}
+      <div style="display:flex;align-items:stretch;gap:8px;width:100%;">
+        ${startHtml}
+        ${directionsHtml}
+      </div>
     </div>
   `;
 }
@@ -234,6 +256,22 @@ export function mountPoiLayers(
     to: [number, number],
     poiId: string,
   ) => void,
+  /**
+   * Called when the citizen taps "Start" on a POI popup. Receives a POI
+   * payload that the parent can synthesize into a DockQuest and render
+   * the full quest detail overlay.
+   */
+  onStartQuestRequested?: (poi: {
+    poiId: string;
+    name: string;
+    description: string;
+    destination: string;
+    cover: string;
+    culture: string;
+    lng: number;
+    lat: number;
+    distanceMeters: number | null;
+  }) => void,
 ): {
   unmount: () => void;
   /**
@@ -479,25 +517,57 @@ export function mountPoiLayers(
   map.on('mouseenter', HITAREA_LAYER, setPointer);
   map.on('mouseleave', HITAREA_LAYER, unsetPointer);
 
-  // Delegated click listener for the "Walk here" button inside the popup
-  // HTML. Scoped to the map container — popup DOM lives inside it.
+  // Delegated click listener for the popup CTAs ("Start" + "Directions").
+  // Scoped to the map container — popup DOM lives inside it.
   const container = map.getContainer();
-  const handleWalkHereClick = (e: Event) => {
+  const handlePopupClick = (e: Event) => {
     const target = e.target as HTMLElement | null;
-    const btn = target?.closest('[data-action="walk-here"]') as HTMLElement | null;
-    if (!btn) return;
-    e.stopPropagation();
-    const lng = parseFloat(btn.dataset.lng ?? '');
-    const lat = parseFloat(btn.dataset.lat ?? '');
-    const poiId = btn.dataset.poiId ?? '';
-    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
-    const viewer = getViewerLocation();
-    if (!viewer) return; // shouldn't happen — button only renders when viewer known
-    // Auto-close popup so it doesn't block the route reveal + camera flight.
-    popup.remove();
-    onWalkHereRequested?.([viewer.long, viewer.lat], [lng, lat], poiId);
+
+    // Directions → kick off walking-route preview (legacy `walk-here` flow,
+    // renamed to `directions` in the popup HTML to match the new CTA copy).
+    const directionsBtn = target?.closest('[data-action="directions"]') as HTMLElement | null;
+    if (directionsBtn) {
+      e.stopPropagation();
+      const lng = parseFloat(directionsBtn.dataset.lng ?? '');
+      const lat = parseFloat(directionsBtn.dataset.lat ?? '');
+      const poiId = directionsBtn.dataset.poiId ?? '';
+      if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
+      const viewer = getViewerLocation();
+      if (!viewer) return; // button only renders when viewer known
+      // Auto-close popup so it doesn't block the route reveal + camera flight.
+      popup.remove();
+      onWalkHereRequested?.([viewer.long, viewer.lat], [lng, lat], poiId);
+      return;
+    }
+
+    // Start → open the full quest detail overlay. Always available (does not
+    // require viewer location). Synthesize a payload from the button's
+    // data-attrs; the parent maps these to a DockQuest for QuestFullView.
+    const startBtn = target?.closest('[data-action="start-quest"]') as HTMLElement | null;
+    if (startBtn) {
+      e.stopPropagation();
+      const lng = parseFloat(startBtn.dataset.lng ?? '');
+      const lat = parseFloat(startBtn.dataset.lat ?? '');
+      if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
+      const viewer = getViewerLocation();
+      const distanceMeters = viewer
+        ? haversineM(viewer.lat, viewer.long, lat, lng)
+        : null;
+      popup.remove();
+      onStartQuestRequested?.({
+        poiId: startBtn.dataset.poiId ?? '',
+        name: startBtn.dataset.name ?? '',
+        description: startBtn.dataset.description ?? '',
+        destination: startBtn.dataset.destination ?? '',
+        cover: startBtn.dataset.cover ?? '',
+        culture: startBtn.dataset.culture ?? '',
+        lng,
+        lat,
+        distanceMeters,
+      });
+    }
   };
-  container.addEventListener('click', handleWalkHereClick);
+  container.addEventListener('click', handlePopupClick);
 
   const closePopup = () => {
     popup.remove();
@@ -508,7 +578,7 @@ export function mountPoiLayers(
       map.off('click', HITAREA_LAYER, handleClick);
       map.off('mouseenter', HITAREA_LAYER, setPointer);
       map.off('mouseleave', HITAREA_LAYER, unsetPointer);
-      container.removeEventListener('click', handleWalkHereClick);
+      container.removeEventListener('click', handlePopupClick);
       popup.remove();
       if (map.getLayer(SYMBOL_LAYER)) map.removeLayer(SYMBOL_LAYER);
       if (map.getLayer(CIRCLE_LAYER)) map.removeLayer(CIRCLE_LAYER);

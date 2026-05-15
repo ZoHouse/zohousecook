@@ -86,27 +86,29 @@ export function NavStepCard({
       onClick={(e) => e.stopPropagation()}
     >
       <div
-        className="rounded-2xl border border-white/10 backdrop-blur-md text-white p-4"
+        className="rounded-2xl backdrop-blur-md p-4"
         style={{
-          background: 'rgba(0,0,0,0.78)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(251,248,244,0.9) 100%)',
+          border: '1px solid rgba(255,255,255,0.95)',
+          color: '#2A1B3D',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 12px 32px rgba(120,100,160,0.28)',
         }}
       >
         <div className="flex items-start gap-3">
           <div
             className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center"
-            style={{ background: 'rgba(0,180,255,0.12)', color: '#00B4FF' }}
+            style={{ background: 'rgba(42,27,61,0.08)', color: '#2A1B3D' }}
           >
             <ManeuverIcon type={step.maneuver.type} modifier={step.maneuver.modifier} />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-xl font-semibold leading-tight">
+            <div className="text-xl font-semibold leading-tight" style={{ color: '#2A1B3D' }}>
               In {formatDistance(distanceToNext)}
             </div>
-            <div className="text-white/85 text-sm leading-snug mt-0.5 line-clamp-2">
+            <div className="text-sm leading-snug mt-0.5 line-clamp-2" style={{ color: 'rgba(42,27,61,0.85)' }}>
               {step.maneuver.instruction}
             </div>
-            <div className="text-white/55 text-[11px] mt-1.5">
+            <div className="text-[11px] mt-1.5" style={{ color: '#6B5B8E' }}>
               {formatDuration(totalRemainingDuration)} · {formatDistance(totalRemainingDistance)} total
             </div>
           </div>
@@ -114,7 +116,12 @@ export function NavStepCard({
             type="button"
             onClick={onEnd}
             aria-label="End navigation"
-            className="flex-shrink-0 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition text-xs font-semibold tracking-wide"
+            className="flex-shrink-0 px-3 py-1.5 rounded-full transition text-xs font-semibold tracking-wide"
+            style={{
+              background: 'rgba(42,27,61,0.08)',
+              color: '#2A1B3D',
+              border: '1px solid rgba(42,27,61,0.12)',
+            }}
           >
             End
           </button>
