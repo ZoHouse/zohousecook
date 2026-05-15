@@ -12,6 +12,11 @@ import {
 import { distanceMeters, formatDistance, useLiveLocation } from '../LiveLocationProvider';
 import { rubikClassName } from '../utils/font';
 import { CameraCaptureModal, type CaptureKind } from './CameraCaptureModal';
+import {
+  TodaysLootCard,
+  isLootImminent,
+  SAMPLE_LOOT,
+} from './TodaysLootCard';
 
 // Active = Live template + the viewer's participation is still open.
 function isActiveForViewer(q: Quest): boolean {
@@ -895,12 +900,16 @@ export function useActiveQuests(maxItems = 10): { quests: DockQuest[]; isLoading
  */
 export function QuestsDock({ maxItems = 10, selectedQuest, onSelect }: QuestsDockProps) {
   const { quests: visible, isLoading } = useActiveQuests(maxItems);
+  const lootShown = isLootImminent(SAMPLE_LOOT.opens_at);
 
   if (selectedQuest) {
     return <QuestPanel quest={selectedQuest} onBack={() => onSelect?.(null)} />;
   }
 
-  if (visible.length === 0) {
+  // Empty state only fires when there's nothing at all — no loot AND no
+  // active quests. Otherwise the loot card renders alongside whatever
+  // active quests exist in the same horizontal scroller.
+  if (visible.length === 0 && !lootShown) {
     return (
       <div className={`${rubikClassName} w-full max-w-[1200px] mx-auto px-3 md:px-6`}>
         <div
@@ -929,6 +938,12 @@ export function QuestsDock({ maxItems = 10, selectedQuest, onSelect }: QuestsDoc
         className="flex gap-3 overflow-x-auto px-3 md:px-6 pb-2"
         style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
       >
+        {lootShown && (
+          <TodaysLootCard
+            loot={SAMPLE_LOOT}
+            onPlay={() => toast('Loot box claim flow coming soon')}
+          />
+        )}
         {visible.map((quest) => (
           <QuestCard key={quest.pid} quest={quest} onOpen={(q) => onSelect?.(q)} />
         ))}

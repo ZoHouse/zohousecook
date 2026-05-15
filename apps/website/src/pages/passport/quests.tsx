@@ -1,605 +1,239 @@
-import React, { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
-import Image from 'next/image';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useProfile } from '@zo/auth';
-import { Warp } from '@paper-design/shaders-react';
-import { MapModal } from '../../components/passport-lobby/MapModal';
-import { TopBar } from '../../components/passport-lobby/TopBar';
-import { PageHeaderPill } from '../../components/passport-lobby/PageHeaderPill';
+import { MeshGradient } from '@paper-design/shaders-react';
+import { toast } from 'sonner';
+
 import { useMyXp } from '../../hooks/useMyXp';
-import chestIcon from '../../assets/passport-lobby/treasure-chest.png';
+import { usePassportProfile } from '../../hooks/usePassportProfile';
+import { useSeason } from '../../hooks/useSeason';
+import useInstagramConnect from '../../hooks/useInstagramConnect';
+import { useQuests } from '../../hooks/useQuests';
+import { isGeomediaQuest, type Quest, type QuestCategory } from '../../data/mock-quests';
 
-/**
- * Quests page — /@{handle}/quests. Featured quest at the top opens a detail
- * modal; below, the list of open quests tinted by the role they belong to.
- * Shape matches the v2 quest endpoint contract (passport/mocks/quests).
- */
+import { TopBar } from '../../components/passport-lobby/TopBar';
+import { MapModal } from '../../components/passport-lobby/MapModal';
+import {
+  QuestListCard,
+  QuestFullView,
+  useActiveQuests,
+  actionForQuest,
+  type DockQuest,
+} from '../../components/passport-lobby/QuestsDock';
+import { CameraCaptureModal, type CaptureKind } from '../../components/passport-lobby/CameraCaptureModal';
+import {
+  TodaysLootCard,
+  isLootImminent,
+  SAMPLE_LOOT,
+} from '../../components/passport-lobby/TodaysLootCard';
+import { SettingsModal } from '../../components/passport/SettingsModal';
+import ShareModal from '../../components/passport/ShareModal';
+import { rubikClassName, syneClassName } from '../../components/utils/font';
+import { distanceMeters, useLiveLocation } from '../../components/LiveLocationProvider';
 
-const TEXT_MUTED = '#9CA3AF';
-
-// Treasure Warp palette — black void through amber/gold.
-const WARP_COLORS = [
-  '#060300',
-  '#1A0E02',
-  '#3B2102',
-  '#7A4A09',
-  '#C17D14',
-  '#FFC73A',
-  '#FFE79E',
-  '#1A0E02',
+// Same iridescent pearl as PassportLobby + BadgesLobby — keeps the room reading
+// consistent across passport surfaces. No pedestal / hero / LobbyRoom here;
+// this is a scrollable dashboard, not a lobby variant.
+const IRIDESCENT_PEARL_COLORS = [
+  '#FBF8F4',
+  '#F2E0EC',
+  '#E6D9F2',
+  '#FFFFFF',
+  '#DCEDE8',
+  '#F4E8D4',
+  '#DBE6F2',
+  '#FBF8F4',
 ];
 
-interface Quest {
-  user_quest_id: string;
-  quest_id: string;
-  name: string;
-  description: string;
-  cover_image: string;
-  role_ids: string[];
-  role_names: string[];
-  culture_id: string | null;
-  journey_role: 'side' | 'main';
-  cadence: 'daily' | 'weekly' | 'seasonal' | 'oneoff';
-  rarity: 'common' | 'uncommon' | 'rare' | 'legendary';
-  difficulty: 'easy' | 'medium' | 'hard';
-  qualifying_actions: string[];
-  verification_method: string;
-  reward_pool: {
-    draw_method: string;
-    reward: { type: string; amount: number };
-  };
-  live_at: string;
-  submission_deadline_at: string;
-  expires_at: string;
-  status: 'open' | 'submitted' | 'post_due' | 'expired' | 'claimed';
-  tier_access: 'free_min' | 'pro_only';
+// Milestone ladder. Citizen progresses 0→10→25→50→100→250→500→1000→2000…
+// Hides the scary 4920-denominator on staging. Swap to real tier names when
+// sub_category becomes meaningful.
+const MILESTONES = [10, 25, 50, 100, 250, 500, 1000];
+
+function nextMilestone(count: number): number {
+  const found = MILESTONES.find((m) => m > count);
+  if (found !== undefined) return found;
+  return Math.ceil((count + 1) / 1000) * 1000;
 }
 
-// Role palette — mirrors the bright glowBg gradients from PassesDock tier
-// cards. Dark text (labelInk) on bright bg, same visual treatment as tiers.
-interface RoleTheme {
+function progressTowardNext(count: number): number {
+  const next = nextMilestone(count);
+  const prevIdx = MILESTONES.indexOf(next) - 1;
+  const prev = prevIdx >= 0 ? MILESTONES[prevIdx] : 0;
+  const span = next - prev;
+  if (span <= 0) return 0;
+  return Math.max(0, Math.min(1, (count - prev) / span));
+}
+
+interface CategoryDef {
+  key: QuestCategory | 'Tribemaker';
+  /** Visible label on the card; defaults to `key` if unset. */
+  displayName?: string;
+  glyph: string;
   bg: string;
-  accent: string;      // Light accent (highlight/mid)
-  labelInk: string;    // Dark text color (for quest copy on bright bg)
-  pillBg: string;      // Semi-opaque background for chips
+  ink: string;
+  accent: string;
+  /** When false, the card shows count only (no progress bar / next milestone).
+   *  Used for non-quest-based categories like Tribemaker. */
+  showProgression?: boolean;
 }
 
-const ROLE_THEMES: Record<string, RoleTheme> = {
-  tripper: {
-    bg: 'linear-gradient(180deg, #4794FF 0%, #3079F2 60%, #0D4DFF 100%)',
-    accent: '#D1E2FF',
-    labelInk: '#05143A',
-    pillBg: 'rgba(5, 20, 58, 0.28)',
-  },
-  creator: {
-    bg: 'linear-gradient(180deg, #A849E0 0%, #8A26C2 60%, #5C0E92 100%)',
-    accent: '#EED1FF',
-    labelInk: '#1A0033',
-    pillBg: 'rgba(26, 0, 51, 0.28)',
-  },
-  tribemaker: {
-    bg: 'linear-gradient(180deg, #FF47D7 0%, #F530B6 60%, #D60E91 100%)',
-    accent: '#FFD1FD',
-    labelInk: '#2B001F',
-    pillBg: 'rgba(43, 0, 31, 0.28)',
-  },
-  tribe_builder: {
-    bg: 'linear-gradient(180deg, #FF47D7 0%, #F530B6 60%, #D60E91 100%)',
-    accent: '#FFD1FD',
-    labelInk: '#2B001F',
-    pillBg: 'rgba(43, 0, 31, 0.28)',
-  },
-};
-
-const DEFAULT_THEME: RoleTheme = {
-  bg: 'linear-gradient(180deg, #F5B13A 0%, #E89515 60%, #C97A0A 100%)',
-  accent: '#FFE79E',
-  labelInk: '#1A0F00',
-  pillBg: 'rgba(26, 15, 0, 0.28)',
-};
-
-function themeForQuest(q: Quest) {
-  const primary = q.role_ids?.[0]?.toLowerCase();
-  return (primary && ROLE_THEMES[primary]) || DEFAULT_THEME;
-}
-
-/** Live HH:MM:SS countdown hook. Returns "08 : 06 : 12" style string.
- *  Starts null on SSR + first client render so markup matches across the
- *  hydration boundary. After mount, flips to the live tick. */
-function useCountdown(iso: string): string {
-  const [now, setNow] = useState<number | null>(null);
-  useEffect(() => {
-    setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  if (now === null) return '-- : -- : --';
-  const ms = new Date(iso).getTime() - now;
-  if (Number.isNaN(ms) || ms <= 0) return '00 : 00 : 00';
-  const totalSec = Math.floor(ms / 1000);
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(h)} : ${pad(m)} : ${pad(s)}`;
-}
-
-function timeRemaining(iso: string): string {
-  const ms = new Date(iso).getTime() - Date.now();
-  if (Number.isNaN(ms) || ms <= 0) return 'expired';
-  const h = Math.floor(ms / 3_600_000);
-  if (h < 1) return `${Math.floor(ms / 60_000)}m left`;
-  if (h < 24) return `${h}h left`;
-  return `${Math.floor(h / 24)}d left`;
-}
-
-function statusPillStyle(status: Quest['status']): React.CSSProperties {
-  switch (status) {
-    case 'open':
-      return { background: 'rgba(74,222,128,0.18)', color: '#4ADE80' };
-    case 'submitted':
-      return { background: 'rgba(250,204,21,0.18)', color: '#FACC15' };
-    case 'post_due':
-      return { background: 'rgba(148,163,184,0.2)', color: '#CBD5E1' };
-    case 'expired':
-      return { background: 'rgba(248,113,113,0.18)', color: '#F87171' };
-    case 'claimed':
-      return { background: 'rgba(196,181,253,0.2)', color: '#C4B5FD' };
-    default:
-      return { background: 'rgba(255,255,255,0.1)', color: '#fff' };
-  }
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Sample data — matches the v2 shape. Swap for zoServer call later.
-// ────────────────────────────────────────────────────────────────────────────
-
-// Today's Loot drop — separate from quests. Only rendered when imminent (<24h).
-const SAMPLE_LOOT: LootDrop = {
-  title: 'Free Bed',
-  bountyLine: 'Bounties worth Rs 7k',
-  earnLine: 'Earn upto Rs. 2,000',
-  // 8h 6m 12s from now-ish — adjust to a realistic opens_at from backend later
-  opens_at: new Date(Date.now() + (8 * 60 + 6) * 60 * 1000 + 12_000).toISOString(),
-};
-
-const SAMPLE_QUESTS: Quest[] = [
+// Three citizen-facing categories. Tripper + Creator are quest-based
+// (milestone progression). Tribemaker is referral-based (citizens onboarded
+// via the viewer's affiliate links) — count-only, no milestone framing.
+// Trip Captain isn't a citizen-progression role; intentionally excluded.
+const CATEGORIES: CategoryDef[] = [
   {
-    user_quest_id: '11111111-1111-1111-1111-111111111111',
-    quest_id: 'aaa11111-0000-0000-0000-000000000001',
-    name: 'Catch a moment today',
-    description: 'Share one photo from wherever you are — café, street, room, view.',
-    cover_image: 'https://cdn.zo.xyz/quests/catch-moment.jpg',
-    role_ids: ['tripper'],
-    role_names: ['Tripper'],
-    culture_id: null,
-    journey_role: 'side',
-    cadence: 'daily',
-    rarity: 'common',
-    difficulty: 'easy',
-    qualifying_actions: ['photo_upload'],
-    verification_method: 'geo_media',
-    reward_pool: { draw_method: 'all_qualified', reward: { type: 'xp', amount: 25 } },
-    live_at: '2026-04-21T00:00:00Z',
-    submission_deadline_at: '2026-04-21T23:59:59Z',
-    expires_at: '2026-04-22T10:00:00Z',
-    status: 'post_due',
-    tier_access: 'free_min',
+    key: 'Tripper',
+    glyph: '✦',
+    bg: 'linear-gradient(180deg, rgba(71,148,255,0.28) 0%, rgba(13,77,255,0.42) 100%)',
+    ink: '#05143A',
+    accent: '#0D4DFF',
+    showProgression: true,
   },
   {
-    user_quest_id: '22222222-2222-2222-2222-222222222222',
-    quest_id: 'aaa22222-0000-0000-0000-000000000002',
-    name: 'Connect Instagram',
-    description: 'Link your IG to unlock creator rewards and bed drops.',
-    cover_image: 'https://cdn.zo.xyz/quests/connect-ig.jpg',
-    role_ids: ['creator'],
-    role_names: ['Creator'],
-    culture_id: null,
-    journey_role: 'main',
-    cadence: 'oneoff',
-    rarity: 'uncommon',
-    difficulty: 'easy',
-    qualifying_actions: ['oauth_link'],
-    verification_method: 'oauth_callback',
-    reward_pool: { draw_method: 'all_qualified', reward: { type: 'xp', amount: 50 } },
-    live_at: '2026-04-01T00:00:00Z',
-    submission_deadline_at: '2026-05-01T23:59:59Z',
-    expires_at: '2026-05-15T00:00:00Z',
-    status: 'open',
-    tier_access: 'free_min',
+    key: 'Creator',
+    glyph: '◐',
+    bg: 'linear-gradient(180deg, rgba(168,73,224,0.28) 0%, rgba(92,14,146,0.42) 100%)',
+    ink: '#1A0033',
+    accent: '#5C0E92',
+    showProgression: true,
   },
   {
-    user_quest_id: '33333333-3333-3333-3333-333333333333',
-    quest_id: 'aaa33333-0000-0000-0000-000000000003',
-    name: 'Invite 3 builders',
-    description: 'Share your passport link and onboard 3 new citizens this month.',
-    cover_image: 'https://cdn.zo.xyz/quests/invite-builders.jpg',
-    role_ids: ['tribemaker'],
-    role_names: ['Tribe Builder'],
-    culture_id: null,
-    journey_role: 'main',
-    cadence: 'weekly',
-    rarity: 'rare',
-    difficulty: 'medium',
-    qualifying_actions: ['referral_signup'],
-    verification_method: 'backend_event',
-    reward_pool: { draw_method: 'all_qualified', reward: { type: 'xp', amount: 300 } },
-    live_at: '2026-04-20T00:00:00Z',
-    submission_deadline_at: '2026-04-27T23:59:59Z',
-    expires_at: '2026-04-28T10:00:00Z',
-    status: 'open',
-    tier_access: 'free_min',
-  },
-  {
-    user_quest_id: '44444444-4444-4444-4444-444444444444',
-    quest_id: 'aaa44444-0000-0000-0000-000000000004',
-    name: 'Stay at Zostel Pahalgam',
-    description: '3-night stay between Apr 25 – May 15. Bed drop claim.',
-    cover_image: 'https://cdn.zo.xyz/quests/pahalgam.jpg',
-    role_ids: ['tripper'],
-    role_names: ['Tripper'],
-    culture_id: null,
-    journey_role: 'main',
-    cadence: 'seasonal',
-    rarity: 'legendary',
-    difficulty: 'hard',
-    qualifying_actions: ['booking_confirmed'],
-    verification_method: 'booking_event',
-    reward_pool: { draw_method: 'all_qualified', reward: { type: 'xp', amount: 300 } },
-    live_at: '2026-04-15T00:00:00Z',
-    submission_deadline_at: '2026-05-15T23:59:59Z',
-    expires_at: '2026-05-16T00:00:00Z',
-    status: 'open',
-    tier_access: 'pro_only',
+    key: 'Tribemaker',
+    displayName: 'Tribe',
+    glyph: '◈',
+    bg: 'linear-gradient(180deg, rgba(255,71,215,0.22) 0%, rgba(214,14,145,0.32) 100%)',
+    ink: '#2B001F',
+    accent: '#D60E91',
+    showProgression: false,
   },
 ];
 
-// ────────────────────────────────────────────────────────────────────────────
-// Today's Loot — top-of-page promo banner. Only shown when a loot drop is
-// imminent. Independent of the quest list below.
-// ────────────────────────────────────────────────────────────────────────────
-
-interface LootDrop {
-  title: string;
-  bountyLine: string;
-  earnLine: string;
-  /** ISO timestamp when the loot box opens */
-  opens_at: string;
+function isCompleted(q: Quest): boolean {
+  const status = q.participations?.[0]?.status;
+  return status === 'Claimed' || status === 'Submitted';
 }
 
-/** Decide when to show the banner — e.g. only if opens_at is within 24h. */
-function isLootImminent(opens_at: string): boolean {
-  const ms = new Date(opens_at).getTime() - Date.now();
-  return Number.isFinite(ms) && ms > 0 && ms < 24 * 60 * 60 * 1000;
+function questCoords(q: Quest): { lat: number; lng: number } | null {
+  if (isGeomediaQuest(q)) return { lat: q.data.geomedia.lat, lng: q.data.geomedia.lng };
+  const loc = (q.data as { location?: { lat?: number; lng?: number } }).location;
+  if (loc && typeof loc.lat === 'number' && typeof loc.lng === 'number') {
+    return { lat: loc.lat, lng: loc.lng };
+  }
+  return null;
 }
-
-function TodaysLootCard({ loot, onPlay }: { loot: LootDrop; onPlay: () => void }) {
-  const countdown = useCountdown(loot.opens_at);
-
-  return (
-    <button
-      type="button"
-      onClick={onPlay}
-      className="relative w-full text-left rounded-[28px] overflow-hidden transition-transform active:scale-[0.99]"
-      style={{
-        background: 'linear-gradient(135deg, #F5B13A 0%, #E89515 55%, #C97A0A 100%)',
-        boxShadow:
-          'inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(0,0,0,0.2), 0 12px 32px rgba(0,0,0,0.45)',
-        padding: '20px 24px',
-      }}
-    >
-      {/* Sparkles — decorative dots top-right */}
-      <div aria-hidden className="absolute top-3 right-[42%] text-[14px]" style={{ opacity: 0.55 }}>
-        ✦
-      </div>
-      <div aria-hidden className="absolute top-6 right-[36%] text-[10px]" style={{ opacity: 0.45 }}>
-        ✦
-      </div>
-
-      <div className="flex items-center gap-5">
-        {/* Chest image */}
-        <div className="flex-shrink-0" style={{ width: 88, height: 88 }}>
-          <Image
-            src={chestIcon}
-            alt=""
-            width={88}
-            height={88}
-            style={{ width: 88, height: 88, objectFit: 'contain' }}
-          />
-        </div>
-
-        {/* Copy block */}
-        <div className="flex-1 min-w-0">
-          <div
-            className="text-[11px] font-bold uppercase tracking-[0.12em] mb-2"
-            style={{ color: 'rgba(0,0,0,0.55)' }}
-          >
-            Today's Loot
-          </div>
-          <div className="text-[17px] md:text-[18px] font-bold leading-tight mb-0.5" style={{ color: '#1a0f00' }}>
-            {loot.title}
-          </div>
-          <div className="text-[13px] font-semibold leading-tight mb-0.5" style={{ color: '#1a0f00' }}>
-            {loot.bountyLine}
-          </div>
-          <div className="text-[13px] font-semibold leading-tight" style={{ color: '#1a0f00' }}>
-            {loot.earnLine}
-          </div>
-        </div>
-
-        {/* Right column: timer + play */}
-        <div className="hidden sm:flex flex-col items-end gap-2.5 flex-shrink-0">
-          <div
-            className="text-[10px] font-bold uppercase tracking-[0.12em]"
-            style={{ color: 'rgba(0,0,0,0.55)' }}
-          >
-            Expires in
-          </div>
-          <div
-            className="text-[18px] font-bold tabular-nums leading-none"
-            style={{ color: '#1a0f00', fontVariantNumeric: 'tabular-nums' }}
-          >
-            {countdown}
-          </div>
-          <div
-            className="mt-1 inline-flex items-center gap-2 px-5 py-2 rounded-full font-bold text-[13px] transition-transform active:scale-95"
-            style={{
-              background: '#fff',
-              color: '#E91E7A',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-            }}
-          >
-            Play
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile: timer + play below the copy */}
-      <div className="sm:hidden mt-4 flex items-center justify-between">
-        <div className="flex flex-col">
-          <div className="text-[9px] font-bold uppercase tracking-[0.12em]" style={{ color: 'rgba(0,0,0,0.55)' }}>
-            Expires in
-          </div>
-          <div className="text-[15px] font-bold tabular-nums leading-tight" style={{ color: '#1a0f00' }}>
-            {countdown}
-          </div>
-        </div>
-        <div
-          className="inline-flex items-center gap-2 px-5 py-2 rounded-full font-bold text-[13px]"
-          style={{
-            background: '#fff',
-            color: '#E91E7A',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-          }}
-        >
-          Play
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14M12 5l7 7-7 7" />
-          </svg>
-        </div>
-      </div>
-    </button>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Quest card (role-colored, below the featured)
-// ────────────────────────────────────────────────────────────────────────────
-
-function Pill({
-  children,
-  bg,
-  color,
-}: {
-  children: React.ReactNode;
-  bg?: string;
-  color?: string;
-}) {
-  return (
-    <span
-      className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full"
-      style={{ background: bg ?? 'rgba(0,0,0,0.25)', color: color ?? 'rgba(0,0,0,0.7)' }}
-    >
-      {children}
-    </span>
-  );
-}
-
-function QuestCard({ q, onOpen }: { q: Quest; onOpen: (q: Quest) => void }) {
-  const theme = themeForQuest(q);
-  const remaining = timeRemaining(q.submission_deadline_at);
-  const rewardText = `+${q.reward_pool.reward.amount} ${q.reward_pool.reward.type.toUpperCase()}`;
-
-  return (
-    <button
-      type="button"
-      onClick={() => onOpen(q)}
-      className="text-left rounded-3xl p-6 transition-all active:scale-[0.985] hover:brightness-[1.03] w-full"
-      style={{
-        background: theme.bg,
-        border: '1px solid rgba(255,255,255,0.25)',
-        boxShadow:
-          'inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.15), 0 12px 32px rgba(0,0,0,0.5)',
-      }}
-    >
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Pill bg={theme.pillBg} color={theme.labelInk}>
-            {q.role_names[0] ?? 'Open'}
-          </Pill>
-          <Pill bg="rgba(255,255,255,0.3)" color={theme.labelInk}>{q.cadence}</Pill>
-          <Pill bg="rgba(255,255,255,0.3)" color={theme.labelInk}>{q.difficulty}</Pill>
-          {q.rarity !== 'common' && <Pill bg="rgba(255,255,255,0.3)" color={theme.labelInk}>{q.rarity}</Pill>}
-          {q.tier_access === 'pro_only' && (
-            <Pill bg="rgba(255,215,0,0.9)" color="#3A2100">Pro</Pill>
-          )}
-        </div>
-        <span
-          className="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full"
-          style={statusPillStyle(q.status)}
-        >
-          {q.status.replace('_', ' ')}
-        </span>
-      </div>
-
-      <div className="text-[18px] font-bold leading-tight mb-1" style={{ color: theme.labelInk }}>
-        {q.name}
-      </div>
-      <div className="text-[13px] font-medium leading-snug mb-4" style={{ color: theme.labelInk, opacity: 0.8 }}>
-        {q.description}
-      </div>
-
-      <div className="flex items-center justify-between gap-3">
-        <div
-          className="inline-flex items-center text-[13px] font-bold tabular-nums px-3 py-1.5 rounded-full"
-          style={{ background: 'rgba(255,255,255,0.95)', color: theme.labelInk }}
-        >
-          {rewardText}
-        </div>
-        <div
-          className="text-[11px] uppercase tracking-wider font-bold"
-          style={{ color: theme.labelInk, opacity: 0.65 }}
-        >
-          {remaining}
-        </div>
-      </div>
-    </button>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Detail modal — full quest info
-// ────────────────────────────────────────────────────────────────────────────
-
-function QuestDetailModal({ q, onClose }: { q: Quest | null; onClose: () => void }) {
-  if (!q) return null;
-  const theme = themeForQuest(q);
-  const remaining = timeRemaining(q.submission_deadline_at);
-  const rewardText = `+${q.reward_pool.reward.amount} ${q.reward_pool.reward.type.toUpperCase()}`;
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="quest-modal-title"
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-    >
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div
-        className="relative w-full max-w-[560px] max-h-[88vh] rounded-3xl overflow-hidden flex flex-col"
-        style={{
-          background: theme.bg,
-          border: `1px solid ${theme.accent}33`,
-          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.1), 0 24px 60px rgba(0,0,0,0.7)`,
-        }}
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full" style={{ background: `${theme.accent}22`, color: theme.labelInk }}>
-              {q.role_names[0] ?? 'Open'}
-            </span>
-            <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full" style={statusPillStyle(q.status)}>
-              {q.status.replace('_', ' ')}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M12 4L4 12M4 4l8 8" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6">
-          <h2 id="quest-modal-title" className="text-white text-[26px] font-semibold mb-2">{q.name}</h2>
-          <p className="text-[14px] mb-6" style={{ color: 'rgba(255,255,255,0.8)' }}>{q.description}</p>
-
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div>
-              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Reward</div>
-              <div className="text-white font-semibold">{rewardText}</div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Due</div>
-              <div className="text-white font-semibold">{remaining}</div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Cadence</div>
-              <div className="text-white font-medium capitalize">{q.cadence}</div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Difficulty</div>
-              <div className="text-white font-medium capitalize">{q.difficulty}</div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Rarity</div>
-              <div className="text-white font-medium capitalize">{q.rarity}</div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Journey</div>
-              <div className="text-white font-medium capitalize">{q.journey_role}</div>
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <div className="text-[10px] uppercase tracking-wider mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>
-              Verification
-            </div>
-            <div className="text-[13px]" style={{ color: 'rgba(255,255,255,0.85)' }}>
-              Via <span className="font-mono">{q.verification_method}</span> · Actions:{' '}
-              {q.qualifying_actions.map((a) => <span key={a} className="font-mono mr-2">{a}</span>)}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="w-full py-3 rounded-xl font-semibold text-[14px] transition-colors disabled:opacity-50"
-            disabled={q.status !== 'open'}
-            style={{
-              background: q.status === 'open' ? theme.accent : 'rgba(255,255,255,0.1)',
-              color: q.status === 'open' ? '#000' : 'rgba(255,255,255,0.6)',
-            }}
-          >
-            {q.status === 'open' ? 'Start quest' : `Quest ${q.status.replace('_', ' ')}`}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Page
-// ────────────────────────────────────────────────────────────────────────────
 
 export default function QuestsPage() {
   const router = useRouter();
   const { profile } = useProfile();
   const { myXp } = useMyXp();
+  const { profile: passportProfile } = usePassportProfile();
+  const { season } = useSeason();
+  const ig = useInstagramConnect();
+  const { quests: allQuests } = useQuests();
+  const { quests: active } = useActiveQuests(20);
+  const { location } = useLiveLocation();
+
   const [mapOpen, setMapOpen] = useState(false);
-  const [activeQuest, setActiveQuest] = useState<Quest | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [selectedQuest, setSelectedQuest] = useState<DockQuest | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<QuestCategory | null>(null);
 
-  const rawQueryHandle = typeof router.query.handle === 'string' ? router.query.handle : undefined;
-  const queryHandle = rawQueryHandle?.replace(/\.zo$/i, '');
-  const myHandle = (profile?.nickname || profile?.custom_nickname)?.replace(/\.zo$/i, '');
-  const displayHandle = queryHandle || myHandle;
+  const availableRef = useRef<HTMLDivElement | null>(null);
 
-  // Today's Loot banner only renders when the drop is imminent (<24h away).
-  const lootShown = isLootImminent(SAMPLE_LOOT.opens_at);
+  const handle = profile?.custom_nickname || profile?.nickname || 'Citizen';
+  const avatarUrl = profile?.pfp_image || profile?.avatar?.image;
+  const xpTotal = myXp?.xp ?? 0;
+  const rankTitle = myXp?.rankTitle ?? 'Citizen';
+  const rank = myXp?.rank ?? 0;
 
-  // Quests sorted chronologically by upcoming deadline (soonest first).
-  const sortedQuests = [...SAMPLE_QUESTS].sort(
-    (a, b) => new Date(a.submission_deadline_at).getTime() - new Date(b.submission_deadline_at).getTime(),
-  );
+  useEffect(() => {
+    if (router.query.settings === 'profile') setSettingsOpen(true);
+  }, [router.query.settings]);
+
+  const handleShare = useCallback(() => {
+    const url = `${window.location.origin}/@${handle}`;
+    navigator.clipboard.writeText(url).then(() => toast.success('Profile link copied!')).catch(() => {});
+    setShareOpen(true);
+  }, [handle]);
+
+  // Per-category counts.
+  //   Tripper, Creator → completed-quest counts from useQuests participations.
+  //   Tribemaker → all-time citizens onboarded via the viewer's affiliate
+  //     links (separate metric, NOT quest-based). Hardcoded 0 until the
+  //     affiliate/referral count hook lands.
+  const completedByCategory = useMemo(() => {
+    const counts: Record<string, number> = { Tripper: 0, Creator: 0, Tribemaker: 0 };
+    for (const q of allQuests) {
+      if (isCompleted(q) && (q.category === 'Tripper' || q.category === 'Creator')) {
+        counts[q.category] += 1;
+      }
+    }
+    // TODO: replace with useReferralStats().citizensOnboarded when ready.
+    counts.Tribemaker = 0;
+    return counts;
+  }, [allQuests]);
+
+  // Available Near You = Live/Active, no current viewer participation, with
+  // distance-decoration when location is known. Top 6 — anything more belongs
+  // behind a "see all" link to a category catalog (future).
+  const available: DockQuest[] = useMemo(() => {
+    const filtered = allQuests.filter((q) => {
+      if (q.status !== 'Live') return false;
+      const p = q.participations?.[0];
+      if (p && (p.status === 'Assigned' || p.status === 'Submitted' || p.status === 'Claimed')) return false;
+      if (categoryFilter && q.category !== categoryFilter) return false;
+      return true;
+    });
+    const decorated = filtered.map((q) => {
+      const coords = questCoords(q);
+      const distance = location && coords
+        ? distanceMeters({ lat: location.lat, long: location.long }, { lat: coords.lat, long: coords.lng })
+        : undefined;
+      return { ...q, distance } as DockQuest;
+    });
+    decorated.sort((a, b) => {
+      if (a.distance == null && b.distance == null) return 0;
+      if (a.distance == null) return 1;
+      if (b.distance == null) return -1;
+      return a.distance - b.distance;
+    });
+    return decorated.slice(0, 6);
+  }, [allQuests, location, categoryFilter]);
+
+  // Upcoming = Live but starts_at > now. Sorted soonest-first.
+  const upcoming: Quest[] = useMemo(() => {
+    const now = Date.now();
+    return allQuests
+      .filter((q) => q.status === 'Live' && new Date(q.starts_at).getTime() > now)
+      .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
+      .slice(0, 5);
+  }, [allQuests]);
+
+  // Morphing CTA logic — same pattern as PassportLobby. Used inside QuestFullView.
+  const questAction = selectedQuest ? actionForQuest(selectedQuest) : null;
+  const handleQuestAction = () => {
+    if (!questAction) return;
+    if (questAction.kind === 'instagram') ig.connect();
+    else if (questAction.kind === 'geomedia') setCameraOpen(true);
+    else if (questAction.kind === 'booking' && questAction.href) {
+      window.open(questAction.href, '_blank', 'noopener,noreferrer');
+    }
+  };
+  const cameraAllowed: CaptureKind[] =
+    selectedQuest && isGeomediaQuest(selectedQuest)
+      ? selectedQuest.data.geomedia.media_kinds.filter((k): k is CaptureKind => k === 'photo' || k === 'video')
+      : ['photo'];
+
+  const scrollToAvailable = () => {
+    availableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  if (!profile) return null;
 
   return (
     <>
@@ -607,26 +241,24 @@ export default function QuestsPage() {
         <title>Quests · Zo World</title>
       </Head>
 
-      <main
-        className="relative min-h-screen w-full"
+      <div
+        className={`min-h-[100svh] md:min-h-screen md:h-auto text-white relative ${rubikClassName}`}
         style={{
-          color: 'white',
-          fontFamily: 'system-ui, -apple-system, sans-serif',
-          background: 'radial-gradient(ellipse at 50% 30%, #1A0E02 0%, #060300 55%, #000000 100%)',
+          background: '#FBF8F4',
+          WebkitTapHighlightColor: 'transparent',
+          overscrollBehavior: 'none',
+          touchAction: 'manipulation',
         }}
       >
         <div aria-hidden className="pointer-events-none fixed inset-0" style={{ zIndex: 0 }}>
-          <Warp
-            colors={WARP_COLORS}
-            speed={0.3}
-            scale={1}
-            shape="edge"
-            shapeScale={0.5}
-            distortion={0.5}
-            swirl={0.6}
-            swirlIterations={10}
-            proportion={0.5}
-            softness={0.9}
+          <MeshGradient
+            colors={IRIDESCENT_PEARL_COLORS}
+            speed={0.12}
+            scale={0.7}
+            distortion={0.08}
+            swirl={0.1}
+            grainMixer={0.04}
+            grainOverlay={0.03}
             fit="cover"
             style={{ width: '100%', height: '100%' }}
           />
@@ -635,53 +267,536 @@ export default function QuestsPage() {
           aria-hidden
           className="pointer-events-none fixed inset-0"
           style={{
-            background: 'radial-gradient(ellipse at center, rgba(0,0,0,0) 50%, rgba(0,0,0,0.6) 100%)',
+            background:
+              'radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0) 0%, rgba(220,225,235,0.15) 75%, rgba(200,210,225,0.25) 100%)',
             zIndex: 0,
           }}
         />
 
-        <div className="relative" style={{ zIndex: 1 }}>
-          {/* Global HUD — left: back + page title. Top-left: RankPill.
-              Top-right: NavMenuPill (dropdown nav, mounted inside TopBar). */}
-          <PageHeaderPill title="Quests" />
+        <div className="relative z-[1] mx-auto w-full">
           <TopBar
-            xp={myXp?.xp ?? 0}
-            rank={myXp?.rank ?? 0}
-            avatarUrl={profile?.pfp_image || profile?.avatar?.image}
-            onOpenSettings={() => router.push('/passport?settings=profile')}
-            handle={displayHandle}
+            xp={xpTotal}
+            rank={rank}
+            avatarUrl={avatarUrl}
+            onOpenSettings={() => setSettingsOpen(true)}
+            streakCurrent={passportProfile?.streak?.current}
+            streakFreezeTokens={passportProfile?.streak?.freeze_tokens}
+            handle={handle}
             onOpenMap={() => setMapOpen(true)}
           />
 
-          <div className="px-6 md:px-10 pt-24 md:pt-28 pb-24 max-w-[840px] mx-auto md:pr-32">
-            {/* Today's Loot — only when drop is imminent (<24h). Separate from quests. */}
-            {lootShown && (
-              <div className="mb-8">
-                <TodaysLootCard
-                  loot={SAMPLE_LOOT}
-                  onPlay={() => {
-                    // TODO: wire to loot claim flow when backend ships
-                    alert('Loot box claim flow coming soon');
-                  }}
-                />
-              </div>
+          <main className="mx-auto w-full max-w-[720px] px-4 md:px-6 pt-24 md:pt-28 pb-24 flex flex-col gap-8">
+            {/* HEADER STRIP — All-time identity (left) + this season's progression (right). */}
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <AllTimeCard rankTitle={rankTitle} xpTotal={xpTotal} />
+              <SeasonCard
+                seasonLevel={passportProfile?.season_level ?? null}
+                seasonXp={passportProfile?.season_xp ?? 0}
+                seasonKey={season?.key ?? 's1'}
+                levelCurve={season?.level_curve}
+              />
+            </div>
+
+            {/* DAILY LOOT BOX — same component as the lobby dock, banner variant for the
+                dashboard's vertical list. Renders only when the drop is imminent (<24h). */}
+            {isLootImminent(SAMPLE_LOOT.opens_at) && (
+              <TodaysLootCard
+                loot={SAMPLE_LOOT}
+                variant="banner"
+                onPlay={() => toast('Loot box claim flow coming soon')}
+              />
             )}
 
-            {/* Quests — chronologically, soonest deadline first */}
-            <div className="mb-2 text-[11px] uppercase tracking-wider" style={{ color: TEXT_MUTED }}>
-              Open quests
-            </div>
-            <div className="flex flex-col gap-4">
-              {sortedQuests.map((q) => (
-                <QuestCard key={q.user_quest_id} q={q} onOpen={setActiveQuest} />
-              ))}
-            </div>
-          </div>
+            {/* CATEGORIES */}
+            <section>
+              <SectionLabel>Progression</SectionLabel>
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                {CATEGORIES.map((cat) => {
+                  const count = completedByCategory[cat.key] ?? 0;
+                  return (
+                    <CategoryProgressCard
+                      key={cat.key}
+                      def={cat}
+                      count={count}
+                      isFiltered={categoryFilter === cat.key}
+                      onClick={() => {
+                        // Tribemaker is referral-based, not quest-based —
+                        // filtering the quest catalog by it would always
+                        // yield zero. No-op for now until an affiliate-link
+                        // surface exists to navigate to.
+                        if (cat.key === 'Tribemaker') return;
+                        const next = categoryFilter === cat.key ? null : (cat.key as QuestCategory);
+                        setCategoryFilter(next);
+                        if (next) scrollToAvailable();
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* ACTIVE */}
+            <section>
+              <SectionLabel>Active</SectionLabel>
+              {active.length === 0 ? (
+                <EmptyHint>No active quests — pick one from Available below.</EmptyHint>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {active.map((q) => (
+                    <QuestListCard key={q.pid} quest={q} onOpen={(quest) => setSelectedQuest(quest)} />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* AVAILABLE NEAR YOU */}
+            <section ref={availableRef}>
+              <div className="flex items-center justify-between mb-2">
+                <SectionLabel inline>Available Near You</SectionLabel>
+                {categoryFilter && (
+                  <button
+                    type="button"
+                    onClick={() => setCategoryFilter(null)}
+                    className="inline-flex items-center gap-1.5"
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: '#2A1B3D',
+                      background: 'rgba(255,255,255,0.75)',
+                      border: '1px solid rgba(120,100,160,0.25)',
+                    }}
+                  >
+                    Filtered: {categoryFilter}
+                    <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>✕</span>
+                  </button>
+                )}
+              </div>
+              {available.length === 0 ? (
+                <EmptyHint>
+                  {categoryFilter
+                    ? `No available ${categoryFilter} quests near you right now.`
+                    : 'You\'ve taken on every nearby quest. Check Upcoming below.'}
+                </EmptyHint>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {available.map((q) => (
+                    <QuestListCard key={q.pid} quest={q} onOpen={(quest) => setSelectedQuest(quest)} />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* UPCOMING */}
+            <section>
+              <SectionLabel>Upcoming</SectionLabel>
+              {upcoming.length === 0 ? (
+                <EmptyHint>Nothing scheduled yet. New quests drop every week.</EmptyHint>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {upcoming.map((q) => (
+                    <UpcomingRow key={q.pid} quest={q} />
+                  ))}
+                </div>
+              )}
+            </section>
+          </main>
         </div>
 
-        <QuestDetailModal q={activeQuest} onClose={() => setActiveQuest(null)} />
+        {/* Selected-quest overlay — full view sits above the dashboard. */}
+        {selectedQuest && (
+          <div
+            className="fixed inset-0 z-[50] overflow-y-auto"
+            style={{
+              background: 'rgba(10, 5, 25, 0.72)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSelectedQuest(null);
+            }}
+          >
+            <div className="px-4 md:px-6 py-12">
+              <QuestFullView quest={selectedQuest} onBack={() => setSelectedQuest(null)} />
+            </div>
+          </div>
+        )}
+
+        <CameraCaptureModal
+          open={cameraOpen}
+          allowed={cameraAllowed}
+          title={selectedQuest?.title ?? 'Capture'}
+          onClose={() => setCameraOpen(false)}
+          onCapture={(file) => {
+            toast.success(
+              `Captured ${file.type.startsWith('video') ? 'video' : 'photo'}. Submission coming once the upload API is wired.`,
+            );
+          }}
+        />
+
         <MapModal open={mapOpen} onClose={() => setMapOpen(false)} />
-      </main>
+        <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+        <ShareModal
+          isOpen={shareOpen}
+          onClose={() => setShareOpen(false)}
+          handle={handle}
+          avatarUrl={avatarUrl}
+          displayName={handle}
+        />
+      </div>
     </>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Section primitives — inline so the page reads top-to-bottom.
+// ────────────────────────────────────────────────────────────────────────────
+
+function SectionLabel({ children, inline }: { children: React.ReactNode; inline?: boolean }) {
+  return (
+    <div
+      className={inline ? '' : 'mb-2'}
+      style={{
+        fontSize: 10,
+        fontWeight: 800,
+        letterSpacing: '0.16em',
+        textTransform: 'uppercase',
+        color: '#6B5B8E',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function EmptyHint({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="flex items-center justify-center text-center"
+      style={{
+        padding: '20px 16px',
+        borderRadius: 14,
+        border: '1px dashed rgba(120,100,160,0.3)',
+        background: 'rgba(255,255,255,0.45)',
+        color: '#6B5B8E',
+        fontSize: 12,
+        fontWeight: 600,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// Eyebrow label shared by both header cards. Tiny uppercase tag, dark muted.
+function EyebrowLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        fontSize: 9,
+        fontWeight: 800,
+        letterSpacing: '0.18em',
+        textTransform: 'uppercase',
+        color: '#6B5B8E',
+        marginBottom: 8,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+const HEADER_CARD_STYLE: React.CSSProperties = {
+  borderRadius: 18,
+  background:
+    'linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.32) 100%)',
+  backdropFilter: 'blur(20px) saturate(140%)',
+  WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+  border: '1px solid rgba(255,255,255,0.85)',
+  boxShadow:
+    'inset 0 1px 0 rgba(255,255,255,0.9), 0 10px 28px rgba(120,100,160,0.15)',
+  padding: '14px 16px',
+};
+
+interface AllTimeCardProps {
+  rankTitle: string;
+  xpTotal: number;
+}
+
+function AllTimeCard({ rankTitle, xpTotal }: AllTimeCardProps) {
+  return (
+    <section className="relative overflow-hidden" style={HEADER_CARD_STYLE}>
+      <EyebrowLabel>All-time</EyebrowLabel>
+      <div className="flex items-center gap-2">
+        <span aria-hidden style={{ fontSize: 18, color: '#A86B2A' }}>★</span>
+        <span
+          className={syneClassName}
+          style={{ fontSize: 20, fontWeight: 700, color: '#2A1B3D', lineHeight: 1 }}
+        >
+          {rankTitle}
+        </span>
+      </div>
+      <div
+        className="mt-1.5"
+        style={{
+          fontSize: 13,
+          fontWeight: 700,
+          color: '#6B5B8E',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {xpTotal.toLocaleString()} XP
+      </div>
+    </section>
+  );
+}
+
+interface SeasonCardProps {
+  seasonLevel: number | null;
+  seasonXp: number;
+  seasonKey: string;
+  levelCurve?: number[];
+}
+
+// Each season caps at 100 levels — shown as `LVL N/100` so the citizen sees
+// the runway without needing to do math on XP.
+const SEASON_LEVEL_CAP = 100;
+
+function SeasonCard({ seasonLevel, seasonXp, seasonKey, levelCurve }: SeasonCardProps) {
+  const label = seasonKey ? `Season ${seasonKey.replace(/^s/i, '')}` : 'Season';
+  const level = seasonLevel ?? 0;
+  const xpForNext =
+    levelCurve && levelCurve.length > Math.max(level, 1) ? levelCurve[Math.max(level, 1)] : 1000;
+  const progress = Math.max(0, Math.min(1, seasonXp / xpForNext));
+
+  return (
+    <section className="relative overflow-hidden" style={HEADER_CARD_STYLE}>
+      <EyebrowLabel>{label}</EyebrowLabel>
+      <div className="flex items-center gap-2">
+        <span
+          aria-hidden
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: 22,
+            height: 18,
+            padding: '0 5px',
+            borderRadius: 5,
+            background: '#E89515',
+            color: '#1a0f00',
+            fontSize: 9,
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+          }}
+        >
+          {seasonKey.toUpperCase()}
+        </span>
+        <span
+          className={syneClassName}
+          style={{ fontSize: 20, fontWeight: 700, color: '#2A1B3D', lineHeight: 1 }}
+        >
+          LVL {level}/{SEASON_LEVEL_CAP}
+        </span>
+      </div>
+      <div
+        className="mt-2 overflow-hidden"
+        style={{
+          height: 5,
+          borderRadius: 999,
+          background: 'rgba(120,100,160,0.18)',
+        }}
+      >
+        <div
+          style={{
+            width: `${progress * 100}%`,
+            height: '100%',
+            background: 'linear-gradient(90deg, #A86B2A, #2A1B3D)',
+            borderRadius: 999,
+            transition: 'width 240ms ease-out',
+          }}
+        />
+      </div>
+    </section>
+  );
+}
+
+interface CategoryProgressCardProps {
+  def: CategoryDef;
+  count: number;
+  isFiltered: boolean;
+  onClick: () => void;
+}
+
+function CategoryProgressCard({ def, count, isFiltered, onClick }: CategoryProgressCardProps) {
+  const progress = progressTowardNext(count);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="relative overflow-hidden text-left transition-transform active:scale-[0.985] flex flex-col"
+      style={{
+        background: def.bg,
+        backdropFilter: 'blur(18px) saturate(140%)',
+        WebkitBackdropFilter: 'blur(18px) saturate(140%)',
+        borderRadius: 18,
+        border: isFiltered
+          ? '1.5px solid rgba(255,255,255,0.85)'
+          : '1px solid rgba(255,255,255,0.32)',
+        boxShadow: isFiltered
+          ? 'inset 0 1px 0 rgba(255,255,255,0.5), 0 12px 28px rgba(0,0,0,0.32)'
+          : 'inset 0 1px 0 rgba(255,255,255,0.32), 0 10px 24px rgba(0,0,0,0.22)',
+        padding: '14px 14px 12px',
+        gap: 10,
+        minHeight: 116,
+      }}
+    >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0"
+        style={{
+          height: 60,
+          background:
+            'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 100%)',
+        }}
+      />
+
+      <div className="flex items-center gap-1.5">
+        <span aria-hidden style={{ fontSize: 15, color: '#fff', opacity: 0.9, lineHeight: 1 }}>
+          {def.glyph}
+        </span>
+        <span
+          className={syneClassName}
+          style={{ fontSize: 13, fontWeight: 700, color: '#fff', lineHeight: 1 }}
+        >
+          {def.displayName ?? def.key}
+        </span>
+      </div>
+
+      {def.showProgression ? (
+        <>
+          <div
+            style={{
+              fontSize: 22,
+              fontWeight: 800,
+              color: '#fff',
+              lineHeight: 1,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {count}
+          </div>
+          <div className="mt-auto">
+            <div
+              className="relative overflow-hidden"
+              style={{
+                height: 5,
+                borderRadius: 999,
+                background: 'rgba(0,0,0,0.18)',
+              }}
+            >
+              <div
+                style={{
+                  width: `${progress * 100}%`,
+                  height: '100%',
+                  background: '#fff',
+                  borderRadius: 999,
+                  transition: 'width 240ms ease-out',
+                }}
+              />
+            </div>
+          </div>
+        </>
+      ) : (
+        // Count-only categories (Tribe) get a centered hero number — the
+        // count IS the card.
+        <div className="flex-1 flex items-center justify-center">
+          <span
+            style={{
+              fontSize: 36,
+              fontWeight: 800,
+              color: '#fff',
+              lineHeight: 1,
+              fontVariantNumeric: 'tabular-nums',
+              textShadow: '0 1px 4px rgba(0,0,0,0.18)',
+            }}
+          >
+            {count}
+          </span>
+        </div>
+      )}
+    </button>
+  );
+}
+
+function UpcomingRow({ quest }: { quest: Quest }) {
+  const startsAt = new Date(quest.starts_at);
+  const dateLabel = startsAt.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+  const categoryDef = CATEGORIES.find((c) => c.key === quest.category);
+  return (
+    <div
+      className="flex items-center gap-3"
+      style={{
+        padding: '10px 14px',
+        borderRadius: 12,
+        background: 'rgba(255,255,255,0.55)',
+        border: '1px solid rgba(255,255,255,0.85)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
+      }}
+    >
+      <div
+        className="flex-shrink-0"
+        style={{
+          minWidth: 80,
+          fontSize: 11,
+          fontWeight: 700,
+          color: '#6B5B8E',
+          letterSpacing: '0.04em',
+        }}
+      >
+        {dateLabel}
+      </div>
+      {categoryDef && (
+        <span
+          aria-hidden
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 22,
+            height: 22,
+            borderRadius: 6,
+            background: categoryDef.accent,
+            color: '#fff',
+            fontSize: 12,
+            fontWeight: 800,
+            flexShrink: 0,
+          }}
+        >
+          {categoryDef.glyph}
+        </span>
+      )}
+      <div
+        className="flex-1 min-w-0"
+        style={{
+          fontSize: 13,
+          fontWeight: 600,
+          color: '#2A1B3D',
+          lineHeight: 1.3,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {quest.title}
+      </div>
+    </div>
   );
 }
