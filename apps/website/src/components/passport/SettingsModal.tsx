@@ -134,14 +134,14 @@ function EditableRow({
                 onKeyDown={(e) => { if (e.key === "Escape") cancel(); }}
                 autoFocus
                 rows={3}
-                className="flex-1 bg-white/5 border border-[#2A1B3D]/15 rounded-md px-2 py-1.5 text-sm text-[#2A1B3D] focus:outline-none focus:border-[#2A1B3D]/30 resize-y"
+                className="flex-1 bg-white/5 border border-[#2A1B3D]/[0.15] rounded-md px-2 py-1.5 text-sm text-[#2A1B3D] focus:outline-none focus:border-[#2A1B3D]/30 resize-y"
               />
             ) : type === "select" ? (
               <select
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 autoFocus
-                className="flex-1 bg-white/5 border border-[#2A1B3D]/15 rounded-md px-2 py-1.5 text-sm text-[#2A1B3D] focus:outline-none focus:border-[#2A1B3D]/30"
+                className="flex-1 bg-white/5 border border-[#2A1B3D]/[0.15] rounded-md px-2 py-1.5 text-sm text-[#2A1B3D] focus:outline-none focus:border-[#2A1B3D]/30"
               >
                 <option value="">Not set</option>
                 {options?.map((o) => (
@@ -158,7 +158,7 @@ function EditableRow({
                   if (e.key === "Escape") { e.preventDefault(); cancel(); }
                 }}
                 autoFocus
-                className="flex-1 bg-white/5 border border-[#2A1B3D]/15 rounded-md px-2 py-1.5 text-sm text-[#2A1B3D] focus:outline-none focus:border-[#2A1B3D]/30"
+                className="flex-1 bg-white/5 border border-[#2A1B3D]/[0.15] rounded-md px-2 py-1.5 text-sm text-[#2A1B3D] focus:outline-none focus:border-[#2A1B3D]/30"
               />
             )}
             <button
@@ -721,7 +721,7 @@ function EmailsSection() {
               }}
               placeholder="email@example.com"
               autoFocus
-              className="flex-1 bg-white/5 border border-[#2A1B3D]/15 rounded-md px-3 py-2 text-sm text-[#2A1B3D] focus:outline-none focus:border-[#2A1B3D]/30 placeholder:text-[#2A1B3D]/40"
+              className="flex-1 bg-white/5 border border-[#2A1B3D]/[0.15] rounded-md px-3 py-2 text-sm text-[#2A1B3D] focus:outline-none focus:border-[#2A1B3D]/30 placeholder:text-[#2A1B3D]/40"
             />
             <button
               onClick={add}
@@ -746,7 +746,7 @@ function EmailsSection() {
       ) : (
         <button
           onClick={() => setAdding(true)}
-          className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-[#2A1B3D]/50 hover:text-[#2A1B3D] border border-dashed border-[#2A1B3D]/15 hover:border-[#2A1B3D]/30 rounded-md transition-colors"
+          className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-[#2A1B3D]/50 hover:text-[#2A1B3D] border border-dashed border-[#2A1B3D]/[0.15] hover:border-[#2A1B3D]/30 rounded-md transition-colors"
         >
           <span>+</span> Add email
         </button>
@@ -870,7 +870,7 @@ function CulturesSection() {
       {!picking ? (
         <button
           onClick={() => setPicking(true)}
-          className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-[#2A1B3D]/50 hover:text-[#2A1B3D] border border-dashed border-[#2A1B3D]/15 hover:border-[#2A1B3D]/30 rounded-md transition-colors"
+          className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-[#2A1B3D]/50 hover:text-[#2A1B3D] border border-dashed border-[#2A1B3D]/[0.15] hover:border-[#2A1B3D]/30 rounded-md transition-colors"
         >
           <span>+</span> Add cultures
         </button>
@@ -881,7 +881,7 @@ function CulturesSection() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search cultures..."
-            className="w-full bg-white/5 border border-[#2A1B3D]/15 rounded-md px-3 py-2 text-sm text-[#2A1B3D] focus:outline-none focus:border-[#2A1B3D]/30 placeholder:text-[#2A1B3D]/40"
+            className="w-full bg-white/5 border border-[#2A1B3D]/[0.15] rounded-md px-3 py-2 text-sm text-[#2A1B3D] focus:outline-none focus:border-[#2A1B3D]/30 placeholder:text-[#2A1B3D]/40"
           />
           <div className="max-h-[240px] overflow-y-auto -mx-1 px-1">
             {isLoading ? (
@@ -1092,10 +1092,10 @@ function MembershipSection({ onClose }: { onClose: () => void }) {
     : hasActivePaid && !cancellationQueued
       ? "bg-green-500/20 text-green-400 border-green-500/30"
       : cancellationQueued
-        ? "bg-white/10 text-[#2A1B3D]/70 border-[#2A1B3D]/15"
+        ? "bg-white/10 text-[#2A1B3D]/70 border-[#2A1B3D]/[0.15]"
         : isPending
           ? "bg-amber-500/15 text-amber-300/90 border-amber-500/25"
-          : "bg-white/10 text-[#2A1B3D]/60 border-[#2A1B3D]/15";
+          : "bg-white/10 text-[#2A1B3D]/60 border-[#2A1B3D]/[0.15]";
 
   const priceLabel = formatAmount(
     subscription?.amount,
@@ -1134,7 +1134,7 @@ function MembershipSection({ onClose }: { onClose: () => void }) {
       <div className="rounded-md border border-[#2A1B3D]/10 bg-white/[0.03] p-4">
         {founder ? (
           <>
-            <p className="text-sm text-[#2A1B3D]/85">
+            <p className="text-sm text-[#2A1B3D]/[0.85]">
               Founder Pass already includes Passport Pro.
             </p>
             <p className="mt-1 text-[11px] text-[#2A1B3D]/50">
@@ -1147,21 +1147,21 @@ function MembershipSection({ onClose }: { onClose: () => void }) {
               <p className="text-sm text-[#2A1B3D]/90">Passport Pro</p>
               <p className="text-sm text-[#2A1B3D]/90">
                 {priceLabel}
-                <span className="text-[11px] text-[#2A1B3D]/45"> / month</span>
+                <span className="text-[11px] text-[#2A1B3D]/[0.45]"> / month</span>
               </p>
             </div>
-            <p className="mt-2 text-[11px] leading-5 text-[#2A1B3D]/55">
+            <p className="mt-2 text-[11px] leading-5 text-[#2A1B3D]/[0.55]">
               {describeBilling(subscription)}
             </p>
             {subscription?.last_charged_at && (
-              <p className="mt-1 text-[11px] text-[#2A1B3D]/45">
+              <p className="mt-1 text-[11px] text-[#2A1B3D]/[0.45]">
                 Last charged {formatDate(subscription.last_charged_at)}
               </p>
             )}
           </>
         ) : isPending ? (
           <>
-            <p className="text-sm text-[#2A1B3D]/85">
+            <p className="text-sm text-[#2A1B3D]/[0.85]">
               Payment pending — finish checkout to switch on Pro.
             </p>
             <p className="mt-1 text-[11px] text-[#2A1B3D]/50">
@@ -1170,7 +1170,7 @@ function MembershipSection({ onClose }: { onClose: () => void }) {
           </>
         ) : (
           <>
-            <p className="text-sm text-[#2A1B3D]/85">Free Passport.</p>
+            <p className="text-sm text-[#2A1B3D]/[0.85]">Free Passport.</p>
             <p className="mt-1 text-[11px] text-[#2A1B3D]/50">
               Upgrade to earn from daily bed drops, referral commission, and revenue unlocks.
             </p>
@@ -1317,13 +1317,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             region inside can shrink below intrinsic content height (otherwise
             the inner overflow-y-auto can't activate on iOS / Chrome mobile). */}
         <div className="relative flex flex-col h-full min-h-0" style={{ zIndex: 1 }}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#2A1B3D]/10 flex-shrink-0">
+        <div
+          className="flex items-center justify-between px-5 pb-4 border-b border-[#2A1B3D]/10 flex-shrink-0"
+          style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)' }}
+        >
           <h2 id="settings-modal-title" className="text-lg font-bold text-[#2A1B3D]">Settings</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close settings"
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-[#2A1B3D]/60 hover:text-[#2A1B3D] hover:bg-white/10 transition-colors cursor-pointer"
+            className="w-11 h-11 -mr-2 flex items-center justify-center rounded-lg text-[#2A1B3D]/[0.6] hover:text-[#2A1B3D] hover:bg-[#2A1B3D]/[0.06] transition-colors cursor-pointer"
           >
             <svg
               width="16"
