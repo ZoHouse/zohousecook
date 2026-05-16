@@ -58,7 +58,7 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
         .select('*')
         .eq('property_id', propertyId)
         .in('kitchen_status', ACTIVE_STATUSES)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
 
       if (error) throw error
 
@@ -136,9 +136,12 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
               if (fullOrder) {
                 setOrders((prev) => {
                   const idx = prev.findIndex((o) => o.id === changed.id)
+                  if (!ACTIVE_STATUSES.includes(status)) {
+                    return idx === -1 ? prev : prev.filter((o) => o.id !== changed.id)
+                  }
                   if (idx === -1) {
                     // Fresh-to-board (draft just became visible).
-                    if (ACTIVE_STATUSES.includes(status)) playKitchenAlert()
+                    playKitchenAlert()
                     return [fullOrder, ...prev]
                   }
                   const next = prev.slice()

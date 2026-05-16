@@ -19,23 +19,23 @@ import {
   isFounderProfile,
 } from "../../lib/passport/proStatus";
 
-// Samurai FX #09 — Obsidian. Liquid metal, quiet luxury, 8 near-blacks with
-// thin light streaks. Used as the settings modal surface.
+// Iridescent pearl — matches PassportLobby / BadgesLobby / quests dashboard
+// so the settings modal feels like the same room. (Previously Obsidian.)
 const OBSIDIAN_COLORS = [
-  '#000000',
-  '#14151C',
-  '#1E1B24',
-  '#55535E',
-  '#1D1D26',
-  '#111117',
-  '#0A0A0D',
-  '#000000',
+  '#FBF8F4',
+  '#F2E0EC',
+  '#E6D9F2',
+  '#FFFFFF',
+  '#DCEDE8',
+  '#F4E8D4',
+  '#DBE6F2',
+  '#FBF8F4',
 ];
 
 function Spinner({ size = 16 }: { size?: number }) {
   return (
     <div
-      className="animate-spin rounded-full border-2 border-white/20 border-t-white"
+      className="animate-spin rounded-full border-2 border-[#2A1B3D]/20 border-t-white"
       style={{ width: size, height: size }}
     />
   );
@@ -52,7 +52,7 @@ function fixAvatarUrl(url?: string): string | undefined {
 function SectionHeader({ title, right }: { title: string; right?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between mb-2 mt-6 first:mt-0">
-      <h3 className="text-[11px] font-medium text-white/40 uppercase tracking-wider">{title}</h3>
+      <h3 className="text-[11px] font-medium text-[#2A1B3D]/40 uppercase tracking-wider">{title}</h3>
       {right}
     </div>
   );
@@ -122,8 +122,8 @@ function EditableRow({
   const shown = displayValue ?? value;
 
   return (
-    <div className="py-3 border-b border-white/5 last:border-b-0">
-      <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">{label}</p>
+    <div className="py-3 border-b border-[#2A1B3D]/5 last:border-b-0">
+      <p className="text-[10px] uppercase tracking-wider text-[#2A1B3D]/40 mb-1">{label}</p>
       {editing ? (
         <div className="flex flex-col gap-2">
           <div className="flex items-stretch gap-2">
@@ -134,14 +134,14 @@ function EditableRow({
                 onKeyDown={(e) => { if (e.key === "Escape") cancel(); }}
                 autoFocus
                 rows={3}
-                className="flex-1 bg-white/5 border border-white/15 rounded-md px-2 py-1.5 text-sm text-white focus:outline-none focus:border-white/30 resize-y"
+                className="flex-1 bg-white/5 border border-[#2A1B3D]/[0.15] rounded-md px-2 py-1.5 text-sm text-[#2A1B3D] focus:outline-none focus:border-[#2A1B3D]/30 resize-y"
               />
             ) : type === "select" ? (
               <select
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 autoFocus
-                className="flex-1 bg-white/5 border border-white/15 rounded-md px-2 py-1.5 text-sm text-white focus:outline-none focus:border-white/30"
+                className="flex-1 bg-white/5 border border-[#2A1B3D]/[0.15] rounded-md px-2 py-1.5 text-sm text-[#2A1B3D] focus:outline-none focus:border-[#2A1B3D]/30"
               >
                 <option value="">Not set</option>
                 {options?.map((o) => (
@@ -158,7 +158,7 @@ function EditableRow({
                   if (e.key === "Escape") { e.preventDefault(); cancel(); }
                 }}
                 autoFocus
-                className="flex-1 bg-white/5 border border-white/15 rounded-md px-2 py-1.5 text-sm text-white focus:outline-none focus:border-white/30"
+                className="flex-1 bg-white/5 border border-[#2A1B3D]/[0.15] rounded-md px-2 py-1.5 text-sm text-[#2A1B3D] focus:outline-none focus:border-[#2A1B3D]/30"
               />
             )}
             <button
@@ -171,7 +171,7 @@ function EditableRow({
             <button
               onClick={cancel}
               disabled={saving}
-              className="px-3 text-[11px] text-white/60 hover:text-white"
+              className="px-3 text-[11px] text-[#2A1B3D]/60 hover:text-[#2A1B3D]"
             >
               Cancel
             </button>
@@ -180,13 +180,13 @@ function EditableRow({
         </div>
       ) : (
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-white/90 min-w-0 break-words flex-1">
-            {shown ? shown : <span className="italic text-white/40">Not set</span>}
+          <p className="text-sm text-[#2A1B3D]/90 min-w-0 break-words flex-1">
+            {shown ? shown : <span className="italic text-[#2A1B3D]/40">Not set</span>}
           </p>
           {!disabled && (
             <button
               onClick={() => { setDraft(value); setEditing(true); }}
-              className="px-2 py-1 text-[10px] text-white/60 hover:text-white border border-white/10 hover:border-white/25 rounded-md transition-colors"
+              className="px-2 py-1 text-[10px] text-[#2A1B3D]/60 hover:text-[#2A1B3D] border border-[#2A1B3D]/10 hover:border-[#2A1B3D]/25 rounded-md transition-colors"
             >
               Edit
             </button>
@@ -217,12 +217,12 @@ function ConnectedItemRow({
   useEffect(() => { setConfirming(false); }, [primary]);
 
   return (
-    <div className={`group flex items-center gap-3 py-3 border-b border-white/5 last:border-b-0 ${confirming ? "bg-red-500/10 -mx-2 px-2 rounded-md" : ""}`}>
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0 ${iconBg}`}>
+    <div className={`group flex items-center gap-3 py-3 border-b border-[#2A1B3D]/5 last:border-b-0 ${confirming ? "bg-red-500/10 -mx-2 px-2 rounded-md" : ""}`}>
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-[#2A1B3D] flex-shrink-0 ${iconBg}`}>
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-white/90 truncate">{primary}</p>
+        <p className="text-sm text-[#2A1B3D]/90 truncate">{primary}</p>
         {(secondary || showVerification) && (
           <div className="flex items-center gap-2 mt-0.5">
             {showVerification && (
@@ -233,7 +233,7 @@ function ConnectedItemRow({
                 </span>
               </span>
             )}
-            {secondary && <span className="text-[11px] text-white/50 truncate">{secondary}</span>}
+            {secondary && <span className="text-[11px] text-[#2A1B3D]/50 truncate">{secondary}</span>}
           </div>
         )}
       </div>
@@ -242,13 +242,13 @@ function ConnectedItemRow({
         <div className="flex items-center gap-2">
           <button
             onClick={() => { onRemove?.(); setConfirming(false); }}
-            className="px-2 py-1 text-[11px] bg-red-500 text-white rounded-md hover:bg-red-400"
+            className="px-2 py-1 text-[11px] bg-red-500 text-[#2A1B3D] rounded-md hover:bg-red-400"
           >
             Remove
           </button>
           <button
             onClick={() => setConfirming(false)}
-            className="px-2 py-1 text-[11px] text-white/60 hover:text-white"
+            className="px-2 py-1 text-[11px] text-[#2A1B3D]/60 hover:text-[#2A1B3D]"
           >
             Cancel
           </button>
@@ -263,7 +263,7 @@ function ConnectedItemRow({
             onMakePrimary && (
               <button
                 onClick={onMakePrimary}
-                className="text-[11px] text-white/60 hover:text-white"
+                className="text-[11px] text-[#2A1B3D]/60 hover:text-[#2A1B3D]"
               >
                 Make primary
               </button>
@@ -273,7 +273,7 @@ function ConnectedItemRow({
             <button
               onClick={() => setConfirming(true)}
               aria-label="Remove"
-              className="w-7 h-7 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded-md transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100"
+              className="w-7 h-7 flex items-center justify-center text-[#2A1B3D]/40 hover:text-[#2A1B3D] hover:bg-white/10 rounded-md transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M9 3L3 9M3 3l6 6" strokeLinecap="round" />
@@ -403,7 +403,7 @@ function PhonesSection() {
           <Spinner size={20} />
         </div>
       ) : mobiles.length === 0 ? (
-        <p className="text-sm text-white/40 italic py-2">No phone numbers connected</p>
+        <p className="text-sm text-[#2A1B3D]/40 italic py-2">No phone numbers connected</p>
       ) : (
         mobiles.map((m) => (
           <ConnectedItemRow
@@ -458,22 +458,22 @@ function SocialsSection() {
   const labelMap: Record<string, string> = { twitter: "Twitter", telegram: "Telegram", discord: "Discord" };
 
   const instagramRow = igConnected && igAccount ? (
-    <div className="flex items-center gap-3 py-3 border-b border-white/5">
+    <div className="flex items-center gap-3 py-3 border-b border-[#2A1B3D]/5">
       <div
-        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
+        className="w-8 h-8 rounded-full flex items-center justify-center text-[#2A1B3D] text-[11px] font-bold flex-shrink-0"
         style={{ background: "linear-gradient(135deg, #833AB4, #E1306C, #F77737)" }}
       >
         IG
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-white/90 truncate">@{igAccount.username}</p>
+        <p className="text-sm text-[#2A1B3D]/90 truncate">@{igAccount.username}</p>
         <div className="flex items-center gap-2 mt-0.5">
           <span className="flex items-center gap-1 text-[11px]">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
             <span className="text-green-400">Connected</span>
           </span>
           {igAccount.account_type && (
-            <span className="text-[11px] text-white/50">{igAccount.account_type}</span>
+            <span className="text-[11px] text-[#2A1B3D]/50">{igAccount.account_type}</span>
           )}
         </div>
       </div>
@@ -482,20 +482,20 @@ function SocialsSection() {
       </button>
     </div>
   ) : (
-    <div className="flex items-center gap-3 py-3 border-b border-white/5">
+    <div className="flex items-center gap-3 py-3 border-b border-[#2A1B3D]/5">
       <div
-        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
+        className="w-8 h-8 rounded-full flex items-center justify-center text-[#2A1B3D] text-[11px] font-bold flex-shrink-0"
         style={{ background: "linear-gradient(135deg, #833AB4, #E1306C, #F77737)" }}
       >
         IG
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-white/90">Instagram</p>
-        <p className="text-[11px] text-white/50">Not connected</p>
+        <p className="text-sm text-[#2A1B3D]/90">Instagram</p>
+        <p className="text-[11px] text-[#2A1B3D]/50">Not connected</p>
       </div>
       <button
         onClick={connectIg}
-        className="px-3 py-1.5 text-[11px] font-semibold text-white rounded-md hover:opacity-90"
+        className="px-3 py-1.5 text-[11px] font-semibold text-[#2A1B3D] rounded-md hover:opacity-90"
         style={{ background: "linear-gradient(135deg, #833AB4, #E1306C, #F77737)" }}
       >
         Connect
@@ -523,7 +523,7 @@ function SocialsSection() {
       ))}
 
       {!ens && !igConnected && otherSocials.length === 0 && (
-        <p className="text-sm text-white/40 italic py-2">No socials connected yet</p>
+        <p className="text-sm text-[#2A1B3D]/40 italic py-2">No socials connected yet</p>
       )}
     </section>
   );
@@ -545,13 +545,13 @@ function FounderNftsSection() {
 
   return (
     <section>
-      <SectionHeader title="Founder NFTs" right={<span className="text-[11px] text-white/40">{nfts.length}</span>} />
+      <SectionHeader title="Founder NFTs" right={<span className="text-[11px] text-[#2A1B3D]/40">{nfts.length}</span>} />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {nfts.map((nft) => (
-          <div key={nft.token_ref_id} className="relative rounded-lg overflow-hidden border border-white/10">
+          <div key={nft.token_ref_id} className="relative rounded-lg overflow-hidden border border-[#2A1B3D]/10">
             <img src={nft.image_url} alt={nft.name} className="w-full aspect-square object-cover block" />
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5">
-              <p className="text-[10px] text-white/90 truncate">{nft.name}</p>
+              <p className="text-[10px] text-[#2A1B3D]/90 truncate">{nft.name}</p>
             </div>
           </div>
         ))}
@@ -579,8 +579,8 @@ function ProfileStrip() {
     (((profile as any)?.founder_nfts_count ?? 0) as number) > 0;
 
   return (
-    <div className="flex items-center gap-3 px-5 py-3 border-b border-white/10 flex-shrink-0">
-      <div className="w-11 h-11 rounded-full overflow-hidden border border-white/10 flex-shrink-0">
+    <div className="flex items-center gap-3 px-5 py-3 border-b border-[#2A1B3D]/10 flex-shrink-0">
+      <div className="w-11 h-11 rounded-full overflow-hidden border border-[#2A1B3D]/10 flex-shrink-0">
         {avatar && !imgError ? (
           <img
             src={avatar}
@@ -591,20 +591,20 @@ function ProfileStrip() {
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center">
-            <span className="text-base font-bold text-white">{name.charAt(0).toUpperCase()}</span>
+            <span className="text-base font-bold text-[#2A1B3D]">{name.charAt(0).toUpperCase()}</span>
           </div>
         )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-semibold text-white truncate">{name}</p>
+          <p className="text-sm font-semibold text-[#2A1B3D] truncate">{name}</p>
           {isFounder && (
-            <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider bg-white/15 text-white border border-white/20 rounded-full flex-shrink-0">
+            <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider bg-white/15 text-[#2A1B3D] border border-[#2A1B3D]/20 rounded-full flex-shrink-0">
               Founder
             </span>
           )}
         </div>
-        <p className="text-[11px] text-white/50 capitalize">{membership || "Citizen"} of Zo World</p>
+        <p className="text-[11px] text-[#2A1B3D]/50 capitalize">{membership || "Citizen"} of Zo World</p>
       </div>
     </div>
   );
@@ -685,7 +685,7 @@ function EmailsSection() {
           <Spinner size={20} />
         </div>
       ) : emails.length === 0 ? (
-        <p className="text-sm text-white/40 italic py-2">No emails connected</p>
+        <p className="text-sm text-[#2A1B3D]/40 italic py-2">No emails connected</p>
       ) : (
         emails.map((e) => (
           <ConnectedItemRow
@@ -721,7 +721,7 @@ function EmailsSection() {
               }}
               placeholder="email@example.com"
               autoFocus
-              className="flex-1 bg-white/5 border border-white/15 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 placeholder:text-white/40"
+              className="flex-1 bg-white/5 border border-[#2A1B3D]/[0.15] rounded-md px-3 py-2 text-sm text-[#2A1B3D] focus:outline-none focus:border-[#2A1B3D]/30 placeholder:text-[#2A1B3D]/40"
             />
             <button
               onClick={add}
@@ -736,7 +736,7 @@ function EmailsSection() {
                 setNewEmail("");
                 setAddError("");
               }}
-              className="px-3 text-[11px] text-white/60 hover:text-white"
+              className="px-3 text-[11px] text-[#2A1B3D]/60 hover:text-[#2A1B3D]"
             >
               Cancel
             </button>
@@ -746,7 +746,7 @@ function EmailsSection() {
       ) : (
         <button
           onClick={() => setAdding(true)}
-          className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-white/50 hover:text-white border border-dashed border-white/15 hover:border-white/30 rounded-md transition-colors"
+          className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-[#2A1B3D]/50 hover:text-[#2A1B3D] border border-dashed border-[#2A1B3D]/[0.15] hover:border-[#2A1B3D]/30 rounded-md transition-colors"
         >
           <span>+</span> Add email
         </button>
@@ -821,9 +821,9 @@ function CulturesSection() {
   };
 
   const pillSelected =
-    "flex items-center gap-2 px-3 py-1.5 rounded-full border bg-white/10 border-white/30 text-white";
+    "flex items-center gap-2 px-3 py-1.5 rounded-full border bg-white/10 border-[#2A1B3D]/30 text-[#2A1B3D]";
   const pillIdle =
-    "flex items-center gap-2 px-3 py-1.5 rounded-full border bg-white/5 border-white/10 hover:border-white/25 text-white/80";
+    "flex items-center gap-2 px-3 py-1.5 rounded-full border bg-white/5 border-[#2A1B3D]/10 hover:border-[#2A1B3D]/25 text-[#2A1B3D]/80";
 
   return (
     <section>
@@ -834,7 +834,7 @@ function CulturesSection() {
           {cultures.map((c) => (
             <div
               key={c.key}
-              className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20"
+              className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-[#2A1B3D]/20"
             >
               {c.icon && (
                 <img
@@ -844,11 +844,11 @@ function CulturesSection() {
                   referrerPolicy="no-referrer"
                 />
               )}
-              <span className="text-xs text-white/90">{c.name}</span>
+              <span className="text-xs text-[#2A1B3D]/90">{c.name}</span>
               <button
                 onClick={() => handleRemove(c.key)}
                 aria-label={`Remove ${c.name}`}
-                className="w-4 h-4 flex items-center justify-center rounded-full text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors md:opacity-0 md:group-hover:opacity-100 opacity-100"
+                className="w-4 h-4 flex items-center justify-center rounded-full text-[#2A1B3D]/40 hover:text-red-400 hover:bg-red-500/10 transition-colors md:opacity-0 md:group-hover:opacity-100 opacity-100"
               >
                 <svg width="8" height="8" viewBox="0 0 8 8">
                   <path
@@ -864,13 +864,13 @@ function CulturesSection() {
           ))}
         </div>
       ) : (
-        <p className="text-xs text-white/40 italic">No cultures selected yet — tap + to add</p>
+        <p className="text-xs text-[#2A1B3D]/40 italic">No cultures selected yet — tap + to add</p>
       )}
 
       {!picking ? (
         <button
           onClick={() => setPicking(true)}
-          className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-white/50 hover:text-white border border-dashed border-white/15 hover:border-white/30 rounded-md transition-colors"
+          className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-[#2A1B3D]/50 hover:text-[#2A1B3D] border border-dashed border-[#2A1B3D]/[0.15] hover:border-[#2A1B3D]/30 rounded-md transition-colors"
         >
           <span>+</span> Add cultures
         </button>
@@ -881,7 +881,7 @@ function CulturesSection() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search cultures..."
-            className="w-full bg-white/5 border border-white/15 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 placeholder:text-white/40"
+            className="w-full bg-white/5 border border-[#2A1B3D]/[0.15] rounded-md px-3 py-2 text-sm text-[#2A1B3D] focus:outline-none focus:border-[#2A1B3D]/30 placeholder:text-[#2A1B3D]/40"
           />
           <div className="max-h-[240px] overflow-y-auto -mx-1 px-1">
             {isLoading ? (
@@ -889,7 +889,7 @@ function CulturesSection() {
                 <Spinner size={20} />
               </div>
             ) : available.length === 0 ? (
-              <p className="text-xs text-white/40 italic text-center py-4">
+              <p className="text-xs text-[#2A1B3D]/40 italic text-center py-4">
                 {search ? "No cultures found" : "No cultures available"}
               </p>
             ) : (
@@ -934,7 +934,7 @@ function CulturesSection() {
               setPicking(false);
               setSearch("");
             }}
-            className="w-full px-3 py-2 text-sm text-white/60 hover:text-white border border-white/10 hover:border-white/25 rounded-md transition-colors"
+            className="w-full px-3 py-2 text-sm text-[#2A1B3D]/60 hover:text-[#2A1B3D] border border-[#2A1B3D]/10 hover:border-[#2A1B3D]/25 rounded-md transition-colors"
           >
             Done
           </button>
@@ -1088,14 +1088,14 @@ function MembershipSection({ onClose }: { onClose: () => void }) {
         ? "Pending"
         : "Free";
   const pillClass = founder
-    ? "bg-white/15 text-white border-white/20"
+    ? "bg-white/15 text-[#2A1B3D] border-[#2A1B3D]/20"
     : hasActivePaid && !cancellationQueued
       ? "bg-green-500/20 text-green-400 border-green-500/30"
       : cancellationQueued
-        ? "bg-white/10 text-white/70 border-white/15"
+        ? "bg-white/10 text-[#2A1B3D]/70 border-[#2A1B3D]/[0.15]"
         : isPending
           ? "bg-amber-500/15 text-amber-300/90 border-amber-500/25"
-          : "bg-white/10 text-white/60 border-white/15";
+          : "bg-white/10 text-[#2A1B3D]/60 border-[#2A1B3D]/[0.15]";
 
   const priceLabel = formatAmount(
     subscription?.amount,
@@ -1131,54 +1131,54 @@ function MembershipSection({ onClose }: { onClose: () => void }) {
         }
       />
 
-      <div className="rounded-md border border-white/10 bg-white/[0.03] p-4">
+      <div className="rounded-md border border-[#2A1B3D]/10 bg-white/[0.03] p-4">
         {founder ? (
           <>
-            <p className="text-sm text-white/85">
+            <p className="text-sm text-[#2A1B3D]/[0.85]">
               Founder Pass already includes Passport Pro.
             </p>
-            <p className="mt-1 text-[11px] text-white/50">
+            <p className="mt-1 text-[11px] text-[#2A1B3D]/50">
               Daily bed drops, referral commission, and revenue unlocks are unlocked through your Founder membership.
             </p>
           </>
         ) : hasActivePaid ? (
           <>
             <div className="flex items-baseline justify-between gap-2">
-              <p className="text-sm text-white/90">Passport Pro</p>
-              <p className="text-sm text-white/90">
+              <p className="text-sm text-[#2A1B3D]/90">Passport Pro</p>
+              <p className="text-sm text-[#2A1B3D]/90">
                 {priceLabel}
-                <span className="text-[11px] text-white/45"> / month</span>
+                <span className="text-[11px] text-[#2A1B3D]/[0.45]"> / month</span>
               </p>
             </div>
-            <p className="mt-2 text-[11px] leading-5 text-white/55">
+            <p className="mt-2 text-[11px] leading-5 text-[#2A1B3D]/[0.55]">
               {describeBilling(subscription)}
             </p>
             {subscription?.last_charged_at && (
-              <p className="mt-1 text-[11px] text-white/45">
+              <p className="mt-1 text-[11px] text-[#2A1B3D]/[0.45]">
                 Last charged {formatDate(subscription.last_charged_at)}
               </p>
             )}
           </>
         ) : isPending ? (
           <>
-            <p className="text-sm text-white/85">
+            <p className="text-sm text-[#2A1B3D]/[0.85]">
               Payment pending — finish checkout to switch on Pro.
             </p>
-            <p className="mt-1 text-[11px] text-white/50">
+            <p className="mt-1 text-[11px] text-[#2A1B3D]/50">
               {describeBilling(subscription)}
             </p>
           </>
         ) : (
           <>
-            <p className="text-sm text-white/85">Free Passport.</p>
-            <p className="mt-1 text-[11px] text-white/50">
+            <p className="text-sm text-[#2A1B3D]/[0.85]">Free Passport.</p>
+            <p className="mt-1 text-[11px] text-[#2A1B3D]/50">
               Upgrade to earn from daily bed drops, referral commission, and revenue unlocks.
             </p>
           </>
         )}
 
         {isLoading && !subscription && (
-          <div className="mt-3 flex items-center gap-2 text-[11px] text-white/40">
+          <div className="mt-3 flex items-center gap-2 text-[11px] text-[#2A1B3D]/40">
             <Spinner size={12} /> Loading membership…
           </div>
         )}
@@ -1196,7 +1196,7 @@ function MembershipSection({ onClose }: { onClose: () => void }) {
                 type="button"
                 onClick={() => void handleCancel()}
                 disabled={isUnsubscribing}
-                className="flex-1 min-h-[44px] px-3 py-2.5 text-[12px] font-medium bg-red-500 text-white rounded-md hover:bg-red-400 disabled:opacity-60 flex items-center justify-center gap-2"
+                className="flex-1 min-h-[44px] px-3 py-2.5 text-[12px] font-medium bg-red-500 text-[#2A1B3D] rounded-md hover:bg-red-400 disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {isUnsubscribing ? <Spinner size={12} /> : "Confirm cancel"}
               </button>
@@ -1204,7 +1204,7 @@ function MembershipSection({ onClose }: { onClose: () => void }) {
                 type="button"
                 onClick={() => setConfirming(false)}
                 disabled={isUnsubscribing}
-                className="min-h-[44px] px-3 py-2.5 text-[12px] text-white/60 hover:text-white"
+                className="min-h-[44px] px-3 py-2.5 text-[12px] text-[#2A1B3D]/60 hover:text-[#2A1B3D]"
               >
                 Keep Pro
               </button>
@@ -1226,7 +1226,7 @@ function MembershipSection({ onClose }: { onClose: () => void }) {
           <Link
             href="/pro"
             onClick={onClose}
-            className="px-2.5 py-1 text-[11px] text-white/60 hover:text-white border border-white/10 hover:border-white/25 rounded-md transition-colors"
+            className="px-2.5 py-1 text-[11px] text-[#2A1B3D]/60 hover:text-[#2A1B3D] border border-[#2A1B3D]/10 hover:border-[#2A1B3D]/25 rounded-md transition-colors"
           >
             {founder
               ? "View Pro page"
@@ -1247,7 +1247,7 @@ function LogoutSection({ onClose }: { onClose: () => void }) {
     logout();
   };
   return (
-    <section className="mt-8 pt-4 border-t border-white/10">
+    <section className="mt-8 pt-4 border-t border-[#2A1B3D]/10">
       <button
         type="button"
         onClick={handleLogout}
@@ -1288,9 +1288,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         onClick={onClose}
       />
       <div
-        className="relative w-full max-w-[640px] h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:rounded-[24px] rounded-none flex flex-col overflow-hidden border border-white/10"
+        className="relative w-full max-w-[640px] h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:rounded-[24px] rounded-none flex flex-col overflow-hidden border border-[#2A1B3D]/10"
         style={{
-          background: "#0A0A0D",
+          background: "#FBF8F4",
           boxShadow: "inset 0px -1px 24px rgba(255,255,255,0.4)",
         }}
       >
@@ -1317,13 +1317,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             region inside can shrink below intrinsic content height (otherwise
             the inner overflow-y-auto can't activate on iOS / Chrome mobile). */}
         <div className="relative flex flex-col h-full min-h-0" style={{ zIndex: 1 }}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-shrink-0">
-          <h2 id="settings-modal-title" className="text-lg font-bold text-white">Settings</h2>
+        <div
+          className="flex items-center justify-between px-5 pb-4 border-b border-[#2A1B3D]/10 flex-shrink-0"
+          style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)' }}
+        >
+          <h2 id="settings-modal-title" className="text-lg font-bold text-[#2A1B3D]">Settings</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close settings"
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            className="w-11 h-11 -mr-2 flex items-center justify-center rounded-lg text-[#2A1B3D]/[0.6] hover:text-[#2A1B3D] hover:bg-[#2A1B3D]/[0.06] transition-colors cursor-pointer"
           >
             <svg
               width="16"

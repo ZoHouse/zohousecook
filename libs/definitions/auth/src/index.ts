@@ -72,6 +72,9 @@ export type Profile = {
     metadata?: string;
     is_valid?: string;
   };
+  where_do_you_live?: string;
+  where_do_you_live_ref_id?: string;
+  where_do_you_live_location?: { lat: number; lng: number } | null;
   place_name?: string;
   place_ref_id?: string;
   home_location?: { lat: number; lng: number } | null;

@@ -279,8 +279,13 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
+  // Mobile-first layout, but constrained to a phone-width column on desktop so
+  // it doesn't stretch edge-to-edge on a laptop. Fixed-position children
+  // (toast / FAB / bottom-nav) are switched to `absolute` so they re-anchor
+  // to the column instead of the viewport.
   return (
-    <div className="flex flex-col h-screen tap-transparent bg-[#f5f0e8]">
+    <div className="min-h-screen w-full bg-[#181614] flex justify-center">
+    <div className="relative flex flex-col h-screen w-full max-w-[480px] tap-transparent bg-[#f5f0e8] overflow-hidden sm:shadow-2xl sm:shadow-black/40">
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="shrink-0 bg-orange-500 px-5 pt-4 pb-3">
         <div className="flex items-center justify-between">
@@ -308,7 +313,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
 
       {/* ── Success Toast ────────────────────────────────────────────────────── */}
       {orderPlaced && (
-        <div className="fixed top-4 left-4 right-4 z-50 bg-green-400 text-black px-5 py-3.5 rounded-2xl text-sm font-semibold text-center shadow-2xl shadow-black/20 animate-in fade-in slide-in-from-top-2">
+        <div className="absolute top-4 left-4 right-4 z-50 bg-green-400 text-black px-5 py-3.5 rounded-2xl text-sm font-semibold text-center shadow-2xl shadow-black/20 animate-in fade-in slide-in-from-top-2">
           Order placed! Kitchen has been notified.
         </div>
       )}
@@ -360,7 +365,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
             )}
 
             {/* FAB buttons — search + category filter */}
-            <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-2">
+            <div className="absolute bottom-24 right-4 z-50 flex flex-col items-end gap-2">
               {/* Category popup */}
               {showCategories && (
                 <>
@@ -833,7 +838,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       </div>
 
       {/* ── Bottom Navigation ─────────────────────────────────────────────────── */}
-      <nav className="shrink-0 fixed bottom-5 left-5 right-5 bg-white/95 backdrop-blur-md rounded-full ring-1 ring-black/10 shadow-2xl shadow-black/20 z-40">
+      <nav className="shrink-0 absolute bottom-5 left-5 right-5 bg-white/95 backdrop-blur-md rounded-full ring-1 ring-black/10 shadow-2xl shadow-black/20 z-40">
         <div className="flex items-center justify-around h-14 max-w-md mx-auto">
           {(
             [
@@ -942,6 +947,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
           ))}
         </div>
       </nav>
+    </div>
     </div>
   )
 }

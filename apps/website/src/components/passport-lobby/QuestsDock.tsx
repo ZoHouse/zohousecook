@@ -10,8 +10,13 @@ import {
   type Quest,
 } from '../../data/mock-quests';
 import { distanceMeters, formatDistance, useLiveLocation } from '../LiveLocationProvider';
-import { rubikClassName } from '../utils/font';
+import { rubikClassName, syneClassName } from '../utils/font';
 import { CameraCaptureModal, type CaptureKind } from './CameraCaptureModal';
+import {
+  TodaysLootCard,
+  isLootImminent,
+  SAMPLE_LOOT,
+} from './TodaysLootCard';
 
 // Active = Live template + the viewer's participation is still open.
 function isActiveForViewer(q: Quest): boolean {
@@ -598,16 +603,20 @@ export function QuestListCard({
 
 /**
  * Full-screen quest detail — used on the /@handle/quests page (and any other
- * surface that wants a roomy single-quest view). Same glass language as the
- * list cards; renders cover, kind chip, XP reward, title, description, per-
- * kind detail, location/distance, and a sticky action button.
+ * surface that wants a roomy single-quest view). Pearl canon: same shell as
+ * lobby / badges / dashboard. Role color is reduced to a soft accent on the
+ * chip + XP + hero glyph rather than dominating the surface.
  */
 export function QuestFullView({
   quest,
   onBack,
+  backLabel = 'Quests',
 }: {
   quest: DockQuest;
   onBack: () => void;
+  /** Label for the top-left back pill. Defaults to 'Quests' (the /passport/quests
+      use). MapModal overrides with 'Map' since onBack returns the citizen to the map. */
+  backLabel?: string;
 }) {
   const theme = themeForQuest(quest);
   const reward = quest.rewards?.[0];
@@ -615,215 +624,215 @@ export function QuestFullView({
   const locName = (quest.data as { location?: { name?: string } }).location?.name;
 
   return (
-    <div className="relative w-full max-w-[680px] mx-auto pb-32">
-      {/* Top bar: back pill */}
+    <div className={`relative w-full max-w-[640px] mx-auto pb-32 md:pb-8 ${rubikClassName}`}>
+      {/* Top bar: pearl-glass back pill — matches lobby pill treatment. */}
       <div className="flex items-center justify-between mb-4">
         <button
           type="button"
           onClick={onBack}
-          aria-label="Back to quests"
+          aria-label={`Back to ${backLabel.toLowerCase()}`}
           className="inline-flex items-center gap-1.5 transition-transform active:scale-[0.96]"
           style={{
             height: 36,
             padding: '0 14px',
             borderRadius: 999,
-            background: 'rgba(255,255,255,0.12)',
-            color: '#fff',
+            background: 'rgba(255,255,255,0.7)',
+            color: '#2A1B3D',
             fontSize: 13,
-            fontWeight: 600,
-            border: '1px solid rgba(255,255,255,0.22)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
+            fontWeight: 700,
+            border: '1px solid rgba(255,255,255,0.85)',
+            backdropFilter: 'blur(16px) saturate(140%)',
+            WebkitBackdropFilter: 'blur(16px) saturate(140%)',
+            boxShadow: '0 6px 18px rgba(120,100,160,0.18)',
           }}
         >
           <span aria-hidden style={{ fontSize: 18, lineHeight: 1, marginTop: -2 }}>‹</span>
-          Quests
+          {backLabel}
         </button>
       </div>
 
-      {/* Hero cover */}
-      <div
-        className="relative w-full overflow-hidden mb-5"
-        style={{
-          height: 280,
-          borderRadius: 24,
-          border: '1px solid rgba(255,255,255,0.22)',
-          boxShadow: '0 18px 48px rgba(0,0,0,0.45)',
-        }}
-      >
-        {cover ? (
-          <Image src={cover} alt="" fill sizes="(max-width: 768px) 100vw, 680px" style={{ objectFit: 'cover' }} priority />
-        ) : (
-          <div
-            aria-hidden
-            className="absolute inset-0 flex items-center justify-center"
-            style={{ background: theme.bg, backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
-          >
-            <span style={{ fontSize: 90, color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>{kindGlyph(quest)}</span>
-          </div>
-        )}
-        <div
-          aria-hidden
-          className="absolute inset-0"
-          style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,0.45) 100%)' }}
-        />
-        <span
-          className="absolute top-4 left-4 inline-flex items-center gap-1"
-          style={{
-            padding: '5px 11px',
-            borderRadius: 999,
-            fontSize: 10,
-            fontWeight: 800,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            color: theme.ink,
-            background: 'rgba(255,255,255,0.95)',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
-          }}
-        >
-          <span aria-hidden>{kindGlyph(quest)}</span>
-          {kindLabel(quest)}
-        </span>
-        {reward && (
-          <span
-            className="absolute top-4 right-4 inline-flex items-center"
-            style={{
-              padding: '5px 13px',
-              borderRadius: 999,
-              fontSize: 12,
-              fontWeight: 800,
-              color: theme.ink,
-              background: '#FFE79E',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
-            }}
-          >
-            {formatReward(reward)}
-          </span>
-        )}
-        <h2
-          className="absolute bottom-4 left-5 right-5"
-          style={{
-            fontSize: 28,
-            fontWeight: 700,
-            color: '#fff',
-            lineHeight: 1.15,
-            margin: 0,
-            textShadow: '0 2px 12px rgba(0,0,0,0.55)',
-          }}
-        >
-          {quest.title}
-        </h2>
-      </div>
-
-      {/* Glass info card */}
+      {/* SINGLE FUSED MODAL — image top, body bottom, CTA below.
+          One border, one shadow, one continuous surface. */}
       <div
         className="relative overflow-hidden"
         style={{
-          background: theme.bg,
+          borderRadius: 22,
+          border: '1px solid rgba(255,255,255,0.85)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 14px 32px rgba(120,100,160,0.22)',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.55) 100%)',
           backdropFilter: 'blur(20px) saturate(140%)',
           WebkitBackdropFilter: 'blur(20px) saturate(140%)',
-          borderRadius: 22,
-          border: '1px solid rgba(255,255,255,0.25)',
-          boxShadow:
-            'inset 0 1px 0 rgba(255,255,255,0.32), 0 16px 40px rgba(0,0,0,0.35)',
-          padding: '20px 22px',
         }}
       >
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0"
+        {/* TOP REGION — image (or glyph hero) with chip + XP overlays.
+            Taller on desktop so the modal doesn't feel squat in the wide layout. */}
+        <div
+          className="relative w-full overflow-hidden h-[200px] md:h-[280px]"
           style={{
-            height: 100,
-            background: 'linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 100%)',
+            background: cover
+              ? '#FBF8F4'
+              : `linear-gradient(180deg, rgba(255,255,255,0.4) 0%, ${theme.tint} 100%)`,
           }}
-        />
+        >
+          {cover ? (
+            <Image src={cover} alt="" fill sizes="(max-width: 768px) 100vw, 640px" style={{ objectFit: 'cover' }} priority />
+          ) : (
+            <div
+              aria-hidden
+              className="absolute inset-0 flex items-center justify-center"
+            >
+              <span
+                className="text-[88px] md:text-[120px]"
+                style={{ color: theme.ink, opacity: 0.45, fontWeight: 800, lineHeight: 1 }}
+              >
+                {kindGlyph(quest)}
+              </span>
+            </div>
+          )}
 
-        {quest.description && (
-          <p
+          {/* Role chip — pearl pill, role-color text */}
+          <span
+            className="absolute top-3 left-3 inline-flex items-center gap-1"
             style={{
-              fontSize: 14,
-              lineHeight: 1.6,
-              color: 'rgba(255,255,255,0.88)',
-              margin: 0,
-              whiteSpace: 'pre-wrap',
+              padding: '5px 11px',
+              borderRadius: 999,
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: theme.ink,
+              background: 'rgba(255,255,255,0.92)',
+              border: '1px solid rgba(255,255,255,0.95)',
+              boxShadow: '0 4px 14px rgba(120,100,160,0.22)',
             }}
           >
-            {quest.description}
-          </p>
-        )}
+            <span aria-hidden>{kindGlyph(quest)}</span>
+            {kindLabel(quest)}
+          </span>
 
-        {/* Meta */}
-        <div
-          className="flex flex-wrap items-center gap-3 mt-4"
-          style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}
-        >
-          <span>📍 {locName ?? 'Anywhere'}</span>
-          {typeof quest.distance === 'number' && Number.isFinite(quest.distance) && (
-            <span style={{ color: 'rgba(255,255,255,0.65)' }}>🧭 {formatDistance(quest.distance)}</span>
+          {/* XP pill — pearl with amber text */}
+          {reward && (
+            <span
+              className="absolute top-3 right-3 inline-flex items-center"
+              style={{
+                padding: '5px 13px',
+                borderRadius: 999,
+                fontSize: 12,
+                fontWeight: 800,
+                color: '#A86B2A',
+                background: 'rgba(255,255,255,0.92)',
+                border: '1px solid rgba(255,255,255,0.95)',
+                boxShadow: '0 4px 14px rgba(160,100,40,0.18)',
+              }}
+            >
+              {formatReward(reward)}
+            </span>
           )}
         </div>
 
-        {/* Per-kind detail */}
-        {isInstagramQuest(quest) && (
-          <div className="mt-5">
-            <SectionLabel>Rules</SectionLabel>
-            <ul className="m-0 p-0 list-none flex flex-col gap-1.5" style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13 }}>
-              <li><span style={{ opacity: 0.6 }}>Brief · </span>{quest.data.instagram.brief}</li>
-              {quest.data.instagram.post_type && (
-                <li><span style={{ opacity: 0.6 }}>Post type · </span>{quest.data.instagram.post_type}</li>
-              )}
-              {quest.data.instagram.mention && (
-                <li><span style={{ opacity: 0.6 }}>Mention · </span>{quest.data.instagram.mention}</li>
-              )}
-              {quest.data.instagram.hashtags?.length ? (
-                <li><span style={{ opacity: 0.6 }}>Hashtags · </span>{quest.data.instagram.hashtags.map((h) => `#${h}`).join(' ')}</li>
-              ) : null}
-            </ul>
-          </div>
-        )}
+        {/* BOTTOM REGION — title + description + meta + per-kind detail.
+            Tighter on mobile, more generous on desktop. */}
+        <div className="px-5 pt-5 pb-6 md:px-7 md:pt-6 md:pb-7">
+          <h2
+            className={`${syneClassName} text-[22px] md:text-[28px]`}
+            style={{
+              fontWeight: 700,
+              color: '#2A1B3D',
+              lineHeight: 1.15,
+              margin: 0,
+              marginBottom: 12,
+            }}
+          >
+            {quest.title}
+          </h2>
 
-        {isGeomediaQuest(quest) && (
-          <div className="mt-5">
-            <SectionLabel>Capture</SectionLabel>
-            <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>
-              {quest.data.geomedia.prompt}
+          {quest.description && (
+            <p
+              className="text-[14px] md:text-[15px]"
+              style={{
+                lineHeight: 1.6,
+                color: '#2A1B3D',
+                margin: 0,
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {quest.description}
             </p>
-            <p style={{ marginTop: 6, fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
-              Within {Math.round(quest.data.geomedia.radius_m)}m · {quest.data.geomedia.media_kinds.join(' or ')}
-            </p>
-          </div>
-        )}
+          )}
 
-        {isBookingQuest(quest) && (
-          <div className="mt-5">
-            <SectionLabel>Booking</SectionLabel>
-            <ul className="m-0 p-0 list-none flex flex-col gap-1.5" style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13 }}>
-              <li>
-                <span style={{ opacity: 0.6 }}>Provider · </span>
-                {quest.data.booking.provider === 'zostel' ? 'Zostel' : 'Zo'}
-              </li>
-              {typeof quest.data.booking.price === 'number' && quest.data.booking.price > 0 && (
-                <li><span style={{ opacity: 0.6 }}>Price · </span>₹{quest.data.booking.price}</li>
-              )}
-              {quest.data.booking.when?.date && (
+          {/* Meta row */}
+          <div
+            className="flex flex-wrap items-center gap-3 mt-3"
+            style={{ fontSize: 12, fontWeight: 600, color: '#6B5B8E' }}
+          >
+            <span>📍 {locName ?? 'Anywhere'}</span>
+            {typeof quest.distance === 'number' && Number.isFinite(quest.distance) && (
+              <span style={{ color: '#9A8FB8' }}>🧭 {formatDistance(quest.distance)}</span>
+            )}
+          </div>
+
+          {/* Per-kind detail */}
+          {isInstagramQuest(quest) && (
+            <div className="mt-5">
+              <SectionLabel>Rules</SectionLabel>
+              <ul className="m-0 p-0 list-none flex flex-col gap-1.5" style={{ color: '#2A1B3D', fontSize: 13 }}>
+                <li><span style={{ color: '#6B5B8E' }}>Brief · </span>{quest.data.instagram.brief}</li>
+                {quest.data.instagram.post_type && (
+                  <li><span style={{ color: '#6B5B8E' }}>Post type · </span>{quest.data.instagram.post_type}</li>
+                )}
+                {quest.data.instagram.mention && (
+                  <li><span style={{ color: '#6B5B8E' }}>Mention · </span>{quest.data.instagram.mention}</li>
+                )}
+                {quest.data.instagram.hashtags?.length ? (
+                  <li><span style={{ color: '#6B5B8E' }}>Hashtags · </span>{quest.data.instagram.hashtags.map((h) => `#${h}`).join(' ')}</li>
+                ) : null}
+              </ul>
+            </div>
+          )}
+
+          {isGeomediaQuest(quest) && (
+            <div className="mt-5">
+              <SectionLabel>Capture</SectionLabel>
+              <p style={{ margin: 0, fontSize: 13, color: '#2A1B3D' }}>
+                {quest.data.geomedia.prompt}
+              </p>
+              <p style={{ marginTop: 6, fontSize: 12, color: '#6B5B8E' }}>
+                Within {Math.round(quest.data.geomedia.radius_m)}m · {quest.data.geomedia.media_kinds.join(' or ')}
+              </p>
+            </div>
+          )}
+
+          {isBookingQuest(quest) && (
+            <div className="mt-5">
+              <SectionLabel>Booking</SectionLabel>
+              <ul className="m-0 p-0 list-none flex flex-col gap-1.5" style={{ color: '#2A1B3D', fontSize: 13 }}>
                 <li>
-                  <span style={{ opacity: 0.6 }}>When · </span>
-                  {quest.data.booking.when.date}
-                  {quest.data.booking.when.start_time ? ` · ${quest.data.booking.when.start_time}` : ''}
+                  <span style={{ color: '#6B5B8E' }}>Provider · </span>
+                  {quest.data.booking.provider === 'zostel' ? 'Zostel' : 'Zo'}
                 </li>
-              )}
-            </ul>
-          </div>
-        )}
+                {typeof quest.data.booking.price === 'number' && quest.data.booking.price > 0 && (
+                  <li><span style={{ color: '#6B5B8E' }}>Price · </span>₹{quest.data.booking.price}</li>
+                )}
+                {quest.data.booking.when?.date && (
+                  <li>
+                    <span style={{ color: '#6B5B8E' }}>When · </span>
+                    {quest.data.booking.when.date}
+                    {quest.data.booking.when.start_time ? ` · ${quest.data.booking.when.start_time}` : ''}
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Sticky action button — bottom of viewport on mobile, in-flow on desktop. */}
+      {/* Sticky action button — pearl fade strip on mobile, in-flow on desktop. */}
       <div
         className="fixed left-0 right-0 bottom-0 px-6 pt-3 md:static md:px-0 md:pt-6"
         style={{
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 18px)',
           background:
-            'linear-gradient(180deg, rgba(6,3,0,0) 0%, rgba(6,3,0,0.85) 60%, rgba(6,3,0,1) 100%)',
+            'linear-gradient(180deg, rgba(251,248,244,0) 0%, rgba(251,248,244,0.92) 60%, rgba(251,248,244,1) 100%)',
           zIndex: 10,
         }}
       >
@@ -843,7 +852,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
         fontWeight: 800,
         letterSpacing: '0.14em',
         textTransform: 'uppercase',
-        color: 'rgba(255,255,255,0.55)',
+        color: '#6B5B8E',
         marginBottom: 8,
       }}
     >
@@ -895,12 +904,16 @@ export function useActiveQuests(maxItems = 10): { quests: DockQuest[]; isLoading
  */
 export function QuestsDock({ maxItems = 10, selectedQuest, onSelect }: QuestsDockProps) {
   const { quests: visible, isLoading } = useActiveQuests(maxItems);
+  const lootShown = isLootImminent(SAMPLE_LOOT.opens_at);
 
   if (selectedQuest) {
     return <QuestPanel quest={selectedQuest} onBack={() => onSelect?.(null)} />;
   }
 
-  if (visible.length === 0) {
+  // Empty state only fires when there's nothing at all — no loot AND no
+  // active quests. Otherwise the loot card renders alongside whatever
+  // active quests exist in the same horizontal scroller.
+  if (visible.length === 0 && !lootShown) {
     return (
       <div className={`${rubikClassName} w-full max-w-[1200px] mx-auto px-3 md:px-6`}>
         <div
@@ -929,6 +942,12 @@ export function QuestsDock({ maxItems = 10, selectedQuest, onSelect }: QuestsDoc
         className="flex gap-3 overflow-x-auto px-3 md:px-6 pb-2"
         style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
       >
+        {lootShown && (
+          <TodaysLootCard
+            loot={SAMPLE_LOOT}
+            onPlay={() => toast('Loot box claim flow coming soon')}
+          />
+        )}
         {visible.map((quest) => (
           <QuestCard key={quest.pid} quest={quest} onOpen={(q) => onSelect?.(q)} />
         ))}
