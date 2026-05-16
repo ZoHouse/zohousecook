@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
+import { useAuth } from '@zo/auth'
 import { supabase } from '../../config/supabase'
 import cafeZomadLogo from '../../assets/cafezomad/logo.png'
 
@@ -14,6 +15,7 @@ function formatPaise(paise: number): string {
 
 export default function CafeMenuPage() {
   const router = useRouter()
+  const { isLoggedIn, user, showLoginModal } = useAuth()
   const [properties, setProperties] = useState<CafeProperty[]>([])
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null)
   const [categories, setCategories] = useState<MenuCategory[]>([])
@@ -73,6 +75,14 @@ export default function CafeMenuPage() {
     tablesByArea.get(t.area)!.push(t)
   }
 
+  const openTablePicker = () => {
+    if (!isLoggedIn || !user) {
+      showLoginModal(undefined, '/cafezomad/menu')
+      return
+    }
+    setShowTablePicker(true)
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#f5f0e8]">
@@ -103,7 +113,7 @@ export default function CafeMenuPage() {
             <button onClick={() => router.push('/cafezomad/biohack')} className="px-3 py-2 bg-white/80 text-black text-xs font-bold rounded-xl active:scale-95 transition-all">
               Bio Hack
             </button>
-            <button onClick={() => setShowTablePicker(true)} className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl active:scale-95 transition-all">
+            <button onClick={openTablePicker} className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl active:scale-95 transition-all">
               Order Now
             </button>
           </div>
@@ -202,7 +212,7 @@ export default function CafeMenuPage() {
 
       {/* Sticky bottom CTA */}
       <div className="fixed bottom-0 left-0 right-0 z-20 p-4 bg-gradient-to-t from-[#f5f0e8] via-[#f5f0e8] to-transparent pt-8">
-        <button onClick={() => setShowTablePicker(true)} className="w-full bg-orange-500 text-black py-4 text-base font-bold tracking-wide rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all">
+        <button onClick={openTablePicker} className="w-full bg-orange-500 text-black py-4 text-base font-bold tracking-wide rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all">
           Start Ordering
         </button>
       </div>
