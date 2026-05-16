@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
 import Script from 'next/script'
-import { useAuth } from '@zo/auth'
+import { useAuth, useProfile } from '@zo/auth'
 import { supabase } from '../../config/supabase'
 import { useFoodCreditBalance } from '../../hooks/useFoodCreditBalance'
 import { BioHackTab } from '../../components/cafezomad/BioHackTab'
@@ -23,6 +23,12 @@ interface CreateRazorpayOrderResponse {
 function normalizePhone(phone: string | null | undefined): string | null {
   const normalized = (phone || '').replace(/\D/g, '').slice(-10)
   return normalized.length === 10 ? normalized : null
+}
+
+function cleanNickname(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const cleaned = value.replace(/\.zo$/i, '').trim()
+  return cleaned || null
 }
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
@@ -47,6 +53,7 @@ export default function CustomerOrderPage() {
 
 function CustomerOrderContent({ tableId }: { tableId: string }) {
   const { user, isLoggedIn, showLoginModal } = useAuth()
+  const { profile } = useProfile()
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [propertyId, setPropertyId] = useState<string | null>(null)
@@ -214,7 +221,6 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   // Without this guard, switching accounts on the same device leaks the
   // previous user's pending orders (and Razorpay prefill comes from those
   // orders' customer_phone, which is confusing).
-  // When NOT logged in (anonymous QR-scan flow), fall back to session IDs.
   const fetchOrders = useCallback(async () => {
     let query = supabase
       .from('cafe_orders')
@@ -231,17 +237,13 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       }
       query = query.eq('customer_phone', phoneCleaned).eq('property_id', propertyId)
     } else {
-      const myIds = getMyOrderIds()
-      if (myIds.length === 0) {
-        setOrders([])
-        return
-      }
-      query = query.in('id', myIds)
+      setOrders([])
+      return
     }
 
     const { data } = await query
     if (data) setOrders(data as CafeOrderWithItems[])
-  }, [getMyOrderIds, user?.id, user?.mobile_number, propertyId])
+  }, [user?.id, user?.mobile_number, propertyId])
 
   // Fix #6: Only poll when tab is visible
   useEffect(() => {
@@ -271,7 +273,15 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   // ── Cart helpers ───────────────────────────────────────────────────────────
   const MAX_QTY_PER_ITEM = 10
 
+  const requireLoginForOrdering = () => {
+    if (isLoggedIn && user) return true
+    showLoginModal(undefined, typeof window !== 'undefined' ? window.location.pathname : undefined)
+    return false
+  }
+
   const addToCart = (item: Pick<MenuItem, 'id' | 'name' | 'price'>) => {
+    if (!requireLoginForOrdering()) return
+
     // Verify item is still in the loaded menu (not removed/unavailable)
     const menuItem = menuItems.find((m) => m.id === item.id)
     if (!menuItem || !menuItem.is_available) return
@@ -448,18 +458,21 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     if (cart.length === 0 || !propertyId || isOrdering) return
 
     // Require login before ordering
-    if (!isLoggedIn || !user) {
-      showLoginModal()
-      return
-    }
+    if (!requireLoginForOrdering()) return
+    const authUser = user
+    if (!authUser) return
 
     setIsOrdering(true)
     try {
-      const customerName = user.first_name
-        ? `${user.first_name} ${user.last_name || ''}`.trim()
-        : null
-      const customerPhone = normalizePhone(user.mobile_number || null)
-      const customerEmail = user.email_address || null
+      const customerName = authUser.first_name
+        ? `${authUser.first_name} ${authUser.last_name || ''}`.trim()
+        : cleanNickname(profile?.selected_nickname)
+          || cleanNickname(profile?.custom_nickname)
+          || cleanNickname(profile?.ens_nickname)
+          || cleanNickname(profile?.nickname)
+          || null
+      const customerPhone = normalizePhone(authUser.mobile_number || null)
+      const customerEmail = authUser.email_address || null
 
       // Resolve payment mode: full credit coverage → 'zo_card' (no money
       // moves), else 'razorpay'. The RPC also enforces this server-side; we
@@ -479,7 +492,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         p_customer_name: customerName,
         p_customer_phone: customerPhone,
         p_customer_email: customerEmail,
-        p_zo_user_id: user.id || null,
+        p_zo_user_id: authUser.id || null,
         p_items: cart.map((c) => ({
           menu_item_id: c.menu_item_id,
           quantity: c.quantity,
@@ -623,7 +636,13 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
             {isLoggedIn && user ? (
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-black/10 rounded-full">
                 <span className="text-[11px] font-semibold text-black/70">
-                  {user.first_name || user.mobile_number || 'Guest'}
+                  {user.first_name
+                    || cleanNickname(profile?.selected_nickname)
+                    || cleanNickname(profile?.custom_nickname)
+                    || cleanNickname(profile?.ens_nickname)
+                    || cleanNickname(profile?.nickname)
+                    || user.mobile_number
+                    || 'Guest'}
                 </span>
               </div>
             ) : (
@@ -1191,7 +1210,9 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       {/* ── Go to Cart floating bar ────────────────────────────────────────────── */}
       {totalItems > 0 && activeTab === 'menu' && (
         <button
-          onClick={() => setActiveTab('orders')}
+          onClick={() => {
+            if (requireLoginForOrdering()) setActiveTab('orders')
+          }}
           className="fixed bottom-24 left-5 right-5 z-50 bg-orange-500 text-black px-5 py-3.5 rounded-2xl shadow-2xl shadow-orange-500/30 flex items-center justify-between active:scale-[0.98] transition-all"
         >
           <div className="flex items-center gap-2">
@@ -1243,7 +1264,10 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
           ).map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => {
+                if (tab.key === 'orders' && !requireLoginForOrdering()) return
+                setActiveTab(tab.key)
+              }}
               className={`relative flex flex-col items-center justify-center gap-0.5 w-14 h-12 rounded-2xl transition-all ${
                 activeTab === tab.key
                   ? 'text-orange-600'

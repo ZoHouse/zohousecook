@@ -14,18 +14,13 @@ export function computeOnboardingQueue(
   if (!profile.body_type) {
     queue.push("AVATAR");
   }
-  if (!whereabouts) {
-    queue.push("WHEREABOUTS");
-  }
-  // Where do you live = semi-permanent residence city. Distinct from
-  // WHEREABOUTS (live geo) and HOMETOWN (where grew up). Backend column
-  // not yet wired (Daya queued); profile.where_do_you_live will be
-  // undefined for now, so the step keeps appearing every onboarding
-  // until either the column ships or this guard is updated.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (!(profile as any).where_do_you_live) {
-    queue.push("WHEREYOULIVE");
-  }
+  // Current location is useful for nearby recommendations, but it cannot be a
+  // hard login blocker because browsers can deny or block geolocation.
+  // Users can still add it later from location-aware surfaces.
+  //
+  // WHEREYOULIVE is also intentionally not queued yet: the current profile API
+  // does not reliably return/persist that field, so requiring it sends returning
+  // users back into onboarding every time.
   if (!profile.country?.code) {
     queue.push("CITIZEN");
   }
