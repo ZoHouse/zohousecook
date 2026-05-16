@@ -69,6 +69,14 @@ export function PassportLobby() {
     }
   }, [router.query.settings]);
 
+  // PassportPitch's "Share Quests" CTA routes to /passport?share=1 so the
+  // viewer lands on their own passport with the share sheet already open.
+  useEffect(() => {
+    if (router.query.share === '1') {
+      setShareOpen(true);
+    }
+  }, [router.query.share]);
+
   const handleShare = useCallback(() => {
     // Copy link + open the full share modal (IG story, X, copy link etc)
     const url = `${window.location.origin}/@${handle}`;

@@ -11,6 +11,10 @@ import {
   normalisePublicPassport,
   type PublicPassport,
 } from "../hooks/usePublicPassport";
+import {
+  usePassportSubscription,
+  type PassportSubscription,
+} from "../hooks/usePassportSubscription";
 import { useCaptureReferrer } from "../hooks/useCaptureReferrer";
 import { identifyUser, trackActivity } from "../lib/analytics/trackActivity";
 
@@ -82,10 +86,14 @@ function parseHandleFromAsPath(asPath: string): string | null {
 function resolveViewerState(
   isLoggedIn: boolean | null | undefined,
   profile: { custom_nickname?: string | null; nickname?: string | null } | null | undefined,
+  subscription: PassportSubscription | null,
 ): ViewerState {
   if (!isLoggedIn) return "logged_out";
   const hasHandle = !!(profile?.custom_nickname || profile?.nickname);
   if (!hasHandle) return "logged_in_no_passport";
+  // Only an *active* subscription counts as Pro — cancelled/halted/expired
+  // viewers see the Free pitch (which upsells back to Pro).
+  if (subscription?.status === "active") return "pro";
   return "free";
 }
 
@@ -240,6 +248,8 @@ export default function PassportPage({
   const router = useRouter();
   const { isLoggedIn, showLoginModal } = useAuth();
   const { profile, isLoading: profileLoading } = useProfile();
+  // Pulled here so resolveViewerState can return 'pro' for active subscribers.
+  const { subscription: viewerSubscription } = usePassportSubscription();
 
   // Client-only — null during SSR and first client render (hydration-safe),
   // fills in on mount. Re-reads on isLoggedIn change so a logout clears it.
@@ -369,7 +379,7 @@ export default function PassportPage({
           ) : (
             <PublicPassportView
               handle={urlHandle}
-              viewerState={resolveViewerState(isLoggedIn, profile)}
+              viewerState={resolveViewerState(isLoggedIn, profile, viewerSubscription)}
               initialData={
                 publicPassport && publicPassport.handle === urlHandle
                   ? publicPassport

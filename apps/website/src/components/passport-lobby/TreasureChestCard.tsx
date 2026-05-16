@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { rubikClassName } from '../utils/font';
 import chestIcon from '../../assets/passport-lobby/treasure-chest.png';
-import type { TodayQuest } from '../../hooks/useTodayQuests';
+import { questDisplayTitle, type Quest, type QuestReward } from '../../data/mock-quests';
 
 export interface TreasureChestCardProps {
   open: boolean;
@@ -10,12 +10,11 @@ export interface TreasureChestCardProps {
   activeCount?: number;
   countdown?: string;
   /**
-   * Live quest feed from /api/v1/passport/quests/today/. When provided,
-   * transforms to the tile shape and replaces the hardcoded demo list.
-   * Falls back to demo tiles when undefined so the surface still previews
-   * in new-user / loading / no-auth states.
+   * Slice of quests to surface as "today's loot." Caller derives this from
+   * useQuests (e.g. top N by ends_at). Falls back to demo tiles when undefined
+   * so the surface still previews in new-user / loading / no-auth states.
    */
-  quests?: TodayQuest[];
+  quests?: Quest[];
 }
 
 interface Reward {
@@ -54,7 +53,7 @@ const CTA_STYLES = {
   },
 };
 
-function rewardTile(reward: NonNullable<TodayQuest['reward_pool']>['reward']): Reward | null {
+function rewardTile(reward: QuestReward | undefined): Reward | null {
   if (!reward) return null;
   const { type, amount } = reward;
   if (type === 'xp' && typeof amount === 'number') {
@@ -72,9 +71,9 @@ function rewardTile(reward: NonNullable<TodayQuest['reward_pool']>['reward']): R
   return null;
 }
 
-function formatDeadline(expires_at?: string): string | undefined {
-  if (!expires_at) return undefined;
-  const ms = new Date(expires_at).getTime() - Date.now();
+function formatDeadline(ends_at?: string | null): string | undefined {
+  if (!ends_at) return undefined;
+  const ms = new Date(ends_at).getTime() - Date.now();
   if (Number.isNaN(ms)) return undefined;
   if (ms <= 0) return 'Expired';
   const h = Math.floor(ms / (1000 * 60 * 60));
@@ -84,38 +83,34 @@ function formatDeadline(expires_at?: string): string | undefined {
   return `${m}m left`;
 }
 
-function questDefFromToday(q: TodayQuest): QuestDef {
-  const roleName = q.role_names?.[0];
-  const roleStyle = (roleName && ROLE_STYLE[roleName]) || ROLE_STYLE.Tripper;
-  const isDaily = q.cadence === 'daily';
-  const category = isDaily
-    ? `Daily ${roleStyle.noun} Quest`
-    : `Today's ${roleStyle.noun} Quest`;
+function questDefFromQuest(q: Quest): QuestDef {
+  const roleStyle = ROLE_STYLE[q.category] ?? ROLE_STYLE.Tripper;
 
-  const rewards = [rewardTile(q.reward_pool?.reward)].filter(Boolean) as Reward[];
+  // Real staging payloads don't include `data` — Creator detection has to
+  // ride on `q.category` directly. The IG connect prompt is the right CTA
+  // for every Creator quest because IG-link is the gating step regardless
+  // of the specific variant.
+  const cta = q.category === 'Creator' ? CTA_STYLES.connect : CTA_STYLES.start;
 
-  // Special-case the ig_story_post quest: the user has to connect Instagram
-  // before they can submit, so surface the connect CTA instead of Start Quest.
-  const needsIgConnect = q.qualifying_actions?.includes('ig_story_post');
-  const ctaByStatus =
-    q.status === 'live'
-      ? needsIgConnect
-        ? CTA_STYLES.connect
-        : CTA_STYLES.start
-      : undefined;
+  const rewards = q.rewards.map(rewardTile).filter(Boolean) as Reward[];
 
-  const metaFromDeadline = q.status === 'post_due' ? 'Expired' : formatDeadline(q.expires_at);
-  const meta = q.description && !isDaily ? q.description : metaFromDeadline;
+  // ends_at is CAS-only; the user-facing endpoint omits it. formatDeadline
+  // returns undefined for absent values, so the deadline line disappears
+  // gracefully on real data instead of breaking layout.
+  const deadlineMeta = formatDeadline(q.ends_at);
+  const meta = q.description || deadlineMeta;
 
   return {
-    id: q.user_quest_id,
-    category,
+    id: q.pid,
+    category: `Today's ${roleStyle.noun} Quest`,
     categoryColor: roleStyle.color,
-    isDaily,
-    title: q.name,
+    isDaily: false,
+    // Staging seeds most stay/trip rows with empty title — fall through to
+    // inventory.name → destination.name → slug so the tile is readable.
+    title: questDisplayTitle(q),
     meta,
     rewards,
-    cta: ctaByStatus,
+    cta,
   };
 }
 
@@ -273,7 +268,7 @@ export function TreasureChestCard({
 
   const tiles = useMemo<QuestDef[]>(() => {
     if (liveQuests && liveQuests.length > 0) {
-      return liveQuests.map(questDefFromToday);
+      return liveQuests.map(questDefFromQuest);
     }
     return QUESTS;
   }, [liveQuests]);
