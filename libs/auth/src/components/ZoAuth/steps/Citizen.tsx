@@ -29,8 +29,21 @@ const Citizen: FC<CitizenProps> = ({ advanceOnboarding }) => {
   const handleSubmit = () => {
     if (!selected || isSaving) return;
     setIsSaving(true);
+    // Save the full country object — the onboarding queue (and the Profile
+    // type in @zo/definitions/auth) expect `country` to be
+    // { code, name, flag }, not a bare ISO string. Saving the string meant
+    // `profile.country?.code` stayed undefined on the next ONBOARDING_CHECK,
+    // re-queuing CITIZEN forever.
     updateProfile(
-      { data: { country: selected.code } }, // 3-letter ISO STRING, NOT object
+      {
+        data: {
+          country: {
+            code: selected.code,
+            name: selected.name,
+            flag: selected.flag,
+          },
+        },
+      },
       {
         onSuccess: () => advanceOnboarding(),
         onError: () => setIsSaving(false),
