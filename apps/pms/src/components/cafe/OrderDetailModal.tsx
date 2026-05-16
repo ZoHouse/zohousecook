@@ -95,8 +95,8 @@ export function OrderDetailModal({ order, onClose, onStatusChange }: OrderDetail
             {order.table.label || order.table.code}
           </Descriptions.Item>
         )}
-        {order.customer_name && (
-          <Descriptions.Item label="Customer">{order.customer_name}</Descriptions.Item>
+        {(order.customer_name || order.customer_phone) && (
+          <Descriptions.Item label="Customer">{order.customer_name || order.customer_phone}</Descriptions.Item>
         )}
         {order.customer_phone && (
           <Descriptions.Item label="Phone">{order.customer_phone}</Descriptions.Item>

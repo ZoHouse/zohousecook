@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
 import Script from 'next/script'
-import { useAuth } from '@zo/auth'
+import { useAuth, useProfile } from '@zo/auth'
 import { supabase } from '../../config/supabase'
 import { useFoodCreditBalance } from '../../hooks/useFoodCreditBalance'
 import { BioHackTab } from '../../components/cafezomad/BioHackTab'
@@ -23,6 +23,12 @@ interface CreateRazorpayOrderResponse {
 function normalizePhone(phone: string | null | undefined): string | null {
   const normalized = (phone || '').replace(/\D/g, '').slice(-10)
   return normalized.length === 10 ? normalized : null
+}
+
+function cleanNickname(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const cleaned = value.replace(/\.zo$/i, '').trim()
+  return cleaned || null
 }
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
@@ -47,6 +53,7 @@ export default function CustomerOrderPage() {
 
 function CustomerOrderContent({ tableId }: { tableId: string }) {
   const { user, isLoggedIn, showLoginModal } = useAuth()
+  const { profile } = useProfile()
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [propertyId, setPropertyId] = useState<string | null>(null)
@@ -459,7 +466,11 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     try {
       const customerName = authUser.first_name
         ? `${authUser.first_name} ${authUser.last_name || ''}`.trim()
-        : null
+        : cleanNickname(profile?.selected_nickname)
+          || cleanNickname(profile?.custom_nickname)
+          || cleanNickname(profile?.ens_nickname)
+          || cleanNickname(profile?.nickname)
+          || null
       const customerPhone = normalizePhone(authUser.mobile_number || null)
       const customerEmail = authUser.email_address || null
 
@@ -625,7 +636,13 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
             {isLoggedIn && user ? (
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-black/10 rounded-full">
                 <span className="text-[11px] font-semibold text-black/70">
-                  {user.first_name || user.mobile_number || 'Guest'}
+                  {user.first_name
+                    || cleanNickname(profile?.selected_nickname)
+                    || cleanNickname(profile?.custom_nickname)
+                    || cleanNickname(profile?.ens_nickname)
+                    || cleanNickname(profile?.nickname)
+                    || user.mobile_number
+                    || 'Guest'}
                 </span>
               </div>
             ) : (

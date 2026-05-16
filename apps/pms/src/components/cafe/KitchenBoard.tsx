@@ -255,6 +255,7 @@ interface OrderCardProps {
 function OrderCard({ order, onAdvance, onCancel, onViewDetail }: OrderCardProps) {
   const status = order.kitchen_status as KitchenStatus
   const advanceLabel = ADVANCE_ACTION_LABELS[status]
+  const customerLabel = order.customer_name || order.customer_phone || null
   // Table label: prefer the cafe_tables.label (e.g. "Garden 4") over the
   // bare code, and fall back to the order mode capitalised when there's no
   // table (pickup / room_service). "Table " prefix only when we have a table.
@@ -302,7 +303,7 @@ function OrderCard({ order, onAdvance, onCancel, onViewDetail }: OrderCardProps)
       {/* Customer name + table — chefs need this to know WHO and WHERE the
           food is going, especially during dine-in service. */}
       <div style={{ marginBottom: 6 }}>
-        {order.customer_name && (
+        {customerLabel && (
           <Text
             strong
             style={{
@@ -312,7 +313,7 @@ function OrderCard({ order, onAdvance, onCancel, onViewDetail }: OrderCardProps)
               lineHeight: 1.3,
             }}
           >
-            {order.customer_name}
+            {customerLabel}
           </Text>
         )}
         <Text
