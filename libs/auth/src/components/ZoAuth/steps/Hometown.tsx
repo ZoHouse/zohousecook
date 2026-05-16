@@ -92,7 +92,7 @@ const Hometown: FC<HometownProps> = ({ advanceOnboarding }) => {
 
   return (
     <div className="flex flex-1 flex-col items-start w-full">
-      <span className="text-xl md:text-2xl font-bold mb-1 md:mb-2">Where&apos;s home?</span>
+      <span className="text-xl md:text-2xl font-bold mb-1 md:mb-2">Where is your Hometown?</span>
       <span className="text-sm text-white/50 mb-4 md:mb-8">
         Your roots — the city you call yours
       </span>

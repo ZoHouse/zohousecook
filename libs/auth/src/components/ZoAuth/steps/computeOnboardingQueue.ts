@@ -17,15 +17,13 @@ export function computeOnboardingQueue(
   if (!whereabouts) {
     queue.push("WHEREABOUTS");
   }
-  // Where do you live = semi-permanent residence city. Distinct from
-  // WHEREABOUTS (live geo) and HOMETOWN (where grew up). Backend column
-  // not yet wired (Daya queued); profile.where_do_you_live will be
-  // undefined for now, so the step keeps appearing every onboarding
-  // until either the column ships or this guard is updated.
+  // WHEREYOULIVE disabled: backend column not wired, so the field never
+  // persists and the step fires on every login — blocking returning users.
+  // Re-enable once Daya ships the `where_do_you_live` column on profile.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (!(profile as any).where_do_you_live) {
-    queue.push("WHEREYOULIVE");
-  }
+  // if (!(profile as any).where_do_you_live) {
+  //   queue.push("WHEREYOULIVE");
+  // }
   if (!profile.country?.code) {
     queue.push("CITIZEN");
   }
