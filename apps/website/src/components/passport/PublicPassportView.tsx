@@ -9,7 +9,7 @@ import { CitizenCard } from "../passport-lobby/CitizenCard";
 import { UnlimitedAccessCta } from "../passport-lobby/UnlimitedAccessCta";
 import { HologramStatCard } from "../passport-lobby/HologramStatCard";
 import { useMyXp } from "../../hooks/useMyXp";
-import { ViewerState } from "./PassportPitch";
+import { PassportPitch, type ViewerState } from "./PassportPitch";
 import ShareModal from "./ShareModal";
 import pedestal from "../../assets/passport-lobby/scene/pedestal.svg";
 
@@ -30,7 +30,7 @@ const IRIDESCENT_PEARL_COLORS = [
   "#FBF8F4",
 ];
 
-export function PublicPassportView({ handle, viewerState: _viewerState, initialData }: PublicPassportViewProps) {
+export function PublicPassportView({ handle, viewerState, initialData }: PublicPassportViewProps) {
   const router = useRouter();
   const { isLoggedIn, showLoginModal } = useAuth();
   const { data, isLoading, isError } = usePublicPassport(handle, initialData);
@@ -206,6 +206,10 @@ export function PublicPassportView({ handle, viewerState: _viewerState, initialD
                 <HologramStatCard key={label || `stat-${i}`} label={label} value={value} colors={colors} />
               ))}
             </div>
+
+            {/* Erum's 4-variant viewer pitch — the inviter funnel that turns
+                a passport visitor into a Citizen / Pro / Reel-Quest creator. */}
+            <PassportPitch inviterHandle={handle} viewerState={viewerState} />
           </div>
         </div>
       </div>

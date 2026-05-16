@@ -5,32 +5,32 @@ import { useProfile } from '@zo/auth';
 import { MeshGradient } from '@paper-design/shaders-react';
 import { toast } from 'sonner';
 
-import { useMyXp } from '../../hooks/useMyXp';
-import { usePassportProfile } from '../../hooks/usePassportProfile';
-import { useSeason } from '../../hooks/useSeason';
-import useInstagramConnect from '../../hooks/useInstagramConnect';
-import { useQuests } from '../../hooks/useQuests';
-import { isGeomediaQuest, type Quest, type QuestCategory } from '../../data/mock-quests';
+import { useMyXp } from '../../../hooks/useMyXp';
+import { usePassportProfile } from '../../../hooks/usePassportProfile';
+import { useSeason } from '../../../hooks/useSeason';
+import useInstagramConnect from '../../../hooks/useInstagramConnect';
+import { useQuests } from '../../../hooks/useQuests';
+import { isGeomediaQuest, type Quest, type QuestCategory } from '../../../data/mock-quests';
 
-import { TopBar } from '../../components/passport-lobby/TopBar';
-import { MapModal } from '../../components/passport-lobby/MapModal';
+import { TopBar } from '../../../components/passport-lobby/TopBar';
+import { MapModal } from '../../../components/passport-lobby/MapModal';
 import {
   QuestListCard,
   QuestFullView,
   useActiveQuests,
   actionForQuest,
   type DockQuest,
-} from '../../components/passport-lobby/QuestsDock';
-import { CameraCaptureModal, type CaptureKind } from '../../components/passport-lobby/CameraCaptureModal';
+} from '../../../components/passport-lobby/QuestsDock';
+import { CameraCaptureModal, type CaptureKind } from '../../../components/passport-lobby/CameraCaptureModal';
 import {
   TodaysLootCard,
   isLootImminent,
   SAMPLE_LOOT,
-} from '../../components/passport-lobby/TodaysLootCard';
-import { SettingsModal } from '../../components/passport/SettingsModal';
-import ShareModal from '../../components/passport/ShareModal';
-import { rubikClassName, syneClassName } from '../../components/utils/font';
-import { distanceMeters, useLiveLocation } from '../../components/LiveLocationProvider';
+} from '../../../components/passport-lobby/TodaysLootCard';
+import { SettingsModal } from '../../../components/passport/SettingsModal';
+import ShareModal from '../../../components/passport/ShareModal';
+import { rubikClassName, syneClassName } from '../../../components/utils/font';
+import { distanceMeters, useLiveLocation } from '../../../components/LiveLocationProvider';
 
 // Same iridescent pearl as PassportLobby + BadgesLobby — keeps the room reading
 // consistent across passport surfaces. No pedestal / hero / LobbyRoom here;
@@ -205,11 +205,17 @@ export default function QuestsPage() {
     return decorated.slice(0, 6);
   }, [allQuests, location, categoryFilter]);
 
-  // Upcoming = Live but starts_at > now. Sorted soonest-first.
+  // Upcoming = quests with starts_at > now. Sorted soonest-first.
+  // `starts_at` is optional on real staging payloads — only CAS emits it.
+  // Quests without a start date can't be "upcoming" so they're filtered out.
   const upcoming: Quest[] = useMemo(() => {
     const now = Date.now();
     return allQuests
-      .filter((q) => q.status === 'Live' && new Date(q.starts_at).getTime() > now)
+      .filter((q): q is Quest & { starts_at: string } => {
+        if (q.status !== 'Live' && q.status !== 'Active') return false;
+        if (!q.starts_at) return false;
+        return new Date(q.starts_at).getTime() > now;
+      })
       .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
       .slice(0, 5);
   }, [allQuests]);
@@ -751,12 +757,17 @@ function CategoryProgressCard({ def, count, isFiltered, onClick }: CategoryProgr
 }
 
 function UpcomingRow({ quest }: { quest: Quest }) {
-  const startsAt = new Date(quest.starts_at);
-  const dateLabel = startsAt.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
+  // Upstream filter (upcoming useMemo) guarantees starts_at is set on every
+  // quest passed in here. Fall back to an empty label for safety in case a
+  // future caller skips that filter.
+  const startsAt = quest.starts_at ? new Date(quest.starts_at) : null;
+  const dateLabel = startsAt
+    ? startsAt.toLocaleDateString(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      })
+    : '';
   const categoryDef = CATEGORIES.find((c) => c.key === quest.category);
   return (
     <div

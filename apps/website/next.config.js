@@ -104,6 +104,9 @@ const nextConfig = {
 
     const rewrites = [
       { source: "/@:handle/earnings", destination: "/passport/earnings?handle=:handle" },
+      // Single-quest deep link — keep above the broader /quests rewrite so the
+      // slug path wins on URL matching.
+      { source: "/@:handle/quests/:slug", destination: "/passport/quests/:slug?handle=:handle" },
       { source: "/@:handle/quests", destination: "/passport/quests?handle=:handle" },
       { source: "/@:handle/badges", destination: "/passport/badges?handle=:handle" },
       { source: "/@:handle", destination: "/passport" },
