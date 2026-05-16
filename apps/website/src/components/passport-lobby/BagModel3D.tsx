@@ -305,15 +305,33 @@ function StickerDecal({
     body.updateWorldMatrix(true, true);
     const pos = new THREE.Vector3(...position);
     const n = new THREE.Vector3(...normal).normalize();
-    const baseQ = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(0, 0, 1),
-      n,
-    );
-    const tiltQ = new THREE.Quaternion().setFromAxisAngle(n, rotation);
-    const orient = new THREE.Euler().setFromQuaternion(
-      tiltQ.clone().multiply(baseQ),
-      'XYZ',
-    );
+
+    // Build the decal's orientation as an explicit basis:
+    //   local +Z = surface normal (projector direction)
+    //   local +Y = world-up projected onto the surface (decal's "up")
+    //   local +X = right-handed cross product
+    // This pins the texture V-axis to world-up regardless of where on the
+    // curved bag the decal lands. Previously we used Quaternion.setFromUnitVectors
+    // which only constrains the normal axis and leaves the roll arbitrary —
+    // so stickers on some patches of the bag rendered upside-down while
+    // others looked correct. With this fix, every sticker reads top-up.
+    const worldUp = new THREE.Vector3(0, 1, 0);
+    let upOnSurface = worldUp.clone().sub(n.clone().multiplyScalar(worldUp.dot(n)));
+    if (upOnSurface.lengthSq() < 1e-6) {
+      // Normal is parallel to world-up (top/bottom of the bag). Fall back to
+      // world-forward as the in-plane reference so the basis stays valid.
+      const fwd = new THREE.Vector3(0, 0, 1);
+      upOnSurface = fwd.clone().sub(n.clone().multiplyScalar(fwd.dot(n)));
+    }
+    upOnSurface.normalize();
+    const right = new THREE.Vector3().crossVectors(upOnSurface, n).normalize();
+    const basis = new THREE.Matrix4().makeBasis(right, upOnSurface, n);
+    // Apply the random ±15° tilt around the surface normal on top of the
+    // anchored basis — keeps the hand-applied feel without breaking the
+    // gravity-aligned up direction.
+    const tiltM = new THREE.Matrix4().makeRotationAxis(n, rotation);
+    basis.premultiply(tiltM);
+    const orient = new THREE.Euler().setFromRotationMatrix(basis, 'XYZ');
     const s = STICKER_WORLD_SCALE;
     let geometry: THREE.BufferGeometry;
     try {
