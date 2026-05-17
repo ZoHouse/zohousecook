@@ -703,7 +703,7 @@ export function MapModal({ open, onClose }: MapModalProps) {
     if (status.kind !== 'ready') return;
     if (!map.current) return;
 
-    const puck = mountUserPuck(map.current);
+    const puck = mountUserPuck(map.current, viewerAvatarUrl ?? null);
     userPuckRef.current = puck;
 
     try {
@@ -748,7 +748,7 @@ export function MapModal({ open, onClose }: MapModalProps) {
         prevProjectionRef.current = null;
       }
     };
-  }, [isNavActive, status.kind]);
+  }, [isNavActive, status.kind, viewerAvatarUrl]);
 
   // Position-update handler — fires on every watchPosition tick while
   // routeMode === 'navigating'. Drives the puck, the camera, step

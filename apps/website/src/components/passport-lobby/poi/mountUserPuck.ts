@@ -10,45 +10,77 @@ export interface UserPuckHandles {
 }
 
 /**
- * Outer is the Mapbox-positioned container (never set transform on it).
- * Inner carries our rotation transform so it doesn't fight positioning.
- * The arrow points "north" of the puck — rotated to match heading.
+ * Builds the puck DOM tree.
+ *
+ *   outer  ─ Mapbox-positioned container; NEVER touch its transform.
+ *   ├── headingLayer  ─ rotates with bearing; contains ONLY the arrow.
+ *   │   └── arrow     ─ directional triangle, point upward when heading=0.
+ *   └── pin           ─ avatar disc; centered, does NOT rotate (otherwise
+ *                       the avatar's eyes/face would tilt with bearing).
+ *
+ * The arrow swings around the puck perimeter as the citizen turns, while
+ * the avatar stays upright. Fallback: a solid cyan dot if no avatar URL.
  */
-function buildPuckElement(): { outer: HTMLDivElement; inner: HTMLDivElement } {
+function buildPuckElement(avatarUrl: string | null): {
+  outer: HTMLDivElement;
+  headingLayer: HTMLDivElement;
+} {
   const outer = document.createElement('div');
-  outer.style.cssText = 'width:48px;height:48px;pointer-events:none;';
+  outer.style.cssText =
+    'width:56px;height:56px;pointer-events:none;position:relative;';
 
-  const inner = document.createElement('div');
-  inner.style.cssText =
-    'position:relative;width:100%;height:100%;transform-origin:center;transition:transform 280ms ease-out;';
+  const headingLayer = document.createElement('div');
+  headingLayer.style.cssText =
+    'position:absolute;inset:0;transform-origin:center;' +
+    'transition:transform 280ms ease-out;';
 
   const arrow = document.createElement('div');
   arrow.style.cssText =
-    `position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:0;` +
-    `border-left:6px solid transparent;border-right:6px solid transparent;` +
-    `border-bottom:10px solid ${PUCK_COLOR};` +
+    'position:absolute;top:-2px;left:50%;transform:translateX(-50%);' +
+    'width:0;height:0;' +
+    'border-left:7px solid transparent;border-right:7px solid transparent;' +
+    `border-bottom:12px solid ${PUCK_COLOR};` +
     `filter:drop-shadow(0 0 4px ${PUCK_COLOR});`;
+  headingLayer.appendChild(arrow);
 
-  const dot = document.createElement('div');
-  dot.style.cssText =
-    `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);` +
-    `width:18px;height:18px;border-radius:50%;background:${PUCK_COLOR};` +
-    `border:2px solid #fff;` +
-    `box-shadow:0 0 0 4px rgba(0,180,255,0.28),0 0 16px ${PUCK_COLOR};`;
+  const pin = document.createElement('div');
+  pin.style.cssText =
+    'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);' +
+    'width:40px;height:40px;border-radius:50%;' +
+    `background:${PUCK_COLOR};border:2px solid #fff;` +
+    `box-shadow:0 0 0 2px ${PUCK_COLOR},0 4px 12px rgba(0,0,0,0.35);` +
+    'overflow:hidden;display:flex;align-items:center;justify-content:center;';
 
-  inner.appendChild(dot);
-  inner.appendChild(arrow);
-  outer.appendChild(inner);
-  return { outer, inner };
+  if (avatarUrl) {
+    const img = document.createElement('img');
+    img.src = avatarUrl;
+    img.alt = '';
+    img.style.cssText =
+      'width:100%;height:100%;object-fit:cover;display:block;';
+    img.addEventListener('error', () => {
+      // Bad URL → drop the img so the cyan disc shows through.
+      img.remove();
+    });
+    pin.appendChild(img);
+  }
+
+  outer.appendChild(headingLayer);
+  outer.appendChild(pin);
+  return { outer, headingLayer };
 }
 
 /**
- * Mounts a user-position puck on the map. Position transitions ease between
+ * Mount the user-position puck on the map. Position transitions ease between
  * updates (rAF, ~800ms ease-out cubic) so the puck glides instead of
- * snapping. Heading rotates the inner element via CSS transform.
+ * snapping. Heading rotates the heading layer (which carries only the
+ * directional arrow) via CSS transform — the avatar pin itself stays
+ * upright at all bearings.
  */
-export function mountUserPuck(map: mapboxgl.Map): UserPuckHandles {
-  const { outer, inner } = buildPuckElement();
+export function mountUserPuck(
+  map: mapboxgl.Map,
+  avatarUrl: string | null = null,
+): UserPuckHandles {
+  const { outer, headingLayer } = buildPuckElement(avatarUrl);
   const marker = new mapboxgl.Marker({ element: outer, anchor: 'center' });
 
   let currentLng = 0;
@@ -65,9 +97,7 @@ export function mountUserPuck(map: mapboxgl.Map): UserPuckHandles {
 
   const setPosition = (lng: number, lat: number, heading: number | null) => {
     if (heading !== null && !Number.isNaN(heading)) {
-      // Account for the marker's own anchor/rotation — Mapbox doesn't rotate
-      // the marker with the map, so heading is pure compass degrees.
-      inner.style.transform = `rotate(${heading}deg)`;
+      headingLayer.style.transform = `rotate(${heading}deg)`;
     }
 
     if (!initialized) {
