@@ -616,6 +616,13 @@ export function MapModal({ open, onClose }: MapModalProps) {
   useEffect(() => {
     routeModeRef.current = routeMode;
   }, [routeMode]);
+
+  // Mirror route into a ref so nav-lifecycle effects can read the latest
+  // value without forcing themselves to re-fire on every preview-fetch tick.
+  const routeRef = useRef(route);
+  useEffect(() => {
+    routeRef.current = route;
+  }, [route]);
   useEffect(() => {
     if (!map.current) return;
     const handleBasemapClick = (e: mapboxgl.MapMouseEvent) => {
@@ -704,6 +711,29 @@ export function MapModal({ open, onClose }: MapModalProps) {
       map.current.setProjection({ name: 'mercator' });
     } catch (err) {
       console.warn('[MapModal] setProjection mercator failed:', err);
+    }
+
+    // Prime the third-person FPV camera the instant nav starts — without
+    // this we'd sit in the preview's wide top-down fitBounds view until the
+    // first watchPosition tick arrives. On desktop (or in a browser that
+    // can't get GPS) that tick may never arrive at all, so the user would
+    // be stuck staring at the overview. Use route.from as the puck's
+    // initial position and the first step's bearing_after as the heading
+    // ("behind the user, looking down the route").
+    const navStart = routeRef.current;
+    if (navStart?.data && navStart.data.steps.length > 0) {
+      const startBearing =
+        navStart.data.steps[0].maneuver.bearing_after ?? map.current.getBearing();
+      puck.setPosition(navStart.from[0], navStart.from[1], startBearing);
+      map.current.flyTo({
+        center: navStart.from,
+        bearing: startBearing,
+        pitch: NAV_PITCH,
+        zoom: NAV_ZOOM,
+        offset: [0, NAV_PUCK_OFFSET_Y],
+        duration: 1200,
+        essential: true,
+      });
     }
 
     return () => {
