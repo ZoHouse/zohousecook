@@ -80,6 +80,12 @@ These won't break production immediately but can cause serious problems. Always 
 - Webhook handlers must return quickly (< 5s) — don't do heavy processing inline
 - Always handle API failures gracefully — the external service being down shouldn't crash the app
 
+### 11. Vercel deploys require the assetPrefix guard
+- Every `apps/<app>/.env.production` is committed and sets `NEXT_ASSET_PREFIX=https://static.cdn.zo.xyz` for AWS — this is correct for AWS, catastrophic for Vercel
+- Before any new app deploys to Vercel, `apps/<app>/next.config.js` MUST include the `isVercelDeployment` guard that force-empties `assetPrefix` when `VERCEL=1` (see `apps/website/next.config.js` and `apps/pms/next.config.js` for the canonical pattern)
+- Symptoms of missing guard: blank pages, `_next` chunks 403 from `static.cdn.zo.xyz`, "infinite loop detected" overlay
+- Full playbook + project map in `.claude/docs/vercel-deployment.md`
+
 ---
 
 ## GREEN LINES — Always Do

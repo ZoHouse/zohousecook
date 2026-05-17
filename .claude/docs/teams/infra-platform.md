@@ -46,9 +46,9 @@ Keep Zo House Cook's infrastructure solid — own the NX monorepo, shared librar
 
 ### Deployment
 
-- **Vercel** — Frontend apps routed by hostname via `vercel.json`
-- **AWS ECS** — Backend services (scripts in `/scripts/`, config in `/aws/`)
-- **Sentry** — Error tracking per app (separate configs)
+- **Vercel** — Two projects (`zozozo-website` ↔ `apps/website`, `zozozo-pm` ↔ `apps/pms`). Full project ↔ app map, the `.env.production` asset-prefix trap, and the manual prebuilt deploy playbook live in [`.claude/docs/vercel-deployment.md`](../vercel-deployment.md). Read it before deploying.
+- **AWS ECS** — Backend services + the other apps (admin, ops, checkin, payments, comic, meme, dashboard, web-checkin). Scripts in `/scripts/`, config in `/aws/`.
+- **Sentry** — Error tracking per app (separate configs).
 
 ### Per-App Config
 
