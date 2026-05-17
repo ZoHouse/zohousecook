@@ -108,6 +108,11 @@ function CoverArea({
 }
 
 function questCoords(q: Quest): { lat: number; lng: number } | null {
+  // Staging seed omits `data` jsonb entirely (user-facing serializer doesn't
+  // expose it — see memory feedback_user_facing_passport_quests_no_data_field).
+  // Guard against undefined before reading nested fields, otherwise the
+  // distance-decoration map() throws at runtime.
+  if (!q.data) return null;
   if (isGeomediaQuest(q)) return { lat: q.data.geomedia.lat, lng: q.data.geomedia.lng };
   const loc = (q.data as { location?: { lat?: number; lng?: number } }).location;
   if (loc && typeof loc.lat === 'number' && typeof loc.lng === 'number') {
