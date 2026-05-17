@@ -10,6 +10,9 @@ import { OrderStatusBadge } from '../../components/cafezomad/OrderStatusBadge'
 import { formatPaise } from '../../components/cafezomad/types'
 import type { MenuCategory, MenuItem, CafeOrderWithItems, CartItem, Tab } from '../../components/cafezomad/types'
 import cafeZomadLogo from '../../assets/cafezomad/logo.png'
+import appleTouchIcon from '../../components/cafezomad/assets/favicons/apple-touch-icon.png'
+import cafezomadIcon192 from '../../components/cafezomad/assets/favicons/cafezomad-icon-192.png'
+import cafezomadIcon512 from '../../components/cafezomad/assets/favicons/cafezomad-icon-512.png'
 
 interface CreateRazorpayOrderResponse {
   razorpay_order_id: string
@@ -651,10 +654,10 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   return (
     <div className="flex flex-col h-screen tap-transparent bg-[#f5f0e8]">
       <Head>
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/cafezomad-icon-192.png" />
-        <link rel="icon" type="image/png" sizes="512x512" href="/cafezomad-icon-512.png" />
+        <link rel="apple-touch-icon" href={appleTouchIcon.src} />
+        <link rel="apple-touch-icon" sizes="180x180" href={appleTouchIcon.src} />
+        <link rel="icon" type="image/png" sizes="192x192" href={cafezomadIcon192.src} />
+        <link rel="icon" type="image/png" sizes="512x512" href={cafezomadIcon512.src} />
         <meta name="apple-mobile-web-app-title" content="Cafe Zomad" />
       </Head>
       {/* Razorpay Checkout — lazy-loaded; window.Razorpay populated on script ready */}

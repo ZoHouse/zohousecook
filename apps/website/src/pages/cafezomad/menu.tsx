@@ -4,6 +4,9 @@ import { useRouter } from 'next/router'
 import { useAuth } from '@zo/auth'
 import { supabase } from '../../config/supabase'
 import cafeZomadLogo from '../../assets/cafezomad/logo.png'
+import appleTouchIcon from '../../components/cafezomad/assets/favicons/apple-touch-icon.png'
+import cafezomadIcon192 from '../../components/cafezomad/assets/favicons/cafezomad-icon-192.png'
+import cafezomadIcon512 from '../../components/cafezomad/assets/favicons/cafezomad-icon-512.png'
 
 interface MenuCategory { id: string; name: string; sort_order: number }
 interface MenuItem { id: string; category_id: string; name: string; description: string | null; price: number; image_url: string | null; diet: 'veg' | 'non_veg' | 'egg'; calories: number | null; protein: number | null; carbs: number | null; fats: number | null }
@@ -186,10 +189,10 @@ export default function CafeMenuPage() {
   return (
     <div className="min-h-screen bg-[#f5f0e8]">
       <Head>
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/cafezomad-icon-192.png" />
-        <link rel="icon" type="image/png" sizes="512x512" href="/cafezomad-icon-512.png" />
+        <link rel="apple-touch-icon" href={appleTouchIcon.src} />
+        <link rel="apple-touch-icon" sizes="180x180" href={appleTouchIcon.src} />
+        <link rel="icon" type="image/png" sizes="192x192" href={cafezomadIcon192.src} />
+        <link rel="icon" type="image/png" sizes="512x512" href={cafezomadIcon512.src} />
         <meta name="apple-mobile-web-app-title" content="Cafe Zomad" />
       </Head>
       {/* Header */}
