@@ -206,27 +206,87 @@ export function playKitchenAlert(): void {
   playViaHtmlAudio()
 }
 
-// Loop API — rings on an interval until explicitly stopped. Used by the
-// kitchen board to keep nagging chefs while an unaccepted order is sitting.
-const LOOP_INTERVAL_MS = 5000
-let loopHandle: ReturnType<typeof setInterval> | null = null
+// Loop API — rings continuously (the audio file loops end-to-end) until
+// explicitly stopped. Used by the kitchen board to keep nagging chefs while
+// any order is still sitting in 'new' state. We use a real audio-loop here
+// rather than setInterval(playOnce) because the chefs asked for a non-stop
+// ring (phone-style) instead of a beep-then-silence cadence.
+let loopRequested = false
+let loopingSource: AudioBufferSourceNode | null = null
+let loopingHtmlEl: HTMLAudioElement | null = null
+
+function startLoopNow(): void {
+  if (!audioUrl) return
+  if (loopingSource || loopingHtmlEl) return
+
+  // Prefer Web Audio — survives background tabs (see header comment).
+  if (audioCtx) {
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => { /* best effort */ })
+    }
+    if (decodedBuffer) {
+      try {
+        const src = audioCtx.createBufferSource()
+        src.buffer = decodedBuffer
+        src.loop = true
+        const gain = audioCtx.createGain()
+        gain.gain.value = VOLUME
+        src.connect(gain)
+        gain.connect(audioCtx.destination)
+        src.start(0)
+        loopingSource = src
+        return
+      } catch {
+        // fall through to HTMLAudio
+      }
+    }
+  }
+
+  // HTMLAudio fallback — also supports native loop.
+  if (fallbackPool.length === 0) {
+    for (let i = 0; i < FALLBACK_POOL_SIZE; i++) {
+      const el = new Audio(audioUrl)
+      el.preload = 'auto'
+      fallbackPool.push(el)
+    }
+  }
+  const el = fallbackPool[0]
+  el.loop = true
+  el.currentTime = 0
+  el.volume = VOLUME
+  el.play().catch(() => { /* gesture window missed — retries on next start */ })
+  loopingHtmlEl = el
+}
 
 export function startKitchenAlertLoop(): void {
   if (typeof window === 'undefined') return
-  if (loopHandle != null) return
-  // Force first beep through the debounce so the loop is immediately audible
-  // even if a one-shot playKitchenAlert() just fired moments earlier.
-  lastBeepAt = 0
-  playKitchenAlert()
-  loopHandle = setInterval(() => { playKitchenAlert() }, LOOP_INTERVAL_MS)
+  if (!audioUrl) return
+  loopRequested = true
+  startLoopNow()
+  // If the buffer wasn't decoded yet, kick off decode and start the loop
+  // once it's ready — provided the caller still wants it running.
+  if (audioCtx && !decodedBuffer && !loopingHtmlEl) {
+    void ensureBuffer().then(() => {
+      if (loopRequested) startLoopNow()
+    })
+  }
 }
 
 export function stopKitchenAlertLoop(): void {
-  if (loopHandle == null) return
-  clearInterval(loopHandle)
-  loopHandle = null
+  loopRequested = false
+  if (loopingSource) {
+    try { loopingSource.stop() } catch { /* already stopped */ }
+    try { loopingSource.disconnect() } catch { /* already disconnected */ }
+    loopingSource = null
+  }
+  if (loopingHtmlEl) {
+    loopingHtmlEl.loop = false
+    loopingHtmlEl.pause()
+    loopingHtmlEl.currentTime = 0
+    loopingHtmlEl = null
+  }
 }
 
 export function isKitchenAlertLooping(): boolean {
-  return loopHandle != null
+  return loopRequested
 }
