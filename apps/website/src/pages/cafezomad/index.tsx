@@ -1,3 +1,4 @@
+import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '@zo/auth'
 import cafeZomadLogo from '../../assets/cafezomad/logo.png'
@@ -10,6 +11,17 @@ export default function CafeZomadIndex() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#f5f0e8] px-6">
+      <Head>
+        {/* iOS apple-touch-icon must be a square PNG, served at a stable
+            path. The webpack-imported logo.png is non-square (3948x3586) and
+            iOS rejects it, falling back to a title-letter icon. These point
+            at pre-rendered square versions in public/. */}
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/cafezomad-icon-192.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/cafezomad-icon-512.png" />
+        <meta name="apple-mobile-web-app-title" content="Cafe Zomad" />
+      </Head>
       {/* Logo */}
       <div className="w-24 h-24 rounded-[2rem] bg-white p-3 mb-8 shadow-xl shadow-black/10">
         <img src={cafeZomadLogo.src} alt="Cafe Zomad" className="w-full h-full object-contain" />

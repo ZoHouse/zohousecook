@@ -89,6 +89,15 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   const [showSearch, setShowSearch] = useState(false)
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Single scroll container is shared across tabs, so switching tabs would
+  // otherwise inherit the previous tab's scroll position (chefs reported
+  // Orders/Cart landing at the bottom after scrolling the Menu).
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+
+  // Reset scroll to top whenever the active tab changes.
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0
+  }, [activeTab])
 
   // Restore cart on mount — covers the flow where the user tapped Place
   // Order while logged out, got bounced through the login modal, and is
@@ -319,7 +328,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       )}
 
       {/* ── Main Content ─────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto pb-28">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto pb-28">
 
         {/* ── MENU TAB ──────────────────────────────────────────────────────── */}
         {activeTab === 'menu' && (
