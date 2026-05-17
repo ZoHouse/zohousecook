@@ -1,53 +1,10 @@
 import { supabase } from '../../configs/supabase'
 import type { IngredientUnit } from '../../types/cafe'
+import { convertUnit } from './unit-conversion'
 
 interface DeductionResult {
   deducted: { ingredient: string; amount: number; unit: string }[]
   skipped: { menuItem: string; reason: string }[]
-}
-
-/**
- * Convert a quantity from one unit to another.
- * Recipes use small units (g, ml), stock uses large units (kg, liter).
- * Returns the amount in stockUnit, or null if units are incompatible.
- */
-function convertUnit(
-  amount: number,
-  recipeUnit: IngredientUnit,
-  stockUnit: IngredientUnit,
-): number | null {
-  // Same unit — no conversion needed
-  if (recipeUnit === stockUnit) return amount
-
-  // Weight conversions
-  const toGrams: Partial<Record<IngredientUnit, number>> = {
-    g: 1,
-    kg: 1000,
-  }
-  if (toGrams[recipeUnit] != null && toGrams[stockUnit] != null) {
-    return (amount * toGrams[recipeUnit]!) / toGrams[stockUnit]!
-  }
-
-  // Volume conversions
-  const toMl: Partial<Record<IngredientUnit, number>> = {
-    ml: 1,
-    liter: 1000,
-    tsp: 5,
-    tbsp: 15,
-    cups: 240,
-  }
-  if (toMl[recipeUnit] != null && toMl[stockUnit] != null) {
-    return (amount * toMl[recipeUnit]!) / toMl[stockUnit]!
-  }
-
-  // Countable — pieces, slice (no conversion between these and weight/volume)
-  const countable: IngredientUnit[] = ['pieces', 'slice']
-  if (countable.includes(recipeUnit) && countable.includes(stockUnit)) {
-    return amount // pieces ≈ slice for deduction purposes
-  }
-
-  // Incompatible units (e.g. g → pieces) — can't convert
-  return null
 }
 
 /**
