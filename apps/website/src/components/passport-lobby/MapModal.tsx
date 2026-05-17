@@ -8,6 +8,10 @@ import { mountPoiLayers } from './poi/mountPoiLayers';
 import { mountRouteLayer, type RouteLayerHandles } from './poi/mountRouteLayer';
 import { fetchWalkingRoute, formatDuration, formatDistance, type RouteResult } from './poi/fetchRoute';
 import { mountUserPuck, type UserPuckHandles } from './poi/mountUserPuck';
+import {
+  mountAmbientUserMarker,
+  type AmbientUserMarkerHandles,
+} from './poi/mountAmbientUserMarker';
 import { useContinuousLocation } from './poi/useContinuousLocation';
 import { useLiveLocation, distanceMeters } from '../LiveLocationProvider';
 import { NearbyPoiBar } from './NearbyPoiBar';
@@ -182,6 +186,7 @@ export function MapModal({ open, onClose }: MapModalProps) {
   const viewerXp = myXp?.xp ?? 0;
   const viewerRank = myXp?.rank ?? 0;
   const userPuckRef = useRef<UserPuckHandles | null>(null);
+  const ambientUserMarkerRef = useRef<AmbientUserMarkerHandles | null>(null);
   // `prevProjection` lets us swap back to whatever the citizen had (globe)
   // when nav ends.
   const prevProjectionRef = useRef<mapboxgl.Projection | null>(null);
@@ -611,6 +616,13 @@ export function MapModal({ open, onClose }: MapModalProps) {
   useEffect(() => {
     routeModeRef.current = routeMode;
   }, [routeMode]);
+
+  // Mirror route into a ref so nav-lifecycle effects can read the latest
+  // value without forcing themselves to re-fire on every preview-fetch tick.
+  const routeRef = useRef(route);
+  useEffect(() => {
+    routeRef.current = route;
+  }, [route]);
   useEffect(() => {
     if (!map.current) return;
     const handleBasemapClick = (e: mapboxgl.MapMouseEvent) => {
@@ -642,18 +654,56 @@ export function MapModal({ open, onClose }: MapModalProps) {
     }
   }, [routeMode]);
 
+  // Shared nav-active predicate — drives both the ambient marker (hidden
+  // while navigating, so the puck owns the screen) and the nav puck below.
+  // 'navigating' → 'arrived' is intentionally NOT a transition for either,
+  // since the puck stays parked on the destination after arrival.
+  const isNavActive = routeMode === 'navigating' || routeMode === 'arrived';
+
+  // Ambient explore-mode user marker — Zobu avatar pin with a pulse ring,
+  // visible whenever we know the citizen's whereabouts AND we're not in nav
+  // mode (the nav puck takes over there). Mount stays stable across
+  // whereabouts ticks; the next effect feeds positions in.
+  const hasLiveLocation = !!liveLocation;
+  useEffect(() => {
+    if (status.kind !== 'ready') return;
+    if (!map.current) return;
+    if (isNavActive) return;
+    // Don't mount a pin at (0,0) — wait until we actually have a position.
+    const loc = liveLocationRef.current;
+    if (!loc) return;
+
+    const marker = mountAmbientUserMarker(map.current, viewerAvatarUrl ?? null);
+    marker.setPosition(loc.long, loc.lat);
+    ambientUserMarkerRef.current = marker;
+    return () => {
+      marker.unmount();
+      if (ambientUserMarkerRef.current === marker) {
+        ambientUserMarkerRef.current = null;
+      }
+    };
+  }, [status.kind, isNavActive, viewerAvatarUrl, hasLiveLocation]);
+
+  // Position sync — re-runs every whereabouts tick. Cheap; the marker
+  // handles its own easeOutCubic glide between updates.
+  useEffect(() => {
+    if (!ambientUserMarkerRef.current) return;
+    if (!liveLocation) return;
+    ambientUserMarkerRef.current.setPosition(liveLocation.long, liveLocation.lat);
+  }, [liveLocation]);
+
   // Nav lifecycle — mount the user puck and swap projection to mercator
   // when entering nav (also kept during 'arrived' so the puck stays put on
   // the destination). Tear down + restore projection on exit. 'navigating'
   // → 'arrived' is intentionally NOT a re-mount because `isNavActive`
-  // doesn't change across that transition.
-  const isNavActive = routeMode === 'navigating' || routeMode === 'arrived';
+  // doesn't change across that transition. (`isNavActive` is declared
+  // above, alongside the ambient-marker effect that shares it.)
   useEffect(() => {
     if (!isNavActive) return;
     if (status.kind !== 'ready') return;
     if (!map.current) return;
 
-    const puck = mountUserPuck(map.current);
+    const puck = mountUserPuck(map.current, viewerAvatarUrl ?? null);
     userPuckRef.current = puck;
 
     try {
@@ -661,6 +711,29 @@ export function MapModal({ open, onClose }: MapModalProps) {
       map.current.setProjection({ name: 'mercator' });
     } catch (err) {
       console.warn('[MapModal] setProjection mercator failed:', err);
+    }
+
+    // Prime the third-person FPV camera the instant nav starts — without
+    // this we'd sit in the preview's wide top-down fitBounds view until the
+    // first watchPosition tick arrives. On desktop (or in a browser that
+    // can't get GPS) that tick may never arrive at all, so the user would
+    // be stuck staring at the overview. Use route.from as the puck's
+    // initial position and the first step's bearing_after as the heading
+    // ("behind the user, looking down the route").
+    const navStart = routeRef.current;
+    if (navStart?.data && navStart.data.steps.length > 0) {
+      const startBearing =
+        navStart.data.steps[0].maneuver.bearing_after ?? map.current.getBearing();
+      puck.setPosition(navStart.from[0], navStart.from[1], startBearing);
+      map.current.flyTo({
+        center: navStart.from,
+        bearing: startBearing,
+        pitch: NAV_PITCH,
+        zoom: NAV_ZOOM,
+        offset: [0, NAV_PUCK_OFFSET_Y],
+        duration: 1200,
+        essential: true,
+      });
     }
 
     return () => {
@@ -675,7 +748,7 @@ export function MapModal({ open, onClose }: MapModalProps) {
         prevProjectionRef.current = null;
       }
     };
-  }, [isNavActive, status.kind]);
+  }, [isNavActive, status.kind, viewerAvatarUrl]);
 
   // Position-update handler — fires on every watchPosition tick while
   // routeMode === 'navigating'. Drives the puck, the camera, step
