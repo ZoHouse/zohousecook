@@ -12,6 +12,9 @@ console.log(`[INFO] Next Asset Prefix: ${process.env.NEXT_ASSET_PREFIX}`);
 console.log(`[INFO] Zostel App ID: ${process.env.ZOSTEL_APP_ID}`);
 console.log(`[INFO] Zostel API Base URL: ${process.env.API_BASE_URL_ZOSTEL}`);
 
+const isVercelDeployment =
+  process.env.VERCEL === "1" || Boolean(process.env.VERCEL_ENV);
+
 /**
  * @type {import('@nx/next/plugins/with-nx').WithNxOptions}
  **/
@@ -22,7 +25,13 @@ const nextConfig = {
     svgr: false,
   },
   basePath: process.env.NEXT_BASE_PATH || "",
-  assetPrefix: process.env.NODE_ENV === "development" ? "" : (process.env.NEXT_ASSET_PREFIX || ""),
+  // Vercel serves _next bundles from the deployment itself. apps/pms/.env.production
+  // sets NEXT_ASSET_PREFIX for the AWS build and would otherwise leak into Vercel
+  // builds, causing every chunk to 403 from static.cdn.zo.xyz.
+  assetPrefix:
+    process.env.NODE_ENV === "development" || isVercelDeployment
+      ? ""
+      : process.env.NEXT_ASSET_PREFIX || "",
   images: {
     remotePatterns: [
       {
