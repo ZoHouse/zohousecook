@@ -111,16 +111,82 @@ function buildPillarElement(property: ZoProperty): { outer: HTMLDivElement; inne
   return { outer, inner };
 }
 
-function buildPopupHTML(property: ZoProperty): string {
+// Tiny duplicate of helpers in poi/mountPoiLayers — kept local to avoid
+// pulling a WebGL helper module just for distance math + HTML escaping.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function haversineM(aLat: number, aLon: number, bLat: number, bLon: number): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat);
+  const dLon = toRad(bLon - aLon);
+  const lat1 = toRad(aLat);
+  const lat2 = toRad(bLat);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function fmtDist(m: number): string {
+  if (m < 1000) return `${Math.round(m)} m away`;
+  return `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km away`;
+}
+
+/**
+ * Pearl-canon popup for Zo property pillars — mirrors the POI popup
+ * structure so both surfaces feel like one design system:
+ *  - 14px ink title + 11px purple sub-line with optional distance
+ *  - Pearl chip carrying the kind label
+ *  - Action row with a primary Start (walking nav). Re-uses the same
+ *    `data-action="start-nav"` contract the POI popup uses, so the
+ *    delegated click handler in mountPoiLayers fires the same
+ *    onWalkHereRequested path — no duplicate handler in MapModal.
+ *
+ * `viewer` is read at HTML-build time. Popup is re-rendered on each
+ * `open` event so distance / Start visibility track the latest GPS.
+ */
+function buildPopupHTML(
+  property: ZoProperty,
+  viewer: { lat: number; long: number } | null,
+): string {
   const s = KIND_STYLE[property.kind];
+  const isZoBranded = property.kind === 'zo-house' || property.kind === 'zo-club';
+  const glyph = isZoBranded ? '\\z/' : '•';
+
+  const distHtml = viewer
+    ? `<span style="font-size:11px;color:#9A8FB8;margin-left:6px;">· ${fmtDist(haversineM(viewer.lat, viewer.long, property.lat, property.lng))}</span>`
+    : '';
+
+  const btnBase =
+    'flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 14px;border-radius:99px;font-family:Rubik,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;cursor:pointer;text-align:center;border:none;';
+
+  const startHtml = viewer
+    ? `<button type="button"
+         data-action="start-nav"
+         data-poi-id="${escapeHtml(property.id)}"
+         data-lng="${property.lng}"
+         data-lat="${property.lat}"
+         style="${btnBase}background:#2A1B3D;color:#FBF8F4;font-weight:800;box-shadow:0 6px 18px rgba(42,27,61,0.28);">
+         Start
+       </button>`
+    : '';
+
   return `
-    <div style="font-family:Rubik,sans-serif;padding:4px 8px;min-width:180px;color:#fff;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-        <span style="width:28px;height:28px;border-radius:50%;background:${s.color};display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;flex-shrink:0;box-shadow:0 0 0 3px ${s.accent};">${property.kind === 'zo-house' || property.kind === 'zo-club' ? '\\z/' : '•'}</span>
-        <div style="font-size:15px;font-weight:600;color:#fff;line-height:1.2;">${property.name}</div>
+    <div style="font-family:Rubik,sans-serif;padding:12px 14px;min-width:220px;max-width:100%;box-sizing:border-box;color:#2A1B3D;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <span style="width:32px;height:32px;border-radius:50%;background:${s.color};display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:800;flex-shrink:0;box-shadow:0 0 0 2px ${s.accent}, 0 4px 12px rgba(0,0,0,0.18);">${glyph}</span>
+        <div style="font-size:14px;font-weight:700;color:#2A1B3D;line-height:1.3;word-wrap:break-word;">${escapeHtml(property.name)}</div>
       </div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.55);margin-bottom:8px;letter-spacing:0.01em;">${property.destination}</div>
-      <div style="display:inline-block;font-size:9px;color:${s.color};font-weight:700;text-transform:uppercase;letter-spacing:0.1em;padding:3px 8px;border-radius:99px;background:${s.accent};border:1px solid ${s.color}30;">${s.label}</div>
+      <div style="font-size:11px;color:#6B5B8E;margin-bottom:10px;font-weight:600;">${escapeHtml(property.destination)}${distHtml}</div>
+      <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 9px;margin-bottom:10px;border-radius:99px;background:rgba(255,255,255,0.65);border:1px solid rgba(120,100,160,0.18);">
+        <span style="width:14px;height:14px;border-radius:50%;background:${s.color};display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:7px;font-weight:800;line-height:1;">${glyph}</span>
+        <span style="font-size:10px;color:#2A1B3D;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">${s.label}</span>
+      </div>
+      ${startHtml ? `<div style="display:flex;align-items:stretch;gap:8px;width:100%;">${startHtml}</div>` : ''}
     </div>
   `;
 }
@@ -392,7 +458,14 @@ export function MapModal({ open, onClose }: MapModalProps) {
           closeButton: true,
           className: 'zo-map-popup',
           maxWidth: '260px',
-        }).setHTML(buildPopupHTML(property));
+        }).setHTML(buildPopupHTML(property, liveLocationRef.current));
+
+        // Re-render HTML on each open so distance + Start visibility track
+        // the latest GPS read (especially after the citizen taps Recenter
+        // while the popup is closed).
+        popup.on('open', () => {
+          popup.setHTML(buildPopupHTML(property, liveLocationRef.current));
+        });
 
         const marker = new mapboxgl.Marker({ element: outer, anchor: 'bottom' })
           .setLngLat(coords)
