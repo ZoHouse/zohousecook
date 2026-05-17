@@ -205,3 +205,28 @@ export function playKitchenAlert(): void {
   if (playViaWebAudio()) return
   playViaHtmlAudio()
 }
+
+// Loop API — rings on an interval until explicitly stopped. Used by the
+// kitchen board to keep nagging chefs while an unaccepted order is sitting.
+const LOOP_INTERVAL_MS = 5000
+let loopHandle: ReturnType<typeof setInterval> | null = null
+
+export function startKitchenAlertLoop(): void {
+  if (typeof window === 'undefined') return
+  if (loopHandle != null) return
+  // Force first beep through the debounce so the loop is immediately audible
+  // even if a one-shot playKitchenAlert() just fired moments earlier.
+  lastBeepAt = 0
+  playKitchenAlert()
+  loopHandle = setInterval(() => { playKitchenAlert() }, LOOP_INTERVAL_MS)
+}
+
+export function stopKitchenAlertLoop(): void {
+  if (loopHandle == null) return
+  clearInterval(loopHandle)
+  loopHandle = null
+}
+
+export function isKitchenAlertLooping(): boolean {
+  return loopHandle != null
+}

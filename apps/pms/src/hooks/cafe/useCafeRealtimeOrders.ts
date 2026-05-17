@@ -3,7 +3,7 @@ import { supabase } from '../../configs/supabase'
 import { getNextStatus } from '../../lib/cafe/kitchen-status'
 import { deductInventoryForOrder, restoreInventoryForOrder } from '../../lib/cafe/inventory-deduct'
 import { debitFoodCredits, restoreFoodCredits } from '../../lib/cafe/food-credit-debit'
-import { playKitchenAlert } from '../../lib/cafe/kitchen-alert'
+import { playKitchenAlert, startKitchenAlertLoop, stopKitchenAlertLoop } from '../../lib/cafe/kitchen-alert'
 import type { CafeOrder, CafeOrderWithItems, KitchenStatus } from '../../types/cafe'
 
 const ACTIVE_STATUSES: KitchenStatus[] = ['new', 'accepted', 'preparing', 'ready']
@@ -164,6 +164,23 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
       }
     }
   }, [propertyId])
+
+  // Keep the alert ringing while any order is still in 'new' (i.e. unaccepted).
+  // The moment all 'new' orders have been accepted (or removed), stop the loop.
+  useEffect(() => {
+    const hasUnaccepted = orders.some((o) => o.kitchen_status === 'new')
+    if (hasUnaccepted) {
+      startKitchenAlertLoop()
+    } else {
+      stopKitchenAlertLoop()
+    }
+  }, [orders])
+
+  // Safety: stop the loop on unmount so a stale interval doesn't keep ringing
+  // after the chef leaves the kitchen board.
+  useEffect(() => {
+    return () => { stopKitchenAlertLoop() }
+  }, [])
 
   const advanceStatus = useCallback(
     async (orderId: string, currentStatus: KitchenStatus) => {

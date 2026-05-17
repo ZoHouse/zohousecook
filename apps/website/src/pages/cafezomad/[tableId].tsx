@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Head from 'next/head'
 import { useRouter } from 'next/router'
 import Script from 'next/script'
 import { useAuth, useProfile } from '@zo/auth'
@@ -84,6 +85,12 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   const [draftCreditOverrides, setDraftCreditOverrides] = useState<Record<string, number>>({})
   const [activeTab, setActiveTab] = useState<Tab>('menu')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  // Today's meal plan text per slot, read from cafe_meal_plans.notes. Shown
+  // as the description of the matching "Breakfast" / "Lunch" / "Dinner" menu
+  // items so customers see what's actually being served today.
+  const [todayPlanText, setTodayPlanText] = useState<{ breakfast: string; lunch: string; dinner: string }>({
+    breakfast: '', lunch: '', dinner: '',
+  })
   const [isOrdering, setIsOrdering] = useState(false)
   const [paymentInFlight, setPaymentInFlight] = useState<{ orderId: string; status: 'opening' | 'awaiting' | 'confirming' } | null>(null)
   const [orderPlaced, setOrderPlaced] = useState<{ id: string; display_number: number; total: number; kitchen_status: string } | null>(null)
@@ -269,6 +276,31 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [fetchOrders])
+
+  // ── Today's meal plan text (drives the Breakfast/Lunch/Dinner descriptions)
+  useEffect(() => {
+    const fetchTodayPlan = () => {
+      const d = new Date()
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      supabase
+        .from('cafe_meal_plans')
+        .select('meal_type, notes')
+        .eq('date', today)
+        .then(({ data }) => {
+          const next = { breakfast: '', lunch: '', dinner: '' }
+          for (const plan of (data || []) as { meal_type: 'breakfast' | 'lunch' | 'dinner'; notes: string | null }[]) {
+            if (plan.meal_type in next) next[plan.meal_type] = plan.notes || ''
+          }
+          setTodayPlanText(next)
+        })
+    }
+    fetchTodayPlan()
+    const ch = supabase
+      .channel('cafezomad-table-meal-plan')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_meal_plans' }, () => fetchTodayPlan())
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [])
 
   // ── Cart helpers ───────────────────────────────────────────────────────────
   const MAX_QTY_PER_ITEM = 10
@@ -618,6 +650,12 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-screen tap-transparent bg-[#f5f0e8]">
+      <Head>
+        <link rel="apple-touch-icon" href={cafeZomadLogo.src} />
+        <link rel="apple-touch-icon" sizes="180x180" href={cafeZomadLogo.src} />
+        <link rel="icon" type="image/png" href={cafeZomadLogo.src} />
+        <meta name="apple-mobile-web-app-title" content="Cafe Zomad" />
+      </Head>
       {/* Razorpay Checkout — lazy-loaded; window.Razorpay populated on script ready */}
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       {/* ── Header ──────────────────────────────────────────────────────────── */}
@@ -869,6 +907,14 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                     <div className="grid grid-cols-2 gap-3">
                       {items.map((item) => {
                         const inCart = cart.find((c) => c.menu_item_id === item.id)
+                        // If this item's name matches a meal slot, surface today's
+                        // plan text from cafe_meal_plans.notes so the customer sees
+                        // what's actually being served (e.g. "puri chole - tea").
+                        const nameKey = item.name.trim().toLowerCase()
+                        const planText =
+                          nameKey === 'breakfast' ? todayPlanText.breakfast :
+                          nameKey === 'lunch' ? todayPlanText.lunch :
+                          nameKey === 'dinner' ? todayPlanText.dinner : ''
                         return (
                           <div key={item.id} className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm overflow-hidden">
                             {/* Square image */}
@@ -883,6 +929,11 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                             {/* Info */}
                             <div className="p-3">
                               <p className="font-bold text-sm text-black tracking-tight truncate">{item.name}</p>
+                              {planText && (
+                                <p className="text-xs text-black/70 font-medium leading-relaxed mt-1.5">
+                                  {planText}
+                                </p>
+                              )}
                               <div className="flex items-center justify-between mt-1">
                                 <span className="text-sm font-bold text-black">{formatPaise(item.price)}</span>
                                 {item.calories != null && <span className="text-[10px] text-black/40 font-mono">{item.calories} kcal</span>}

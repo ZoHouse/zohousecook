@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '@zo/auth'
 import { supabase } from '../../config/supabase'
@@ -8,6 +9,18 @@ interface MenuCategory { id: string; name: string; sort_order: number }
 interface MenuItem { id: string; category_id: string; name: string; description: string | null; price: number; image_url: string | null; diet: 'veg' | 'non_veg' | 'egg'; calories: number | null; protein: number | null; carbs: number | null; fats: number | null }
 interface CafeTable { id: string; code: string; label: string | null; area: string }
 interface CafeProperty { id: string; name: string }
+
+type MealType = 'breakfast' | 'lunch' | 'dinner'
+
+function todayISO(): string {
+  // Use local-time YYYY-MM-DD so it matches what the operator chose in PMS
+  // (the meal-plan calendar writes dates in the user's local timezone).
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
 function formatPaise(paise: number): string {
   return `₹${(paise / 100).toFixed(paise % 100 === 0 ? 0 : 2)}`
@@ -25,6 +38,11 @@ export default function CafeMenuPage() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [showTablePicker, setShowTablePicker] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  // Today's meal plan — text per slot from cafe_meal_plans.notes. Each slot is
+  // a freeform description the operator wrote in PMS (e.g. "puri chole - tea").
+  const [todayPlanText, setTodayPlanText] = useState<Record<MealType, string>>({
+    breakfast: '', lunch: '', dinner: '',
+  })
 
   useEffect(() => {
     supabase.from('cafe_properties').select('id, name').then(({ data }) => {
@@ -48,9 +66,46 @@ export default function CafeMenuPage() {
 
   useEffect(() => { fetchMenu() }, [selectedPropertyId])
 
+  // Today's meal plan text — read from cafe_meal_plans.notes for each B/L/D
+  // slot. The plan is global (not per-property) per the standardised-menu
+  // convention.
+  const fetchTodayPlan = () => {
+    const today = todayISO()
+    supabase
+      .from('cafe_meal_plans')
+      .select('meal_type, notes')
+      .eq('date', today)
+      .then(({ data }) => {
+        const next: Record<MealType, string> = { breakfast: '', lunch: '', dinner: '' }
+        for (const plan of (data || []) as { meal_type: MealType; notes: string | null }[]) {
+          if (plan.meal_type in next) {
+            next[plan.meal_type] = plan.notes || ''
+          }
+        }
+        setTodayPlanText(next)
+      })
+  }
+
+  useEffect(() => { fetchTodayPlan() }, [])
+
+  // Live update: any change in PMS to today's plan pushes a refetch so the
+  // customer page reflects it without a page reload.
+  useEffect(() => {
+    const ch = supabase
+      .channel('cafezomad-meal-plan')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_meal_plans' }, () => fetchTodayPlan())
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [])
+
   // Refetch menu when user returns to tab (catches chef availability toggles)
   useEffect(() => {
-    const onVisible = () => { if (!document.hidden) fetchMenu() }
+    const onVisible = () => {
+      if (!document.hidden) {
+        fetchMenu()
+        fetchTodayPlan()
+      }
+    }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [selectedPropertyId])
@@ -68,6 +123,43 @@ export default function CafeMenuPage() {
     }
     grouped.get(item.category_id)!.items.push(item)
   }
+
+  // Today's plan — three text descriptions (B/L/D). Shown above the regular
+  // menu when any slot has text, hidden when the user is searching/filtering.
+  const todaySlots: { type: MealType; label: string; time: string; accent: string; text: string }[] = [
+    { type: 'breakfast', label: 'Breakfast', time: '7:30 — 10:00 AM', accent: 'bg-amber-500',  text: todayPlanText.breakfast },
+    { type: 'lunch',     label: 'Lunch',     time: '12:30 — 2:30 PM', accent: 'bg-emerald-500', text: todayPlanText.lunch },
+    { type: 'dinner',    label: 'Dinner',    time: '7:30 — 10:00 PM', accent: 'bg-indigo-500',  text: todayPlanText.dinner },
+  ]
+  const showTodaySection =
+    !activeCategory && !searchQuery.trim() && todaySlots.some((s) => s.text.trim().length > 0)
+
+  const renderMenuItemCard = (item: MenuItem) => (
+    <div key={item.id} className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm overflow-hidden">
+      <div className="aspect-square bg-stone-100 relative">
+        {item.image_url ? (
+          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-black/15 text-3xl font-bold">{item.name.charAt(0)}</div>
+        )}
+        <span className={`absolute top-2 left-2 w-3 h-3 rounded-full ring-2 ring-white ${item.diet === 'veg' ? 'bg-green-500' : item.diet === 'egg' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+      </div>
+      <div className="p-3">
+        <p className="font-bold text-sm text-black tracking-tight truncate">{item.name}</p>
+        <div className="flex items-center justify-between mt-1">
+          <span className="text-sm font-bold text-black">{formatPaise(item.price)}</span>
+          {item.calories != null && <span className="text-[10px] text-black/40 font-mono">{item.calories} kcal</span>}
+        </div>
+        {(item.protein != null || item.carbs != null || item.fats != null) && (
+          <div className="flex gap-2 mt-1.5">
+            {item.protein != null && <span className="text-[9px] text-orange-600/70 font-semibold font-mono bg-orange-50 px-1.5 py-0.5 rounded">{item.protein}g P</span>}
+            {item.carbs != null && <span className="text-[9px] text-blue-600/70 font-semibold font-mono bg-blue-50 px-1.5 py-0.5 rounded">{item.carbs}g C</span>}
+            {item.fats != null && <span className="text-[9px] text-amber-600/70 font-semibold font-mono bg-amber-50 px-1.5 py-0.5 rounded">{item.fats}g F</span>}
+          </div>
+        )}
+      </div>
+    </div>
+  )
 
   const tablesByArea = new Map<string, CafeTable[]>()
   for (const t of tables) {
@@ -93,6 +185,12 @@ export default function CafeMenuPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f0e8]">
+      <Head>
+        <link rel="apple-touch-icon" href={cafeZomadLogo.src} />
+        <link rel="apple-touch-icon" sizes="180x180" href={cafeZomadLogo.src} />
+        <link rel="icon" type="image/png" href={cafeZomadLogo.src} />
+        <meta name="apple-mobile-web-app-title" content="Cafe Zomad" />
+      </Head>
       {/* Header */}
       <header className="sticky top-0 z-20 bg-orange-500 px-5 pt-4 pb-3">
         <div className="flex items-center justify-between">
@@ -156,7 +254,32 @@ export default function CafeMenuPage() {
       </div>
 
       {/* Menu items */}
-      <div className="px-4 py-3 pb-24 space-y-3">
+      <div className="px-4 py-3 pb-24 space-y-5">
+        {showTodaySection && (
+          <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-orange-500" />
+              <h2 className="text-xs font-extrabold text-black/70 uppercase tracking-widest">
+                Today&apos;s Menu
+              </h2>
+            </div>
+            <div className="space-y-2.5">
+              {todaySlots.map((slot) => slot.text.trim().length === 0 ? null : (
+                <div key={slot.type} className="flex items-start gap-3">
+                  <div className="flex flex-col items-start shrink-0 w-20">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${slot.accent}`} />
+                      <span className="text-[11px] font-extrabold text-black uppercase tracking-wider">{slot.label}</span>
+                    </div>
+                    <span className="text-[9px] text-black/35 font-mono mt-0.5">{slot.time}</span>
+                  </div>
+                  <p className="flex-1 text-sm text-black/80 leading-snug font-medium">{slot.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {grouped.size === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <svg className="w-12 h-12 text-black/15" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -176,34 +299,7 @@ export default function CafeMenuPage() {
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">
-                {items.map((item) => (
-                  <div key={item.id} className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm overflow-hidden">
-                    {/* Image */}
-                    <div className="aspect-square bg-stone-100 relative">
-                      {item.image_url ? (
-                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-black/15 text-3xl font-bold">{item.name.charAt(0)}</div>
-                      )}
-                      <span className={`absolute top-2 left-2 w-3 h-3 rounded-full ring-2 ring-white ${item.diet === 'veg' ? 'bg-green-500' : item.diet === 'egg' ? 'bg-yellow-500' : 'bg-red-500'}`} />
-                    </div>
-                    {/* Info */}
-                    <div className="p-3">
-                      <p className="font-bold text-sm text-black tracking-tight truncate">{item.name}</p>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="text-sm font-bold text-black">{formatPaise(item.price)}</span>
-                        {item.calories != null && <span className="text-[10px] text-black/40 font-mono">{item.calories} kcal</span>}
-                      </div>
-                      {(item.protein != null || item.carbs != null || item.fats != null) && (
-                        <div className="flex gap-2 mt-1.5">
-                          {item.protein != null && <span className="text-[9px] text-orange-600/70 font-semibold font-mono bg-orange-50 px-1.5 py-0.5 rounded">{item.protein}g P</span>}
-                          {item.carbs != null && <span className="text-[9px] text-blue-600/70 font-semibold font-mono bg-blue-50 px-1.5 py-0.5 rounded">{item.carbs}g C</span>}
-                          {item.fats != null && <span className="text-[9px] text-amber-600/70 font-semibold font-mono bg-amber-50 px-1.5 py-0.5 rounded">{item.fats}g F</span>}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                {items.map(renderMenuItemCard)}
               </div>
             </div>
           ))

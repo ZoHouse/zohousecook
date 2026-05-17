@@ -172,6 +172,19 @@ const CafeMealPlanPage: NextPage = () => {
 
       return (
         <div style={{ padding: 8 }}>
+          {plan?.notes && (
+            <div
+              style={{
+                fontSize: 12,
+                lineHeight: 1.4,
+                color: 'rgba(255,255,255,0.75)',
+                marginBottom: 8,
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {plan.notes}
+            </div>
+          )}
           {plan && plan.items.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
               {plan.items.map(item => (
