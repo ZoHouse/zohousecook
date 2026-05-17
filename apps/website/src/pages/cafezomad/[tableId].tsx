@@ -277,19 +277,34 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     }
   }, [fetchOrders])
 
-  // ── Today's meal plan text (drives the Breakfast/Lunch/Dinner descriptions)
+  // ── Today's meal plan description — derived from the items actually
+  // attached to each B/L/D slot (cafe_meal_plan_items → cafe_menu_items.name).
+  // The notes column is no longer the source; items are.
   useEffect(() => {
     const fetchTodayPlan = () => {
       const d = new Date()
       const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       supabase
         .from('cafe_meal_plans')
-        .select('meal_type, notes')
+        .select('meal_type, items:cafe_meal_plan_items(menu_item:cafe_menu_items(name))')
         .eq('date', today)
         .then(({ data }) => {
           const next = { breakfast: '', lunch: '', dinner: '' }
-          for (const plan of (data || []) as { meal_type: 'breakfast' | 'lunch' | 'dinner'; notes: string | null }[]) {
-            if (plan.meal_type in next) next[plan.meal_type] = plan.notes || ''
+          // See menu.tsx — Supabase types many-to-one joins as arrays even
+          // though runtime returns a single object. Handle both shapes.
+          type JoinedMenuItem = { name: string } | { name: string }[] | null
+          type Row = { meal_type: 'breakfast' | 'lunch' | 'dinner'; items: { menu_item: JoinedMenuItem }[] }
+          for (const plan of (data || []) as unknown as Row[]) {
+            if (plan.meal_type in next) {
+              const names = (plan.items || [])
+                .map((i) => {
+                  const mi = i.menu_item
+                  if (!mi) return undefined
+                  return Array.isArray(mi) ? mi[0]?.name : mi.name
+                })
+                .filter((n): n is string => Boolean(n))
+              next[plan.meal_type] = names.join(', ')
+            }
           }
           setTodayPlanText(next)
         })
@@ -298,6 +313,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     const ch = supabase
       .channel('cafezomad-table-meal-plan')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_meal_plans' }, () => fetchTodayPlan())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_meal_plan_items' }, () => fetchTodayPlan())
       .subscribe()
     return () => { supabase.removeChannel(ch) }
   }, [])

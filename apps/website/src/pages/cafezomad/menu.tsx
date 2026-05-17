@@ -66,20 +66,33 @@ export default function CafeMenuPage() {
 
   useEffect(() => { fetchMenu() }, [selectedPropertyId])
 
-  // Today's meal plan text — read from cafe_meal_plans.notes for each B/L/D
-  // slot. The plan is global (not per-property) per the standardised-menu
-  // convention.
+  // Today's meal plan description — derived from the items actually attached
+  // to each B/L/D slot via cafe_meal_plan_items → cafe_menu_items.name. We no
+  // longer rely on cafe_meal_plans.notes; the items themselves are the source
+  // of truth so the customer view stays in sync with whatever PMS has linked.
   const fetchTodayPlan = () => {
     const today = todayISO()
     supabase
       .from('cafe_meal_plans')
-      .select('meal_type, notes')
+      .select('meal_type, items:cafe_meal_plan_items(menu_item:cafe_menu_items(name))')
       .eq('date', today)
       .then(({ data }) => {
         const next: Record<MealType, string> = { breakfast: '', lunch: '', dinner: '' }
-        for (const plan of (data || []) as { meal_type: MealType; notes: string | null }[]) {
+        // Supabase types nested joins as arrays even for many-to-one FKs.
+        // At runtime menu_item resolves to a single row, but TS can't see
+        // that, so we tolerate both shapes here.
+        type JoinedMenuItem = { name: string } | { name: string }[] | null
+        type Row = { meal_type: MealType; items: { menu_item: JoinedMenuItem }[] }
+        for (const plan of (data || []) as unknown as Row[]) {
           if (plan.meal_type in next) {
-            next[plan.meal_type] = plan.notes || ''
+            const names = (plan.items || [])
+              .map((i) => {
+                const mi = i.menu_item
+                if (!mi) return undefined
+                return Array.isArray(mi) ? mi[0]?.name : mi.name
+              })
+              .filter((n): n is string => Boolean(n))
+            next[plan.meal_type] = names.join(', ')
           }
         }
         setTodayPlanText(next)
@@ -88,12 +101,13 @@ export default function CafeMenuPage() {
 
   useEffect(() => { fetchTodayPlan() }, [])
 
-  // Live update: any change in PMS to today's plan pushes a refetch so the
-  // customer page reflects it without a page reload.
+  // Live update: refetch whenever PMS changes a plan OR its item list, so the
+  // customer page reflects edits without a reload.
   useEffect(() => {
     const ch = supabase
       .channel('cafezomad-meal-plan')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_meal_plans' }, () => fetchTodayPlan())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_meal_plan_items' }, () => fetchTodayPlan())
       .subscribe()
     return () => { supabase.removeChannel(ch) }
   }, [])
