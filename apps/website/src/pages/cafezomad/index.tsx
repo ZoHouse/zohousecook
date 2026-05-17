@@ -2,6 +2,9 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '@zo/auth'
 import cafeZomadLogo from '../../assets/cafezomad/logo.png'
+import appleTouchIcon from '../../components/cafezomad/assets/favicons/apple-touch-icon.png'
+import cafezomadIcon192 from '../../components/cafezomad/assets/favicons/cafezomad-icon-192.png'
+import cafezomadIcon512 from '../../components/cafezomad/assets/favicons/cafezomad-icon-512.png'
 
 export default function CafeZomadIndex() {
   const router = useRouter()
@@ -12,14 +15,14 @@ export default function CafeZomadIndex() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#f5f0e8] px-6">
       <Head>
-        {/* iOS apple-touch-icon must be a square PNG, served at a stable
-            path. The webpack-imported logo.png is non-square (3948x3586) and
-            iOS rejects it, falling back to a title-letter icon. These point
-            at pre-rendered square versions in public/. */}
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/cafezomad-icon-192.png" />
-        <link rel="icon" type="image/png" sizes="512x512" href="/cafezomad-icon-512.png" />
+        {/* iOS apple-touch-icon must be square. cafezomad/logo.png is 3948x3586 (non-square),
+            so iOS rejects it and falls back to a title-letter icon. Square PNGs are imported
+            through webpack so they're fingerprinted into the build output (apps/<app>/public/
+            assets 404 in production on this nx-next setup). */}
+        <link rel="apple-touch-icon" href={appleTouchIcon.src} />
+        <link rel="apple-touch-icon" sizes="180x180" href={appleTouchIcon.src} />
+        <link rel="icon" type="image/png" sizes="192x192" href={cafezomadIcon192.src} />
+        <link rel="icon" type="image/png" sizes="512x512" href={cafezomadIcon512.src} />
         <meta name="apple-mobile-web-app-title" content="Cafe Zomad" />
       </Head>
       {/* Logo */}
