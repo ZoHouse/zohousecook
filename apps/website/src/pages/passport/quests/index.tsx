@@ -10,7 +10,7 @@ import { usePassportProfile } from '../../../hooks/usePassportProfile';
 import { useSeason } from '../../../hooks/useSeason';
 import useInstagramConnect from '../../../hooks/useInstagramConnect';
 import { useQuests } from '../../../hooks/useQuests';
-import { isGeomediaQuest, type Quest, type QuestCategory } from '../../../data/mock-quests';
+import { isGeomediaQuest, questDisplayTitle, type Quest, type QuestCategory } from '../../../data/mock-quests';
 
 import { TopBar } from '../../../components/passport-lobby/TopBar';
 import { MapModal } from '../../../components/passport-lobby/MapModal';
@@ -180,10 +180,12 @@ export default function QuestsPage() {
 
   // Available Near You = Live/Active, no current viewer participation, with
   // distance-decoration when location is known. Top 6 — anything more belongs
-  // behind a "see all" link to a category catalog (future).
+  // behind a "see all" link to a category catalog (future). Staging seed
+  // returns status="Active"; once Daya promotes to Live we keep both so
+  // the list doesn't go empty mid-rollout.
   const available: DockQuest[] = useMemo(() => {
     const filtered = allQuests.filter((q) => {
-      if (q.status !== 'Live') return false;
+      if (q.status !== 'Live' && q.status !== 'Active') return false;
       const p = q.participations?.[0];
       if (p && (p.status === 'Assigned' || p.status === 'Submitted' || p.status === 'Claimed')) return false;
       if (categoryFilter && q.category !== categoryFilter) return false;
@@ -824,7 +826,7 @@ function UpcomingRow({ quest }: { quest: Quest }) {
           whiteSpace: 'nowrap',
         }}
       >
-        {quest.title}
+        {questDisplayTitle(quest)}
       </div>
     </div>
   );
