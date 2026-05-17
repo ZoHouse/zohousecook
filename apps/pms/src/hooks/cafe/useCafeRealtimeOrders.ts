@@ -12,6 +12,7 @@ interface UseCafeRealtimeOrdersResult {
   orders: CafeOrderWithItems[]
   isLoading: boolean
   advanceStatus: (orderId: string, currentStatus: KitchenStatus) => Promise<void>
+  acceptWithOverride: (orderId: string) => Promise<void>
   cancelOrder: (orderId: string) => Promise<void>
 }
 
@@ -234,6 +235,57 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
     []
   )
 
+  /**
+   * Same as advanceStatus(orderId, 'new') but also flips
+   * accepted_with_override=true on the row so ops can spot chronic-understock
+   * dishes in reporting. Used when the kitchen card indicator is red (at least
+   * one ingredient short) and the chef chooses to accept anyway. Inventory
+   * deduction still runs and clamps to 0 — that's the point of override.
+   */
+  const acceptWithOverride = useCallback(async (orderId: string) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? { ...o, kitchen_status: 'accepted', accepted_with_override: true }
+          : o,
+      ),
+    )
+
+    const { error } = await supabase
+      .from('cafe_orders')
+      .update({ kitchen_status: 'accepted', accepted_with_override: true })
+      .eq('id', orderId)
+
+    if (error) {
+      console.error('acceptWithOverride error:', error)
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? { ...o, kitchen_status: 'new', accepted_with_override: false }
+            : o,
+        ),
+      )
+      return
+    }
+
+    // Same downstream side-effects as a normal Accept.
+    const { data: orderRow } = await supabase
+      .from('cafe_orders')
+      .select('property_id')
+      .eq('id', orderId)
+      .single()
+
+    if (orderRow?.property_id) {
+      deductInventoryForOrder(orderId, orderRow.property_id).catch((err) =>
+        console.error('Inventory deduction failed:', err),
+      )
+    }
+
+    debitFoodCredits(orderId).catch((err) =>
+      console.error('Food credit debit failed:', err),
+    )
+  }, [])
+
   const cancelOrder = useCallback(async (orderId: string) => {
     const order = orders.find((o) => o.id === orderId)
     // Inventory deduction happens on kitchen ACCEPT (deductInventoryForOrder
@@ -295,5 +347,5 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
     }
   }, [orders])
 
-  return { orders, isLoading, advanceStatus, cancelOrder }
+  return { orders, isLoading, advanceStatus, acceptWithOverride, cancelOrder }
 }
