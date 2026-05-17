@@ -7,6 +7,7 @@ import {
   isBookingQuest,
   isGeomediaQuest,
   isInstagramQuest,
+  questDisplayTitle,
   type Quest,
 } from '../../data/mock-quests';
 import { distanceMeters, formatDistance, useLiveLocation } from '../LiveLocationProvider';
@@ -18,9 +19,11 @@ import {
   SAMPLE_LOOT,
 } from './TodaysLootCard';
 
-// Active = Live template + the viewer's participation is still open.
+// Active = Live/Active template + the viewer's participation is still open.
+// Staging seed returns status="Active" today; once Daya promotes to Live we
+// keep accepting both so the lobby doesn't go dark mid-rollout.
 function isActiveForViewer(q: Quest): boolean {
-  if (q.status !== 'Live') return false;
+  if (q.status !== 'Live' && q.status !== 'Active') return false;
   const p = q.participations?.[0];
   if (!p) return false;
   return p.status === 'Assigned' || p.status === 'Submitted';
@@ -184,7 +187,7 @@ export function QuestActionButton({ quest }: { quest: Quest }) {
       <CameraCaptureModal
         open={cameraOpen}
         allowed={allowed}
-        title={quest.title}
+        title={questDisplayTitle(quest)}
         onClose={() => setCameraOpen(false)}
         onCapture={(file) => {
           toast.success(
@@ -283,7 +286,7 @@ function QuestCard({ quest, onOpen }: { quest: DockQuest; onOpen: (q: DockQuest)
             overflow: 'hidden',
           }}
         >
-          {quest.title}
+          {questDisplayTitle(quest)}
         </div>
         <div className="flex items-center justify-between gap-2 mt-auto">
           <span style={{ fontSize: 11, fontWeight: 600, color: '#6B5B8E' }}>
@@ -328,7 +331,7 @@ export function QuestPanel({
 
   return (
     <div
-      aria-label={`Quest · ${quest.title}`}
+      aria-label={`Quest · ${questDisplayTitle(quest)}`}
       className={`${rubikClassName} w-full max-w-[1200px] mx-auto`}
     >
       <div className="flex justify-center px-3 md:px-6 pb-2">
@@ -400,7 +403,7 @@ export function QuestPanel({
                 overflow: 'hidden',
               }}
             >
-              {quest.title}
+              {questDisplayTitle(quest)}
             </div>
 
             {bodyLine && (
@@ -569,7 +572,7 @@ export function QuestListCard({
       {/* Body */}
       <div className="relative px-5 py-5 flex flex-col gap-2">
         <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', lineHeight: 1.25, margin: 0 }}>
-          {quest.title}
+          {questDisplayTitle(quest)}
         </h3>
         {quest.description && (
           <p
@@ -743,7 +746,7 @@ export function QuestFullView({
               marginBottom: 12,
             }}
           >
-            {quest.title}
+            {questDisplayTitle(quest)}
           </h2>
 
           {quest.description && (
