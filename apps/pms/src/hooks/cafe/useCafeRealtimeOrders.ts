@@ -3,7 +3,7 @@ import { supabase } from '../../configs/supabase'
 import { getNextStatus } from '../../lib/cafe/kitchen-status'
 import { deductInventoryForOrder, restoreInventoryForOrder } from '../../lib/cafe/inventory-deduct'
 import { debitFoodCredits, restoreFoodCredits } from '../../lib/cafe/food-credit-debit'
-import { playKitchenAlert } from '../../lib/cafe/kitchen-alert'
+import { startKitchenAlertLoop, stopKitchenAlertLoop } from '../../lib/cafe/kitchen-alert'
 import type { CafeOrder, CafeOrderWithItems, KitchenStatus } from '../../types/cafe'
 
 const ACTIVE_STATUSES: KitchenStatus[] = ['new', 'accepted', 'preparing', 'ready']
@@ -115,13 +115,13 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
           const changed = payload.new as CafeOrder
 
           if (payload.eventType === 'INSERT') {
-            // New order — fetch full data and add to state. Beep when it's
-            // an active (visible) order — drafts are suppressed so chefs
-            // aren't woken up by unpaid carts.
+            // New order — fetch full data and add to state. The [orders]
+            // effect below will spin up the alert loop once a 'new' order
+            // lands; drafts are suppressed so chefs aren't woken up by
+            // unpaid carts.
             const fullOrder = await fetchOrderWithItems(changed.id)
             if (fullOrder && ACTIVE_STATUSES.includes(fullOrder.kitchen_status as KitchenStatus)) {
               setOrders((prev) => [fullOrder, ...prev])
-              playKitchenAlert()
             }
           } else if (payload.eventType === 'UPDATE') {
             const status = changed.kitchen_status as KitchenStatus
@@ -140,8 +140,9 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
                     return idx === -1 ? prev : prev.filter((o) => o.id !== changed.id)
                   }
                   if (idx === -1) {
-                    // Fresh-to-board (draft just became visible).
-                    playKitchenAlert()
+                    // Fresh-to-board (draft just became visible). The
+                    // [orders] effect below will start the alert loop when
+                    // a 'new' order is present.
                     return [fullOrder, ...prev]
                   }
                   const next = prev.slice()
@@ -164,6 +165,23 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
       }
     }
   }, [propertyId])
+
+  // Keep the alert ringing while any order is still in 'new' (i.e. unaccepted).
+  // The moment all 'new' orders have been accepted (or removed), stop the loop.
+  useEffect(() => {
+    const hasUnaccepted = orders.some((o) => o.kitchen_status === 'new')
+    if (hasUnaccepted) {
+      startKitchenAlertLoop()
+    } else {
+      stopKitchenAlertLoop()
+    }
+  }, [orders])
+
+  // Safety: stop the loop on unmount so a stale interval doesn't keep ringing
+  // after the chef leaves the kitchen board.
+  useEffect(() => {
+    return () => { stopKitchenAlertLoop() }
+  }, [])
 
   const advanceStatus = useCallback(
     async (orderId: string, currentStatus: KitchenStatus) => {

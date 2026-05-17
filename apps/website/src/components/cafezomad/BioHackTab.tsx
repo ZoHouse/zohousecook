@@ -96,7 +96,7 @@ export function BioHackTab({
   useEffect(() => {
     if (!user?.mobile_number) return
     const phone = (user.mobile_number || '').replace(/^\+?91/, '').replace(/\D/g, '')
-    supabase.from('cafe_nutrition_goals').select('*').eq('customer_phone', phone).single().then(({ data }) => {
+    supabase.from('cafe_nutrition_goals').select('*').eq('customer_phone', phone).maybeSingle().then(({ data }) => {
       if (data) {
         const g = {
           calories: data.calories,

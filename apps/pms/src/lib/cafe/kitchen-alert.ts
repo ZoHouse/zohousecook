@@ -1,18 +1,28 @@
 /**
  * Kitchen alert — plays an audio cue when a new order lands on the kitchen
- * board. Helps chefs notice incoming work without staring at the screen.
+ * board. Helps chefs notice incoming work without staring at the screen,
+ * including when the kitchen tab is in the background.
  *
- * Browser autoplay policy: an HTMLAudioElement cannot play until a real
- * user gesture has occurred. `unlockKitchenAudio` primes a shared element
- * inside the first pointerdown/keydown on the kitchen page; once unlocked,
- * subsequent plays succeed.
+ * Why Web Audio over HTMLAudioElement: a transient `new Audio()` element
+ * created in a background tab can be paused / GC'd by the browser before
+ * .play() resolves, and Chrome's media throttling can mute element-based
+ * playback once the tab loses focus. An AudioContext, once unlocked by a
+ * user gesture, keeps producing sound across background tabs — provided we
+ * resume() it before each play, because the browser may slide it into the
+ * 'suspended' state during idle periods.
  *
- * `setKitchenAudioUrl` is intentionally split from unlock so the asset URL
- * survives HMR / route changes — module-level state resets on hot reload,
- * so we re-set the URL from the kitchen page's useEffect on every mount.
+ * Flow:
+ *   setKitchenAudioUrl(url)   ← called on mount (survives HMR)
+ *   unlockKitchenAudio()      ← inside first pointerdown/keydown:
+ *                                 creates AudioContext, kicks off decode,
+ *                                 primes an HTMLAudio fallback element
+ *   playKitchenAlert()        ← on each new order: resume() the context,
+ *                                 play decoded buffer PLAY_COUNT times.
+ *                                 Falls back to HTMLAudio if Web Audio is
+ *                                 unavailable (e.g. codec decode failed).
  *
- * On each new order we play the cue PLAY_COUNT times back-to-back at max
- * volume so it cuts through cafe noise.
+ * The HTMLAudio fallback uses a module-level pool so element references
+ * survive across plays (transient elements get cleaned up in hidden tabs).
  */
 
 const PLAY_COUNT = 2
@@ -20,39 +30,162 @@ const VOLUME = 1.0
 const DEBOUNCE_MS = 800
 
 let audioUrl: string | null = null
-let primer: HTMLAudioElement | null = null
 let unlocked = false
 let lastBeepAt = 0
 
+let audioCtx: AudioContext | null = null
+let decodedBuffer: AudioBuffer | null = null
+let bufferLoading = false
+let visibilityWired = false
+
+let fallbackPool: HTMLAudioElement[] = []
+const FALLBACK_POOL_SIZE = 2
+
 export function setKitchenAudioUrl(url: string): void {
+  if (audioUrl === url) return
   audioUrl = url
+  decodedBuffer = null
+  fallbackPool = []
+}
+
+async function ensureBuffer(): Promise<void> {
+  if (!audioUrl || !audioCtx) return
+  if (decodedBuffer || bufferLoading) return
+  bufferLoading = true
+  try {
+    const res = await fetch(audioUrl)
+    const arr = await res.arrayBuffer()
+    decodedBuffer = await audioCtx.decodeAudioData(arr)
+  } catch {
+    // Decode failed (e.g. webm on Safari). Leave decodedBuffer null so
+    // playKitchenAlert routes through the HTMLAudio fallback instead.
+    decodedBuffer = null
+  } finally {
+    bufferLoading = false
+  }
+}
+
+function wireVisibilityResume(): void {
+  if (visibilityWired) return
+  if (typeof document === 'undefined') return
+  visibilityWired = true
+  // Chrome can auto-suspend an AudioContext when its tab goes idle. Resuming
+  // on visibilitychange isn't enough on its own — playKitchenAlert also
+  // resumes — but doing it here keeps the context warm if the tab swings
+  // back into focus between alerts.
+  document.addEventListener('visibilitychange', () => {
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => { /* best effort */ })
+    }
+  })
 }
 
 /**
- * Primes a shared Audio element on the user gesture. Must be called from
- * inside a real pointerdown/keydown/click handler — browsers only honor
- * the first .play() that runs inside that gesture window.
+ * Primes the audio pipeline on a user gesture. Must be called from inside a
+ * real pointerdown/keydown/click handler — browsers only honor the first
+ * AudioContext creation / .play() that runs inside that gesture window.
  */
 export function unlockKitchenAudio(): void {
   if (typeof window === 'undefined') return
   if (!audioUrl) return
-  if (!primer || primer.src.indexOf(audioUrl) === -1) {
-    primer = new Audio(audioUrl)
-    primer.preload = 'auto'
+
+  if (!audioCtx) {
+    const Ctor: typeof AudioContext | undefined =
+      (window as any).AudioContext || (window as any).webkitAudioContext
+    if (Ctor) {
+      try { audioCtx = new Ctor() } catch { audioCtx = null }
+    }
   }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => { /* will retry on next gesture */ })
+  }
+  void ensureBuffer()
+  wireVisibilityResume()
+
+  // HTMLAudio fallback: keep a pool of long-lived elements so they don't get
+  // GC'd between plays in a hidden tab, and prime one silently so the
+  // element-level autoplay gate is open too.
+  if (fallbackPool.length === 0) {
+    for (let i = 0; i < FALLBACK_POOL_SIZE; i++) {
+      const el = new Audio(audioUrl)
+      el.preload = 'auto'
+      fallbackPool.push(el)
+    }
+  }
+  const primer = fallbackPool[0]
   primer.volume = 0
   primer
     .play()
     .then(() => {
-      primer?.pause()
-      if (primer) primer.currentTime = 0
+      primer.pause()
+      primer.currentTime = 0
+      primer.volume = VOLUME
       unlocked = true
     })
     .catch(() => { /* gesture window missed — next interaction will retry */ })
+
+  if (audioCtx && audioCtx.state === 'running') unlocked = true
 }
 
 export function isKitchenAudioUnlocked(): boolean {
   return unlocked
+}
+
+function playViaWebAudio(): boolean {
+  if (!audioCtx) return false
+  if (!decodedBuffer) {
+    void ensureBuffer()
+    return false
+  }
+  let count = 0
+  const playOnce = () => {
+    if (count >= PLAY_COUNT) return
+    if (!audioCtx || !decodedBuffer) return
+    count++
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => { /* best effort */ })
+    }
+    const src = audioCtx.createBufferSource()
+    src.buffer = decodedBuffer
+    const gain = audioCtx.createGain()
+    gain.gain.value = VOLUME
+    src.connect(gain)
+    gain.connect(audioCtx.destination)
+    src.onended = playOnce
+    try { src.start(0) } catch { /* context closed — give up this cycle */ }
+  }
+  playOnce()
+  return true
+}
+
+function playViaHtmlAudio(): void {
+  if (!audioUrl) return
+  if (fallbackPool.length === 0) {
+    for (let i = 0; i < FALLBACK_POOL_SIZE; i++) {
+      const el = new Audio(audioUrl)
+      el.preload = 'auto'
+      fallbackPool.push(el)
+    }
+  }
+  let idx = 0
+  let count = 0
+  const playOnce = () => {
+    if (count >= PLAY_COUNT) return
+    count++
+    const el = fallbackPool[idx % fallbackPool.length]
+    idx++
+    el.currentTime = 0
+    el.volume = VOLUME
+    const onEnded = () => {
+      el.removeEventListener('ended', onEnded)
+      playOnce()
+    }
+    el.addEventListener('ended', onEnded)
+    el.play().catch(() => {
+      el.removeEventListener('ended', onEnded)
+    })
+  }
+  playOnce()
 }
 
 export function playKitchenAlert(): void {
@@ -64,17 +197,96 @@ export function playKitchenAlert(): void {
   if (now - lastBeepAt < DEBOUNCE_MS) return
   lastBeepAt = now
 
-  let count = 0
-  const playOnce = () => {
-    if (count >= PLAY_COUNT) return
-    count++
-    const a = new Audio(audioUrl as string)
-    a.volume = VOLUME
-    a.addEventListener('ended', playOnce, { once: true })
-    a.play().catch(() => {
-      // Silent fail — playback may be blocked until next gesture; missing a
-      // beep is better than a JS error in the kitchen.
+  // Resume first — a suspended AudioContext silently drops any source you
+  // try to start on it. This is what makes background-tab playback work.
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => { /* best effort */ })
+  }
+  if (playViaWebAudio()) return
+  playViaHtmlAudio()
+}
+
+// Loop API — rings continuously (the audio file loops end-to-end) until
+// explicitly stopped. Used by the kitchen board to keep nagging chefs while
+// any order is still sitting in 'new' state. We use a real audio-loop here
+// rather than setInterval(playOnce) because the chefs asked for a non-stop
+// ring (phone-style) instead of a beep-then-silence cadence.
+let loopRequested = false
+let loopingSource: AudioBufferSourceNode | null = null
+let loopingHtmlEl: HTMLAudioElement | null = null
+
+function startLoopNow(): void {
+  if (!audioUrl) return
+  if (loopingSource || loopingHtmlEl) return
+
+  // Prefer Web Audio — survives background tabs (see header comment).
+  if (audioCtx) {
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => { /* best effort */ })
+    }
+    if (decodedBuffer) {
+      try {
+        const src = audioCtx.createBufferSource()
+        src.buffer = decodedBuffer
+        src.loop = true
+        const gain = audioCtx.createGain()
+        gain.gain.value = VOLUME
+        src.connect(gain)
+        gain.connect(audioCtx.destination)
+        src.start(0)
+        loopingSource = src
+        return
+      } catch {
+        // fall through to HTMLAudio
+      }
+    }
+  }
+
+  // HTMLAudio fallback — also supports native loop.
+  if (fallbackPool.length === 0) {
+    for (let i = 0; i < FALLBACK_POOL_SIZE; i++) {
+      const el = new Audio(audioUrl)
+      el.preload = 'auto'
+      fallbackPool.push(el)
+    }
+  }
+  const el = fallbackPool[0]
+  el.loop = true
+  el.currentTime = 0
+  el.volume = VOLUME
+  el.play().catch(() => { /* gesture window missed — retries on next start */ })
+  loopingHtmlEl = el
+}
+
+export function startKitchenAlertLoop(): void {
+  if (typeof window === 'undefined') return
+  if (!audioUrl) return
+  loopRequested = true
+  startLoopNow()
+  // If the buffer wasn't decoded yet, kick off decode and start the loop
+  // once it's ready — provided the caller still wants it running.
+  if (audioCtx && !decodedBuffer && !loopingHtmlEl) {
+    void ensureBuffer().then(() => {
+      if (loopRequested) startLoopNow()
     })
   }
-  playOnce()
+}
+
+export function stopKitchenAlertLoop(): void {
+  loopRequested = false
+  if (loopingSource) {
+    try { loopingSource.stop() } catch { /* already stopped */ }
+    try { loopingSource.disconnect() } catch { /* already disconnected */ }
+    loopingSource = null
+  }
+  if (loopingHtmlEl) {
+    loopingHtmlEl.loop = false
+    loopingHtmlEl.pause()
+    loopingHtmlEl.currentTime = 0
+    loopingHtmlEl = null
+  }
+}
+
+export function isKitchenAlertLooping(): boolean {
+  return loopRequested
 }

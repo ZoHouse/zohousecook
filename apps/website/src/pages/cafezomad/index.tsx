@@ -1,6 +1,10 @@
+import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '@zo/auth'
 import cafeZomadLogo from '../../assets/cafezomad/logo.png'
+import appleTouchIcon from '../../components/cafezomad/assets/favicons/apple-touch-icon.png'
+import cafezomadIcon192 from '../../components/cafezomad/assets/favicons/cafezomad-icon-192.png'
+import cafezomadIcon512 from '../../components/cafezomad/assets/favicons/cafezomad-icon-512.png'
 
 export default function CafeZomadIndex() {
   const router = useRouter()
@@ -10,6 +14,17 @@ export default function CafeZomadIndex() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#f5f0e8] px-6">
+      <Head>
+        {/* iOS apple-touch-icon must be square. cafezomad/logo.png is 3948x3586 (non-square),
+            so iOS rejects it and falls back to a title-letter icon. Square PNGs are imported
+            through webpack so they're fingerprinted into the build output (apps/<app>/public/
+            assets 404 in production on this nx-next setup). */}
+        <link rel="apple-touch-icon" href={appleTouchIcon.src} />
+        <link rel="apple-touch-icon" sizes="180x180" href={appleTouchIcon.src} />
+        <link rel="icon" type="image/png" sizes="192x192" href={cafezomadIcon192.src} />
+        <link rel="icon" type="image/png" sizes="512x512" href={cafezomadIcon512.src} />
+        <meta name="apple-mobile-web-app-title" content="Cafe Zomad" />
+      </Head>
       {/* Logo */}
       <div className="w-24 h-24 rounded-[2rem] bg-white p-3 mb-8 shadow-xl shadow-black/10">
         <img src={cafeZomadLogo.src} alt="Cafe Zomad" className="w-full h-full object-contain" />
