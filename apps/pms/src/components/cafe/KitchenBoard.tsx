@@ -1,12 +1,19 @@
 import React, { useState } from 'react'
-import { Badge, Button, Card, Space, Tag, Typography } from 'antd'
+import { Badge, Button, Card, Modal, Space, Tag, Typography } from 'antd'
 import { useCafeRealtimeOrders } from '../../hooks/cafe/useCafeRealtimeOrders'
+import { useInventoryStatus } from '../../hooks/cafe/useInventoryStatus'
+import { computeOrderInventoryStatus } from '../../lib/cafe/inventory-check'
 import {
   ADVANCE_ACTION_LABELS,
   STATUS_LABELS,
   STATUS_TAG_COLORS,
 } from '../../lib/cafe/kitchen-status'
-import type { CafeOrderWithItems, KitchenStatus } from '../../types/cafe'
+import type {
+  CafeOrderWithItems,
+  InventoryItemState,
+  KitchenStatus,
+  OrderInventoryStatus,
+} from '../../types/cafe'
 import moment from 'moment'
 
 const { Text, Title } = Typography
@@ -43,8 +50,9 @@ interface KitchenBoardProps {
 }
 
 export function KitchenBoard({ propertyId, onViewDetail }: KitchenBoardProps) {
-  const { orders, isLoading, advanceStatus, cancelOrder } =
+  const { orders, isLoading, advanceStatus, acceptWithOverride, cancelOrder } =
     useCafeRealtimeOrders(propertyId)
+  const invCtx = useInventoryStatus(propertyId)
   const [mobileTab, setMobileTab] = useState('new')
 
   if (isLoading) {
@@ -135,8 +143,10 @@ export function KitchenBoard({ propertyId, onViewDetail }: KitchenBoardProps) {
                 key={order.id}
                 order={order}
                 onAdvance={advanceStatus}
+                onOverride={acceptWithOverride}
                 onCancel={cancelOrder}
                 onViewDetail={onViewDetail}
+                invCtx={invCtx}
               />
             ))
           })()}
@@ -219,8 +229,10 @@ export function KitchenBoard({ propertyId, onViewDetail }: KitchenBoardProps) {
                       key={order.id}
                       order={order}
                       onAdvance={advanceStatus}
+                      onOverride={acceptWithOverride}
                       onCancel={cancelOrder}
                       onViewDetail={onViewDetail}
+                      invCtx={invCtx}
                     />
                   ))
                 )}
@@ -248,11 +260,20 @@ export function KitchenBoard({ propertyId, onViewDetail }: KitchenBoardProps) {
 interface OrderCardProps {
   order: CafeOrderWithItems
   onAdvance: (orderId: string, currentStatus: KitchenStatus) => Promise<void>
+  onOverride: (orderId: string) => Promise<void>
   onCancel: (orderId: string) => Promise<void>
   onViewDetail?: (order: CafeOrderWithItems) => void
+  invCtx: ReturnType<typeof useInventoryStatus>
 }
 
-function OrderCard({ order, onAdvance, onCancel, onViewDetail }: OrderCardProps) {
+function OrderCard({
+  order,
+  onAdvance,
+  onOverride,
+  onCancel,
+  onViewDetail,
+  invCtx,
+}: OrderCardProps) {
   const status = order.kitchen_status as KitchenStatus
   const advanceLabel = ADVANCE_ACTION_LABELS[status]
   const customerLabel = order.customer_name || order.customer_phone || null
@@ -263,6 +284,21 @@ function OrderCard({ order, onAdvance, onCancel, onViewDetail }: OrderCardProps)
     ? `Table ${order.table.label || order.table.code}`
     : order.mode.replace('_', ' ')
   const activeItems = order.order_items.filter((i) => i.item_status === 'active')
+
+  const inventoryStatus: OrderInventoryStatus = React.useMemo(
+    () => computeOrderInventoryStatus(order, invCtx),
+    [order, invCtx],
+  )
+
+  const itemStateByOrderItemId = React.useMemo(() => {
+    const m = new Map<string, InventoryItemState>()
+    for (const s of inventoryStatus.items) m.set(s.orderItemId, s.state)
+    return m
+  }, [inventoryStatus])
+
+  // Override mode applies only when the chef is at the new→accepted step
+  // AND the card state is red (out of stock for at least one ingredient).
+  const showOverride = status === 'new' && inventoryStatus.cardState === 'red'
 
   return (
     <Card
@@ -328,33 +364,100 @@ function OrderCard({ order, onAdvance, onCancel, onViewDetail }: OrderCardProps)
         </Text>
       </div>
 
-      {/* Items list */}
+      {/* Items list with per-item inventory dots */}
       <div style={{ marginBottom: 8 }}>
-        {activeItems.map((item) => (
-          <div
-            key={item.id}
-            style={{
-              fontSize: 13,
-              color: 'rgba(255,255,255,0.75)',
-              lineHeight: '1.6',
-            }}
-          >
-            {item.name} &times; {item.quantity}
-          </div>
-        ))}
+        {activeItems.map((item) => {
+          const state = itemStateByOrderItemId.get(item.id) || 'grey'
+          return (
+            <div
+              key={item.id}
+              style={{
+                fontSize: 13,
+                color: 'rgba(255,255,255,0.75)',
+                lineHeight: '1.6',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+              title={INDICATOR_TOOLTIP[state]}
+            >
+              <InventoryDot state={state} />
+              <span>
+                {item.name} &times; {item.quantity}
+              </span>
+            </div>
+          )
+        })}
       </div>
 
+      {/* Summary line — only render if we have something useful to say */}
+      {inventoryStatus.summary && (
+        <div
+          style={{
+            fontSize: 11,
+            padding: '5px 8px',
+            borderRadius: 5,
+            marginBottom: 8,
+            ...SUMMARY_STYLE[inventoryStatus.cardState],
+          }}
+        >
+          {SUMMARY_PREFIX[inventoryStatus.cardState]} {inventoryStatus.summary}
+        </div>
+      )}
+
       {/* Action buttons */}
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
-        {advanceLabel && (
-          <Button
-            type="primary"
-            size="small"
-            style={{ flex: 1 }}
-            onClick={(e) => { e.stopPropagation(); onAdvance(order.id, status) }}
-          >
-            {advanceLabel}
-          </Button>
+      <div
+        style={{ display: 'flex', gap: 6, alignItems: 'center' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {advanceLabel && showOverride ? (
+          <>
+            <Button
+              size="small"
+              disabled
+              style={{ flex: 1 }}
+              title="Out of stock for at least one ingredient — use Override & Accept"
+            >
+              Accept
+            </Button>
+            <Button
+              size="small"
+              style={{
+                flex: 1,
+                background: 'rgba(250,173,20,0.20)',
+                color: '#f5c451',
+                border: '1px solid rgba(250,173,20,0.6)',
+              }}
+              onClick={(e) => {
+                e.stopPropagation()
+                Modal.confirm({
+                  title: 'Override & Accept this order?',
+                  content: inventoryStatus.summary
+                    ? `${inventoryStatus.summary}. Accepting will deduct what's available and clamp the rest to 0.`
+                    : "Accepting will deduct what's available and clamp the rest to 0.",
+                  okText: 'Yes, Override',
+                  cancelText: 'Cancel',
+                  onOk: () => onOverride(order.id),
+                })
+              }}
+            >
+              Override &amp; Accept
+            </Button>
+          </>
+        ) : (
+          advanceLabel && (
+            <Button
+              type="primary"
+              size="small"
+              style={{ flex: 1 }}
+              onClick={(e) => {
+                e.stopPropagation()
+                onAdvance(order.id, status)
+              }}
+            >
+              {advanceLabel}
+            </Button>
+          )
         )}
         <Button
           danger
@@ -367,5 +470,50 @@ function OrderCard({ order, onAdvance, onCancel, onViewDetail }: OrderCardProps)
         </Button>
       </div>
     </Card>
+  )
+}
+
+// -- Indicator styling primitives (used by OrderCard above) --------------
+
+const DOT_COLOR: Record<InventoryItemState, string> = {
+  green:  '#52c41a',
+  yellow: '#faad14',
+  red:    '#ff4d4f',
+  grey:   '#8c8c8c',
+}
+
+const SUMMARY_STYLE: Record<InventoryItemState, React.CSSProperties> = {
+  green:  { background: 'rgba(82,196,26,0.10)',  color: '#95df72', border: '1px solid rgba(82,196,26,0.25)' },
+  yellow: { background: 'rgba(250,173,20,0.12)', color: '#f5c451', border: '1px solid rgba(250,173,20,0.35)' },
+  red:    { background: 'rgba(255,77,79,0.12)',  color: '#ff8585', border: '1px solid rgba(255,77,79,0.35)' },
+  grey:   { background: 'rgba(140,140,140,0.10)', color: '#bfbfbf', border: '1px solid rgba(140,140,140,0.25)' },
+}
+
+const SUMMARY_PREFIX: Record<InventoryItemState, string> = {
+  green:  '✓',
+  yellow: '⚠',
+  red:    '✕',
+  grey:   '⦿',
+}
+
+const INDICATOR_TOOLTIP: Record<InventoryItemState, string> = {
+  green:  'All ingredients in stock',
+  yellow: 'Stock is running low for this item',
+  red:    'Out of stock for at least one ingredient',
+  grey:   "Can't check stock for this item (no recipe or unit mismatch)",
+}
+
+function InventoryDot({ state }: { state: InventoryItemState }) {
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        width: 8,
+        height: 8,
+        borderRadius: '50%',
+        background: DOT_COLOR[state],
+        flexShrink: 0,
+      }}
+    />
   )
 }
