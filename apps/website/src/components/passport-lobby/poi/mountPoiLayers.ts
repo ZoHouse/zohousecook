@@ -164,11 +164,26 @@ function buildPopupHTML(
   const btnBase =
     'flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 14px;border-radius:99px;font-family:Rubik,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;cursor:pointer;text-align:center;';
 
-  // Start — primary; opens the full quest detail view (same overlay used on
-  // the dashboard). MapModal listens for the delegated click and synthesizes
-  // a DockQuest from the data-attrs below.
-  const startHtml = `<button type="button"
-     data-action="start-quest"
+  // Start — primary; kicks off the walking-route preview → navigation flow.
+  // Renders only when the viewer's location is known (we need an origin to
+  // route from). Tapping it asks MapModal to fetch the route + flip to
+  // preview mode, where a second Start CTA enters live navigation.
+  const startHtml = viewer
+    ? `<button type="button"
+         data-action="start-nav"
+         data-poi-id="${escapeHtml(poiId)}"
+         data-lng="${poiLngLat[0]}"
+         data-lat="${poiLngLat[1]}"
+         style="${btnBase}background:#2A1B3D;border:1px solid #2A1B3D;color:#FBF8F4;font-weight:800;box-shadow:0 6px 18px rgba(42,27,61,0.28);">
+         Start
+       </button>`
+    : '';
+
+  // Details — secondary; opens the full quest detail view (same overlay used
+  // on the dashboard). Always available, even without viewer location, so
+  // citizens can still inspect a POI before they share location.
+  const detailsHtml = `<button type="button"
+     data-action="view-details"
      data-poi-id="${escapeHtml(poiId)}"
      data-lng="${poiLngLat[0]}"
      data-lat="${poiLngLat[1]}"
@@ -177,21 +192,9 @@ function buildPopupHTML(
      data-destination="${escapeHtml(locationLine)}"
      data-cover="${escapeHtml(heroPic)}"
      data-culture="${escapeHtml(cultureLabel)}"
-     style="${btnBase}background:#2A1B3D;border:1px solid #2A1B3D;color:#FBF8F4;font-weight:800;box-shadow:0 6px 18px rgba(42,27,61,0.28);">
-     Start
+     style="${btnBase}background:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.95);color:#2A1B3D;box-shadow:0 4px 14px rgba(120,100,160,0.22);">
+     Details
    </button>`;
-
-  // Directions — secondary; renders only when the viewer's location is known.
-  const directionsHtml = viewer
-    ? `<button type="button"
-         data-action="directions"
-         data-poi-id="${escapeHtml(poiId)}"
-         data-lng="${poiLngLat[0]}"
-         data-lat="${poiLngLat[1]}"
-         style="${btnBase}background:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.95);color:#2A1B3D;box-shadow:0 4px 14px rgba(120,100,160,0.22);">
-         Directions
-       </button>`
-    : '';
 
   // Pearl-canon popup — white-on-pearl, dark text, glass border.
   // Mapbox Popup `maxWidth` caps total width on phone screens.
@@ -207,7 +210,7 @@ function buildPopupHTML(
       </div>
       <div style="display:flex;align-items:stretch;gap:8px;width:100%;">
         ${startHtml}
-        ${directionsHtml}
+        ${detailsHtml}
       </div>
     </div>
   `;
@@ -517,37 +520,38 @@ export function mountPoiLayers(
   map.on('mouseenter', HITAREA_LAYER, setPointer);
   map.on('mouseleave', HITAREA_LAYER, unsetPointer);
 
-  // Delegated click listener for the popup CTAs ("Start" + "Directions").
+  // Delegated click listener for the popup CTAs ("Start" + "Details").
   // Scoped to the map container — popup DOM lives inside it.
   const container = map.getContainer();
   const handlePopupClick = (e: Event) => {
     const target = e.target as HTMLElement | null;
 
-    // Directions → kick off walking-route preview (legacy `walk-here` flow,
-    // renamed to `directions` in the popup HTML to match the new CTA copy).
-    const directionsBtn = target?.closest('[data-action="directions"]') as HTMLElement | null;
-    if (directionsBtn) {
+    // Start → kick off walking-route preview, which flips MapModal into nav
+    // preview mode. The pearl pill that appears then has its own Start CTA
+    // to enter live navigation. Button only renders when viewer is known.
+    const startBtn = target?.closest('[data-action="start-nav"]') as HTMLElement | null;
+    if (startBtn) {
       e.stopPropagation();
-      const lng = parseFloat(directionsBtn.dataset.lng ?? '');
-      const lat = parseFloat(directionsBtn.dataset.lat ?? '');
-      const poiId = directionsBtn.dataset.poiId ?? '';
+      const lng = parseFloat(startBtn.dataset.lng ?? '');
+      const lat = parseFloat(startBtn.dataset.lat ?? '');
+      const poiId = startBtn.dataset.poiId ?? '';
       if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
       const viewer = getViewerLocation();
-      if (!viewer) return; // button only renders when viewer known
+      if (!viewer) return; // defensive — button only renders when viewer known
       // Auto-close popup so it doesn't block the route reveal + camera flight.
       popup.remove();
       onWalkHereRequested?.([viewer.long, viewer.lat], [lng, lat], poiId);
       return;
     }
 
-    // Start → open the full quest detail overlay. Always available (does not
-    // require viewer location). Synthesize a payload from the button's
+    // Details → open the full quest detail overlay. Always available (does
+    // not require viewer location). Synthesize a payload from the button's
     // data-attrs; the parent maps these to a DockQuest for QuestFullView.
-    const startBtn = target?.closest('[data-action="start-quest"]') as HTMLElement | null;
-    if (startBtn) {
+    const detailsBtn = target?.closest('[data-action="view-details"]') as HTMLElement | null;
+    if (detailsBtn) {
       e.stopPropagation();
-      const lng = parseFloat(startBtn.dataset.lng ?? '');
-      const lat = parseFloat(startBtn.dataset.lat ?? '');
+      const lng = parseFloat(detailsBtn.dataset.lng ?? '');
+      const lat = parseFloat(detailsBtn.dataset.lat ?? '');
       if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
       const viewer = getViewerLocation();
       const distanceMeters = viewer
@@ -555,12 +559,12 @@ export function mountPoiLayers(
         : null;
       popup.remove();
       onStartQuestRequested?.({
-        poiId: startBtn.dataset.poiId ?? '',
-        name: startBtn.dataset.name ?? '',
-        description: startBtn.dataset.description ?? '',
-        destination: startBtn.dataset.destination ?? '',
-        cover: startBtn.dataset.cover ?? '',
-        culture: startBtn.dataset.culture ?? '',
+        poiId: detailsBtn.dataset.poiId ?? '',
+        name: detailsBtn.dataset.name ?? '',
+        description: detailsBtn.dataset.description ?? '',
+        destination: detailsBtn.dataset.destination ?? '',
+        cover: detailsBtn.dataset.cover ?? '',
+        culture: detailsBtn.dataset.culture ?? '',
         lng,
         lat,
         distanceMeters,

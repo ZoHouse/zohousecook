@@ -22,8 +22,11 @@ import MODEL_URL from '../../assets/3d/carry_on.glb';
 // travel-brand feel. Original normal/roughness maps are kept so panel
 // detail still shows through the recolor.
 const GOLD_COLOR = new THREE.Color('#E55A1C');
-const GOLD_METALNESS = 0.25;
-const GOLD_ROUGHNESS = 0.5;
+const GOLD_METALNESS = 0.1;
+// Bumped roughness up to spread specular highlights so they don't blow out
+// the matte stickers. The body still reads as a polished travel bag, just
+// less mirror-y.
+const GOLD_ROUGHNESS = 0.78;
 
 export interface BagModel3DProps {
   onClick?: () => void;
@@ -41,9 +44,13 @@ const TARGET_SIZE = 1.55;
 // Number of stickers we'll attempt to place. Stickers map to the first N
 // earned stamps, in order. The auto-place pass casts rays from the default
 // camera direction to a 4×2 grid; we keep N modest so the bag isn't covered.
-const MAX_STICKERS = 8;
+// Stickers are placed on the bag's two large faces — front first, then the
+// back wraps any overflow. Per-side cap keeps each face uncrowded; total
+// is per-side × 2.
+const STICKERS_PER_SIDE = 8;
+const MAX_STICKERS = STICKERS_PER_SIDE * 2;
 
-const STICKER_WORLD_SCALE = 0.26;
+const STICKER_WORLD_SCALE = 0.3;
 
 // Stamps are rasterized at this resolution via createImageBitmap before
 // being uploaded as a GPU texture. The source URLs are mostly SVGs whose
@@ -51,11 +58,19 @@ const STICKER_WORLD_SCALE = 0.26;
 // browser rasterizes the SVG at viewBox size and any later upscale just
 // blurs that. createImageBitmap with resizeWidth/Height tells the rasterizer
 // to render the SVG (or resample the PNG) at the target size directly.
+// Source stamp PNGs on cdn.zo.xyz ship at 1024×1024. Matching texture
+// resolution to source = no interpolation, native crispness. Going bigger
+// (e.g. 1536/2048) just blurs since there's no detail beyond the source
+// pixels to recover.
 const STICKER_TEXTURE_PX = 1024;
 
 // Minimum 3D-space distance between any two sticker centres on the bag's
 // face. Keeps random placement from clustering/overlapping.
-const STICKER_MIN_SPACING = STICKER_WORLD_SCALE * 0.85;
+// Min spacing controls how tightly stickers pack on each face. At 0.85 the
+// placement loop ran out of room around 5 stickers on a 0.30-scale bag.
+// 0.55 lets stickers sit close enough to mimic a real traveler's clustered
+// collection (slight overlap reads as "well-loved" rather than "buggy").
+const STICKER_MIN_SPACING = STICKER_WORLD_SCALE * 0.55;
 
 // Cheap deterministic PRNG so the same stamp name always lands in the same
 // spot on the bag — stickers shouldn't shuffle every render.
@@ -219,7 +234,7 @@ function NormalizedSuitcase({
       mats.forEach((mat) => {
         const m = mat as THREE.MeshStandardMaterial;
         if (!(m && m.isMeshStandardMaterial)) return;
-        m.envMapIntensity = 0.7;
+        m.envMapIntensity = 0.25;
         if (mesh.uuid === bodyUUID) {
           // Tint the body gold while keeping any normal/roughness maps so
           // texture detail reads through the recolor.
@@ -305,15 +320,33 @@ function StickerDecal({
     body.updateWorldMatrix(true, true);
     const pos = new THREE.Vector3(...position);
     const n = new THREE.Vector3(...normal).normalize();
-    const baseQ = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(0, 0, 1),
-      n,
-    );
-    const tiltQ = new THREE.Quaternion().setFromAxisAngle(n, rotation);
-    const orient = new THREE.Euler().setFromQuaternion(
-      tiltQ.clone().multiply(baseQ),
-      'XYZ',
-    );
+
+    // Build the decal's orientation as an explicit basis:
+    //   local +Z = surface normal (projector direction)
+    //   local +Y = world-up projected onto the surface (decal's "up")
+    //   local +X = right-handed cross product
+    // This pins the texture V-axis to world-up regardless of where on the
+    // curved bag the decal lands. Previously we used Quaternion.setFromUnitVectors
+    // which only constrains the normal axis and leaves the roll arbitrary —
+    // so stickers on some patches of the bag rendered upside-down while
+    // others looked correct. With this fix, every sticker reads top-up.
+    const worldUp = new THREE.Vector3(0, 1, 0);
+    let upOnSurface = worldUp.clone().sub(n.clone().multiplyScalar(worldUp.dot(n)));
+    if (upOnSurface.lengthSq() < 1e-6) {
+      // Normal is parallel to world-up (top/bottom of the bag). Fall back to
+      // world-forward as the in-plane reference so the basis stays valid.
+      const fwd = new THREE.Vector3(0, 0, 1);
+      upOnSurface = fwd.clone().sub(n.clone().multiplyScalar(fwd.dot(n)));
+    }
+    upOnSurface.normalize();
+    const right = new THREE.Vector3().crossVectors(upOnSurface, n).normalize();
+    const basis = new THREE.Matrix4().makeBasis(right, upOnSurface, n);
+    // Apply the random ±15° tilt around the surface normal on top of the
+    // anchored basis — keeps the hand-applied feel without breaking the
+    // gravity-aligned up direction.
+    const tiltM = new THREE.Matrix4().makeRotationAxis(n, rotation);
+    basis.premultiply(tiltM);
+    const orient = new THREE.Euler().setFromRotationMatrix(basis, 'XYZ');
     const s = STICKER_WORLD_SCALE;
     let geometry: THREE.BufferGeometry;
     try {
@@ -326,17 +359,43 @@ function StickerDecal({
       return;
     }
 
+    // V-flip the generated UVs. three-stdlib's DecalGeometry computes
+    // `uv = (0.5 + x/size, 0.5 + y/size)` in projector-local space, but the
+    // combination of CanvasTexture flipY + how ImageBitmap pixel rows are
+    // uploaded results in the source image landing visually flipped on the
+    // bag. Inverting V here is more reliable than chasing flipY across the
+    // two texture-loading paths (SVG canvas vs createImageBitmap raster).
+    const uvAttr = geometry.attributes.uv as THREE.BufferAttribute | undefined;
+    if (uvAttr) {
+      const arr = uvAttr.array as Float32Array;
+      for (let i = 1; i < arr.length; i += 2) {
+        arr[i] = 1 - arr[i];
+      }
+      uvAttr.needsUpdate = true;
+    }
+
     const mat = new THREE.MeshStandardMaterial({
       transparent: true,
       opacity: 1,
-      alphaTest: 0.05,
+      // Slightly stricter alpha test — keeps the printed-on edge crisp and
+      // drops faint anti-alias fringes that pick up the bag's tint.
+      alphaTest: 0.12,
       depthTest: true,
       depthWrite: false,
       polygonOffset: true,
       polygonOffsetFactor: -8,
       polygonOffsetUnits: -8,
-      roughness: 0.45,
+      // More matte than before (0.45 → 0.6) so stickers read like printed
+      // paper instead of glossy plastic, and stop catching the same
+      // highlight the bag does.
+      roughness: 0.6,
       metalness: 0,
+      // Soft self-glow at 0.18 so the sticker's own pigment carries through
+      // even on parts of the bag that the directional lights leave in
+      // shadow — printed stickers in real life still read in low light.
+      // Applied as an `emissiveMap` after the texture loads.
+      emissive: new THREE.Color(0xffffff),
+      emissiveIntensity: 0.22,
     });
     const decal = new THREE.Mesh(geometry, mat);
     decal.renderOrder = 10;
@@ -347,6 +406,9 @@ function StickerDecal({
       if (!decalRef.current) return;
       const m = decalRef.current.material as THREE.MeshStandardMaterial;
       m.map = tex;
+      // Reuse the texture as the emissive map so the soft glow follows the
+      // sticker art's alpha — non-sticker areas stay fully transparent.
+      m.emissiveMap = tex;
       m.needsUpdate = true;
     });
 
@@ -424,16 +486,23 @@ function StickerLayer({ body, urls }: { body: THREE.Mesh; urls: string[] }) {
     // Seeded-random placement — each stamp gets a stable position derived
     // from its name, so layouts don't reshuffle every render. Rejection
     // sampling against STICKER_MIN_SPACING keeps stickers from overlapping.
+    // First STICKERS_PER_SIDE stickers go on the front face; any overflow
+    // wraps onto the back face. Spacing is checked per-side so a back-side
+    // sticker isn't rejected for being near a front-side sticker behind it.
     const rc = new THREE.Raycaster();
     const out: PlacedSticker[] = [];
+    const sideIndex: number[] = []; // 0 = front, 1 = back, parallel to out[]
 
     for (let i = 0; i < urls.length; i += 1) {
+      const side = i < STICKERS_PER_SIDE ? 0 : 1;
+      // Ray casts from "above" the side we're targeting, pointing inward.
+      const sideSign = side === 0 ? 1 : -1;
       const seed = hashString(urls[i] + ':' + i);
       const rng = mulberry32(seed);
       let placed: PlacedSticker | null = null;
 
       // Try a handful of random positions; the first one that hits the bag
-      // and is far enough from existing stickers wins.
+      // and is far enough from existing stickers on the same side wins.
       for (let attempt = 0; attempt < 24 && !placed; attempt += 1) {
         const tA = rng();
         const tB = rng();
@@ -441,16 +510,18 @@ function StickerLayer({ body, urls }: { body: THREE.Mesh; urls: string[] }) {
         // Inset 10% from each edge so stickers don't tuck under the rim.
         origin[a0] = planeMin[a0] + (planeMax[a0] - planeMin[a0]) * (0.1 + tA * 0.8);
         origin[a1] = planeMin[a1] + (planeMax[a1] - planeMin[a1]) * (0.1 + tB * 0.8);
-        origin[normalAxis] = center[normalAxis] + rayOriginNormalDistance;
-        const dir = normalDir.clone().multiplyScalar(-1);
+        origin[normalAxis] = center[normalAxis] + sideSign * rayOriginNormalDistance;
+        const dir = normalDir.clone().multiplyScalar(-sideSign);
         rc.set(origin, dir);
         const hits = rc.intersectObject(body, false);
         if (hits.length === 0 || !hits[0].face) continue;
         const point = hits[0].point.clone();
 
-        // Spacing check — bail if too close to an already-placed sticker.
+        // Spacing check — only against stickers on the same side. A sticker
+        // on the back can sit "behind" a front one without colliding.
         const tooClose = out.some(
-          (p) =>
+          (p, idx) =>
+            sideIndex[idx] === side &&
             new THREE.Vector3(...p.position).distanceTo(point) < STICKER_MIN_SPACING,
         );
         if (tooClose) continue;
@@ -468,7 +539,10 @@ function StickerLayer({ body, urls }: { body: THREE.Mesh; urls: string[] }) {
           meshUUID: hits[0].object.uuid,
         };
       }
-      if (placed) out.push(placed);
+      if (placed) {
+        out.push(placed);
+        sideIndex.push(side);
+      }
     }
     return out;
   }, [body, urls]);
@@ -502,10 +576,16 @@ function Scene({ stamps }: { stamps: string[] }) {
 
   return (
     <>
-      <ambientLight intensity={0.45} />
-      <directionalLight position={[3, 4, 5]} intensity={0.9} />
-      <directionalLight position={[-3, 2, -2]} intensity={0.3} />
-      <Environment preset="studio" />
+      {/* Lighting kept gentle so the matte stickers stay legible against
+          the saturated orange shell. Original (ambient 0.45 + dir 0.9 +
+          dir 0.3 + studio env at 0.7 + body roughness 0.5) blew out the
+          decals. Current setup combines this softer rig with a rougher
+          body material (roughness 0.78) so the bag still reads as a
+          polished travel piece but the stamps stay crisp. */}
+      <ambientLight intensity={0.25} />
+      <directionalLight position={[3, 4, 5]} intensity={0.35} />
+      <directionalLight position={[-3, 2, -2]} intensity={0.15} />
+      <Environment preset="apartment" />
       <NormalizedSuitcase onBodyReady={setBody} />
       {body && <StickerLayer body={body} urls={urls} />}
       <OrbitControls

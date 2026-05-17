@@ -8,11 +8,19 @@ import {
   MobileNavToggle,
   MobileNavMenu,
 } from "@/components/ui/resizable-navbar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { IconBriefcase, IconSparkles } from "@tabler/icons-react";
+import {
+  IconBriefcase,
+  IconSparkles,
+  IconUsers,
+  IconExternalLink,
+  IconWorld,
+} from "@tabler/icons-react";
 import { AuthCorner } from "@/components/AuthCorner";
 import { LOGO_URL } from "@/lib/assets";
+
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 const navItems = [
   { name: "Quests", link: "/" },
@@ -21,8 +29,37 @@ const navItems = [
   { name: "Grants", link: "/grants" },
 ];
 
+type Project = {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string | null;
+  members: number;
+  status: string;
+  url: string | null;
+};
+
 export default function ProjectsPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${basePath}/api/projects`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        setProjects(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-zui-dark font-sans text-zui-white">
@@ -61,36 +98,34 @@ export default function ProjectsPage() {
       </Navbar>
 
       <section className="mx-auto max-w-6xl px-4 pb-24 pt-32">
-        <h1 className="mb-14 text-center font-headline text-6xl leading-[1.05] tracking-tight text-zui-white md:text-7xl">
-          Featured Projects
-        </h1>
-
-        <div className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl border border-dashed border-zui-stroke bg-zui-lighter p-12 text-center">
-          <div
-            className="pointer-events-none absolute inset-0 opacity-50"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 50% 0%, rgba(102,223,72,0.12) 0%, transparent 60%)",
-            }}
-          />
-          <div className="relative flex flex-col items-center gap-5">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-zui-stroke bg-zui-light/40">
-              <IconBriefcase size={32} className="text-zui-pink" />
-            </div>
-            <span className="flex items-center gap-1.5 rounded-full border border-zui-green/40 bg-zui-green/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-zui-green">
-              <IconSparkles size={11} />
-              Projects
-            </span>
-            <h2 className="font-headline text-5xl leading-tight tracking-tight text-zui-white md:text-6xl">
-              Coming soon
-            </h2>
-            <p className="max-w-md text-sm leading-relaxed text-zui-white/60">
-              The first batch of community projects is being curated. Soon you&rsquo;ll be
-              able to discover what Zo builders are shipping and jump into the ones that
-              matter to you.
-            </p>
+        <div className="mb-12 text-center">
+          <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-zui-green/40 bg-zui-green/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-zui-green">
+            <IconSparkles size={11} />
+            Featured
           </div>
+          <h1 className="font-headline text-6xl leading-[1.05] tracking-tight text-zui-white md:text-7xl">
+            Projects
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-zui-white/60">
+            What Zo builders are shipping. Click any preview to visit the live project.
+          </p>
         </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <ProjectCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : projects.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {projects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        )}
       </section>
 
       <footer className="border-t border-zui-stroke bg-zui-lighter px-4 py-12">
@@ -115,4 +150,188 @@ export default function ProjectsPage() {
       </footer>
     </div>
   );
+}
+
+function ProjectCard({ project }: { project: Project }) {
+  const hasUrl = Boolean(project.url);
+  const accent = project.color || "#66DF48";
+  const host = project.url ? safeHost(project.url) : null;
+
+  const card = (
+    <div
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border border-zui-stroke bg-zui-lighter transition-all ${
+        hasUrl ? "hover:-translate-y-1 hover:border-zui-white/20" : ""
+      }`}
+    >
+      <div
+        className="h-1 w-full"
+        style={{ backgroundColor: accent }}
+      />
+
+      <PreviewFrame url={project.url} accent={accent} />
+
+      <div className="flex flex-1 flex-col gap-3 p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-lg font-bold leading-tight text-zui-white">
+              {project.name}
+            </h3>
+            {host && (
+              <span className="mt-1 flex items-center gap-1 text-[11px] font-medium text-zui-white/40">
+                <IconWorld size={11} />
+                {host}
+              </span>
+            )}
+          </div>
+          <span className="flex shrink-0 items-center gap-1 rounded-full border border-zui-stroke bg-zui-light/40 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zui-white/70">
+            <IconUsers size={10} />
+            {project.members}
+          </span>
+        </div>
+
+        {project.description && (
+          <p className="text-sm leading-relaxed text-zui-white/60">
+            {project.description}
+          </p>
+        )}
+
+        <div className="mt-auto flex items-center justify-between border-t border-dashed border-zui-stroke pt-3">
+          <span
+            className="rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zui-white"
+            style={{ backgroundColor: `${accent}33`, border: `1px solid ${accent}55` }}
+          >
+            {project.status}
+          </span>
+          {hasUrl && (
+            <span className="flex items-center gap-1 rounded-full border border-zui-green/60 bg-zui-green px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-zui-dark transition-transform group-hover:scale-105">
+              Visit
+              <IconExternalLink size={11} />
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!hasUrl) return card;
+
+  return (
+    <a
+      href={project.url ?? "#"}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block"
+    >
+      {card}
+    </a>
+  );
+}
+
+function PreviewFrame({ url, accent }: { url: string | null; accent: string }) {
+  const [loaded, setLoaded] = useState(false);
+
+  if (!url) {
+    return (
+      <div
+        className="relative flex items-center justify-center border-b border-zui-stroke bg-zui-light/40"
+        style={{ aspectRatio: "16 / 10" }}
+      >
+        <IconBriefcase size={48} className="text-zui-white/20" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="relative overflow-hidden border-b border-zui-stroke bg-zui-light"
+      style={{ aspectRatio: "16 / 10" }}
+    >
+      <div
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        style={{
+          background: `linear-gradient(135deg, ${accent}22, transparent 60%)`,
+        }}
+      >
+        {!loaded && (
+          <div className="flex flex-col items-center gap-2 text-zui-white/30">
+            <IconWorld size={28} className="animate-pulse" />
+            <span className="text-[10px] font-medium uppercase tracking-wider">
+              Loading preview…
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div
+        className="pointer-events-none absolute left-0 top-0 origin-top-left"
+        style={{
+          width: "1280px",
+          height: "800px",
+          transform: "scale(0.3125)",
+        }}
+      >
+        <iframe
+          src={url}
+          title={`Preview of ${url}`}
+          loading="lazy"
+          onLoad={() => setLoaded(true)}
+          sandbox="allow-scripts allow-same-origin"
+          referrerPolicy="no-referrer"
+          className="h-full w-full border-0 bg-white"
+        />
+      </div>
+
+      <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5" />
+    </div>
+  );
+}
+
+function ProjectCardSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-zui-stroke bg-zui-lighter">
+      <div className="h-1 w-full bg-zui-light" />
+      <div
+        className="animate-pulse border-b border-zui-stroke bg-zui-light/60"
+        style={{ aspectRatio: "16 / 10" }}
+      />
+      <div className="space-y-3 p-5">
+        <div className="h-5 w-2/3 animate-pulse rounded bg-zui-light/60" />
+        <div className="h-3 w-full animate-pulse rounded bg-zui-light/60" />
+        <div className="h-3 w-5/6 animate-pulse rounded bg-zui-light/60" />
+      </div>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl border border-dashed border-zui-stroke bg-zui-lighter p-12 text-center">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-50"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 50% 0%, rgba(102,223,72,0.12) 0%, transparent 60%)",
+        }}
+      />
+      <div className="relative flex flex-col items-center gap-5">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-zui-stroke bg-zui-light/40">
+          <IconBriefcase size={32} className="text-zui-pink" />
+        </div>
+        <h2 className="font-headline text-5xl leading-tight tracking-tight text-zui-white md:text-6xl">
+          Nothing here yet
+        </h2>
+        <p className="max-w-md text-sm leading-relaxed text-zui-white/60">
+          The first batch of community projects is being curated. Drop back soon.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function safeHost(url: string): string | null {
+  try {
+    return new URL(url).host;
+  } catch {
+    return null;
+  }
 }
