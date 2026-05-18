@@ -93,21 +93,21 @@ export function InstallPrompt() {
   if (deferred) {
     return (
       <div
-        className="pointer-events-none fixed inset-x-0 z-[60] flex justify-center"
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
+        className="pointer-events-none fixed inset-x-0 z-[60] flex justify-center px-4"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
       >
-        <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-white/15 bg-black/85 px-4 py-2.5 text-sm text-white shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur">
+        <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/10 bg-[#111] px-4 py-2 text-sm text-white shadow-[0_12px_40px_rgba(0,0,0,0.45)]">
           <span className="font-semibold">Install Zo</span>
           <button
             onClick={() => void installViaPrompt()}
-            className="rounded-full bg-[#F5C542] px-3 py-1 text-xs font-semibold text-black hover:brightness-110"
+            className="rounded-full bg-[#F5C542] px-3 py-1.5 text-xs font-semibold text-black active:brightness-90"
           >
             Add to home
           </button>
           <button
             onClick={dismiss}
             aria-label="Dismiss install prompt"
-            className="text-white/55 hover:text-white"
+            className="ml-1 grid h-9 w-9 place-items-center rounded-full text-base text-white/70 active:bg-white/10"
           >
             ✕
           </button>
@@ -120,9 +120,9 @@ export function InstallPrompt() {
     return (
       <div
         className="pointer-events-none fixed inset-x-0 z-[60] flex justify-center px-4"
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
       >
-        <div className="pointer-events-auto flex items-start gap-3 rounded-2xl border border-white/15 bg-black/85 px-4 py-3 text-xs text-white shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur">
+        <div className="pointer-events-auto flex items-start gap-2 rounded-2xl border border-white/10 bg-[#111] px-4 py-3 text-xs text-white shadow-[0_12px_40px_rgba(0,0,0,0.45)]">
           <div className="flex-1 leading-5">
             <span className="font-semibold">Install Zo on iPhone:</span>{" "}
             tap <span aria-hidden>⎙</span> Share, then{" "}
@@ -131,7 +131,7 @@ export function InstallPrompt() {
           <button
             onClick={dismiss}
             aria-label="Dismiss install hint"
-            className="text-white/55 hover:text-white"
+            className="-mr-1 -mt-1 grid h-9 w-9 flex-shrink-0 place-items-center rounded-full text-base text-white/70 active:bg-white/10"
           >
             ✕
           </button>
