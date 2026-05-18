@@ -52,9 +52,9 @@ SELECT
   any_live AS at_least_one_live,
   n_rows,
   CASE WHEN distinct_prices > 1 THEN '🔴 price: ₹' || (price_delta_paise/100)::text || ' delta' ELSE '' END AS price_drift,
-  -- availability is per-outlet by design (each kitchen runs its own inventory
-  -- and may hide an item locally), so divergence here is NOT drift.
-  CASE WHEN distinct_avail > 1 THEN 'ℹ︎ per-outlet (expected)' ELSE '' END AS availability_by_outlet,
+  -- Availability cascades across outlets — divergence indicates a stale
+  -- write from before the cascade fix landed.
+  CASE WHEN distinct_avail > 1 THEN '🔴 availability' ELSE '' END AS availability_drift,
   CASE WHEN distinct_diets > 1 THEN '🔴 diet (allergen!)' ELSE '' END AS diet_drift,
   CASE WHEN distinct_cal > 1 OR distinct_protein > 1 OR distinct_carbs > 1
          OR distinct_fats > 1 OR distinct_fibre > 1 OR distinct_sugar > 1
@@ -63,6 +63,7 @@ SELECT
   CASE WHEN distinct_descs > 1 THEN '🟢 description' ELSE '' END AS desc_drift
 FROM groups
 WHERE distinct_prices > 1
+   OR distinct_avail > 1
    OR distinct_diets > 1
    OR distinct_cal > 1 OR distinct_protein > 1 OR distinct_carbs > 1
    OR distinct_fats > 1 OR distinct_fibre > 1 OR distinct_sugar > 1

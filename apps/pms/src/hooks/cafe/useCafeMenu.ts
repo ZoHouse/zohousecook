@@ -106,13 +106,32 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
   }, [fetchData])
 
   const toggleCategory = useCallback(async (id: string, isActive: boolean) => {
-    // Per-outlet: each outlet decides whether to show a category on its own
-    // customer menu (kitchen capacity, staffing exigencies). Same logic as
-    // toggleAvailability — DO NOT fan out across properties.
+    // Standardised menu cascades: toggle every per-property row that shares
+    // this category's name (case-insensitive). Both outlets stay in sync.
+    const { data: src, error: srcErr } = await supabase
+      .from('cafe_menu_categories')
+      .select('name')
+      .eq('id', id)
+      .single()
+    if (srcErr || !src) throw srcErr || new Error('Category not found')
+
+    const escaped = String(src.name).replace(/[\\%_]/g, '\\$&')
+    const { data: cats, error: catsErr } = await supabase
+      .from('cafe_menu_categories')
+      .select('id, name')
+      .ilike('name', escaped)
+    if (catsErr) throw catsErr
+
+    const srcLower = String(src.name).toLowerCase().trim()
+    const ids = (cats || [])
+      .filter((c) => String(c.name).toLowerCase().trim() === srcLower)
+      .map((c) => c.id as string)
+    if (!ids.length) ids.push(id)
+
     const { error } = await supabase
       .from('cafe_menu_categories')
       .update({ is_active: isActive })
-      .eq('id', id)
+      .in('id', ids)
     if (error) throw error
     await fetchData()
   }, [fetchData])
@@ -153,12 +172,11 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
   }, [fetchData])
 
   const updateItem = useCallback(async (id: string, data: Record<string, unknown>) => {
-    // CafeZomad is one entity with one standardised menu. Standardised
-    // fields — price, name, description, image, macros, recipe text,
-    // ingredients text, diet, daily_limit, category move — must fan out to
-    // every sibling row across outlets so BLR and WTF describe the same
-    // dish. is_available is the exception: it stays per-outlet because
-    // each kitchen runs its own inventory and can hide an item locally.
+    // CafeZomad is one entity with one standardised menu. An edit on one
+    // outlet's row must fan out to every sibling row so BLR and WTF stay
+    // in lock-step. is_available cascades too — operationally simpler for
+    // a 2-outlet operation; the kitchen-card inventory indicator (PR #118)
+    // handles per-outlet inventory exigencies via override-and-accept.
     //
     // Sibling = same item name (case-insensitive) AND same category name
     // (case-insensitive). Scoping by category-name prevents touching the
@@ -166,18 +184,16 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
     // archived categories. See lib/cafe/menu-siblings.ts.
     const sibIds = await findSiblingMenuItemIds(id)
 
-    // Strip per-row identity keys + per-outlet keys from the fan-out payload.
+    // Strip per-row identity keys from the fan-out payload.
     const {
       category_id: incomingCatId,
       property_id: _ignoredProp,
       id: _ignoredId,
-      is_available: incomingAvail,
       ...shared
     } = data as Record<string, unknown> & {
       category_id?: string
       property_id?: string
       id?: string
-      is_available?: boolean
     }
 
     if (incomingCatId) {
@@ -218,33 +234,18 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       if (error) throw error
     }
 
-    // is_available is per-outlet: apply ONLY to the source row, never fanned
-    // out. (Form pre-fills the switch from the editing row's value, so a
-    // no-op edit just rewrites the same value on the same row.)
-    if (incomingAvail !== undefined) {
-      const { error: availErr } = await supabase
-        .from('cafe_menu_items')
-        .update({ is_available: incomingAvail })
-        .eq('id', id)
-      if (availErr) throw availErr
-    }
-
     await fetchData()
   }, [fetchData])
 
   const toggleAvailability = useCallback(async (id: string, isAvailable: boolean) => {
-    // Per-outlet: CafeZomad is one entity with one standardised menu, but
-    // each outlet (BLR, WTF) runs an independent kitchen and inventory. An
-    // outlet must be able to hide a menu item from its OWN customer page
-    // when it's out of stock or has an exigency, without affecting the
-    // other outlet. So availability is per-row, NOT fanned out.
-    //
-    // Standardised fields (price, image, recipe, macros, etc.) are still
-    // fanned out via updateItem.
+    // Cascade across siblings (same name + same category name). Both
+    // outlets pause an item together. Per-outlet inventory exigencies go
+    // through the kitchen-card override flow instead.
+    const sibIds = await findSiblingMenuItemIds(id)
     const { error } = await supabase
       .from('cafe_menu_items')
       .update({ is_available: isAvailable })
-      .eq('id', id)
+      .in('id', sibIds)
     if (error) throw error
     await fetchData()
   }, [fetchData])

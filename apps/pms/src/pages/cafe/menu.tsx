@@ -56,7 +56,7 @@ const CafeMenuPage: NextPage = () => {
     createItem,
     updateItem,
     toggleAvailability,
-  } = useCafeMenu({ categoryId: selectedCategoryId, propertyId })
+  } = useCafeMenu({ categoryId: selectedCategoryId })
 
   // Sync local items for optimistic availability toggle
   useEffect(() => { setLocalItems(items) }, [items])
