@@ -40,9 +40,16 @@ export function useCafeOrders({
       const from = (page - 1) * pageSize
       const to = from + pageSize - 1
 
+      // Single round-trip via PostgREST embedded selects — previous version
+      // made 1 base query + 2N queries per page (50+ requests for 25 orders,
+      // Sai's B7). PostgREST resolves cafe_order_items and cafe_tables in
+      // the same response.
       let query = supabase
         .from('cafe_orders')
-        .select('*', { count: 'exact' })
+        .select(
+          '*, order_items:cafe_order_items(*), table:cafe_tables(*)',
+          { count: 'exact' }
+        )
         .eq('property_id', propertyId)
         .order('created_at', { ascending: false })
         .range(from, to)
@@ -55,30 +62,11 @@ export function useCafeOrders({
 
       if (orderError) throw orderError
 
-      const baseOrders = orderData || []
-
-      // Fetch order items for all orders in parallel
-      const ordersWithItems: CafeOrderWithItems[] = await Promise.all(
-        baseOrders.map(async (order) => {
-          const [itemsResult, tableResult] = await Promise.all([
-            supabase
-              .from('cafe_order_items')
-              .select('*')
-              .eq('order_id', order.id),
-            order.table_id
-              ? supabase
-                  .from('cafe_tables')
-                  .select('*')
-                  .eq('id', order.table_id)
-                  .single()
-              : Promise.resolve({ data: null, error: null }),
-          ])
-
-          return {
-            ...order,
-            order_items: itemsResult.data || [],
-            table: tableResult.data || null,
-          }
+      const ordersWithItems: CafeOrderWithItems[] = (orderData || []).map(
+        (o) => ({
+          ...o,
+          order_items: o.order_items || [],
+          table: o.table || null,
         })
       )
 
