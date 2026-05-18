@@ -50,6 +50,8 @@ export interface MenuItem {
   recipe: string | null
   ingredients: string | null
   created_at: string
+  /** When set, the item is soft-deleted and hidden from live menu listings. */
+  deleted_at: string | null
 }
 
 export interface CustomizationGroup {

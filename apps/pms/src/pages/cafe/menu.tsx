@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   Col,
+  Dropdown,
   Empty,
   Input,
   message,
@@ -16,8 +17,10 @@ import {
   Tooltip,
 } from 'antd'
 import {
+  DeleteOutlined,
   EyeInvisibleOutlined,
   EyeOutlined,
+  MoreOutlined,
   PlusOutlined,
   SearchOutlined,
 } from '@ant-design/icons'
@@ -56,6 +59,7 @@ const CafeMenuPage: NextPage = () => {
     createItem,
     updateItem,
     toggleAvailability,
+    deleteItem,
   } = useCafeMenu({ categoryId: selectedCategoryId })
 
   // Sync local items for optimistic availability toggle
@@ -115,6 +119,35 @@ const CafeMenuPage: NextPage = () => {
         prev.map((item) => (item.id === id ? { ...item, is_available: !available } : item))
       )
       message.error('Failed to update availability')
+    })
+  }
+
+  /**
+   * Confirm + soft-delete a menu item. Used from both the per-card kebab
+   * menu and the in-form Delete button. Operates across all properties
+   * (matches the standardised-menu pattern of createItem / updateItem).
+   */
+  const handleDeleteItem = (item: MenuItem, opts?: { onSuccess?: () => void }) => {
+    Modal.confirm({
+      title: `Delete "${item.name}"?`,
+      content:
+        "The item will be removed from the menu for all properties. Existing order history is preserved.",
+      okText: 'Yes, delete',
+      okButtonProps: { danger: true },
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          // Optimistic removal — pull from local list immediately.
+          setLocalItems((prev) => prev.filter((i) => i.id !== item.id))
+          await deleteItem(item.id)
+          message.success('Item deleted')
+          opts?.onSuccess?.()
+        } catch {
+          message.error('Failed to delete item')
+          // Refetch to restore correct state on failure.
+          await refetch()
+        }
+      },
     })
   }
 
@@ -382,6 +415,37 @@ const CafeMenuPage: NextPage = () => {
                                 {item.is_available ? 'Available' : 'Unavailable'}
                               </span>
                             </div>,
+                            <div
+                              key="more"
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <Dropdown
+                                trigger={['click']}
+                                placement="bottomRight"
+                                menu={{
+                                  items: [
+                                    {
+                                      key: 'delete',
+                                      label: 'Delete item',
+                                      icon: <DeleteOutlined />,
+                                      danger: true,
+                                      onClick: ({ domEvent }) => {
+                                        domEvent.stopPropagation()
+                                        handleDeleteItem(item)
+                                      },
+                                    },
+                                  ],
+                                }}
+                              >
+                                <Button
+                                  size="small"
+                                  type="text"
+                                  icon={<MoreOutlined />}
+                                  aria-label="More options"
+                                />
+                              </Dropdown>
+                            </div>,
                           ]}
                         >
                           {/* Name + diet dot */}
@@ -496,6 +560,14 @@ const CafeMenuPage: NextPage = () => {
             setEditingItem(null)
           }}
           onSubmit={handleSubmitItem}
+          onDelete={(item) =>
+            handleDeleteItem(item, {
+              onSuccess: () => {
+                setShowForm(false)
+                setEditingItem(null)
+              },
+            })
+          }
           editItem={editingItem}
           categoryId={
             selectedCategoryId || editingItem?.category_id || ''

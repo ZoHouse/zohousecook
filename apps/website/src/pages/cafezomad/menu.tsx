@@ -58,7 +58,7 @@ export default function CafeMenuPage() {
     if (!selectedPropertyId) return
     Promise.all([
       supabase.from('cafe_menu_categories').select('id, name, sort_order').eq('property_id', selectedPropertyId).eq('is_active', true).order('sort_order'),
-      supabase.from('cafe_menu_items').select('id, category_id, name, description, price, image_url, diet, calories, protein, carbs, fats').eq('property_id', selectedPropertyId).eq('is_available', true).order('sort_order'),
+      supabase.from('cafe_menu_items').select('id, category_id, name, description, price, image_url, diet, calories, protein, carbs, fats').eq('property_id', selectedPropertyId).eq('is_available', true).is('deleted_at', null).order('sort_order'),
       supabase.from('cafe_tables').select('id, code, label, area').eq('property_id', selectedPropertyId).eq('is_active', true).order('area').order('code'),
     ]).then(([c, i, t]) => {
       setCategories((c.data as MenuCategory[]) || [])

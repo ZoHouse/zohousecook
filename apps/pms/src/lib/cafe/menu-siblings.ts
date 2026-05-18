@@ -39,6 +39,9 @@ export async function findSiblingMenuItemIds(id: string): Promise<string[]> {
     .from('cafe_menu_items')
     .select('id, name, category_id')
     .ilike('name', escapedName)
+    // Don't fan out edits to soft-deleted rows — they're kept on disk for
+    // order-history sanity but shouldn't be revived by an update.
+    .is('deleted_at', null)
   if (candErr) throw candErr
   if (!candidates?.length) return [id]
 
