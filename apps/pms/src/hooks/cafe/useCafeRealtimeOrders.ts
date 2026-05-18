@@ -316,11 +316,15 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
     const order = orders.find((o) => o.id === orderId)
     // Inventory deduction happens on kitchen ACCEPT (deductInventoryForOrder
     // fires at the new→accepted transition), so the inventory restore is
-    // gated on having been accepted. Food credits and Razorpay payment are
-    // both committed at PLACE time (place_cafe_order RPC debits credits;
-    // create-razorpay-order + capture pulls cash) so they need refunding
-    // regardless of whether the kitchen ever accepted.
-    const wasAccepted = order?.kitchen_status && ['accepted', 'preparing', 'ready'].includes(order.kitchen_status)
+    // gated on having been accepted — BUT NOT on 'ready'. Once the food
+    // is cooked, the ingredients are physically gone; cancelling at that
+    // point doesn't bring them back to stock. Food credits and Razorpay
+    // payment are both committed at PLACE time (place_cafe_order RPC
+    // debits credits; create-razorpay-order + capture pulls cash) so they
+    // need refunding regardless of whether the kitchen ever accepted.
+    const wasAcceptedButNotCooked =
+      order?.kitchen_status &&
+      ['accepted', 'preparing'].includes(order.kitchen_status)
     const wasPaidByRazorpay = order?.payment_mode === 'razorpay' && order?.payment_status === 'paid'
 
     // Mark cancelled. Also flip payment_status='refunded' on Razorpay-paid
@@ -345,8 +349,10 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
     // Remove from active board immediately
     setOrders((prev) => prev.filter((o) => o.id !== orderId))
 
-    // Restore inventory ONLY if it was deducted (i.e. order was accepted).
-    if (wasAccepted && order?.property_id) {
+    // Restore inventory ONLY if it was deducted AND not yet cooked.
+    // Cancelling a 'ready' order leaves the deduction in place — the food
+    // is already made and the ingredients can't be returned to stock.
+    if (wasAcceptedButNotCooked && order?.property_id) {
       restoreInventoryForOrder(orderId, order.property_id).catch((err) =>
         console.error('Inventory restore failed:', err)
       )
