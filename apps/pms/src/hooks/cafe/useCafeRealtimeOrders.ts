@@ -3,7 +3,7 @@ import { supabase } from '../../configs/supabase'
 import { getNextStatus } from '../../lib/cafe/kitchen-status'
 import { deductInventoryForOrder, restoreInventoryForOrder } from '../../lib/cafe/inventory-deduct'
 import { debitFoodCredits, restoreFoodCredits } from '../../lib/cafe/food-credit-debit'
-import { playKitchenAlert } from '../../lib/cafe/kitchen-alert'
+import { startKitchenAlertLoop, stopKitchenAlertLoop } from '../../lib/cafe/kitchen-alert'
 import type { CafeOrder, CafeOrderWithItems, KitchenStatus } from '../../types/cafe'
 
 const ACTIVE_STATUSES: KitchenStatus[] = ['new', 'accepted', 'preparing', 'ready']
@@ -115,13 +115,12 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
           const changed = payload.new as CafeOrder
 
           if (payload.eventType === 'INSERT') {
-            // New order — fetch full data and add to state. Beep when it's
-            // an active (visible) order — drafts are suppressed so chefs
-            // aren't woken up by unpaid carts.
+            // New order — fetch full data and add to state. Drafts are
+            // suppressed so chefs aren't woken up by unpaid carts. The
+            // alert loop is driven by the orders→hasNew effect below.
             const fullOrder = await fetchOrderWithItems(changed.id)
             if (fullOrder && ACTIVE_STATUSES.includes(fullOrder.kitchen_status as KitchenStatus)) {
               setOrders((prev) => [fullOrder, ...prev])
-              playKitchenAlert()
             }
           } else if (payload.eventType === 'UPDATE') {
             const status = changed.kitchen_status as KitchenStatus
@@ -129,9 +128,8 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
               // Remove from board
               setOrders((prev) => prev.filter((o) => o.id !== changed.id))
             } else {
-              // Refetch updated order. If the order isn't on the board yet
-              // (e.g. draft → new after Razorpay capture), add it and beep.
-              // Otherwise just merge in the update.
+              // Refetch updated order. If it isn't on the board yet (draft →
+              // new after Razorpay capture), add it; otherwise merge update.
               const fullOrder = await fetchOrderWithItems(changed.id)
               if (fullOrder) {
                 setOrders((prev) => {
@@ -140,8 +138,6 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
                     return idx === -1 ? prev : prev.filter((o) => o.id !== changed.id)
                   }
                   if (idx === -1) {
-                    // Fresh-to-board (draft just became visible).
-                    playKitchenAlert()
                     return [fullOrder, ...prev]
                   }
                   const next = prev.slice()
@@ -164,6 +160,20 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
       }
     }
   }, [propertyId])
+
+  // Alert loop: ring continuously while any order is sitting in 'new'
+  // (arrived but not yet accepted by staff). Stops the moment every 'new'
+  // order has been advanced or cancelled. start/stop are idempotent.
+  useEffect(() => {
+    const hasNew = orders.some((o) => o.kitchen_status === 'new')
+    if (hasNew) startKitchenAlertLoop()
+    else stopKitchenAlertLoop()
+  }, [orders])
+
+  // Silence the alert when leaving the kitchen page entirely.
+  useEffect(() => {
+    return () => { stopKitchenAlertLoop() }
+  }, [])
 
   const advanceStatus = useCallback(
     async (orderId: string, currentStatus: KitchenStatus) => {

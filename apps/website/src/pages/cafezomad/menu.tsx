@@ -93,9 +93,9 @@ export default function CafeMenuPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f0e8]">
-      {/* Header */}
+      {/* Header — full-width orange band, content constrained */}
       <header className="sticky top-0 z-20 bg-orange-500 px-5 pt-4 pb-3">
-        <div className="flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <button onClick={() => router.push('/cafezomad')} className="w-9 h-9 rounded-xl bg-white overflow-hidden active:scale-95 transition-all shrink-0 p-1">
               <img src={cafeZomadLogo.src} alt="Cafe Zomad" className="w-full h-full object-contain" />
@@ -120,7 +120,7 @@ export default function CafeMenuPage() {
         </div>
 
         {properties.length > 1 && (
-          <div className="flex gap-2 mt-3 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="max-w-7xl mx-auto flex gap-2 mt-3 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
             {properties.map((p) => (
               <button key={p.id} onClick={() => { setSelectedPropertyId(p.id); setActiveCategory(null) }}
                 className={`px-3 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${selectedPropertyId === p.id ? 'bg-black text-white' : 'bg-black/10 text-black/60'}`}>
@@ -130,7 +130,7 @@ export default function CafeMenuPage() {
           </div>
         )}
 
-        <div className="relative mt-3">
+        <div className="max-w-7xl mx-auto relative mt-3">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
           </svg>
@@ -140,23 +140,25 @@ export default function CafeMenuPage() {
       </header>
 
       {/* Category chips */}
-      <div className="sticky top-[132px] z-10 bg-[#f5f0e8]/95 backdrop-blur-sm px-4 py-2.5 flex gap-2 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-        <button onClick={() => setActiveCategory(null)} className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all ${!activeCategory ? 'bg-orange-500 text-black' : 'bg-white ring-1 ring-black/10 text-black/60'}`}>
-          All ({menuItems.length})
-        </button>
-        {categories.map((cat) => {
-          const count = menuItems.filter((i) => i.category_id === cat.id).length
-          return (
-            <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all ${activeCategory === cat.id ? 'bg-orange-500 text-black' : 'bg-white ring-1 ring-black/10 text-black/60'}`}>
-              {cat.name} ({count})
-            </button>
-          )
-        })}
+      <div className="sticky top-[132px] z-10 bg-[#f5f0e8]/95 backdrop-blur-sm py-2.5">
+        <div className="max-w-7xl mx-auto px-4 flex gap-2 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <button onClick={() => setActiveCategory(null)} className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all ${!activeCategory ? 'bg-orange-500 text-black' : 'bg-white ring-1 ring-black/10 text-black/60'}`}>
+            All ({menuItems.length})
+          </button>
+          {categories.map((cat) => {
+            const count = menuItems.filter((i) => i.category_id === cat.id).length
+            return (
+              <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all ${activeCategory === cat.id ? 'bg-orange-500 text-black' : 'bg-white ring-1 ring-black/10 text-black/60'}`}>
+                {cat.name} ({count})
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Menu items */}
-      <div className="px-4 py-3 pb-24 space-y-3">
+      <div className="max-w-7xl mx-auto px-4 py-3 pb-24 space-y-3">
         {grouped.size === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <svg className="w-12 h-12 text-black/15" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -175,7 +177,7 @@ export default function CafeMenuPage() {
                   <div className="flex-1 h-px bg-black/10" />
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
                 {items.map((item) => (
                   <div key={item.id} className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm overflow-hidden">
                     {/* Image */}
@@ -210,18 +212,20 @@ export default function CafeMenuPage() {
         )}
       </div>
 
-      {/* Sticky bottom CTA */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 p-4 bg-gradient-to-t from-[#f5f0e8] via-[#f5f0e8] to-transparent pt-8">
-        <button onClick={openTablePicker} className="w-full bg-orange-500 text-black py-4 text-base font-bold tracking-wide rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all">
-          Start Ordering
-        </button>
+      {/* Sticky bottom CTA — pill button, not full-width on laptop */}
+      <div className="fixed bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-[#f5f0e8] via-[#f5f0e8] to-transparent pt-8">
+        <div className="max-w-md mx-auto p-4">
+          <button onClick={openTablePicker} className="w-full bg-orange-500 text-black py-4 text-base font-bold tracking-wide rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all">
+            Start Ordering
+          </button>
+        </div>
       </div>
 
       {/* Table Picker */}
       {showTablePicker && (
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setShowTablePicker(false)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[70vh] overflow-y-auto">
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[70vh] overflow-y-auto max-w-2xl mx-auto">
             <div className="sticky top-0 bg-white px-5 pt-5 pb-3 border-b border-black/5">
               <div className="w-10 h-1 bg-black/15 rounded-full mx-auto mb-4" />
               <h2 className="text-lg font-extrabold text-black">Pick your table</h2>

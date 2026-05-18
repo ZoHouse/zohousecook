@@ -51,7 +51,26 @@ Working doc for this branch. Delete before merging to `main`.
   - Same fix pattern as the cafe_order_items migration you just applied — but here `cafe_meal_plan_items` does NOT denormalize name, so `ON DELETE SET NULL` would leave broken rows. Recommendation: `ON DELETE CASCADE` (if the item is gone, drop the meal-plan row too)
   - Status: open — needs migration
 
-- [ ] **Stale draft orders not cleaned up** — DB-side
+- [x] **Kitchen alert now loops until accepted** — `apps/pms/src/lib/cafe/kitchen-alert.ts`, `apps/pms/src/hooks/cafe/useCafeRealtimeOrders.ts`
+  - Old: 2 quick beeps on INSERT/UPDATE then silence — easy to miss in a noisy kitchen
+  - New: pulses the cue (with 1.5s gap) for as long as any order is in `kitchen_status='new'`. Stops the instant staff accepts. Idempotent start/stop; auto-silences on leaving the kitchen page
+  - `playKitchenAlert()` kept as one-shot for the "Test sound" button
+  - Status: **fixed**
+
+- [x] **"Being Prepared" wrongly included unpaid drafts** — `apps/website/src/pages/cafezomad/[tableId].tsx:541`
+  - `activeOrders` filter excluded only ready/served/cancelled, so `draft` orders (created but never paid) appeared under "Being Prepared" even though they were never sent to the kitchen
+  - Split into two buckets: `awaitingPaymentOrders` (drafts) and `prepOrders` (new/accepted/preparing). UI now renders separate sections with correct headers
+  - Also: customer view only shows drafts < 1h old (Razorpay session keepalive is ~15m, so older drafts can't be resumed anyway)
+  - Status: **fixed**
+
+- [x] **Stale draft orders cleaned up** — DB-side
+  - Deleted 8 abandoned drafts + 9 order_items rows (all >1h old, 3 already refunded by Razorpay)
+  - Follow-up still open: scheduled sweep so this doesn't accumulate again
+  - Status: **fixed (one-time)**
+
+- [ ] **Add a draft-order sweeper** — schema / scheduled job
+  - Currently relies on manual cleanup (just deleted 8). Drafts that don't get paid within ~15m are useless — Razorpay session is gone
+  - Recommendation: pg_cron job that deletes `cafe_orders WHERE kitchen_status='draft' AND created_at < now() - interval '1 hour'` along with its order_items, every 10 minutes
   - 8 orders stuck in `kitchen_status=draft` (never paid / refunded), oldest ~470h
   - 5 × `draft / payment=pending`, 3 × `draft / payment=refunded`
   - Cause: draft-until-paid (migration `20260428_place_cafe_order_draft_until_paid.sql`) has no sweeper for abandoned drafts

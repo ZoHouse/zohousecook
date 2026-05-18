@@ -538,9 +538,17 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   }
 
   // ── Derived values ─────────────────────────────────────────────────────────
-  const activeOrders = orders.filter(
-    (o) => o.kitchen_status && !['ready', 'served', 'cancelled'].includes(o.kitchen_status)
+  // Drafts are unpaid — they were never sent to the kitchen. Bucket them
+  // separately so the "Being Prepared" header reflects actual kitchen flow.
+  // Hide ancient abandoned drafts from the customer view — Razorpay only keeps
+  // a payment session alive ~15min, so anything older won't reopen anyway.
+  const awaitingPaymentOrders = orders.filter(
+    (o) => o.kitchen_status === 'draft' && (Date.now() - new Date(o.created_at).getTime()) < 60 * 60 * 1000
   )
+  const prepOrders = orders.filter(
+    (o) => o.kitchen_status && ['new', 'accepted', 'preparing'].includes(o.kitchen_status)
+  )
+  const activeOrders = [...awaitingPaymentOrders, ...prepOrders]
   const totalItems = cart.reduce((sum, c) => sum + c.quantity, 0)
   // Cart math: subtotal is the sum of item prices (paise); GST is 5% of
   // subtotal floored to nearest paise — must match place_cafe_order RPC's
@@ -622,7 +630,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="shrink-0 bg-orange-500 px-5 pt-4 pb-3">
-        <div className="flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2.5">
               <img src={cafeZomadLogo.src} alt="Cafe Zomad" className="w-9 h-9 rounded-2xl object-contain bg-white p-1" />
@@ -688,7 +696,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       )}
 
       {/* ── Main Content ─────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto pb-28">
+      <div className="flex-1 overflow-y-auto pb-28 max-w-7xl mx-auto w-full">
 
         {/* ── MENU TAB ──────────────────────────────────────────────────────── */}
         {activeTab === 'menu' && (
@@ -865,8 +873,8 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                       </div>
                     )}
 
-                    {/* Item cards — 2-col square grid */}
-                    <div className="grid grid-cols-2 gap-3">
+                    {/* Item cards — auto-fill so card width stays consistent regardless of item count */}
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
                       {items.map((item) => {
                         const inCart = cart.find((c) => c.menu_item_id === item.id)
                         return (
@@ -939,14 +947,17 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         {activeTab === 'orders' && (
           <div className="px-4 py-4 space-y-4">
 
-            {/* Active orders (being prepared) */}
-            {activeOrders.length > 0 && (
-              <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-4">
+            {/* Active orders — drafts (unpaid) and kitchen-flow are rendered as separate sections */}
+            {([
+              { title: 'Awaiting Payment', list: awaitingPaymentOrders },
+              { title: 'Being Prepared', list: prepOrders },
+            ] as const).map((group) => group.list.length > 0 && (
+              <div key={group.title} className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-4">
                 <h3 className="text-xs font-bold text-black/60 uppercase tracking-widest mb-3">
-                  Being Prepared
+                  {group.title}
                 </h3>
                 <div className="space-y-3">
-                  {activeOrders.map((order) => {
+                  {group.list.map((order) => {
                     const needsPayment = order.payment_mode === 'razorpay' && order.payment_status === 'pending'
                     const isThisInFlight = paymentInFlight?.orderId === order.id
 
@@ -1066,7 +1077,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                   })}
                 </div>
               </div>
-            )}
+            ))}
 
             {/* Cart (new order) */}
             {cart.length > 0 ? (
@@ -1207,27 +1218,29 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         )}
       </div>
 
-      {/* ── Go to Cart floating bar ────────────────────────────────────────────── */}
+      {/* ── Go to Cart floating bar — centered, capped width ──────────────────── */}
       {totalItems > 0 && activeTab === 'menu' && (
-        <button
-          onClick={() => {
-            if (requireLoginForOrdering()) setActiveTab('orders')
-          }}
-          className="fixed bottom-24 left-5 right-5 z-50 bg-orange-500 text-black px-5 py-3.5 rounded-2xl shadow-2xl shadow-orange-500/30 flex items-center justify-between active:scale-[0.98] transition-all"
-        >
-          <div className="flex items-center gap-2">
-            <span className="bg-black text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
-              {totalItems}
-            </span>
-            <span className="font-bold text-sm">View Cart</span>
-          </div>
-          <span className="font-extrabold text-base">{formatPaise(totalAmount)}</span>
-        </button>
+        <div className="fixed bottom-24 inset-x-0 z-50 px-5 pointer-events-none">
+          <button
+            onClick={() => {
+              if (requireLoginForOrdering()) setActiveTab('orders')
+            }}
+            className="pointer-events-auto max-w-2xl mx-auto w-full bg-orange-500 text-black px-5 py-3.5 rounded-2xl shadow-2xl shadow-orange-500/30 flex items-center justify-between active:scale-[0.98] transition-all"
+          >
+            <div className="flex items-center gap-2">
+              <span className="bg-black text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
+                {totalItems}
+              </span>
+              <span className="font-bold text-sm">View Cart</span>
+            </div>
+            <span className="font-extrabold text-base">{formatPaise(totalAmount)}</span>
+          </button>
+        </div>
       )}
 
-      {/* ── Bottom Navigation ─────────────────────────────────────────────────── */}
-      <nav className="shrink-0 fixed bottom-5 left-5 right-5 bg-white/95 backdrop-blur-md rounded-full ring-1 ring-black/10 shadow-2xl shadow-black/20 z-40">
-        <div className="flex items-center justify-around h-14 max-w-md mx-auto">
+      {/* ── Bottom Navigation — centered, capped width ────────────────────────── */}
+      <nav className="shrink-0 fixed bottom-5 inset-x-0 z-40 px-5 pointer-events-none">
+        <div className="pointer-events-auto max-w-md mx-auto bg-white/95 backdrop-blur-md rounded-full ring-1 ring-black/10 shadow-2xl shadow-black/20 flex items-center justify-around h-14">
           {(
             [
               {

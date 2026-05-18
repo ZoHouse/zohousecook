@@ -9,7 +9,6 @@ import {
   Input,
   message,
   Modal,
-  Popconfirm,
   Row,
   Spin,
   Switch,
@@ -17,7 +16,6 @@ import {
   Tooltip,
 } from 'antd'
 import {
-  DeleteOutlined,
   EyeInvisibleOutlined,
   EyeOutlined,
   PlusOutlined,
@@ -55,11 +53,9 @@ const CafeMenuPage: NextPage = () => {
     refetch,
     createCategory,
     toggleCategory,
-    deleteCategory,
     createItem,
     updateItem,
     toggleAvailability,
-    deleteItem,
   } = useCafeMenu({ categoryId: selectedCategoryId })
 
   // Sync local items for optimistic availability toggle
@@ -83,29 +79,6 @@ const CafeMenuPage: NextPage = () => {
       await toggleCategory(id, isActive)
     } catch {
       message.error('Failed to update category')
-    }
-  }
-
-  const handleDeleteCategory = async (id: string) => {
-    try {
-      await deleteCategory(id)
-      if (selectedCategoryId === id) setSelectedCategoryId(null)
-      message.success('Category and its items deleted')
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to delete category'
-      message.error(msg.includes('foreign key') ? 'Cannot delete — items are referenced by past orders' : msg)
-    }
-  }
-
-  const handleDeleteItem = async (id: string) => {
-    try {
-      await deleteItem(id)
-      // Optimistic: drop from local list immediately
-      setLocalItems((prev) => prev.filter((it) => it.id !== id))
-      message.success('Item deleted')
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to delete item'
-      message.error(msg.includes('foreign key') ? 'Cannot delete — item is referenced by past orders. Mark unavailable instead.' : msg)
     }
   }
 
@@ -276,23 +249,6 @@ const CafeMenuPage: NextPage = () => {
                             style={{ color: cat.is_active ? '#8c8c8c' : '#ef4444', flexShrink: 0 }}
                           />
                         </Tooltip>
-                        <Popconfirm
-                          title="Delete category?"
-                          description={`This deletes "${cat.name}" and ${getItemCount(cat.id)} item(s) across all properties.`}
-                          okText="Delete"
-                          okButtonProps={{ danger: true }}
-                          cancelText="Cancel"
-                          onConfirm={() => handleDeleteCategory(cat.id)}
-                        >
-                          <Tooltip title="Delete category">
-                            <Button
-                              size="small"
-                              type="text"
-                              icon={<DeleteOutlined />}
-                              style={{ color: '#ef4444', flexShrink: 0 }}
-                            />
-                          </Tooltip>
-                        </Popconfirm>
                       </div>
                     ))}
                   </div>
@@ -425,29 +381,6 @@ const CafeMenuPage: NextPage = () => {
                               <span style={{ fontSize: 12, color: item.is_available ? '#22c55e' : '#ef4444' }}>
                                 {item.is_available ? 'Available' : 'Unavailable'}
                               </span>
-                            </div>,
-                            <div
-                              key="delete"
-                              onClick={(e) => e.stopPropagation()}
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <Popconfirm
-                                title="Delete this item?"
-                                description={`"${item.name}" will be removed for all properties.`}
-                                okText="Delete"
-                                okButtonProps={{ danger: true }}
-                                cancelText="Cancel"
-                                onConfirm={() => handleDeleteItem(item.id)}
-                              >
-                                <Button
-                                  size="small"
-                                  type="text"
-                                  danger
-                                  icon={<DeleteOutlined />}
-                                >
-                                  Delete
-                                </Button>
-                              </Popconfirm>
                             </div>,
                           ]}
                         >

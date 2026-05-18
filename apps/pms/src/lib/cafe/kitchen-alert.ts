@@ -11,18 +11,27 @@
  * survives HMR / route changes — module-level state resets on hot reload,
  * so we re-set the URL from the kitchen page's useEffect on every mount.
  *
- * On each new order we play the cue PLAY_COUNT times back-to-back at max
- * volume so it cuts through cafe noise.
+ * One-shot vs loop:
+ *  - `playKitchenAlert()` plays the cue PLAY_COUNT times once (used by the
+ *    "Test sound" button).
+ *  - `startKitchenAlertLoop()` / `stopKitchenAlertLoop()` pulse the cue with
+ *    a short gap until explicitly stopped — used while any order is sitting
+ *    in `kitchen_status='new'` (i.e. arrived but not yet accepted).
  */
 
 const PLAY_COUNT = 2
 const VOLUME = 1.0
 const DEBOUNCE_MS = 800
+const LOOP_GAP_MS = 1500
 
 let audioUrl: string | null = null
 let primer: HTMLAudioElement | null = null
 let unlocked = false
 let lastBeepAt = 0
+
+let loopActive = false
+let loopTimer: number | null = null
+let loopAudio: HTMLAudioElement | null = null
 
 export function setKitchenAudioUrl(url: string): void {
   audioUrl = url
@@ -77,4 +86,58 @@ export function playKitchenAlert(): void {
     })
   }
   playOnce()
+}
+
+/**
+ * Pulse the alert cue until `stopKitchenAlertLoop()` is called. Used while
+ * orders sit in `kitchen_status='new'`. Idempotent — calling start when
+ * already looping is a no-op.
+ */
+export function startKitchenAlertLoop(): void {
+  if (typeof window === 'undefined') return
+  if (!audioUrl) return
+  if (loopActive) return
+  loopActive = true
+
+  const playCycle = () => {
+    if (!loopActive || !audioUrl) return
+    loopAudio = new Audio(audioUrl)
+    loopAudio.volume = VOLUME
+    loopAudio.addEventListener(
+      'ended',
+      () => {
+        if (!loopActive) return
+        loopTimer = window.setTimeout(playCycle, LOOP_GAP_MS)
+      },
+      { once: true },
+    )
+    loopAudio.play().catch(() => {
+      // Playback blocked (probably audio not unlocked yet). Try again after
+      // the gap; once the user interacts with the page it'll start ringing.
+      if (!loopActive) return
+      loopTimer = window.setTimeout(playCycle, LOOP_GAP_MS * 2)
+    })
+  }
+  playCycle()
+}
+
+export function stopKitchenAlertLoop(): void {
+  loopActive = false
+  if (loopTimer !== null) {
+    clearTimeout(loopTimer)
+    loopTimer = null
+  }
+  if (loopAudio) {
+    try {
+      loopAudio.pause()
+      loopAudio.currentTime = 0
+    } catch {
+      /* element might have been GC'd */
+    }
+    loopAudio = null
+  }
+}
+
+export function isKitchenAlertLooping(): boolean {
+  return loopActive
 }
