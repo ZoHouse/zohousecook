@@ -70,6 +70,7 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
         .select('*')
         .eq('property_id', propertyId)
         .eq('is_available', true)
+        .is('deleted_at', null)
         .order('sort_order'),
       supabase
         .from('cafe_tables')

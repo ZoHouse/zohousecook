@@ -87,7 +87,7 @@ export function BioHackTab({
 
   // Fetch ALL menu items (across all properties) for nutrition lookup
   useEffect(() => {
-    supabase.from('cafe_menu_items').select('id, name, calories, protein, carbs, fats, fibre, sugar').then(({ data }) => {
+    supabase.from('cafe_menu_items').select('id, name, calories, protein, carbs, fats, fibre, sugar').is('deleted_at', null).then(({ data }) => {
       if (data) setAllMenuItems(data as MenuItem[])
     })
   }, [])

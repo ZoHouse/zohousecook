@@ -40,6 +40,8 @@ interface MenuItemFormProps {
   open: boolean
   onClose: () => void
   onSubmit: (values: Record<string, unknown>) => Promise<string | null> | void
+  /** Called when the user clicks Delete (only visible in edit mode). Form handles its own confirmation in the parent. */
+  onDelete?: (item: MenuItem) => void
   editItem?: MenuItem | null
   categoryId: string
 }
@@ -48,6 +50,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
   open,
   onClose,
   onSubmit,
+  onDelete,
   editItem,
   categoryId,
 }) => {
@@ -335,13 +338,33 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
     <Modal
       open={open}
       title={isEdit ? 'Edit Item' : 'Add Item'}
-      okText={recipeSaving ? 'Saving...' : 'Save'}
-      cancelText="Cancel"
-      onOk={handleOk}
       onCancel={onClose}
       confirmLoading={recipeSaving}
       destroyOnClose
       width={600}
+      footer={
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          {/* Left: Delete (edit only) */}
+          <div>
+            {isEdit && onDelete && editItem && (
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => onDelete(editItem)}
+              >
+                Delete
+              </Button>
+            )}
+          </div>
+          {/* Right: Cancel / Save */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button onClick={onClose}>Cancel</Button>
+            <Button type="primary" onClick={handleOk} loading={recipeSaving}>
+              {recipeSaving ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      }
     >
       <Form form={form} layout="vertical" size="middle">
         <Form.Item

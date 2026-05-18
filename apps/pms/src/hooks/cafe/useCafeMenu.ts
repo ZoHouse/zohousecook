@@ -22,6 +22,7 @@ interface UseCafeMenuResult {
   createItem: (data: Record<string, unknown>) => Promise<string | null>
   updateItem: (id: string, data: Record<string, unknown>) => Promise<void>
   toggleAvailability: (id: string, isAvailable: boolean) => Promise<void>
+  deleteItem: (id: string) => Promise<void>
 }
 
 export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}): UseCafeMenuResult {
@@ -58,6 +59,8 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       let itemQuery = supabase
         .from('cafe_menu_items')
         .select('*')
+        // Hide soft-deleted items from the menu admin listing.
+        .is('deleted_at', null)
         .order('is_available', { ascending: false })
         .order('sort_order')
 
@@ -250,6 +253,30 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
     await fetchData()
   }, [fetchData])
 
+  /**
+   * Soft-delete an item across ALL properties (standardised menu rule).
+   * Looks up the item's name, finds every row with the same name, and stamps
+   * deleted_at = now() on each. Historical orders that reference these rows
+   * still resolve (rows are preserved); they just don't appear in menu listings.
+   */
+  const deleteItem = useCallback(async (id: string) => {
+    const { data: sourceItem } = await supabase
+      .from('cafe_menu_items')
+      .select('name')
+      .eq('id', id)
+      .single()
+    if (!sourceItem?.name) throw new Error('Menu item not found')
+
+    const now = new Date().toISOString()
+    const { error } = await supabase
+      .from('cafe_menu_items')
+      .update({ deleted_at: now })
+      .eq('name', sourceItem.name)
+      .is('deleted_at', null)
+    if (error) throw error
+    await fetchData()
+  }, [fetchData])
+
   return {
     categories,
     items,
@@ -261,5 +288,6 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
     createItem,
     updateItem,
     toggleAvailability,
+    deleteItem,
   }
 }

@@ -89,6 +89,7 @@ const CafeMealPlanPage: NextPage = () => {
       .from('cafe_menu_items')
       .select('*')
       .eq('is_available', true)
+      .is('deleted_at', null)
       .order('name')
       .then(({ data }) => setMenuItems(data || []))
   }, [])
