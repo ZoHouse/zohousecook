@@ -17,6 +17,7 @@ import {
 import { PlusOutlined, DeleteOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import type { MenuItem, IngredientUnit } from '../../types/cafe'
 import { supabase } from '../../configs/supabase'
+import { findSiblingMenuItemIds } from '../../lib/cafe/menu-siblings'
 
 const RECIPE_UNITS: IngredientUnit[] = ['g', 'kg', 'ml', 'liter', 'pieces', 'tsp', 'tbsp', 'cups', 'slice']
 
@@ -61,7 +62,6 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
   const [allIngredients, setAllIngredients] = useState<IngredientOption[]>([])
   const [recipeLoading, setRecipeLoading] = useState(false)
   const [recipeSaving, setRecipeSaving] = useState(false)
-  const [originalRecipeIds, setOriginalRecipeIds] = useState<Set<string>>(new Set())
 
   // Fetch all ingredients (for the dropdown)
   useEffect(() => {
@@ -80,7 +80,6 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
   useEffect(() => {
     if (!open || !editItem?.id) {
       setRecipeRows([])
-      setOriginalRecipeIds(new Set())
       return
     }
     setRecipeLoading(true)
@@ -100,7 +99,6 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
           }
         })
         setRecipeRows(rows)
-        setOriginalRecipeIds(new Set(rows.map((r) => r.id!).filter(Boolean)))
         setRecipeLoading(false)
       })
   }, [open, editItem?.id])
@@ -248,36 +246,43 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
     )
   }, [allIngredients])
 
-  // Save recipe rows to DB
+  // Save recipe rows to DB — fan out across every sibling menu_item row
+  // (same name + same category name) so BLR and WTF stay in lock-step.
+  //
+  // Recipes are looked up by exact menu_item_id in inventory-deduct.ts. If
+  // recipes only land on one property's row, orders at the other property
+  // hit "no recipe" and silently skip inventory deduction — a real leak
+  // observed on tea, coffee, scrambled eggs, etc. (May 2026 audit).
+  //
+  // Strategy: compute the canonical row set from `recipeRows` (the form's
+  // current state), then for every sibling: delete all existing rows + insert
+  // the canonical set with the sibling's menu_item_id. Idempotent and
+  // converges state, no diff bookkeeping per sibling.
   const saveRecipeRows = useCallback(async (menuItemId: string) => {
-    const currentIds = new Set(recipeRows.map((r) => r.id).filter(Boolean))
-    // Delete removed rows
-    const toDelete = [...originalRecipeIds].filter((id) => !currentIds.has(id))
-    if (toDelete.length > 0) {
-      await supabase.from('cafe_recipe_items').delete().in('id', toDelete)
-    }
+    const sibIds = await findSiblingMenuItemIds(menuItemId)
+    const canonical = recipeRows
+      .filter((r) => r.ingredient_id && r.quantity > 0)
+      .map((r) => ({
+        ingredient_id: r.ingredient_id,
+        quantity: r.quantity,
+        unit: r.unit,
+      }))
 
-    // Upsert current rows
-    for (const row of recipeRows) {
-      if (!row.ingredient_id || row.quantity <= 0) continue
-
-      if (row.id) {
-        // Update existing
-        await supabase
+    for (const sibId of sibIds) {
+      const { error: delErr } = await supabase
+        .from('cafe_recipe_items')
+        .delete()
+        .eq('menu_item_id', sibId)
+      if (delErr) throw delErr
+      if (canonical.length > 0) {
+        const rows = canonical.map((r) => ({ ...r, menu_item_id: sibId }))
+        const { error: insErr } = await supabase
           .from('cafe_recipe_items')
-          .update({ ingredient_id: row.ingredient_id, quantity: row.quantity, unit: row.unit })
-          .eq('id', row.id)
-      } else {
-        // Insert new
-        await supabase.from('cafe_recipe_items').insert({
-          menu_item_id: menuItemId,
-          ingredient_id: row.ingredient_id,
-          quantity: row.quantity,
-          unit: row.unit,
-        })
+          .insert(rows)
+        if (insErr) throw insErr
       }
     }
-  }, [recipeRows, originalRecipeIds])
+  }, [recipeRows])
 
   const handleOk = async () => {
     try {

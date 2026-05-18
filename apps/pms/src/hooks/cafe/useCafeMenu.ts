@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../configs/supabase'
+import {
+  buildCategoryIdByPropertyForName,
+  findSiblingMenuItemIds,
+} from '../../lib/cafe/menu-siblings'
 import type { MenuCategory, MenuItem } from '../../types/cafe'
 
 interface UseCafeMenuParams {
@@ -102,10 +106,32 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
   }, [fetchData])
 
   const toggleCategory = useCallback(async (id: string, isActive: boolean) => {
+    // Standardised menu cascades: toggle every per-property row that shares
+    // this category's name (case-insensitive). Both outlets stay in sync.
+    const { data: src, error: srcErr } = await supabase
+      .from('cafe_menu_categories')
+      .select('name')
+      .eq('id', id)
+      .single()
+    if (srcErr || !src) throw srcErr || new Error('Category not found')
+
+    const escaped = String(src.name).replace(/[\\%_]/g, '\\$&')
+    const { data: cats, error: catsErr } = await supabase
+      .from('cafe_menu_categories')
+      .select('id, name')
+      .ilike('name', escaped)
+    if (catsErr) throw catsErr
+
+    const srcLower = String(src.name).toLowerCase().trim()
+    const ids = (cats || [])
+      .filter((c) => String(c.name).toLowerCase().trim() === srcLower)
+      .map((c) => c.id as string)
+    if (!ids.length) ids.push(id)
+
     const { error } = await supabase
       .from('cafe_menu_categories')
       .update({ is_active: isActive })
-      .eq('id', id)
+      .in('id', ids)
     if (error) throw error
     await fetchData()
   }, [fetchData])
@@ -146,19 +172,80 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
   }, [fetchData])
 
   const updateItem = useCallback(async (id: string, data: Record<string, unknown>) => {
-    const { error } = await supabase
-      .from('cafe_menu_items')
-      .update(data)
-      .eq('id', id)
-    if (error) throw error
+    // CafeZomad is one entity with one standardised menu. An edit on one
+    // outlet's row must fan out to every sibling row so BLR and WTF stay
+    // in lock-step. is_available cascades too — operationally simpler for
+    // a 2-outlet operation; the kitchen-card inventory indicator (PR #118)
+    // handles per-outlet inventory exigencies via override-and-accept.
+    //
+    // Sibling = same item name (case-insensitive) AND same category name
+    // (case-insensitive). Scoping by category-name prevents touching the
+    // FUDR-imported legacy rows kept for order-history sanity that live in
+    // archived categories. See lib/cafe/menu-siblings.ts.
+    const sibIds = await findSiblingMenuItemIds(id)
+
+    // Strip per-row identity keys from the fan-out payload.
+    const {
+      category_id: incomingCatId,
+      property_id: _ignoredProp,
+      id: _ignoredId,
+      ...shared
+    } = data as Record<string, unknown> & {
+      category_id?: string
+      property_id?: string
+      id?: string
+    }
+
+    if (incomingCatId) {
+      // Staff moved the item to a different category. Each sibling must get
+      // its OWN property's matching category_id — never paste BLR's id into
+      // WTF's row.
+      const { data: newCat, error: newCatErr } = await supabase
+        .from('cafe_menu_categories')
+        .select('name')
+        .eq('id', incomingCatId as string)
+        .single()
+      if (newCatErr || !newCat) throw newCatErr || new Error('Category not found')
+
+      const newCatByProp = await buildCategoryIdByPropertyForName(newCat.name as string)
+
+      const { data: sibs, error: sibErr } = await supabase
+        .from('cafe_menu_items')
+        .select('id, property_id')
+        .in('id', sibIds)
+      if (sibErr) throw sibErr
+
+      for (const sib of sibs || []) {
+        const update = {
+          ...shared,
+          category_id: newCatByProp.get(sib.property_id as string) ?? (incomingCatId as string),
+        }
+        const { error } = await supabase
+          .from('cafe_menu_items')
+          .update(update)
+          .eq('id', sib.id)
+        if (error) throw error
+      }
+    } else {
+      const { error } = await supabase
+        .from('cafe_menu_items')
+        .update(shared)
+        .in('id', sibIds)
+      if (error) throw error
+    }
+
     await fetchData()
   }, [fetchData])
 
   const toggleAvailability = useCallback(async (id: string, isAvailable: boolean) => {
+    // Cascade across siblings (same name + same category name). Both
+    // outlets pause an item together. Per-outlet inventory exigencies go
+    // through the kitchen-card override flow instead.
+    const sibIds = await findSiblingMenuItemIds(id)
     const { error } = await supabase
       .from('cafe_menu_items')
       .update({ is_available: isAvailable })
-      .eq('id', id)
+      .in('id', sibIds)
     if (error) throw error
     await fetchData()
   }, [fetchData])
