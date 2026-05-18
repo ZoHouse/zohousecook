@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../configs/supabase'
 import { getNextStatus } from '../../lib/cafe/kitchen-status'
 import { deductInventoryForOrder, restoreInventoryForOrder } from '../../lib/cafe/inventory-deduct'
-import { debitFoodCredits, restoreFoodCredits } from '../../lib/cafe/food-credit-debit'
+import { restoreFoodCredits } from '../../lib/cafe/food-credit-debit'
 import { startKitchenAlertLoop, stopKitchenAlertLoop } from '../../lib/cafe/kitchen-alert'
 import type { CafeOrder, CafeOrderWithItems, KitchenStatus } from '../../types/cafe'
 
@@ -225,10 +225,13 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
           )
         }
 
-        // $food credit debit
-        debitFoodCredits(orderId).catch((err) =>
-          console.error('Food credit debit failed:', err)
-        )
+        // $food credits are debited at PLACE time inside place_cafe_order
+        // (and at topup time inside update_cafe_order_food_credits). Do NOT
+        // debit again on accept — the unique-spend index on (reference_id,
+        // type='spend') protects against the simple place→accept replay but
+        // NOT against place→topup→accept, which uses a different reference
+        // id for the topup row and so silently double-debited every order
+        // that flowed through "Complete Payment". Removed 2026-05-18.
       }
     },
     []
