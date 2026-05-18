@@ -32,17 +32,7 @@ const CafeKitchenPage: NextPage = () => {
   // staff-facing switch.
   const [acceptingOrders, setAcceptingOrders] = useState<boolean | null>(null)
   const [acceptingLoading, setAcceptingLoading] = useState(false)
-  // Persist sound-ready across reloads: chefs got tired of re-clicking
-  // "Enable sound" every time the kitchen tab reloaded. Browser autoplay
-  // policy still requires a user gesture, but once enabled we show "ready"
-  // optimistically — the first click anywhere on the page (kitchen is an
-  // interactive board, so this happens within seconds) re-unlocks the
-  // actual AudioContext via the listener below.
-  const SOUND_PREF_KEY = 'cafe.kitchen.soundEnabled'
-  const [soundReady, setSoundReady] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false
-    return window.localStorage.getItem(SOUND_PREF_KEY) === 'true'
-  })
+  const [soundReady, setSoundReady] = useState(false)
 
   // Audio setup: set the URL synchronously on mount so it survives HMR /
   // remounts, then unlock on the first user gesture (browsers block audio
@@ -51,21 +41,11 @@ const CafeKitchenPage: NextPage = () => {
   useEffect(() => {
     if (typeof window === 'undefined') return
     setKitchenAudioUrl(alertAudioUrl)
-    if (isKitchenAudioUnlocked()) {
-      setSoundReady(true)
-      return
-    }
     const handler = () => {
       unlockKitchenAudio()
       // unlock() resolves async (the priming play() returns a Promise),
       // so check again on a short delay to flip the "Sound ready" indicator.
-      window.setTimeout(() => {
-        const ok = isKitchenAudioUnlocked()
-        if (ok) {
-          setSoundReady(true)
-          try { window.localStorage.setItem(SOUND_PREF_KEY, 'true') } catch { /* quota / private mode */ }
-        }
-      }, 100)
+      window.setTimeout(() => setSoundReady(isKitchenAudioUnlocked()), 100)
     }
     window.addEventListener('pointerdown', handler, { once: true })
     window.addEventListener('keydown', handler, { once: true })
@@ -179,13 +159,7 @@ const CafeKitchenPage: NextPage = () => {
                         setKitchenAudioUrl(alertAudioUrl)
                         unlockKitchenAudio()
                         playKitchenAlert()
-                        window.setTimeout(() => {
-                          const ok = isKitchenAudioUnlocked()
-                          setSoundReady(ok)
-                          if (ok) {
-                            try { window.localStorage.setItem(SOUND_PREF_KEY, 'true') } catch { /* quota / private mode */ }
-                          }
-                        }, 100)
+                        window.setTimeout(() => setSoundReady(isKitchenAudioUnlocked()), 100)
                       }}
                       title={
                         soundReady

@@ -12,7 +12,7 @@ import {
   Typography,
 } from 'antd'
 import type { TableColumnsType } from 'antd'
-import { CopyOutlined, ImportOutlined } from '@ant-design/icons'
+import { CopyOutlined } from '@ant-design/icons'
 import { AddOutlined, ArrowLeftOutlined, ArrowRightOutlined } from '@mui/icons-material'
 import moment from 'moment'
 import type { Dayjs } from 'dayjs'
@@ -20,9 +20,7 @@ import dayjs from 'dayjs'
 import ZoHouseGuard from '../../components/helpers/app/ZoHouseGuard'
 import { Page, PageContent, PageHeader } from '../../components/ui'
 import { useCafeMealPlans } from '../../hooks/cafe/useCafeMealPlans'
-import { useCafeMenu } from '../../hooks/cafe/useCafeMenu'
 import { supabase } from '../../configs/supabase'
-import MenuItemForm from '../../components/cafe/MenuItemForm'
 import type { MenuItem, MealType } from '../../types/cafe'
 
 const { Text } = Typography
@@ -40,13 +38,7 @@ function getMonday(date: Date): Date {
 }
 
 function formatDateISO(date: Date): string {
-  // Local-time YYYY-MM-DD. .toISOString() would shift the day across the
-  // local/UTC boundary (IST midnight → previous UTC day), causing items to
-  // be filed under the wrong column when the user is east of UTC.
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+  return date.toISOString().split('T')[0]
 }
 
 function addDays(date: Date, days: number): Date {
@@ -83,17 +75,6 @@ const CafeMealPlanPage: NextPage = () => {
   const [selectedMenuItemId, setSelectedMenuItemId] = useState<string | undefined>()
   const [isAdding, setIsAdding] = useState(false)
 
-  // Create-new-item flow: opens MenuItemForm to add an item that isn't in the
-  // menu yet, then auto-attaches it to the meal plan slot the user came from.
-  const [createItemOpen, setCreateItemOpen] = useState(false)
-  const [createItemCategoryId, setCreateItemCategoryId] = useState<string | undefined>()
-  const { categories, createItem: createMenuItem } = useCafeMenu()
-
-  // One-click import from the legacy `notes` text: splits each note on
-  // commas / dashes, creates any missing menu items, and links them to the
-  // matching slot. Skips slots that already have items.
-  const [isImporting, setIsImporting] = useState(false)
-
   const from = formatDateISO(weekStart)
   const to = formatDateISO(addDays(weekStart, 6))
 
@@ -102,20 +83,15 @@ const CafeMealPlanPage: NextPage = () => {
     createPlan, addItem, removeItem, copyPlans,
   } = useCafeMealPlans({ from, to })
 
-  // Fetch all available menu items. Re-runnable after we create a new one
-  // inline so the dropdown stays in sync.
-  const refetchMenuItems = useCallback(async () => {
-    const { data } = await supabase
+  // Fetch all available menu items once on mount
+  useEffect(() => {
+    supabase
       .from('cafe_menu_items')
       .select('*')
       .eq('is_available', true)
       .order('name')
-    setMenuItems(data || [])
+      .then(({ data }) => setMenuItems(data || []))
   }, [])
-
-  useEffect(() => {
-    refetchMenuItems()
-  }, [refetchMenuItems])
 
   const handlePrevWeek = useCallback(() => {
     setWeekStart((prev) => addDays(prev, -7))
@@ -129,25 +105,15 @@ const CafeMealPlanPage: NextPage = () => {
     setAddModalMealType(mealType)
     setAddModalDate(date)
     setSelectedMenuItemId(undefined)
-    // Preselect a sensible category for any new item the user creates from
-    // this slot: prefer one matching the meal name (e.g. "Breakfast"), fall
-    // back to "Zo Meals", then to the first category overall.
-    const byName = (needle: string) =>
-      categories.find((c) => c.name.toLowerCase().includes(needle.toLowerCase()))
-    const guess =
-      byName(mealType)?.id ||
-      byName('zo meals')?.id ||
-      categories[0]?.id
-    setCreateItemCategoryId(guess)
     setAddModalOpen(true)
-  }, [categories])
+  }, [])
 
   const handleAddItem = useCallback(async () => {
     if (!selectedMenuItemId) return
     setIsAdding(true)
     try {
       const dateKey = formatDateISO(addModalDate)
-      const plan = plans.find(p => p.date === dateKey && p.meal_type === addModalMealType)
+      let plan = plans.find(p => p.date === dateKey && p.meal_type === addModalMealType)
 
       if (!plan) {
         const defaults = MEAL_DEFAULTS[addModalMealType]
@@ -171,125 +137,6 @@ const CafeMealPlanPage: NextPage = () => {
       setIsAdding(false)
     }
   }, [selectedMenuItemId, addModalDate, addModalMealType, plans, createPlan, addItem])
-
-  // Create a new menu item, then attach it to the meal plan slot the modal
-  // is currently focused on. Reuses the regular MenuItemForm so the user
-  // gets the full create UI (image upload, recipe, nutrition, AI fill).
-  const handleCreateAndAttachItem = useCallback(
-    async (data: Record<string, unknown>): Promise<string | null> => {
-      try {
-        const newId = await createMenuItem(data)
-        if (!newId) {
-          message.error('Failed to create item')
-          return null
-        }
-        // Refresh the dropdown so the new item is visible if the user reopens
-        // the modal later.
-        await refetchMenuItems()
-        // Make sure the meal plan exists, then attach.
-        const dateKey = formatDateISO(addModalDate)
-        const plan = plans.find(p => p.date === dateKey && p.meal_type === addModalMealType)
-        if (!plan) {
-          const defaults = MEAL_DEFAULTS[addModalMealType]
-          const newPlan = await createPlan(dateKey, addModalMealType, defaults.start, defaults.end)
-          if (!newPlan) {
-            message.error('Item created, but failed to create meal plan slot')
-            return newId
-          }
-          await addItem(newPlan.id, newId)
-        } else {
-          await addItem(plan.id, newId)
-        }
-        message.success('Item created and added to meal plan')
-        setCreateItemOpen(false)
-        setAddModalOpen(false)
-        setSelectedMenuItemId(undefined)
-        return newId
-      } catch {
-        message.error('Failed to create item')
-        return null
-      }
-    },
-    [createMenuItem, addModalDate, addModalMealType, plans, createPlan, addItem, refetchMenuItems],
-  )
-
-  const handleImportFromNotes = useCallback(async () => {
-    setIsImporting(true)
-    try {
-      // Only touch slots that still have legacy notes and no items linked.
-      const candidates = plans.filter(
-        (p) => p.notes && p.notes.trim().length > 0 && p.items.length === 0,
-      )
-      if (candidates.length === 0) {
-        message.info('Nothing to import — every slot in this week either has items or no notes.')
-        return
-      }
-
-      // Pick a default category for any newly created items.
-      const defaultCatId =
-        categories.find((c) => /zo meal/i.test(c.name))?.id ||
-        categories[0]?.id
-      if (!defaultCatId) {
-        message.error('No menu category exists — create one before importing.')
-        return
-      }
-
-      // Parser: split on commas, em/en/hyphen dashes (with surrounding spaces
-      // so we don't break hyphenated names). "&" and "and" are kept inline so
-      // combined dishes like "patta gobi & aloo dry" stay one item.
-      const splitNotes = (notes: string): string[] =>
-        notes
-          .split(/\s*,\s*|\s+[-—–]\s+/)
-          .map((s) => s.trim())
-          .filter((s) => s.length >= 2 && s.length <= 80)
-
-      const toTitle = (s: string): string =>
-        s.replace(/\b([a-z])/g, (m) => m.toUpperCase())
-
-      // Build a lookup of known items by normalised name so we can reuse
-      // anything that already exists (Tea, Dal, etc.) instead of creating
-      // duplicates.
-      const knownByName = new Map<string, string>()
-      for (const m of menuItems) knownByName.set(m.name.trim().toLowerCase(), m.id)
-
-      let attached = 0
-      let created = 0
-
-      for (const plan of candidates) {
-        const parts = splitNotes(plan.notes || '')
-        for (const raw of parts) {
-          const titled = toTitle(raw)
-          const key = titled.toLowerCase()
-          let itemId = knownByName.get(key)
-          if (!itemId) {
-            const newId = await createMenuItem({
-              category_id: defaultCatId,
-              name: titled,
-              price: 0,
-              diet: 'veg',
-              is_available: true,
-            })
-            if (!newId) continue
-            itemId = newId
-            knownByName.set(key, newId)
-            created++
-          }
-          await addItem(plan.id, itemId)
-          attached++
-        }
-      }
-
-      await refetchMenuItems()
-      message.success(
-        `Imported ${attached} item${attached === 1 ? '' : 's'} (${created} new menu item${created === 1 ? '' : 's'} created)`,
-      )
-    } catch (err) {
-      console.error('Import error:', err)
-      message.error('Import failed — check console')
-    } finally {
-      setIsImporting(false)
-    }
-  }, [plans, categories, menuItems, createMenuItem, addItem, refetchMenuItems])
 
   const handleCopyWeek = useCallback(async () => {
     if (!copyTargetDate) return
@@ -440,14 +287,6 @@ const CafeMealPlanPage: NextPage = () => {
 
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <Button
-                icon={<ImportOutlined />}
-                onClick={handleImportFromNotes}
-                loading={isImporting}
-                title="Convert each slot's legacy notes text into linked menu items"
-              >
-                Import from Notes
-              </Button>
-              <Button
                 icon={<CopyOutlined />}
                 onClick={() => setCopyModalOpen(true)}
               >
@@ -519,44 +358,7 @@ const CafeMealPlanPage: NextPage = () => {
           }
           options={availableMenuItems.map(m => ({ label: m.name, value: m.id }))}
         />
-
-        {/* Create-new-item path: opens the full menu-item form, then attaches
-            the created item to this slot. */}
-        <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-          <Text type="secondary" style={{ display: 'block', marginBottom: 8, fontSize: 12 }}>
-            Don&apos;t see it? Add a brand-new menu item:
-          </Text>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Select
-              placeholder="Category"
-              style={{ flex: 1 }}
-              value={createItemCategoryId}
-              onChange={setCreateItemCategoryId}
-              options={categories.map(c => ({ label: c.name, value: c.id }))}
-            />
-            <Button
-              type="dashed"
-              icon={<AddOutlined style={{ fontSize: 14 }} />}
-              disabled={!createItemCategoryId}
-              onClick={() => setCreateItemOpen(true)}
-            >
-              Create new item
-            </Button>
-          </div>
-        </div>
       </Modal>
-
-      {/* MenuItemForm — same form used by the cafe menu page. After submit
-          we auto-attach the new item to the meal plan slot via
-          handleCreateAndAttachItem. */}
-      {createItemOpen && createItemCategoryId && (
-        <MenuItemForm
-          open={createItemOpen}
-          onClose={() => setCreateItemOpen(false)}
-          onSubmit={handleCreateAndAttachItem}
-          categoryId={createItemCategoryId}
-        />
-      )}
 
       {/* Copy week modal */}
       <Modal

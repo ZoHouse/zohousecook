@@ -39,7 +39,6 @@ interface MenuItemFormProps {
   open: boolean
   onClose: () => void
   onSubmit: (values: Record<string, unknown>) => Promise<string | null> | void
-  onDelete?: (id: string) => Promise<boolean>
   editItem?: MenuItem | null
   categoryId: string
 }
@@ -48,7 +47,6 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
   open,
   onClose,
   onSubmit,
-  onDelete,
   editItem,
   categoryId,
 }) => {
@@ -64,7 +62,6 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
   const [recipeLoading, setRecipeLoading] = useState(false)
   const [recipeSaving, setRecipeSaving] = useState(false)
   const [originalRecipeIds, setOriginalRecipeIds] = useState<Set<string>>(new Set())
-  const [deleting, setDeleting] = useState(false)
 
   // Fetch all ingredients (for the dropdown)
   useEffect(() => {
@@ -329,58 +326,17 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
   // Filter out already-selected ingredients from the dropdown
   const selectedIngredientIds = new Set(recipeRows.map((r) => r.ingredient_id).filter(Boolean))
 
-  const handleDelete = () => {
-    if (!editItem || !onDelete) return
-    Modal.confirm({
-      title: 'Delete this item?',
-      content: (
-        <span>
-          This will remove <b>{editItem.name}</b> across all properties. This action cannot be undone.
-        </span>
-      ),
-      okText: 'Delete',
-      okButtonProps: { danger: true },
-      cancelText: 'Cancel',
-      onOk: async () => {
-        setDeleting(true)
-        try {
-          await onDelete(editItem.id)
-        } finally {
-          setDeleting(false)
-        }
-      },
-    })
-  }
-
   return (
     <Modal
       open={open}
       title={isEdit ? 'Edit Item' : 'Add Item'}
+      okText={recipeSaving ? 'Saving...' : 'Save'}
+      cancelText="Cancel"
+      onOk={handleOk}
       onCancel={onClose}
+      confirmLoading={recipeSaving}
       destroyOnClose
       width={600}
-      footer={
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            {isEdit && onDelete && (
-              <Button
-                danger
-                icon={<DeleteOutlined />}
-                loading={deleting}
-                onClick={handleDelete}
-              >
-                Delete
-              </Button>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button onClick={onClose}>Cancel</Button>
-            <Button type="primary" onClick={handleOk} loading={recipeSaving}>
-              {recipeSaving ? 'Saving...' : 'Save'}
-            </Button>
-          </div>
-        </div>
-      }
     >
       <Form form={form} layout="vertical" size="middle">
         <Form.Item

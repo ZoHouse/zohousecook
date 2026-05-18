@@ -77,12 +77,8 @@ Located in `apps/pms/src/components/cafe/` — cafe-specific UI components.
 - **Realtime via Supabase** — kitchen board and order updates use Supabase Realtime subscriptions.
 - **Prices in paise** — all prices stored and calculated in paise. Convert to rupees only in display layer.
 - **Per-property data** — inventory and orders are per-property (BLR/WTF). Menu and meal plans are standardised across properties.
-- **Kitchen status flow:** new -> accepted -> preparing -> ready -> served. Only "cancelled" can skip steps. Status transitions on the kitchen board MUST go through the `advance_kitchen_status` RPC, which locks the row and asserts the expected current status — never a bare UPDATE. Concurrent kitchen tabs would otherwise double-fire inventory/credit side-effects.
+- **Kitchen status flow:** new -> accepted -> preparing -> ready -> served. Only "cancelled" can skip steps.
 - **Category-based browsing** — both admin menu and customer order page use category sidebar/chips for navigation, with search as secondary.
-- **Order placement ALWAYS funnels through `place_cafe_order` RPC** — both the customer route (`apps/website/src/pages/cafezomad/[tableId].tsx`) and the staff "New Order" dialog (`components/cafe/CreateOrderDialog.tsx`). The RPC enforces accepting_orders, validates prices server-side, applies food credits atomically, and assigns display_number safely. Direct inserts into `cafe_orders` / `cafe_order_items` are forbidden — they bypass the credit ledger and corrupt analytics. RPC takes `p_mode` (dine_in/pickup/room_service) since the 20260518 migration; for non-dine_in pass `p_table_id=null`.
-- **Standardised menu writes cascade** — `createItem` / `updateItem` / `toggleAvailability` / `deleteItem` in `useCafeMenu` and `toggleCategory` ALL look up same-named siblings across properties via the `findSiblingMenuItemIds` helper and apply the change to every property's row. Never do a single-row `.update()` on `cafe_menu_items` or `cafe_menu_categories` — drift between BLR and WTF is invisible to admins because of the dedup-by-name display layer.
-- **N+1 prevention on order lists** — `useCafeOrders` and `useCafeRealtimeOrders` use a single embedded query: `.select('*, order_items:cafe_order_items(*), table:cafe_tables(*)')`. Don't reintroduce per-row fetches.
-- **Aggregates via Postgres views** — for top-line numbers like `$food` totals, query the `food_credit_summary` view instead of pulling every transaction row. Add new views beside it when you need other aggregates.
 
 ## Known Gaps
 
@@ -104,9 +100,6 @@ Located in `apps/pms/src/components/cafe/` — cafe-specific UI components.
 
 - **2026-03-22:** Standardised menu across properties. Only inventory/orders vary by property. Reason: Zo House brand consistency, simpler management.
 - **2026-03-22:** Customer auth via phone OTP only (no email, no social). Reason: phone is required for order association and future Zo Card lookup.
-- **2026-05-18:** Production customer ordering route is `/cafezomad/[tableId]` on the website app — QR codes resolve to `https://zozozo.work/cafezomad/<table-id>`. The legacy `/cafe/order/[tableId]` mirror in the PMS app was deleted because (a) no QR points at it, (b) it had silently drifted behind the cafezomad page on credit redemption, accepting_orders gating, visibility-paused polling, and per-user order scoping. Don't reintroduce — extend cafezomad instead.
-- **2026-05-18:** Staff "New Order" dialog rewritten to call `place_cafe_order` RPC. Previously did direct inserts and never debited `food_credit_wallets` when staff picked `payment_mode='zo_card'`. The RPC now accepts `p_mode` so pickup / room_service work through it too.
-- **2026-05-18:** Kitchen status transitions go through `advance_kitchen_status` RPC (optimistic lock + state-machine assertion) instead of bare UPDATEs. Closes the double-advance race when two kitchen tabs are open.
 
 ---
 

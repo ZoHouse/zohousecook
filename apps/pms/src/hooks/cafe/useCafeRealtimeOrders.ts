@@ -3,7 +3,7 @@ import { supabase } from '../../configs/supabase'
 import { getNextStatus } from '../../lib/cafe/kitchen-status'
 import { deductInventoryForOrder, restoreInventoryForOrder } from '../../lib/cafe/inventory-deduct'
 import { debitFoodCredits, restoreFoodCredits } from '../../lib/cafe/food-credit-debit'
-import { startKitchenAlertLoop, stopKitchenAlertLoop } from '../../lib/cafe/kitchen-alert'
+import { playKitchenAlert } from '../../lib/cafe/kitchen-alert'
 import type { CafeOrder, CafeOrderWithItems, KitchenStatus } from '../../types/cafe'
 
 const ACTIVE_STATUSES: KitchenStatus[] = ['new', 'accepted', 'preparing', 'ready']
@@ -16,17 +16,26 @@ interface UseCafeRealtimeOrdersResult {
 }
 
 async function fetchOrderWithItems(orderId: string): Promise<CafeOrderWithItems | null> {
-  // Single joined fetch — was previously 1 order + 1 items + 1 table
-  // round-trip per call. Realtime fires this for every UPDATE on the
-  // board so the latency add was visible during busy service.
-  const { data, error } = await supabase
+  const { data: order, error } = await supabase
     .from('cafe_orders')
-    .select('*, order_items:cafe_order_items(*), table:cafe_tables(*)')
+    .select('*')
     .eq('id', orderId)
-    .maybeSingle()
+    .single()
 
-  if (error || !data) return null
-  return data as CafeOrderWithItems
+  if (error || !order) return null
+
+  const [itemsResult, tableResult] = await Promise.all([
+    supabase.from('cafe_order_items').select('*').eq('order_id', orderId),
+    order.table_id
+      ? supabase.from('cafe_tables').select('*').eq('id', order.table_id).single()
+      : Promise.resolve({ data: null, error: null }),
+  ])
+
+  return {
+    ...order,
+    order_items: itemsResult.data || [],
+    table: tableResult.data || null,
+  }
 }
 
 export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtimeOrdersResult {
@@ -44,19 +53,32 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
     setIsLoading(true)
 
     try {
-      // Single joined query for the whole board — was previously 1 + 2N
-      // round-trips (N orders × items × table). PostgREST embedding does
-      // both joins in one go.
-      const { data, error } = await supabase
+      const { data: orderData, error } = await supabase
         .from('cafe_orders')
-        .select('*, order_items:cafe_order_items(*), table:cafe_tables(*)')
+        .select('*')
         .eq('property_id', propertyId)
         .in('kitchen_status', ACTIVE_STATUSES)
         .order('created_at', { ascending: false })
 
       if (error) throw error
 
-      setOrders((data || []) as CafeOrderWithItems[])
+      const ordersWithItems: CafeOrderWithItems[] = await Promise.all(
+        (orderData || []).map(async (order) => {
+          const [itemsResult, tableResult] = await Promise.all([
+            supabase.from('cafe_order_items').select('*').eq('order_id', order.id),
+            order.table_id
+              ? supabase.from('cafe_tables').select('*').eq('id', order.table_id).single()
+              : Promise.resolve({ data: null, error: null }),
+          ])
+          return {
+            ...order,
+            order_items: itemsResult.data || [],
+            table: tableResult.data || null,
+          }
+        })
+      )
+
+      setOrders(ordersWithItems)
     } catch (err) {
       console.error('useCafeRealtimeOrders fetch error:', err)
     } finally {
@@ -93,13 +115,13 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
           const changed = payload.new as CafeOrder
 
           if (payload.eventType === 'INSERT') {
-            // New order — fetch full data and add to state. The [orders]
-            // effect below will spin up the alert loop once a 'new' order
-            // lands; drafts are suppressed so chefs aren't woken up by
-            // unpaid carts.
+            // New order — fetch full data and add to state. Beep when it's
+            // an active (visible) order — drafts are suppressed so chefs
+            // aren't woken up by unpaid carts.
             const fullOrder = await fetchOrderWithItems(changed.id)
             if (fullOrder && ACTIVE_STATUSES.includes(fullOrder.kitchen_status as KitchenStatus)) {
               setOrders((prev) => [fullOrder, ...prev])
+              playKitchenAlert()
             }
           } else if (payload.eventType === 'UPDATE') {
             const status = changed.kitchen_status as KitchenStatus
@@ -118,9 +140,8 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
                     return idx === -1 ? prev : prev.filter((o) => o.id !== changed.id)
                   }
                   if (idx === -1) {
-                    // Fresh-to-board (draft just became visible). The
-                    // [orders] effect below will start the alert loop when
-                    // a 'new' order is present.
+                    // Fresh-to-board (draft just became visible).
+                    playKitchenAlert()
                     return [fullOrder, ...prev]
                   }
                   const next = prev.slice()
@@ -144,23 +165,6 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
     }
   }, [propertyId])
 
-  // Keep the alert ringing while any order is still in 'new' (i.e. unaccepted).
-  // The moment all 'new' orders have been accepted (or removed), stop the loop.
-  useEffect(() => {
-    const hasUnaccepted = orders.some((o) => o.kitchen_status === 'new')
-    if (hasUnaccepted) {
-      startKitchenAlertLoop()
-    } else {
-      stopKitchenAlertLoop()
-    }
-  }, [orders])
-
-  // Safety: stop the loop on unmount so a stale interval doesn't keep ringing
-  // after the chef leaves the kitchen board.
-  useEffect(() => {
-    return () => { stopKitchenAlertLoop() }
-  }, [])
-
   const advanceStatus = useCallback(
     async (orderId: string, currentStatus: KitchenStatus) => {
       const nextStatus = getNextStatus(currentStatus)
@@ -173,15 +177,10 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
         )
       )
 
-      // Race-safe transition via SECURITY DEFINER RPC. The RPC locks the
-      // row, asserts the kitchen_status we're transitioning from matches
-      // what we expected, and only then writes. If another tab beat us to
-      // the punch the RPC raises and we revert the optimistic update.
-      const { error } = await supabase.rpc('advance_kitchen_status', {
-        p_order_id: orderId,
-        p_expected_status: currentStatus,
-        p_next_status: nextStatus,
-      })
+      const { error } = await supabase
+        .from('cafe_orders')
+        .update({ kitchen_status: nextStatus })
+        .eq('id', orderId)
 
       if (error) {
         console.error('advanceStatus error:', error)
