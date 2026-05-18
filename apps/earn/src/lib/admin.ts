@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { timingSafeEqual } from "crypto";
 
 const HEADER = "x-admin-key";
 
@@ -17,7 +18,14 @@ export function requireAdmin(req: NextApiRequest, res: NextApiResponse): boolean
     return false;
   }
   const provided = req.headers[HEADER];
-  if (provided !== expected) {
+  const providedStr = typeof provided === "string" ? provided : "";
+  let ok = false;
+  try {
+    ok = timingSafeEqual(Buffer.from(providedStr), Buffer.from(expected));
+  } catch {
+    ok = false;
+  }
+  if (!ok) {
     res.status(401).json({ error: "unauthorized" });
     return false;
   }
