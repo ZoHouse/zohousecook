@@ -27,11 +27,11 @@ Working doc for this branch. Delete before merging to `main`.
   - Fix: look up name, then `.eq('name', name)` to update all per-property siblings (matches `createItem`/`createCategory` already-standardised pattern). `updateItem` also strips `id`/`property_id`/`category_id` from the payload to avoid clobbering scoping
   - Status: **fixed**
 
-- [x] **Delete option for menu items + categories** — `apps/pms/src/hooks/cafe/useCafeMenu.ts`, `apps/pms/src/pages/cafe/menu.tsx`
-  - Added `deleteItem` (delete-by-name across properties) and `deleteCategory` (deletes category rows + their items) on the hook
-  - UI: trash button next to the eye-toggle on each category in the sidebar; "Delete" action on each item card. Both have Popconfirm + danger color
-  - FK-aware error: if a menu_item is referenced by past `cafe_order_items`, the toast suggests using "Unavailable" instead
-  - Status: **fixed**
+- [x] **Delete option for menu items + categories — added then removed**
+  - Added trash UI + cross-property `deleteItem`/`deleteCategory` on the hook to clean up diet pollution in one pass
+  - After cleanup the user asked for delete to be removed (don't want staff hard-deleting via UI). Buttons + dead hook functions both gone
+  - "Unavailable" toggle remains for soft-delete
+  - Status: **fixed (removed after use)**
 
 - [x] **Zo Meals cleaned out** — DB-side
   - 46 rows / 24 names (Poha, Roti, Dal, Mutter Paneer, etc) were sitting in Zo Meals — historical seed pollution, not from the current meal-plan flow
