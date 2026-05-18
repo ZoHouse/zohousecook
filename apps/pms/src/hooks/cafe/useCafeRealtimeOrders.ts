@@ -327,18 +327,15 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
       ['accepted', 'preparing'].includes(order.kitchen_status)
     const wasPaidByRazorpay = order?.payment_mode === 'razorpay' && order?.payment_status === 'paid'
 
-    // Mark cancelled. Also flip payment_status='refunded' on Razorpay-paid
-    // orders so the FE/UI reflects that the money has to come back to the
-    // customer. Note: this just updates our DB — the actual Razorpay refund
-    // API call is TODO (see #refund-todo). Until that's wired up, staff must
-    // manually refund via Razorpay Dashboard. The status='refunded' here
-    // ensures we don't lose track of which payments owe the customer.
-    const updates: Record<string, unknown> = { kitchen_status: 'cancelled' }
-    if (wasPaidByRazorpay) updates.payment_status = 'refunded'
-
+    // Mark cancelled. payment_status flips to 'refunded' ONLY after the
+    // Razorpay refund call below succeeds — we no longer pre-flip in this
+    // step because a failed refund call would leave the row lying about
+    // its true state. cancelOrder is responsible for the cancel; the
+    // /pm/api/cafe/refund-razorpay endpoint is responsible for the refund
+    // and the truthful status flip.
     const { error } = await supabase
       .from('cafe_orders')
-      .update(updates)
+      .update({ kitchen_status: 'cancelled' })
       .eq('id', orderId)
 
     if (error) {
@@ -367,15 +364,31 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
     )
 
     if (wasPaidByRazorpay) {
-      // #refund-todo: implement /pm/api/cafe/refund-razorpay endpoint that
-      // calls POST /v1/payments/{payment_id}/refund and confirms before we
-      // set payment_status='refunded'. For now we mark the row above so
-      // staff sees "Refunded" and can reconcile manually via Dashboard.
-      console.warn(
-        'cancelOrder: Razorpay refund not auto-issued for paid order',
-        orderId,
-        '— flagged as refunded in DB; refund manually via Razorpay Dashboard.',
-      )
+      // Issue the actual Razorpay refund. The endpoint:
+      //   - is idempotent (guards on cafe_orders.razorpay_refund_id)
+      //   - calls POST /v1/payments/{payment_id}/refund with X-Razorpay-
+      //     Idempotency keyed by cafe_order_id
+      //   - flips payment_status='refunded' on its own success
+      // If it fails we leave payment_status='paid' truthfully so staff sees
+      // the row hasn't refunded yet and can retry from /pm/cafe/orders or
+      // escalate manually.
+      try {
+        const resp = await fetch('/pm/api/cafe/refund-razorpay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cafe_order_id: orderId }),
+        })
+        if (!resp.ok) {
+          const body = await resp.json().catch(() => ({}))
+          console.error(
+            'cancelOrder: Razorpay refund failed for order',
+            orderId,
+            body?.error || resp.statusText,
+          )
+        }
+      } catch (err) {
+        console.error('cancelOrder: Razorpay refund request errored', orderId, err)
+      }
     }
   }, [orders])
 
