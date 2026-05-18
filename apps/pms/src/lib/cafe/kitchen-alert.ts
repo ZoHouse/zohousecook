@@ -90,8 +90,9 @@ export function unlockKitchenAudio(): void {
   if (!audioUrl) return
 
   if (!audioCtx) {
-    const Ctor: typeof AudioContext | undefined =
-      (window as any).AudioContext || (window as any).webkitAudioContext
+    // Safari < 14 only exposes the prefixed constructor.
+    const w = window as Window & { webkitAudioContext?: typeof AudioContext }
+    const Ctor: typeof AudioContext | undefined = w.AudioContext || w.webkitAudioContext
     if (Ctor) {
       try { audioCtx = new Ctor() } catch { audioCtx = null }
     }

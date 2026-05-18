@@ -10,8 +10,11 @@ import { AssociationProvider } from "../../contexts/association";
 import AccessDenied from "./AccessDenied";
 import Navigation from "./Navigation";
 
-// Customer-facing routes bypass admin shell (no sidebar, no role check)
-const CUSTOMER_ROUTES = ["/cafe/order/"];
+// Customer-facing routes bypass admin shell (no sidebar, no role check).
+// Production customer ordering lives at /cafezomad/[tableId] on the website
+// app, not here — the legacy /cafe/order/[tableId] PMS mirror was removed
+// 2026-05-18.
+const CUSTOMER_ROUTES: string[] = [];
 
 interface MainProps {
   Component: NextComponentType<NextPageContext, any, GeneralObject>;

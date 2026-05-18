@@ -147,7 +147,7 @@ const CafeMealPlanPage: NextPage = () => {
     setIsAdding(true)
     try {
       const dateKey = formatDateISO(addModalDate)
-      let plan = plans.find(p => p.date === dateKey && p.meal_type === addModalMealType)
+      const plan = plans.find(p => p.date === dateKey && p.meal_type === addModalMealType)
 
       if (!plan) {
         const defaults = MEAL_DEFAULTS[addModalMealType]
@@ -188,7 +188,7 @@ const CafeMealPlanPage: NextPage = () => {
         await refetchMenuItems()
         // Make sure the meal plan exists, then attach.
         const dateKey = formatDateISO(addModalDate)
-        let plan = plans.find(p => p.date === dateKey && p.meal_type === addModalMealType)
+        const plan = plans.find(p => p.date === dateKey && p.meal_type === addModalMealType)
         if (!plan) {
           const defaults = MEAL_DEFAULTS[addModalMealType]
           const newPlan = await createPlan(dateKey, addModalMealType, defaults.start, defaults.end)
