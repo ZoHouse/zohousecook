@@ -16,26 +16,17 @@ interface UseCafeRealtimeOrdersResult {
 }
 
 async function fetchOrderWithItems(orderId: string): Promise<CafeOrderWithItems | null> {
-  const { data: order, error } = await supabase
+  // Single joined fetch — was previously 1 order + 1 items + 1 table
+  // round-trip per call. Realtime fires this for every UPDATE on the
+  // board so the latency add was visible during busy service.
+  const { data, error } = await supabase
     .from('cafe_orders')
-    .select('*')
+    .select('*, order_items:cafe_order_items(*), table:cafe_tables(*)')
     .eq('id', orderId)
-    .single()
+    .maybeSingle()
 
-  if (error || !order) return null
-
-  const [itemsResult, tableResult] = await Promise.all([
-    supabase.from('cafe_order_items').select('*').eq('order_id', orderId),
-    order.table_id
-      ? supabase.from('cafe_tables').select('*').eq('id', order.table_id).single()
-      : Promise.resolve({ data: null, error: null }),
-  ])
-
-  return {
-    ...order,
-    order_items: itemsResult.data || [],
-    table: tableResult.data || null,
-  }
+  if (error || !data) return null
+  return data as CafeOrderWithItems
 }
 
 export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtimeOrdersResult {
@@ -53,32 +44,19 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
     setIsLoading(true)
 
     try {
-      const { data: orderData, error } = await supabase
+      // Single joined query for the whole board — was previously 1 + 2N
+      // round-trips (N orders × items × table). PostgREST embedding does
+      // both joins in one go.
+      const { data, error } = await supabase
         .from('cafe_orders')
-        .select('*')
+        .select('*, order_items:cafe_order_items(*), table:cafe_tables(*)')
         .eq('property_id', propertyId)
         .in('kitchen_status', ACTIVE_STATUSES)
         .order('created_at', { ascending: false })
 
       if (error) throw error
 
-      const ordersWithItems: CafeOrderWithItems[] = await Promise.all(
-        (orderData || []).map(async (order) => {
-          const [itemsResult, tableResult] = await Promise.all([
-            supabase.from('cafe_order_items').select('*').eq('order_id', order.id),
-            order.table_id
-              ? supabase.from('cafe_tables').select('*').eq('id', order.table_id).single()
-              : Promise.resolve({ data: null, error: null }),
-          ])
-          return {
-            ...order,
-            order_items: itemsResult.data || [],
-            table: tableResult.data || null,
-          }
-        })
-      )
-
-      setOrders(ordersWithItems)
+      setOrders((data || []) as CafeOrderWithItems[])
     } catch (err) {
       console.error('useCafeRealtimeOrders fetch error:', err)
     } finally {
@@ -195,10 +173,15 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
         )
       )
 
-      const { error } = await supabase
-        .from('cafe_orders')
-        .update({ kitchen_status: nextStatus })
-        .eq('id', orderId)
+      // Race-safe transition via SECURITY DEFINER RPC. The RPC locks the
+      // row, asserts the kitchen_status we're transitioning from matches
+      // what we expected, and only then writes. If another tab beat us to
+      // the punch the RPC raises and we revert the optimistic update.
+      const { error } = await supabase.rpc('advance_kitchen_status', {
+        p_order_id: orderId,
+        p_expected_status: currentStatus,
+        p_next_status: nextStatus,
+      })
 
       if (error) {
         console.error('advanceStatus error:', error)

@@ -38,19 +38,22 @@ export function useFoodCredits(): UseFoodCreditsResult {
   const [stats, setStats] = useState<FoodCreditStats>({ totalIssued: 0, totalSpent: 0, totalOutstanding: 0 })
   const [recentTransactions, setRecentTransactions] = useState<FoodCreditTransaction[]>([])
 
+  // Pull the three top-line numbers from the food_credit_summary view
+  // instead of paginating through every transaction row. The view does
+  // the SUM() server-side so the response is constant-size regardless of
+  // ledger growth.
   const fetchStats = useCallback(async () => {
-    const [txnRes, walletRes] = await Promise.all([
-      supabase.from('food_credit_transactions').select('type, amount'),
-      supabase.from('food_credit_wallets').select('balance'),
-    ])
-
-    let totalIssued = 0, totalSpent = 0
-    for (const t of txnRes.data || []) {
-      if (t.type === 'issue') totalIssued += t.amount
-      if (t.type === 'spend') totalSpent += t.amount
+    const { data } = await supabase
+      .from('food_credit_summary')
+      .select('total_issued, total_spent, total_outstanding')
+      .maybeSingle()
+    if (data) {
+      setStats({
+        totalIssued: data.total_issued ?? 0,
+        totalSpent: data.total_spent ?? 0,
+        totalOutstanding: data.total_outstanding ?? 0,
+      })
     }
-    const totalOutstanding = (walletRes.data || []).reduce((sum: number, w: { balance: number }) => sum + w.balance, 0)
-    setStats({ totalIssued, totalSpent, totalOutstanding })
   }, [])
 
   const fetchRecent = useCallback(async () => {

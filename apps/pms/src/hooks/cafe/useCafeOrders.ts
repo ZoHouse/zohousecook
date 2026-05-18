@@ -40,9 +40,16 @@ export function useCafeOrders({
       const from = (page - 1) * pageSize
       const to = from + pageSize - 1
 
+      // Single joined query — previously this hook did N+1 (one query per
+      // order for items + one for the table). PostgREST embedding pulls
+      // everything in one round-trip via FK relationships on order_id and
+      // table_id.
       let query = supabase
         .from('cafe_orders')
-        .select('*', { count: 'exact' })
+        .select(
+          '*, order_items:cafe_order_items(*), table:cafe_tables(*)',
+          { count: 'exact' },
+        )
         .eq('property_id', propertyId)
         .order('created_at', { ascending: false })
         .range(from, to)
@@ -55,34 +62,7 @@ export function useCafeOrders({
 
       if (orderError) throw orderError
 
-      const baseOrders = orderData || []
-
-      // Fetch order items for all orders in parallel
-      const ordersWithItems: CafeOrderWithItems[] = await Promise.all(
-        baseOrders.map(async (order) => {
-          const [itemsResult, tableResult] = await Promise.all([
-            supabase
-              .from('cafe_order_items')
-              .select('*')
-              .eq('order_id', order.id),
-            order.table_id
-              ? supabase
-                  .from('cafe_tables')
-                  .select('*')
-                  .eq('id', order.table_id)
-                  .single()
-              : Promise.resolve({ data: null, error: null }),
-          ])
-
-          return {
-            ...order,
-            order_items: itemsResult.data || [],
-            table: tableResult.data || null,
-          }
-        })
-      )
-
-      setOrders(ordersWithItems)
+      setOrders((orderData || []) as CafeOrderWithItems[])
       setTotalCount(count ?? 0)
     } catch (err) {
       console.error('useCafeOrders error:', err)
