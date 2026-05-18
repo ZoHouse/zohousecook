@@ -92,6 +92,11 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   const [draftCreditOverrides, setDraftCreditOverrides] = useState<Record<string, number>>({})
   const [activeTab, setActiveTab] = useState<Tab>('menu')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  // Single scroll container is shared across tabs, so switching tabs would
+  // otherwise inherit the previous tab's scroll position (users on a
+  // scrolled-down Menu tap "View Cart" and land on the cart already scrolled
+  // past the items). Reset scrollTop=0 on every tab change.
+  const mainScrollRef = useRef<HTMLDivElement | null>(null)
   // Today's meal plan text per slot, read from cafe_meal_plans.notes. Shown
   // as the description of the matching "Breakfast" / "Lunch" / "Dinner" menu
   // items so customers see what's actually being served today.
@@ -118,6 +123,13 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       localStorage.removeItem(cartKey)
     }
   }, [cart, cartKey])
+
+  // Reset scroll to top whenever the user switches tabs. Without this, a
+  // scrolled-down Menu tab leaks its scroll position into Cart/Orders/Wallet
+  // and users land mid-page (or past the bottom) on the new tab.
+  useEffect(() => {
+    if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0
+  }, [activeTab])
 
   // $food credits
   const { balance: foodBalance, refresh: refreshFoodBalance } = useFoodCreditBalance(user?.mobile_number || null)
@@ -737,7 +749,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       )}
 
       {/* ── Main Content ─────────────────────────────────────────────────────── */}
-      <div className={`flex-1 overflow-y-auto ${totalItems > 0 && activeTab === 'menu' ? 'pb-44' : 'pb-28'}`}>
+      <div ref={mainScrollRef} className={`flex-1 overflow-y-auto ${totalItems > 0 && activeTab === 'menu' ? 'pb-44' : 'pb-28'}`}>
 
         {/* ── MENU TAB ──────────────────────────────────────────────────────── */}
         {activeTab === 'menu' && (
