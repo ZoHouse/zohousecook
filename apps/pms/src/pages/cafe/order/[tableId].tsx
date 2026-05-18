@@ -12,12 +12,22 @@ import type {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Tab = 'menu' | 'orders' | 'cart' | 'wallet'
+type MealType = 'breakfast' | 'lunch' | 'dinner'
 
 interface CartItem {
   menu_item_id: string
   name: string
   price: number
   quantity: number
+}
+
+// Local YYYY-MM-DD — matches what PMS writes (meal-plan dates are local-tz).
+function todayISO(): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 // ─── Status Badge ──────────────────────────────────────────────────────────────
@@ -88,6 +98,12 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
 
+  // Today's meal plan — items linked to each B/L/D slot, shown as the
+  // description on a menu card whose name matches that slot.
+  const [todayPlanText, setTodayPlanText] = useState<Record<MealType, string>>({
+    breakfast: '', lunch: '', dinner: '',
+  })
+
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   // Single scroll container is shared across tabs, so switching tabs would
   // otherwise inherit the previous tab's scroll position (chefs reported
@@ -152,6 +168,50 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     }
     init()
   }, [tableId])
+
+  // ── Data: today's meal plan items ──────────────────────────────────────────
+  // Joins cafe_meal_plans → cafe_meal_plan_items → cafe_menu_items.name so the
+  // Breakfast/Lunch/Dinner cards can surface what's actually being served today
+  // (e.g. "Dal, Roti, Patta Gobi, Rice") as their description text.
+  const fetchTodayPlan = useCallback(() => {
+    const today = todayISO()
+    supabase
+      .from('cafe_meal_plans')
+      .select('meal_type, items:cafe_meal_plan_items(menu_item:cafe_menu_items(name))')
+      .eq('date', today)
+      .then(({ data }) => {
+        const next: Record<MealType, string> = { breakfast: '', lunch: '', dinner: '' }
+        // Nested joins on a many-to-one FK arrive typed as arrays even though
+        // runtime returns a single row — tolerate both shapes.
+        type JoinedMenuItem = { name: string } | { name: string }[] | null
+        type Row = { meal_type: MealType; items: { menu_item: JoinedMenuItem }[] }
+        for (const plan of (data || []) as unknown as Row[]) {
+          if (plan.meal_type in next) {
+            const names = (plan.items || [])
+              .map((i) => {
+                const mi = i.menu_item
+                if (!mi) return undefined
+                return Array.isArray(mi) ? mi[0]?.name : mi.name
+              })
+              .filter((n): n is string => Boolean(n))
+            next[plan.meal_type] = names.join(', ')
+          }
+        }
+        setTodayPlanText(next)
+      })
+  }, [])
+
+  useEffect(() => { fetchTodayPlan() }, [fetchTodayPlan])
+
+  // Realtime: refetch when PMS edits a plan or its item list.
+  useEffect(() => {
+    const ch = supabase
+      .channel('order-table-meal-plan')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_meal_plans' }, () => fetchTodayPlan())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_meal_plan_items' }, () => fetchTodayPlan())
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [fetchTodayPlan])
 
   // ── Data: fetch + poll orders ──────────────────────────────────────────────
   const fetchOrders = useCallback(async () => {
@@ -499,6 +559,17 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                     {/* Item cards */}
                     {items.map((item) => {
                       const inCart = cart.find((c) => c.menu_item_id === item.id)
+                      // If this card is a meal slot (Breakfast/Lunch/Dinner),
+                      // its description becomes today's plan items list rather
+                      // than the static description from the DB.
+                      const nameKey = item.name.trim().toLowerCase()
+                      const mealSlot: MealType | null =
+                        nameKey === 'breakfast' ? 'breakfast' :
+                        nameKey === 'lunch' ? 'lunch' :
+                        nameKey === 'dinner' ? 'dinner' : null
+                      const descriptionText = mealSlot
+                        ? todayPlanText[mealSlot] || item.description
+                        : item.description
                       return (
                         <div
                           key={item.id}
@@ -520,10 +591,15 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                                 {item.name}
                               </span>
                             </div>
-                            {/* Description */}
-                            {item.description && (
-                              <p className="text-xs text-black/45 font-medium mt-0.5 ml-[18px] line-clamp-1">
-                                {item.description}
+                            {/* Description — meal-slot cards get today's plan items;
+                                allow multi-line wrap for the longer plan strings. */}
+                            {descriptionText && (
+                              <p
+                                className={`text-xs text-black/45 font-medium mt-0.5 ml-[18px] ${
+                                  mealSlot ? 'leading-relaxed' : 'line-clamp-1'
+                                }`}
+                              >
+                                {descriptionText}
                               </p>
                             )}
                             {/* Price + calories */}

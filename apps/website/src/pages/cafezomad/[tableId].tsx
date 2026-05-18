@@ -80,16 +80,20 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     } catch { return [] }
   })
   const [foodCreditAmount, setFoodCreditAmount] = useState(0)
+  // Free-text instructions the customer wants attached to this order (e.g.
+  // "less spicy", "no onion"). Persisted on cafe_orders.notes via the RPC.
+  const [orderNotes, setOrderNotes] = useState('')
   // Per-draft-order slider value (in rupees). Default falls back to the order's
   // existing food_credit_applied_paise / 100 when undefined.
   const [draftCreditOverrides, setDraftCreditOverrides] = useState<Record<string, number>>({})
   const [activeTab, setActiveTab] = useState<Tab>('menu')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  // Today's meal plan text per slot, read from cafe_meal_plans.notes. Shown
-  // as the description of the matching "Breakfast" / "Lunch" / "Dinner" menu
-  // items so customers see what's actually being served today.
-  const [todayPlanText, setTodayPlanText] = useState<{ breakfast: string; lunch: string; dinner: string }>({
-    breakfast: '', lunch: '', dinner: '',
+  // Today's meal plan per slot — keeps the full item rows so the synthetic
+  // Breakfast/Lunch/Dinner combo cards can both show the items as description
+  // text *and* add them all to cart with a single tap.
+  type PlanItem = { id: string; name: string; price: number }
+  const [todayPlanItems, setTodayPlanItems] = useState<{ breakfast: PlanItem[]; lunch: PlanItem[]; dinner: PlanItem[] }>({
+    breakfast: [], lunch: [], dinner: [],
   })
   const [isOrdering, setIsOrdering] = useState(false)
   const [paymentInFlight, setPaymentInFlight] = useState<{ orderId: string; status: 'opening' | 'awaiting' | 'confirming' } | null>(null)
@@ -286,27 +290,29 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       supabase
         .from('cafe_meal_plans')
-        .select('meal_type, items:cafe_meal_plan_items(menu_item:cafe_menu_items(name))')
+        .select('meal_type, items:cafe_meal_plan_items(menu_item:cafe_menu_items(id, name, price))')
         .eq('date', today)
         .then(({ data }) => {
-          const next = { breakfast: '', lunch: '', dinner: '' }
+          const next: { breakfast: PlanItem[]; lunch: PlanItem[]; dinner: PlanItem[] } = {
+            breakfast: [], lunch: [], dinner: [],
+          }
           // See menu.tsx — Supabase types many-to-one joins as arrays even
           // though runtime returns a single object. Handle both shapes.
-          type JoinedMenuItem = { name: string } | { name: string }[] | null
+          type JoinedMenuItem = PlanItem | PlanItem[] | null
           type Row = { meal_type: 'breakfast' | 'lunch' | 'dinner'; items: { menu_item: JoinedMenuItem }[] }
           for (const plan of (data || []) as unknown as Row[]) {
             if (plan.meal_type in next) {
-              const names = (plan.items || [])
+              const items = (plan.items || [])
                 .map((i) => {
                   const mi = i.menu_item
                   if (!mi) return undefined
-                  return Array.isArray(mi) ? mi[0]?.name : mi.name
+                  return Array.isArray(mi) ? mi[0] : mi
                 })
-                .filter((n): n is string => Boolean(n))
-              next[plan.meal_type] = names.join(', ')
+                .filter((it): it is PlanItem => Boolean(it && it.id))
+              next[plan.meal_type] = items
             }
           }
-          setTodayPlanText(next)
+          setTodayPlanItems(next)
         })
     }
     fetchTodayPlan()
@@ -547,6 +553,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         })),
         p_food_credit_paise: foodCreditAmount * 100,
         p_payment_mode: resolvedMode,
+        p_notes: orderNotes.trim() || null,
       })
 
       if (error) {
@@ -559,6 +566,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       saveOrderId(data.id)
       setCart([])
       setFoodCreditAmount(0)
+      setOrderNotes('')
       setOrderPlaced({
         id: data.id,
         display_number: data.display_number,
@@ -599,15 +607,76 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   const cartTaxAmount = Math.floor(cartSubtotal * 0.05)
   const totalAmount = cartSubtotal + cartTaxAmount
 
-  const searchedItems = searchQuery.trim()
+  // ZO MEALS is the combo category — its individual rows (Dal, Roti, etc.)
+  // exist in the DB so the operator can compose meal plans from them, but
+  // customers see them only as part of the Breakfast/Lunch/Dinner combo cards.
+  // Hide real B/L/D-named rows too, in case the operator created them.
+  const MEAL_SLOT_NAMES = new Set(['breakfast', 'lunch', 'dinner'])
+  const zoMealsCategoryId = categories.find((c) => c.name.trim().toLowerCase() === 'zo meals')?.id || null
+  const isMealSlotItem = (item: MenuItem) =>
+    MEAL_SLOT_NAMES.has(item.name.trim().toLowerCase()) ||
+    (zoMealsCategoryId !== null && item.category_id === zoMealsCategoryId)
+
+  const searchedItems = (searchQuery.trim()
     ? menuItems.filter((item) =>
         item.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : menuItems
+  ).filter((item) => !isMealSlotItem(item))
 
   const filteredItems = activeCategory
     ? searchedItems.filter((item) => item.category_id === activeCategory)
     : searchedItems
+
+  // Synthetic combo cards for Breakfast/Lunch/Dinner — always shown on the
+  // unfiltered view (or when the user picks the ZO MEALS category filter), so
+  // customers always see the three slots even if the plan isn't set yet.
+  const mealSlotCards: Array<{
+    slot: 'breakfast' | 'lunch' | 'dinner'
+    label: string
+    items: PlanItem[]
+    bg: string
+    fg: string
+  }> = [
+    { slot: 'breakfast', label: 'Breakfast', items: todayPlanItems.breakfast, bg: '#fef3c7', fg: '#92400e' },
+    { slot: 'lunch',     label: 'Lunch',     items: todayPlanItems.lunch,     bg: '#dcfce7', fg: '#166534' },
+    { slot: 'dinner',    label: 'Dinner',    items: todayPlanItems.dinner,    bg: '#e0e7ff', fg: '#3730a3' },
+  ]
+  const showZoMealsSection =
+    zoMealsCategoryId !== null &&
+    !searchQuery.trim() &&
+    (!activeCategory || activeCategory === zoMealsCategoryId)
+
+  // Add a meal combo to cart — adds each of today's linked items once.
+  // Respects the per-item daily_limit cap and the addToCart auth gate.
+  const addComboToCart = (items: PlanItem[]) => {
+    if (!requireLoginForOrdering()) return
+    if (items.length === 0) return
+    for (const it of items) {
+      addToCart({ id: it.id, name: it.name, price: it.price })
+    }
+  }
+
+  // Remove one "unit" of a combo from cart — decrements each item by 1.
+  const removeComboFromCart = (items: PlanItem[]) => {
+    if (items.length === 0) return
+    for (const it of items) {
+      removeFromCart(it.id)
+    }
+  }
+
+  // Combo quantity = minimum cart qty across all linked items. If even one
+  // item is missing the combo is treated as "not added" (qty 0).
+  const comboQuantity = (items: PlanItem[]): number => {
+    if (items.length === 0) return 0
+    let min = Infinity
+    for (const it of items) {
+      const inCart = cart.find((c) => c.menu_item_id === it.id)
+      if (!inCart) return 0
+      if (inCart.quantity < min) min = inCart.quantity
+    }
+    return min === Infinity ? 0 : min
+  }
 
   // ── Loading screen ─────────────────────────────────────────────────────────
   if (isLoadingInit || !propertyId) {
@@ -891,7 +960,23 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                   categoryMap.get(catId)!.items.push(item)
                 }
 
-                if (categoryMap.size === 0) {
+                // ZO MEALS is rendered as three synthetic combo cards instead
+                // of its real items, so its entry might be missing from the
+                // map. Inject it whenever this view should surface meal slots.
+                if (showZoMealsSection && zoMealsCategoryId && !categoryMap.has(zoMealsCategoryId)) {
+                  const cat = categories.find((c) => c.id === zoMealsCategoryId)
+                  categoryMap.set(zoMealsCategoryId, { name: cat?.name || 'Zo Meals', items: [] })
+                }
+
+                // Sort by the operator's category sort_order so injected
+                // entries land in the right spot, not at the end.
+                const orderedEntries = Array.from(categoryMap.entries()).sort((a, b) => {
+                  const ao = categories.find((c) => c.id === a[0])?.sort_order ?? 999
+                  const bo = categories.find((c) => c.id === b[0])?.sort_order ?? 999
+                  return ao - bo
+                })
+
+                if (orderedEntries.length === 0) {
                   return (
                     <div className="flex flex-col items-center justify-center py-16 gap-3">
                       <svg className="w-12 h-12 text-black/15" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -908,7 +993,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                   )
                 }
 
-                return Array.from(categoryMap.entries()).map(([catId, { name, items }]) => (
+                return orderedEntries.map(([catId, { name, items }]) => (
                   <div key={catId} className="space-y-3">
                     {/* Category section header */}
                     {!activeCategory && (
@@ -920,18 +1005,105 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                       </div>
                     )}
 
-                    {/* Item cards — 2-col square grid */}
+                    {/* ZO MEALS — synthetic combo cards (B/L/D). Tapping ADD
+                        adds every linked item to cart in one go. Disabled if
+                        ops hasn't planned the slot yet. */}
+                    {catId === zoMealsCategoryId ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        {mealSlotCards.map((c) => {
+                          const totalPrice = c.items.reduce((sum, it) => sum + it.price, 0)
+                          const planned = c.items.length > 0
+                          const qty = comboQuantity(c.items)
+                          return (
+                            <div
+                              key={c.slot}
+                              className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm overflow-hidden flex flex-col"
+                            >
+                              <div
+                                className="aspect-square relative flex items-center justify-center"
+                                style={{ background: c.bg }}
+                              >
+                                <span
+                                  className="text-base font-extrabold tracking-widest"
+                                  style={{ color: c.fg }}
+                                >
+                                  {c.label.toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="p-3 flex-1 flex flex-col">
+                                <p className="font-bold text-sm text-black tracking-tight truncate">
+                                  {c.label}
+                                </p>
+                                {/* Items list — each item on its own line so the
+                                    composition of the combo is obvious. */}
+                                {planned ? (
+                                  <ul className="mt-1.5 space-y-0.5">
+                                    {c.items.map((it) => (
+                                      <li
+                                        key={it.id}
+                                        className="text-xs text-black/70 font-medium leading-snug flex items-start gap-1.5"
+                                      >
+                                        <span className="text-black/30">•</span>
+                                        <span className="flex-1 break-words">{it.name}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-xs text-black/45 font-medium mt-1.5">
+                                    Not set for today
+                                  </p>
+                                )}
+                                <div className="flex items-center justify-between mt-2">
+                                  <span className="text-sm font-bold text-black">
+                                    {totalPrice > 0 ? formatPaise(totalPrice) : 'Free'}
+                                  </span>
+                                  <span className="text-[10px] text-black/40 font-mono">
+                                    {c.items.length} item{c.items.length === 1 ? '' : 's'}
+                                  </span>
+                                </div>
+                                <div className="mt-2.5">
+                                  {qty === 0 ? (
+                                    <button
+                                      onClick={() => addComboToCart(c.items)}
+                                      disabled={!planned}
+                                      className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                                        planned
+                                          ? 'bg-orange-500 text-black active:scale-[0.98]'
+                                          : 'bg-black/10 text-black/40 cursor-not-allowed'
+                                      }`}
+                                    >
+                                      {planned ? 'ADD' : 'NOT SET'}
+                                    </button>
+                                  ) : (
+                                    <div className="flex items-center justify-center rounded-xl bg-black overflow-hidden">
+                                      <button
+                                        onClick={() => removeComboFromCart(c.items)}
+                                        className="w-10 h-9 flex items-center justify-center text-white font-bold text-lg active:bg-white/10 transition-colors"
+                                      >
+                                        -
+                                      </button>
+                                      <span className="text-white font-bold text-sm font-mono w-6 text-center">
+                                        {qty}
+                                      </span>
+                                      <button
+                                        onClick={() => addComboToCart(c.items)}
+                                        className="w-10 h-9 flex items-center justify-center text-white font-bold text-lg active:bg-white/10 transition-colors"
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                    /* Real-item grid for everything else. */
                     <div className="grid grid-cols-2 gap-3">
                       {items.map((item) => {
                         const inCart = cart.find((c) => c.menu_item_id === item.id)
-                        // If this item's name matches a meal slot, surface today's
-                        // plan text from cafe_meal_plans.notes so the customer sees
-                        // what's actually being served (e.g. "puri chole - tea").
-                        const nameKey = item.name.trim().toLowerCase()
-                        const planText =
-                          nameKey === 'breakfast' ? todayPlanText.breakfast :
-                          nameKey === 'lunch' ? todayPlanText.lunch :
-                          nameKey === 'dinner' ? todayPlanText.dinner : ''
                         return (
                           <div key={item.id} className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm overflow-hidden">
                             {/* Square image */}
@@ -946,11 +1118,6 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                             {/* Info */}
                             <div className="p-3">
                               <p className="font-bold text-sm text-black tracking-tight truncate">{item.name}</p>
-                              {planText && (
-                                <p className="text-xs text-black/70 font-medium leading-relaxed mt-1.5">
-                                  {planText}
-                                </p>
-                              )}
                               <div className="flex items-center justify-between mt-1">
                                 <span className="text-sm font-bold text-black">{formatPaise(item.price)}</span>
                                 {item.calories != null && <span className="text-[10px] text-black/40 font-mono">{item.calories} kcal</span>}
@@ -996,6 +1163,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                         )
                       })}
                     </div>
+                    )}
                   </div>
                 ))
               })()}
@@ -1193,6 +1361,24 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                     </div>
                   </div>
                 )}
+
+                {/* Order notes — free-text saved on cafe_orders.notes. Used
+                    for prep instructions (e.g. "no onion", "extra spicy"). */}
+                <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-3">
+                  <label className="text-[11px] font-bold text-black/50 uppercase tracking-widest">
+                    Notes for kitchen
+                  </label>
+                  <textarea
+                    value={orderNotes}
+                    onChange={(e) => setOrderNotes(e.target.value.slice(0, 300))}
+                    placeholder="Allergies, less spicy, no onion…"
+                    rows={2}
+                    className="w-full mt-1.5 px-2 py-1.5 text-sm bg-transparent resize-none outline-none placeholder:text-black/30 text-black"
+                  />
+                  <p className="text-right text-[10px] text-black/30 font-mono">
+                    {orderNotes.length}/300
+                  </p>
+                </div>
 
                 {/* Place Order — Razorpay handles every paid order; the only no-payment
                     path is full food-credit coverage (RPC resolves that to 'zo_card'). */}

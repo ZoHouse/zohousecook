@@ -17,6 +17,7 @@ interface UseCafeMenuResult {
   toggleCategory: (id: string, isActive: boolean) => Promise<void>
   createItem: (data: Record<string, unknown>) => Promise<string | null>
   updateItem: (id: string, data: Record<string, unknown>) => Promise<void>
+  deleteItem: (id: string) => Promise<number>
   toggleAvailability: (id: string, isAvailable: boolean) => Promise<void>
 }
 
@@ -154,6 +155,57 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
     await fetchData()
   }, [fetchData])
 
+  const deleteItem = useCallback(async (id: string): Promise<number> => {
+    // Standardised menu: delete the item across all properties under matching category names.
+    // Mirrors createItem's cross-property cascade.
+    const { data: sourceItem, error: sourceErr } = await supabase
+      .from('cafe_menu_items')
+      .select('name, category_id')
+      .eq('id', id)
+      .single()
+    if (sourceErr || !sourceItem) throw sourceErr || new Error('Item not found')
+
+    const { data: sourceCat } = await supabase
+      .from('cafe_menu_categories')
+      .select('name')
+      .eq('id', sourceItem.category_id)
+      .single()
+    if (!sourceCat) throw new Error('Category not found')
+
+    const { data: matchingCats } = await supabase
+      .from('cafe_menu_categories')
+      .select('id')
+      .eq('name', sourceCat.name)
+    const matchingCatIds = (matchingCats || []).map((c) => c.id)
+    if (!matchingCatIds.length) throw new Error('No matching categories')
+
+    // Find all sibling rows (same name + same-named category across properties)
+    const { data: siblings, error: siblingErr } = await supabase
+      .from('cafe_menu_items')
+      .select('id')
+      .eq('name', sourceItem.name)
+      .in('category_id', matchingCatIds)
+    if (siblingErr) throw siblingErr
+    const siblingIds = (siblings || []).map((s) => s.id)
+    if (!siblingIds.length) return 0
+
+    // Remove dependent recipe rows first (menu_item is the owner)
+    const { error: recipeErr } = await supabase
+      .from('cafe_recipe_items')
+      .delete()
+      .in('menu_item_id', siblingIds)
+    if (recipeErr) throw recipeErr
+
+    const { error: delErr } = await supabase
+      .from('cafe_menu_items')
+      .delete()
+      .in('id', siblingIds)
+    if (delErr) throw delErr
+
+    await fetchData()
+    return siblingIds.length
+  }, [fetchData])
+
   const toggleAvailability = useCallback(async (id: string, isAvailable: boolean) => {
     const { error } = await supabase
       .from('cafe_menu_items')
@@ -173,6 +225,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
     toggleCategory,
     createItem,
     updateItem,
+    deleteItem,
     toggleAvailability,
   }
 }

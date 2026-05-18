@@ -144,10 +144,17 @@ export default function CafeMenuPage() {
     // (e.g. "puri chole - tea") directly inside the matching card. Mirrors the
     // pattern used on the table-side ordering page.
     const nameKey = item.name.trim().toLowerCase()
-    const planText =
-      nameKey === 'breakfast' ? todayPlanText.breakfast :
-      nameKey === 'lunch' ? todayPlanText.lunch :
-      nameKey === 'dinner' ? todayPlanText.dinner : ''
+    const mealSlot: MealType | null =
+      nameKey === 'breakfast' ? 'breakfast' :
+      nameKey === 'lunch' ? 'lunch' :
+      nameKey === 'dinner' ? 'dinner' : null
+    const planText = mealSlot ? todayPlanText[mealSlot] : ''
+    // Slot label colors match the meal-plan calendar in PMS (MealPlanCalendar.tsx).
+    const slotChip = mealSlot && {
+      breakfast: { label: 'BREAKFAST', bg: '#fef3c7', fg: '#92400e' },
+      lunch:     { label: 'LUNCH',     bg: '#dcfce7', fg: '#166534' },
+      dinner:    { label: 'DINNER',    bg: '#e0e7ff', fg: '#3730a3' },
+    }[mealSlot]
     return (
       <div key={item.id} className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm overflow-hidden">
         <div className="aspect-square bg-stone-100 relative">
@@ -157,6 +164,14 @@ export default function CafeMenuPage() {
             <div className="w-full h-full flex items-center justify-center text-black/15 text-3xl font-bold">{item.name.charAt(0)}</div>
           )}
           <span className={`absolute top-2 left-2 w-3 h-3 rounded-full ring-2 ring-white ${item.diet === 'veg' ? 'bg-green-500' : item.diet === 'egg' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+          {slotChip && (
+            <span
+              className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-extrabold tracking-widest ring-1 ring-black/5"
+              style={{ background: slotChip.bg, color: slotChip.fg }}
+            >
+              {slotChip.label}
+            </span>
+          )}
         </div>
         <div className="p-3">
           <p className="font-bold text-sm text-black tracking-tight truncate">{item.name}</p>

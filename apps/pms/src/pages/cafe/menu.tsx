@@ -55,6 +55,7 @@ const CafeMenuPage: NextPage = () => {
     toggleCategory,
     createItem,
     updateItem,
+    deleteItem,
     toggleAvailability,
   } = useCafeMenu({ categoryId: selectedCategoryId })
 
@@ -101,6 +102,20 @@ const CafeMenuPage: NextPage = () => {
     } catch {
       message.error(editingItem ? 'Failed to update item' : 'Failed to add item')
       return null
+    }
+  }
+
+  const handleDeleteItem = async (id: string): Promise<boolean> => {
+    try {
+      const count = await deleteItem(id)
+      message.success(count > 1 ? `Deleted across ${count} properties` : 'Item deleted')
+      setShowForm(false)
+      setEditingItem(null)
+      return true
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete item'
+      message.error(msg)
+      return false
     }
   }
 
@@ -496,6 +511,7 @@ const CafeMenuPage: NextPage = () => {
             setEditingItem(null)
           }}
           onSubmit={handleSubmitItem}
+          onDelete={handleDeleteItem}
           editItem={editingItem}
           categoryId={
             selectedCategoryId || editingItem?.category_id || ''
