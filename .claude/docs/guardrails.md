@@ -80,35 +80,41 @@ These won't break production immediately but can cause serious problems. Always 
 - Webhook handlers must return quickly (< 5s) — don't do heavy processing inline
 - Always handle API failures gracefully — the external service being down shouldn't crash the app
 
+### 11. Vercel deploys require the assetPrefix guard
+- Every `apps/<app>/.env.production` is committed and sets `NEXT_ASSET_PREFIX=https://static.cdn.zo.xyz` for AWS — this is correct for AWS, catastrophic for Vercel
+- Before any new app deploys to Vercel, `apps/<app>/next.config.js` MUST include the `isVercelDeployment` guard that force-empties `assetPrefix` when `VERCEL=1` (see `apps/website/next.config.js` and `apps/pms/next.config.js` for the canonical pattern)
+- Symptoms of missing guard: blank pages, `_next` chunks 403 from `static.cdn.zo.xyz`, "infinite loop detected" overlay
+- Full playbook + project map in `.claude/docs/vercel-deployment.md`
+
 ---
 
 ## GREEN LINES — Always Do
 
 Positive guardrails — things that must always be true.
 
-### 11. Every navigation link has a page
+### 12. Every navigation link has a page
 - Before adding a navigation link, the page must already exist
 - Before removing a page, the navigation link must be removed in the same commit
 - Test by mentally clicking every link after changes
 
-### 12. Every API route handles errors
+### 13. Every API route handles errors
 - All API routes should have try/catch with proper error responses
 - Return `{ error: string }` with appropriate HTTP status codes
 - Never swallow errors silently — at minimum `console.error`
 
-### 13. Types are enforced
+### 14. Types are enforced
 - New API request/response shapes get type definitions
 - Don't use `any` — if the type is complex, define it
 - Shared types go in `libs/definitions/`, app-specific types stay in the app
 - Frontend types must match what the API actually returns
 
-### 14. Errors are handled
+### 15. Errors are handled
 - API routes: try/catch, return `{ error: string }` with correct HTTP status
 - Hooks: expose `error` state alongside `loading` and `data`
 - Never swallow errors silently — at minimum `console.error`
 - User-facing errors should be human-readable, not stack traces
 
-### 15. Mobile works
+### 16. Mobile works
 - Customer ordering page (`/cafe/order/[tableId]`) is mobile-first — test mental model at 375px width
 - Use safe-area padding for notched phones (`env(safe-area-inset-*)`)
 - Touch targets minimum 44px
@@ -153,29 +159,29 @@ Before creating ANY new file:
 
 These guardrails protect the integrity of the Zo Universe model (`.claude/docs/zo-universe.md`). They ensure that tools serve citizens correctly and that value flows remain traceable.
 
-### 16. Every tool must identify its citizens
+### 17. Every tool must identify its citizens
 - Before building any new feature or app, identify which citizen subsets (Founders, Builders, Operators, Residents, Community) it serves.
 - If a feature doesn't serve at least one subset clearly, question whether it should exist.
 - Document the citizen mapping in the design doc or PR description.
 
-### 17. $Zo flows must be traceable
+### 18. $Zo flows must be traceable
 - Any feature that involves value exchange (food credits, bounty payouts, payments, reputation) must have a clear $Zo trace.
 - Never build a value exchange without a way to track it — even if the tracking is a simple database column or event log.
 - Food credits = $Zo. Bounty payouts = $Zo. Reputation changes = $Zo signal. Don't treat these as isolated systems.
 - If modifying an existing $Zo flow (food credits, payments, reputation), verify the trace still works end-to-end.
 
-### 18. Connection surfaces must be preserved
+### 19. Connection surfaces must be preserved
 - Never refactor a feature in a way that removes its connection surfaces (exported types, clean APIs, observable events) without providing replacements.
 - New features should expose typed interfaces that other tools can consume, even if no consumer exists yet.
 - Hardcoding user-type assumptions (e.g., "only admins use this") closes off connection surfaces. Use role-based access instead.
 - When in doubt, export the type, expose the hook, and document the surface.
 
-### 19. Cross-subset interactions need $Zo awareness
+### 20. Cross-subset interactions need $Zo awareness
 - When a feature creates an interaction between two citizen subsets (e.g., Founder posts bounty -> Builder claims it), ask: "Is this $Zo-traceable?"
 - If the interaction involves real value (money, credits, reputation), the $Zo Token team should be aware — flag it.
 - Even if full $Zo integration isn't built yet, leave the data shape ready for it (e.g., include `zo_amount`, `from_citizen`, `to_citizen` fields in the schema).
 
-### 20. New tools must fit the universe
+### 21. New tools must fit the universe
 - Any new app or major feature must be mapped onto the Zo Universe before building:
   - Which citizen subsets does it connect?
   - What does it produce that other tools can consume?

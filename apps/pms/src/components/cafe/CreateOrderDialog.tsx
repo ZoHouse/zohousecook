@@ -10,10 +10,12 @@ import {
   Space,
   Typography,
   Divider,
+  Tag,
   message,
 } from 'antd'
 import { supabase } from '../../configs/supabase'
 import { formatPaise } from '../../lib/cafe/order-calculator'
+import { normalizePhone } from '../../lib/cafe/phone-normalize'
 import type { MenuItem, MenuCategory, CafeTable, OrderMode, PaymentMode } from '../../types/cafe'
 
 const { Text } = Typography
@@ -41,16 +43,41 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash')
   const [tableId, setTableId] = useState<string | undefined>(undefined)
   const [customerName, setCustomerName] = useState<string>('')
+  const [customerPhone, setCustomerPhone] = useState<string>('')
   const [notes, setNotes] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedMenuItemId, setSelectedMenuItemId] = useState<string | undefined>(undefined)
   const [selectedQty, setSelectedQty] = useState<number>(1)
 
+  // Food-credit wallet for the entered phone. Looked up live as staff types.
+  const [walletBalance, setWalletBalance] = useState<number | null>(null)
+  const [walletLoading, setWalletLoading] = useState(false)
+  const [foodCreditRupees, setFoodCreditRupees] = useState<number>(0)
+
   const fetchData = useCallback(async () => {
+    // Filter menu by propertyId so BLR staff don't accidentally pick a WTF
+    // menu_item_id (which place_cafe_order would reject anyway, but better
+    // to surface it in the UI). Categories filtered by property too.
     const [catResult, itemResult, tableResult] = await Promise.all([
-      supabase.from('cafe_menu_categories').select('*').eq('is_active', true).order('sort_order'),
-      supabase.from('cafe_menu_items').select('*').eq('is_available', true).order('sort_order'),
-      supabase.from('cafe_tables').select('*').eq('property_id', propertyId).eq('is_active', true).order('area').order('code'),
+      supabase
+        .from('cafe_menu_categories')
+        .select('*')
+        .eq('property_id', propertyId)
+        .eq('is_active', true)
+        .order('sort_order'),
+      supabase
+        .from('cafe_menu_items')
+        .select('*')
+        .eq('property_id', propertyId)
+        .eq('is_available', true)
+        .order('sort_order'),
+      supabase
+        .from('cafe_tables')
+        .select('*')
+        .eq('property_id', propertyId)
+        .eq('is_active', true)
+        .order('area')
+        .order('code'),
     ])
     if (catResult.data) setCategories(catResult.data)
     if (itemResult.data) setItems(itemResult.data)
@@ -65,12 +92,40 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
       setPaymentMode('cash')
       setTableId(undefined)
       setCustomerName('')
+      setCustomerPhone('')
       setNotes('')
       setSelectedMenuItemId(undefined)
       setSelectedQty(1)
+      setWalletBalance(null)
+      setFoodCreditRupees(0)
       form.resetFields()
     }
   }, [open, fetchData, form])
+
+  // Look up wallet when phone reaches 10 digits.
+  useEffect(() => {
+    const normalized = normalizePhone(customerPhone)
+    if (normalized.length !== 10) {
+      setWalletBalance(null)
+      setFoodCreditRupees(0)
+      return
+    }
+    let cancelled = false
+    setWalletLoading(true)
+    supabase
+      .from('food_credit_wallets')
+      .select('balance')
+      .eq('phone', normalized)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return
+        setWalletBalance(data?.balance ?? null)
+        setWalletLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [customerPhone])
 
   const addItemToCart = () => {
     if (!selectedMenuItemId) return
@@ -103,6 +158,16 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
   }
 
   const subtotal = cart.reduce((sum, c) => sum + c.menuItem.price * c.quantity, 0)
+  // Match place_cafe_order RPC's tax math (floor of 5% on subtotal).
+  const taxAmount = Math.floor(subtotal * 0.05)
+  const netTotal = subtotal + taxAmount
+  // Cap food-credit application at min(balance, ceil(net/100)) — RPC accepts
+  // up to one rupee over to absorb the paise tail.
+  const maxApplicable = walletBalance != null
+    ? Math.min(walletBalance, Math.ceil(netTotal / 100))
+    : 0
+  const appliedPaise = Math.min(foodCreditRupees, maxApplicable) * 100
+  const finalDue = Math.max(0, netTotal - appliedPaise)
 
   const menuItemOptions = items.map((item) => {
     const cat = categories.find((c) => c.id === item.category_id)
@@ -123,67 +188,56 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
       return
     }
 
+    const normalizedPhone = normalizePhone(customerPhone)
+    if (paymentMode === 'zo_card' && normalizedPhone.length !== 10) {
+      message.warning('Zo Card payment needs a 10-digit customer phone')
+      return
+    }
+    if (appliedPaise > 0 && normalizedPhone.length !== 10) {
+      message.warning('Food credits need a 10-digit customer phone')
+      return
+    }
+
+    // When the staff picks Zo Card, the order MUST be fully covered by food
+    // credits — otherwise the RPC would mark it as a draft/razorpay order
+    // with no money in hand. Make staff resolve the gap explicitly.
+    if (paymentMode === 'zo_card' && appliedPaise < netTotal) {
+      message.warning('Zo Card needs credits to cover the full order')
+      return
+    }
+
     setIsSubmitting(true)
     try {
-      // Get next display number
-      const { data: lastOrder } = await supabase
-        .from('cafe_orders')
-        .select('display_number')
-        .eq('property_id', propertyId)
-        .order('display_number', { ascending: false })
-        .limit(1)
-        .single()
+      // Funnel through place_cafe_order. The RPC enforces accepting_orders,
+      // assigns display_number atomically, validates prices server-side,
+      // checks wallet balance, debits credits in the same transaction, and
+      // sets payment_mode/payment_status/kitchen_status consistently. Direct
+      // inserts (the previous behaviour) bypassed every one of these.
+      const { data, error } = await supabase.rpc('place_cafe_order', {
+        p_property_id: propertyId,
+        p_table_id: mode === 'dine_in' ? tableId || null : null,
+        p_customer_name: customerName.trim() || null,
+        p_customer_phone: normalizedPhone.length === 10 ? normalizedPhone : null,
+        p_customer_email: null,
+        p_zo_user_id: null,
+        p_items: cart.map((c) => ({
+          menu_item_id: c.menuItem.id,
+          quantity: c.quantity,
+        })),
+        p_food_credit_paise: appliedPaise,
+        p_payment_mode: paymentMode === 'zo_card' ? 'cash' : paymentMode,
+        p_notes: notes.trim() || null,
+        p_mode: mode,
+      })
 
-      const displayNumber = lastOrder ? lastOrder.display_number + 1 : 1
+      if (error) throw new Error(error.message.replace(/^.*RAISE EXCEPTION:\s*/, ''))
 
-      const itemsTotal = cart.reduce((sum, c) => sum + c.menuItem.price * c.quantity, 0)
-      // 5% GST on subtotal, rounded down to nearest paise (matches place_cafe_order RPC)
-      const taxAmount = Math.floor(itemsTotal * 0.05)
-      const total = itemsTotal + taxAmount
-
-      // Insert order (human_order_id is auto-populated by the trigger)
-      const { data: order, error: orderError } = await supabase
-        .from('cafe_orders')
-        .insert({
-          property_id: propertyId,
-          table_id: mode === 'dine_in' ? tableId || null : null,
-          mode,
-          payment_mode: paymentMode,
-          payment_status: paymentMode === 'cash' ? 'paid' : 'pending',
-          kitchen_status: 'new',
-          display_number: displayNumber,
-          subtotal: itemsTotal,
-          service_charge: 0,
-          tax_amount: taxAmount,
-          total: total,
-          customer_name: customerName.trim() || null,
-          notes: notes || null,
-        })
-        .select()
-        .single()
-
-      if (orderError) throw orderError
-
-      // Insert order items
-      const orderItems = cart.map((c) => ({
-        order_id: order.id,
-        menu_item_id: c.menuItem.id,
-        name: c.menuItem.name,
-        price: c.menuItem.price,
-        quantity: c.quantity,
-        customizations: null,
-        item_status: 'active',
-      }))
-
-      const { error: itemsError } = await supabase.from('cafe_order_items').insert(orderItems)
-      if (itemsError) throw itemsError
-
-      message.success(`Order #${displayNumber} created`)
+      message.success(`Order #${data?.display_number ?? ''} created`)
       onCreated()
       onClose()
     } catch (err) {
       console.error('CreateOrderDialog submit error:', err)
-      message.error('Failed to create order')
+      message.error(err instanceof Error ? err.message : 'Failed to create order')
     } finally {
       setIsSubmitting(false)
     }
@@ -198,7 +252,6 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
       width={640}
       destroyOnClose
     >
-      {/* Order mode */}
       <Form layout="vertical" form={form}>
         <Form.Item label="Order Mode">
           <Radio.Group
@@ -227,8 +280,6 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
           </Form.Item>
         )}
 
-        {/* Customer name surfaces on the kitchen card so chefs know who the
-            order is for (especially useful for pickup / room_service). */}
         <Form.Item label="Customer Name (optional)">
           <Input
             value={customerName}
@@ -239,9 +290,30 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
           />
         </Form.Item>
 
+        <Form.Item
+          label={
+            <Space size={6}>
+              <span>Customer Phone</span>
+              {walletBalance != null && (
+                <Tag color="green">
+                  $food balance ₹{walletBalance}
+                </Tag>
+              )}
+              {walletLoading && <Tag>looking up…</Tag>}
+            </Space>
+          }
+        >
+          <Input
+            value={customerPhone}
+            onChange={(e) => setCustomerPhone(e.target.value)}
+            placeholder="10-digit mobile (required for Zo Card / credits)"
+            maxLength={15}
+            allowClear
+          />
+        </Form.Item>
+
         <Divider style={{ margin: '12px 0' }} />
 
-        {/* Add item row */}
         <Form.Item label="Add Item">
           <Space.Compact style={{ width: '100%' }}>
             <Select
@@ -272,7 +344,6 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
           </Space.Compact>
         </Form.Item>
 
-        {/* Cart */}
         {cart.length > 0 && (
           <>
             <div style={{ marginBottom: 12 }}>
@@ -313,45 +384,74 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
 
             <div
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontWeight: 600,
                 padding: '8px 0',
                 borderTop: '1px solid rgba(0,0,0,0.1)',
                 marginBottom: 12,
+                fontSize: 13,
               }}
             >
-              <Text strong>Subtotal</Text>
-              <Text strong>{formatPaise(subtotal)}</Text>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Text>Subtotal</Text>
+                <Text>{formatPaise(subtotal)}</Text>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Text>GST (5%)</Text>
+                <Text>{formatPaise(taxAmount)}</Text>
+              </div>
+              {appliedPaise > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#22c55e' }}>
+                  <Text style={{ color: 'inherit' }}>$food applied</Text>
+                  <Text style={{ color: 'inherit' }}>− {formatPaise(appliedPaise)}</Text>
+                </div>
+              )}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontWeight: 600,
+                  marginTop: 4,
+                  paddingTop: 4,
+                  borderTop: '1px dashed rgba(0,0,0,0.15)',
+                }}
+              >
+                <Text strong>Due</Text>
+                <Text strong>{formatPaise(finalDue)}</Text>
+              </div>
             </div>
           </>
         )}
 
         <Divider style={{ margin: '12px 0' }} />
 
-        {/* Payment mode */}
         <Form.Item label="Payment Mode">
           <Radio.Group value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)}>
             <Radio value="cash">Cash</Radio>
             <Radio value="razorpay">Razorpay</Radio>
-            <Radio value="zo_card">Zo Card</Radio>
+            <Radio value="zo_card" disabled={walletBalance == null}>
+              Zo Card{walletBalance != null ? '' : ' (enter phone first)'}
+            </Radio>
           </Radio.Group>
         </Form.Item>
 
-        {/* Notes */}
+        {walletBalance != null && walletBalance > 0 && (
+          <Form.Item label={`Apply $food (max ₹${maxApplicable})`}>
+            <InputNumber
+              min={0}
+              max={maxApplicable}
+              value={foodCreditRupees}
+              onChange={(val) => setFoodCreditRupees(typeof val === 'number' ? val : 0)}
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+        )}
+
         <Form.Item label="Notes (optional)">
-          <input
+          <Input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Special instructions..."
-            style={{
-              width: '100%',
-              padding: '4px 11px',
-              border: '1px solid #d9d9d9',
-              borderRadius: 6,
-              fontSize: 14,
-              outline: 'none',
-            }}
+            maxLength={200}
+            allowClear
           />
         </Form.Item>
 
@@ -363,7 +463,7 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
             loading={isSubmitting}
             disabled={cart.length === 0}
           >
-            Place Order{cart.length > 0 ? ` — ${formatPaise(subtotal)}` : ''}
+            Place Order{cart.length > 0 ? ` — ${formatPaise(finalDue)}` : ''}
           </Button>
         </div>
       </Form>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../configs/supabase'
 import { getNextStatus } from '../../lib/cafe/kitchen-status'
 import { deductInventoryForOrder, restoreInventoryForOrder } from '../../lib/cafe/inventory-deduct'
-import { debitFoodCredits, restoreFoodCredits } from '../../lib/cafe/food-credit-debit'
+import { restoreFoodCredits } from '../../lib/cafe/food-credit-debit'
 import { startKitchenAlertLoop, stopKitchenAlertLoop } from '../../lib/cafe/kitchen-alert'
 import type { CafeOrder, CafeOrderWithItems, KitchenStatus } from '../../types/cafe'
 
@@ -12,6 +12,7 @@ interface UseCafeRealtimeOrdersResult {
   orders: CafeOrderWithItems[]
   isLoading: boolean
   advanceStatus: (orderId: string, currentStatus: KitchenStatus) => Promise<void>
+  acceptWithOverride: (orderId: string) => Promise<void>
   cancelOrder: (orderId: string) => Promise<void>
 }
 
@@ -115,9 +116,10 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
           const changed = payload.new as CafeOrder
 
           if (payload.eventType === 'INSERT') {
-            // New order — fetch full data and add to state. Drafts are
-            // suppressed so chefs aren't woken up by unpaid carts. The
-            // alert loop is driven by the orders→hasNew effect below.
+            // New order — fetch full data and add to state. The [orders]
+            // effect below will spin up the alert loop once a 'new' order
+            // lands; drafts are suppressed so chefs aren't woken up by
+            // unpaid carts.
             const fullOrder = await fetchOrderWithItems(changed.id)
             if (fullOrder && ACTIVE_STATUSES.includes(fullOrder.kitchen_status as KitchenStatus)) {
               setOrders((prev) => [fullOrder, ...prev])
@@ -128,8 +130,9 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
               // Remove from board
               setOrders((prev) => prev.filter((o) => o.id !== changed.id))
             } else {
-              // Refetch updated order. If it isn't on the board yet (draft →
-              // new after Razorpay capture), add it; otherwise merge update.
+              // Refetch updated order. If the order isn't on the board yet
+              // (e.g. draft → new after Razorpay capture), add it and beep.
+              // Otherwise just merge in the update.
               const fullOrder = await fetchOrderWithItems(changed.id)
               if (fullOrder) {
                 setOrders((prev) => {
@@ -138,6 +141,9 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
                     return idx === -1 ? prev : prev.filter((o) => o.id !== changed.id)
                   }
                   if (idx === -1) {
+                    // Fresh-to-board (draft just became visible). The
+                    // [orders] effect below will start the alert loop when
+                    // a 'new' order is present.
                     return [fullOrder, ...prev]
                   }
                   const next = prev.slice()
@@ -161,16 +167,19 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
     }
   }, [propertyId])
 
-  // Alert loop: ring continuously while any order is sitting in 'new'
-  // (arrived but not yet accepted by staff). Stops the moment every 'new'
-  // order has been advanced or cancelled. start/stop are idempotent.
+  // Keep the alert ringing while any order is still in 'new' (i.e. unaccepted).
+  // The moment all 'new' orders have been accepted (or removed), stop the loop.
   useEffect(() => {
-    const hasNew = orders.some((o) => o.kitchen_status === 'new')
-    if (hasNew) startKitchenAlertLoop()
-    else stopKitchenAlertLoop()
+    const hasUnaccepted = orders.some((o) => o.kitchen_status === 'new')
+    if (hasUnaccepted) {
+      startKitchenAlertLoop()
+    } else {
+      stopKitchenAlertLoop()
+    }
   }, [orders])
 
-  // Silence the alert when leaving the kitchen page entirely.
+  // Safety: stop the loop on unmount so a stale interval doesn't keep ringing
+  // after the chef leaves the kitchen board.
   useEffect(() => {
     return () => { stopKitchenAlertLoop() }
   }, [])
@@ -187,14 +196,20 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
         )
       )
 
-      const { error } = await supabase
-        .from('cafe_orders')
-        .update({ kitchen_status: nextStatus })
-        .eq('id', orderId)
+      // Route through the race-safe advance_kitchen_status RPC (see
+      // migration 20260518_advance_kitchen_status_rpc.sql). The RPC locks
+      // the row, asserts current matches what we expect, and validates the
+      // state transition. If a second kitchen tab beat us to it, the RPC
+      // raises and we revert our optimistic update — preventing the
+      // "two tabs both click Accept" double-deduct on inventory.
+      const { error } = await supabase.rpc('advance_kitchen_status', {
+        p_order_id: orderId,
+        p_expected_status: currentStatus,
+        p_next_status: nextStatus,
+      })
 
       if (error) {
-        console.error('advanceStatus error:', error)
-        // Revert optimistic update on failure
+        console.error('advanceStatus error:', error.message)
         setOrders((prev) =>
           prev.map((o) =>
             o.id === orderId ? { ...o, kitchen_status: currentStatus } : o
@@ -217,14 +232,85 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
           )
         }
 
-        // $food credit debit
-        debitFoodCredits(orderId).catch((err) =>
-          console.error('Food credit debit failed:', err)
-        )
+        // $food credits are debited at PLACE time inside place_cafe_order
+        // (and at topup time inside update_cafe_order_food_credits). Do NOT
+        // debit again on accept — the unique-spend index on (reference_id,
+        // type='spend') protects against the simple place→accept replay but
+        // NOT against place→topup→accept, which uses a different reference
+        // id for the topup row and so silently double-debited every order
+        // that flowed through "Complete Payment". Removed 2026-05-18.
       }
     },
     []
   )
+
+  /**
+   * Same as advanceStatus(orderId, 'new') but also flips
+   * accepted_with_override=true on the row so ops can spot chronic-understock
+   * dishes in reporting. Used when the kitchen card indicator is red (at
+   * least one ingredient short) and the chef chooses to accept anyway.
+   * Inventory deduction still runs and clamps to 0 — that's the point of
+   * override.
+   *
+   * Does NOT call debitFoodCredits. Credits are debited at place time
+   * inside place_cafe_order (and at topup time inside
+   * update_cafe_order_food_credits) — re-debiting on accept silently
+   * double-charged orders that flowed through "Complete Payment" until
+   * 2026-05-18. See the comment in advanceStatus above.
+   */
+  const acceptWithOverride = useCallback(async (orderId: string) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? { ...o, kitchen_status: 'accepted', accepted_with_override: true }
+          : o,
+      ),
+    )
+
+    // Race-safe new→accepted via the same RPC advanceStatus uses, then a
+    // follow-up update to set the override flag. If a sibling tab beat us
+    // to the accept, the RPC raises and we revert without touching the
+    // override column.
+    const { error: advErr } = await supabase.rpc('advance_kitchen_status', {
+      p_order_id: orderId,
+      p_expected_status: 'new',
+      p_next_status: 'accepted',
+    })
+
+    if (advErr) {
+      console.error('acceptWithOverride advance error:', advErr.message)
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? { ...o, kitchen_status: 'new', accepted_with_override: false }
+            : o,
+        ),
+      )
+      return
+    }
+
+    const { error: flagErr } = await supabase
+      .from('cafe_orders')
+      .update({ accepted_with_override: true })
+      .eq('id', orderId)
+    if (flagErr) {
+      console.error('acceptWithOverride flag error:', flagErr)
+      // Status was already advanced — don't roll back, just log. Reporting
+      // misses this row but kitchen workflow is unaffected.
+    }
+
+    const { data: orderRow } = await supabase
+      .from('cafe_orders')
+      .select('property_id')
+      .eq('id', orderId)
+      .single()
+
+    if (orderRow?.property_id) {
+      deductInventoryForOrder(orderId, orderRow.property_id).catch((err) =>
+        console.error('Inventory deduction failed:', err),
+      )
+    }
+  }, [])
 
   const cancelOrder = useCallback(async (orderId: string) => {
     const order = orders.find((o) => o.id === orderId)
@@ -287,5 +373,5 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
     }
   }, [orders])
 
-  return { orders, isLoading, advanceStatus, cancelOrder }
+  return { orders, isLoading, advanceStatus, acceptWithOverride, cancelOrder }
 }

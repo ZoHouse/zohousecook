@@ -132,6 +132,8 @@ export interface CafeOrder {
   gateway_gst_paise: number | null
   notes: string | null
   food_credit_applied_paise: number
+  /** true when the chef accepted via Override & Accept (insufficient stock at accept time). Used for ops reporting only. */
+  accepted_with_override: boolean
   created_at: string
   updated_at: string
 }

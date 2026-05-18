@@ -39,18 +39,22 @@ export function useFoodCredits(): UseFoodCreditsResult {
   const [recentTransactions, setRecentTransactions] = useState<FoodCreditTransaction[]>([])
 
   const fetchStats = useCallback(async () => {
-    const [txnRes, walletRes] = await Promise.all([
-      supabase.from('food_credit_transactions').select('type, amount'),
-      supabase.from('food_credit_wallets').select('balance'),
-    ])
-
-    let totalIssued = 0, totalSpent = 0
-    for (const t of txnRes.data || []) {
-      if (t.type === 'issue') totalIssued += t.amount
-      if (t.type === 'spend') totalSpent += t.amount
+    // Pull aggregates from the food_credit_summary view (see migration
+    // 20260518_food_credit_summary_view.sql). Constant-size payload
+    // instead of the previous unbounded scan over food_credit_transactions.
+    const { data, error } = await supabase
+      .from('food_credit_summary')
+      .select('total_issued, total_spent, total_outstanding')
+      .single()
+    if (error || !data) {
+      setStats({ totalIssued: 0, totalSpent: 0, totalOutstanding: 0 })
+      return
     }
-    const totalOutstanding = (walletRes.data || []).reduce((sum: number, w: { balance: number }) => sum + w.balance, 0)
-    setStats({ totalIssued, totalSpent, totalOutstanding })
+    setStats({
+      totalIssued: data.total_issued ?? 0,
+      totalSpent: data.total_spent ?? 0,
+      totalOutstanding: data.total_outstanding ?? 0,
+    })
   }, [])
 
   const fetchRecent = useCallback(async () => {

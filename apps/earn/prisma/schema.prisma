@@ -158,6 +158,8 @@ model Project {
   members     Int      @default(0)
   status      String   @default("active")
   url         String?
+  builder     String?
+  builderUrl  String?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

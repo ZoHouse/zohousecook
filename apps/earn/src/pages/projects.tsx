@@ -8,7 +8,7 @@ import {
   MobileNavToggle,
   MobileNavMenu,
 } from "@/components/ui/resizable-navbar";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   IconBriefcase,
@@ -37,6 +37,8 @@ type Project = {
   members: number;
   status: string;
   url: string | null;
+  builder?: string | null;
+  builderUrl?: string | null;
 };
 
 export default function ProjectsPage() {
@@ -195,6 +197,21 @@ function ProjectCard({ project }: { project: Project }) {
           </p>
         )}
 
+        {project.builder && project.builderUrl && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              window.open(project.builderUrl!, "_blank", "noopener,noreferrer");
+            }}
+            className="-mx-1 inline-flex w-fit items-center gap-1 rounded-md px-1 py-0.5 text-[11px] font-medium text-zui-white/50 transition-colors hover:text-zui-green"
+          >
+            Built by <span className="font-semibold">@{project.builder}</span>
+            <IconExternalLink size={10} />
+          </button>
+        )}
+
         <div className="mt-auto flex items-center justify-between border-t border-dashed border-zui-stroke pt-3">
           <span
             className="rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zui-white"
@@ -227,8 +244,23 @@ function ProjectCard({ project }: { project: Project }) {
   );
 }
 
+const PREVIEW_VIRTUAL_WIDTH = 1280;
+const PREVIEW_VIRTUAL_HEIGHT = 800;
+
 function PreviewFrame({ url, accent }: { url: string | null; accent: string }) {
   const [loaded, setLoaded] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => setScale(el.clientWidth / PREVIEW_VIRTUAL_WIDTH);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [url]);
 
   if (!url) {
     return (
@@ -243,8 +275,9 @@ function PreviewFrame({ url, accent }: { url: string | null; accent: string }) {
 
   return (
     <div
+      ref={containerRef}
       className="relative overflow-hidden border-b border-zui-stroke bg-zui-light"
-      style={{ aspectRatio: "16 / 10" }}
+      style={{ aspectRatio: `${PREVIEW_VIRTUAL_WIDTH} / ${PREVIEW_VIRTUAL_HEIGHT}` }}
     >
       <div
         className="pointer-events-none absolute inset-0 flex items-center justify-center"
@@ -262,24 +295,26 @@ function PreviewFrame({ url, accent }: { url: string | null; accent: string }) {
         )}
       </div>
 
-      <div
-        className="pointer-events-none absolute left-0 top-0 origin-top-left"
-        style={{
-          width: "1280px",
-          height: "800px",
-          transform: "scale(0.3125)",
-        }}
-      >
-        <iframe
-          src={url}
-          title={`Preview of ${url}`}
-          loading="lazy"
-          onLoad={() => setLoaded(true)}
-          sandbox="allow-scripts allow-same-origin"
-          referrerPolicy="no-referrer"
-          className="h-full w-full border-0 bg-white"
-        />
-      </div>
+      {scale > 0 && (
+        <div
+          className="pointer-events-none absolute left-0 top-0 origin-top-left"
+          style={{
+            width: `${PREVIEW_VIRTUAL_WIDTH}px`,
+            height: `${PREVIEW_VIRTUAL_HEIGHT}px`,
+            transform: `scale(${scale})`,
+          }}
+        >
+          <iframe
+            src={url}
+            title={`Preview of ${url}`}
+            loading="lazy"
+            onLoad={() => setLoaded(true)}
+            sandbox="allow-scripts allow-same-origin"
+            referrerPolicy="no-referrer"
+            className="h-full w-full border-0 bg-white"
+          />
+        </div>
+      )}
 
       <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5" />
     </div>

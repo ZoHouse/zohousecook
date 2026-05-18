@@ -4,7 +4,7 @@ import { getOrCreateUser } from "@/lib/auth";
 import { requireAdmin } from "@/lib/admin";
 
 const DEMO_PROJECTS = [
-  { id: "demo-screensky", name: "ScreenSky", description: "Sky-aware screen experiences — built by a Zo Builder.", color: "#6A77DD", members: 1, status: "active", url: "https://screensky.vercel.app/" },
+  { id: "demo-screensky", name: "ScreenSky", description: "Sky-aware screen experiences.", color: "#6A77DD", members: 1, status: "active", url: "https://screensky.vercel.app/", builder: "unaisshemim", builderUrl: "https://x.com/unaisshemim" },
   { id: "demo-1", name: "ZoDAO Governance",   description: "Decentralized governance platform for community proposals and voting.",     color: "#66DF48", members: 34, status: "active", url: null },
   { id: "demo-2", name: "Zo Social Graph",     description: "On-chain social graph connecting creators, builders, and communities.",       color: "#FFD600", members: 21, status: "active", url: null },
   { id: "demo-3", name: "Zo Quest Engine",     description: "Gamified quest system for onboarding new members and rewarding engagement.", color: "#FF2F8E", members: 45, status: "active", url: null },
