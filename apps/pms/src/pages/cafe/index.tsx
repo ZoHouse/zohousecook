@@ -26,16 +26,19 @@ const CafeDashboard: NextPage = () => {
           ) : analytics ? (
             <>
               <Row gutter={[16, 16]} className="mb-8">
-                <Col xs={12} md={6}>
+                <Col xs={12} md={8} lg={4}>
                   <Card><Statistic title="Orders Today" value={analytics.total_orders} /></Card>
                 </Col>
-                <Col xs={12} md={6}>
-                  <Card><Statistic title="Revenue" value={formatPaise(analytics.total_revenue)} /></Card>
+                <Col xs={12} md={8} lg={5}>
+                  <Card><Statistic title="Revenue (cash)" value={formatPaise(analytics.total_revenue)} /></Card>
                 </Col>
-                <Col xs={12} md={6}>
-                  <Card><Statistic title="Avg Order" value={formatPaise(analytics.avg_order_value)} /></Card>
+                <Col xs={12} md={8} lg={5}>
+                  <Card><Statistic title="Food Credits Used" value={formatPaise(analytics.food_credits_used)} /></Card>
                 </Col>
-                <Col xs={12} md={6}>
+                <Col xs={12} md={8} lg={5}>
+                  <Card><Statistic title="Avg Cash Order" value={formatPaise(analytics.avg_order_value)} /></Card>
+                </Col>
+                <Col xs={12} md={8} lg={5}>
                   <Card>
                     <Statistic
                       title="Active Orders"

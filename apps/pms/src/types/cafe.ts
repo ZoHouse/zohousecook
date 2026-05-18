@@ -182,8 +182,12 @@ export interface CreateOrderItemRequest {
 
 export interface DailyAnalytics {
   total_orders: number
-  total_revenue: number // paise
-  avg_order_value: number // paise
+  /** Cash actually paid today (paise). Excludes food-credit-absorbed value and cancelled orders. */
+  total_revenue: number
+  /** Food value absorbed by $food credits today (paise). Excludes cancelled orders. */
+  food_credits_used: number
+  /** Avg cash paid per cash-paying order (paise). Credit-only orders excluded so the avg is meaningful. */
+  avg_order_value: number
   active_orders: number
   popular_items: { name: string; count: number }[]
 }
