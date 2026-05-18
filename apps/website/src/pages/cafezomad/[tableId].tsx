@@ -149,6 +149,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
             .select('*')
             .eq('property_id', table.property_id)
             .eq('is_available', true)
+            .is('deleted_at', null)
             .order('sort_order'),
           supabase
             .from('cafe_properties')
@@ -200,7 +201,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       if (document.hidden) return
       const [{ data: cats }, { data: items }] = await Promise.all([
         supabase.from('cafe_menu_categories').select('*').eq('property_id', propertyId).eq('is_active', true).order('sort_order'),
-        supabase.from('cafe_menu_items').select('*').eq('property_id', propertyId).eq('is_available', true).order('sort_order'),
+        supabase.from('cafe_menu_items').select('*').eq('property_id', propertyId).eq('is_available', true).is('deleted_at', null).order('sort_order'),
       ])
       if (cats) setCategories(cats as MenuCategory[])
       if (items) setMenuItems(items as MenuItem[])

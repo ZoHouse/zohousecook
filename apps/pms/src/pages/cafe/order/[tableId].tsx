@@ -141,6 +141,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
             .select('*')
             .eq('property_id', table.property_id)
             .eq('is_available', true)
+            .is('deleted_at', null)
             .order('sort_order'),
         ])
 

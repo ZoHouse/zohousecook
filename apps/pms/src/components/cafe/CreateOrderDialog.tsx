@@ -49,7 +49,7 @@ export function CreateOrderDialog({ open, onClose, onCreated, propertyId }: Crea
   const fetchData = useCallback(async () => {
     const [catResult, itemResult, tableResult] = await Promise.all([
       supabase.from('cafe_menu_categories').select('*').eq('is_active', true).order('sort_order'),
-      supabase.from('cafe_menu_items').select('*').eq('is_available', true).order('sort_order'),
+      supabase.from('cafe_menu_items').select('*').eq('is_available', true).is('deleted_at', null).order('sort_order'),
       supabase.from('cafe_tables').select('*').eq('property_id', propertyId).eq('is_active', true).order('area').order('code'),
     ])
     if (catResult.data) setCategories(catResult.data)
