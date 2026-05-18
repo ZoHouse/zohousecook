@@ -15,9 +15,11 @@ interface UseCafeMenuResult {
   refetch: () => Promise<void>
   createCategory: (name: string) => Promise<void>
   toggleCategory: (id: string, isActive: boolean) => Promise<void>
+  deleteCategory: (id: string) => Promise<void>
   createItem: (data: Record<string, unknown>) => Promise<string | null>
   updateItem: (id: string, data: Record<string, unknown>) => Promise<void>
   toggleAvailability: (id: string, isAvailable: boolean) => Promise<void>
+  deleteItem: (id: string) => Promise<void>
 }
 
 export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}): UseCafeMenuResult {
@@ -43,12 +45,32 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
 
       const catResult = await catQuery
       if (catResult.error) throw catResult.error
-      setCategories(catResult.data || [])
 
-      // If filtering by category
+      const allCats = (catResult.data || []) as MenuCategory[]
+
+      // Dedupe categories by name (standardised menu spans BLR + WTF).
+      // Remember canonical id per name so we can remap items to it.
+      const canonicalIdByName = new Map<string, string>()
+      const uniqueCats: MenuCategory[] = []
+      for (const cat of allCats) {
+        const key = cat.name.toLowerCase()
+        if (canonicalIdByName.has(key)) continue
+        canonicalIdByName.set(key, cat.id)
+        uniqueCats.push(cat)
+      }
+      setCategories(uniqueCats)
+
+      // Map every (possibly duplicate) category id → its name, for item remap below.
+      const nameByCatId = new Map<string, string>()
+      for (const cat of allCats) nameByCatId.set(cat.id, cat.name.toLowerCase())
+
+      // Filtering by a (canonical) category id → expand to all per-property siblings sharing that name.
       let targetCatIds: string[] | null = null
       if (categoryId) {
-        targetCatIds = [categoryId]
+        const targetName = nameByCatId.get(categoryId)
+        targetCatIds = targetName
+          ? allCats.filter((c) => c.name.toLowerCase() === targetName).map((c) => c.id)
+          : [categoryId]
       }
 
       let itemQuery = supabase
@@ -69,14 +91,23 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       const itemResult = await itemQuery
       if (itemResult.error) throw itemResult.error
 
-      // Deduplicate items by name (same item exists under both BLR + WTF categories)
+      // Dedupe items by name, then remap category_id to the canonical category
+      // so getItemCount(cat.id) in the page still finds them after category dedup.
       const seenItemNames = new Set<string>()
-      const uniqueItems = (itemResult.data || []).filter((item) => {
-        const lower = item.name.toLowerCase()
-        if (seenItemNames.has(lower)) return false
-        seenItemNames.add(lower)
-        return true
-      })
+      const uniqueItems = (itemResult.data || [])
+        .filter((item) => {
+          const lower = item.name.toLowerCase()
+          if (seenItemNames.has(lower)) return false
+          seenItemNames.add(lower)
+          return true
+        })
+        .map((item) => {
+          const catName = nameByCatId.get(item.category_id)
+          const canonicalId = catName ? canonicalIdByName.get(catName) : undefined
+          return canonicalId && canonicalId !== item.category_id
+            ? { ...item, category_id: canonicalId }
+            : item
+        })
       setItems(uniqueItems)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
@@ -102,10 +133,17 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
   }, [fetchData])
 
   const toggleCategory = useCallback(async (id: string, isActive: boolean) => {
+    // Standardised menu: toggle every per-property row that shares this category's name.
+    const { data: src } = await supabase
+      .from('cafe_menu_categories')
+      .select('name')
+      .eq('id', id)
+      .single()
+    if (!src) throw new Error('Category not found')
     const { error } = await supabase
       .from('cafe_menu_categories')
       .update({ is_active: isActive })
-      .eq('id', id)
+      .eq('name', src.name)
     if (error) throw error
     await fetchData()
   }, [fetchData])
@@ -146,19 +184,81 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
   }, [fetchData])
 
   const updateItem = useCallback(async (id: string, data: Record<string, unknown>) => {
+    // Standardised menu: update every per-property row that shares this item's name.
+    // Strip identity/property fields so we don't clobber cross-property scoping.
+    const { data: src } = await supabase
+      .from('cafe_menu_items')
+      .select('name')
+      .eq('id', id)
+      .single()
+    if (!src) throw new Error('Item not found')
+    const { id: _omitId, property_id: _omitProp, category_id: _omitCat, ...safe } = data as Record<string, unknown>
     const { error } = await supabase
       .from('cafe_menu_items')
-      .update(data)
+      .update(safe)
+      .eq('name', src.name)
+    if (error) throw error
+    await fetchData()
+  }, [fetchData])
+
+  const deleteItem = useCallback(async (id: string) => {
+    // Standardised menu: delete every per-property row that shares this item's name.
+    // Note: cafe_order_items stores name/price on the row, so order history is preserved.
+    const { data: src } = await supabase
+      .from('cafe_menu_items')
+      .select('name')
       .eq('id', id)
+      .single()
+    if (!src) throw new Error('Item not found')
+    const { error } = await supabase
+      .from('cafe_menu_items')
+      .delete()
+      .eq('name', src.name)
+    if (error) throw error
+    await fetchData()
+  }, [fetchData])
+
+  const deleteCategory = useCallback(async (id: string) => {
+    // Standardised menu: delete every per-property row sharing this category's name,
+    // plus all items under any of those category rows.
+    const { data: src } = await supabase
+      .from('cafe_menu_categories')
+      .select('name')
+      .eq('id', id)
+      .single()
+    if (!src) throw new Error('Category not found')
+    const { data: matchingCats } = await supabase
+      .from('cafe_menu_categories')
+      .select('id')
+      .eq('name', src.name)
+    const catIds = (matchingCats || []).map((c) => c.id)
+    if (catIds.length) {
+      const { error: itemErr } = await supabase
+        .from('cafe_menu_items')
+        .delete()
+        .in('category_id', catIds)
+      if (itemErr) throw itemErr
+    }
+    const { error } = await supabase
+      .from('cafe_menu_categories')
+      .delete()
+      .eq('name', src.name)
     if (error) throw error
     await fetchData()
   }, [fetchData])
 
   const toggleAvailability = useCallback(async (id: string, isAvailable: boolean) => {
+    // Standardised menu: availability toggle propagates to every property's copy.
+    const { data: src } = await supabase
+      .from('cafe_menu_items')
+      .select('name')
+      .eq('id', id)
+      .single()
+    if (!src) throw new Error('Item not found')
     const { error } = await supabase
       .from('cafe_menu_items')
       .update({ is_available: isAvailable })
-      .eq('id', id)
+      .eq('name', src.name)
     if (error) throw error
     await fetchData()
   }, [fetchData])
@@ -171,8 +271,10 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
     refetch: fetchData,
     createCategory,
     toggleCategory,
+    deleteCategory,
     createItem,
     updateItem,
     toggleAvailability,
+    deleteItem,
   }
 }

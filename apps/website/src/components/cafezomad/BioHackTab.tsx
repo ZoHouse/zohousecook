@@ -443,7 +443,7 @@ export function BioHackTab({
       {showGoalsEditor && (
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setShowGoalsEditor(false)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl">
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-w-md mx-auto">
             <div className="px-5 pt-5 pb-3 border-b border-black/5">
               <div className="w-10 h-1 bg-black/15 rounded-full mx-auto mb-4" />
               <h2 className="text-lg font-extrabold text-black">Set Daily Goals</h2>

@@ -9,9 +9,9 @@ export default function BioHackPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f0e8]">
-      {/* Header */}
+      {/* Header — full-width orange band, content constrained */}
       <header className="sticky top-0 z-20 bg-orange-500 px-5 pt-4 pb-3">
-        <div className="flex items-center justify-between">
+        <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <button onClick={() => router.push('/cafezomad')} className="w-9 h-9 rounded-xl bg-white overflow-hidden active:scale-95 transition-all shrink-0 p-1">
               <img src={cafeZomadLogo.src} alt="Cafe Zomad" className="w-full h-full object-contain" />
@@ -24,7 +24,7 @@ export default function BioHackPage() {
         </div>
       </header>
 
-      <div className="pb-12">
+      <div className="max-w-md mx-auto pb-12">
         <BioHackTab
           isLoggedIn={isLoggedIn}
           user={user}
