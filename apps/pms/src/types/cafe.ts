@@ -312,3 +312,54 @@ export interface CreateRecipeItemRequest {
   quantity: number
   unit: IngredientUnit
 }
+
+// ---------------------------------------------------------------------------
+// Kitchen-card inventory indicator
+// See docs/superpowers/specs/2026-05-18-cafe-kitchen-inventory-indicator-design.md
+// ---------------------------------------------------------------------------
+
+/** Inventory state for a single order item or for an order overall. */
+export type InventoryItemState = 'green' | 'yellow' | 'red' | 'grey'
+
+/** Why an item is in the 'grey' (can't-compute) state. */
+export type GreyReason = 'no_recipe' | 'unit_mismatch'
+
+export interface OrderItemInventoryStatus {
+  orderItemId: string
+  menuItemId: string
+  menuItemName: string
+  state: InventoryItemState
+  /** Set only when state === 'grey'. */
+  greyReason?: GreyReason
+  /** Set only when state === 'yellow' or 'red'. The ingredient driving the state. */
+  worstIngredient?: {
+    name: string
+    needed: number
+    available: number
+    unit: IngredientUnit
+  }
+}
+
+export interface OrderInventoryStatus {
+  /** Card-level state. Worst of items' red/yellow/green, ignoring grey items unless all are grey. */
+  cardState: InventoryItemState
+  items: OrderItemInventoryStatus[]
+  /** Human-readable summary line shown below the items on the card. */
+  summary: string
+}
+
+/** Context passed to computeOrderInventoryStatus. Built by useInventoryStatus. */
+export interface InventoryStatusContext {
+  /** ingredient_id → current_stock (in the ingredient's stock unit) */
+  stockMap: Map<string, number>
+  /** ingredient_id → { name, unit (stock unit) } */
+  ingredientMap: Map<string, { name: string; unit: IngredientUnit }>
+  /** menu_item_id → list of recipe rows */
+  recipeMap: Map<string, RecipeRow[]>
+}
+
+export interface RecipeRow {
+  ingredientId: string
+  quantity: number
+  unit: IngredientUnit
+}
