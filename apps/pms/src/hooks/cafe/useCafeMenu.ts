@@ -48,12 +48,34 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
 
       const catResult = await catQuery
       if (catResult.error) throw catResult.error
-      setCategories(catResult.data || [])
 
-      // If filtering by category
+      // Standardised menu = one logical category per name across all
+      // outlets. Dedupe by case-insensitive name and remember the canonical
+      // (first-seen) id so items linked to any per-property sibling collapse
+      // onto the same UI row. Without this the admin saw two "Breakfast"
+      // chips (BLR's + WTF's) each with a partial item count.
+      const allCats = (catResult.data || []) as MenuCategory[]
+      const canonicalCatIdByName = new Map<string, string>()
+      const uniqueCats: MenuCategory[] = []
+      for (const cat of allCats) {
+        const key = cat.name.toLowerCase().trim()
+        if (canonicalCatIdByName.has(key)) continue
+        canonicalCatIdByName.set(key, cat.id)
+        uniqueCats.push(cat)
+      }
+      setCategories(uniqueCats)
+
+      const nameByCatId = new Map<string, string>()
+      for (const cat of allCats) nameByCatId.set(cat.id, cat.name.toLowerCase().trim())
+
+      // When filtering by a (canonical) category id, expand to every per-
+      // property sibling sharing that name so items from all outlets show.
       let targetCatIds: string[] | null = null
       if (categoryId) {
-        targetCatIds = [categoryId]
+        const targetName = nameByCatId.get(categoryId)
+        targetCatIds = targetName
+          ? allCats.filter((c) => c.name.toLowerCase().trim() === targetName).map((c) => c.id)
+          : [categoryId]
       }
 
       let itemQuery = supabase
@@ -76,14 +98,24 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       const itemResult = await itemQuery
       if (itemResult.error) throw itemResult.error
 
-      // Deduplicate items by name (same item exists under both BLR + WTF categories)
+      // Dedupe items by name, then remap each kept row's category_id to the
+      // canonical category id so getItemCount(cat.id) in the page still
+      // finds them after category dedup.
       const seenItemNames = new Set<string>()
-      const uniqueItems = (itemResult.data || []).filter((item) => {
-        const lower = item.name.toLowerCase()
-        if (seenItemNames.has(lower)) return false
-        seenItemNames.add(lower)
-        return true
-      })
+      const uniqueItems = (itemResult.data || [])
+        .filter((item) => {
+          const lower = item.name.toLowerCase()
+          if (seenItemNames.has(lower)) return false
+          seenItemNames.add(lower)
+          return true
+        })
+        .map((item) => {
+          const catName = nameByCatId.get(item.category_id)
+          const canonicalId = catName ? canonicalCatIdByName.get(catName) : undefined
+          return canonicalId && canonicalId !== item.category_id
+            ? { ...item, category_id: canonicalId }
+            : item
+        })
       setItems(uniqueItems)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
