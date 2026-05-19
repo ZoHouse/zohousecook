@@ -731,7 +731,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       )}
 
       {/* ── Main Content ─────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto pb-28">
+      <div className={`flex-1 overflow-y-auto ${totalItems > 0 && activeTab === 'menu' ? 'pb-44' : 'pb-28'}`}>
 
         {/* ── MENU TAB ──────────────────────────────────────────────────────── */}
         {activeTab === 'menu' && (
@@ -777,7 +777,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
             )}
 
             {/* FAB buttons — search + category filter */}
-            <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-2">
+            <div className={`fixed ${totalItems > 0 ? 'bottom-44' : 'bottom-24'} right-4 z-50 flex flex-col items-end gap-2`}>
               {/* Category popup */}
               {showCategories && (
                 <>
@@ -1269,7 +1269,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
           onClick={() => {
             if (requireLoginForOrdering()) setActiveTab('orders')
           }}
-          className="fixed bottom-24 left-5 right-5 z-50 bg-orange-500 text-black px-5 py-3.5 rounded-2xl shadow-2xl shadow-orange-500/30 flex items-center justify-between active:scale-[0.98] transition-all"
+          className="fixed bottom-24 left-5 right-5 max-w-md mx-auto z-50 bg-orange-500 text-black px-5 py-3.5 rounded-2xl shadow-2xl shadow-orange-500/30 flex items-center justify-between active:scale-[0.98] transition-all"
         >
           <div className="flex items-center gap-2">
             <span className="bg-black text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
