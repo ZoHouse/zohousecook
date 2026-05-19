@@ -31,8 +31,12 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true)
+  // `silent` skips the full-page loading spinner. Used after mutations
+  // (toggle/create/edit/delete/move) so the UI keeps working while we
+  // quietly re-sync. Without this, every action flashes the page back to
+  // a spinner and chefs have to wait before doing the next thing.
+  const fetchData = useCallback(async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setIsLoading(true)
     setError(null)
 
     try {
@@ -120,7 +124,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
-      setIsLoading(false)
+      if (!opts.silent) setIsLoading(false)
     }
   }, [categoryId, propertyId])
 
@@ -137,7 +141,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       .from('cafe_menu_categories')
       .insert(rows)
     if (error) throw error
-    await fetchData()
+    await fetchData({ silent: true })
   }, [fetchData])
 
   const toggleCategory = useCallback(async (id: string, isActive: boolean) => {
@@ -168,7 +172,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       .update({ is_active: isActive })
       .in('id', ids)
     if (error) throw error
-    await fetchData()
+    await fetchData({ silent: true })
   }, [fetchData])
 
   const createItem = useCallback(async (data: Record<string, unknown>): Promise<string | null> => {
@@ -201,7 +205,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       .insert(rows)
       .select('id')
     if (error) throw error
-    await fetchData()
+    await fetchData({ silent: true })
     // Return the first created item's ID (for recipe saving)
     return created?.[0]?.id ?? null
   }, [fetchData])
@@ -269,7 +273,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       if (error) throw error
     }
 
-    await fetchData()
+    await fetchData({ silent: true })
   }, [fetchData])
 
   const toggleAvailability = useCallback(async (id: string, isAvailable: boolean) => {
@@ -282,7 +286,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       .update({ is_available: isAvailable })
       .in('id', sibIds)
     if (error) throw error
-    await fetchData()
+    await fetchData({ silent: true })
   }, [fetchData])
 
   /**
@@ -306,7 +310,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       .eq('name', sourceItem.name)
       .is('deleted_at', null)
     if (error) throw error
-    await fetchData()
+    await fetchData({ silent: true })
   }, [fetchData])
 
   return {
