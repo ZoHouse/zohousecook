@@ -33,7 +33,7 @@ export interface SimulationFlowProps {
 const EVENT_TEXTS = [
   (a: string, b: string) => `${a} and ${b} cross paths in the lobby`,
   (a: string, _b: string) => `${a} shares what they're building`,
-  (_a: string, b: string) => `${b} spots a pattern — stacks overlap`,
+  (_a: string, b: string) => `${b} spots a pattern. stacks overlap`,
   (a: string, b: string) => `${a} and ${b} grab a whiteboard`,
   (_a: string, _b: string) => `Network effects surfacing...`,
   (_a: string, _b: string) => `Simulation converging...`,
@@ -197,7 +197,7 @@ const SimulationFlow: React.FC<SimulationFlowProps> = ({
           {result.best_scenario && (
             <div className="mx-auto max-w-[520px] px-4 mt-3">
               <p className={cn("text-xs text-white/20 italic leading-relaxed", RUBIK)}>
-                Best case — {result.best_scenario}
+                Best case. {result.best_scenario}
               </p>
             </div>
           )}

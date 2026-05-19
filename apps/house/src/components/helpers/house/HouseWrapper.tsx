@@ -25,14 +25,14 @@ export function HouseWrapper({ children }: { children: React.ReactNode }) {
 
   const handleTuneIn = () => {
     // Unlock audio playback for the session before any state update triggers a
-    // re-render — must run inside the click event so the browser sees a valid
+    // re-render. must run inside the click event so the browser sees a valid
     // user gesture. Subsequent new Audio().play() will then work, including
     // the DJ TTS clips that fire from async callbacks later.
     try {
       const unlock = new Audio(SILENT_MP3);
       unlock.volume = 0;
       void unlock.play().catch(() => {
-        /* autoplay blocked — user can re-click the radio pill */
+        /* autoplay blocked. user can re-click the radio pill */
       });
     } catch {
       /* Audio constructor unavailable (SSR / old browser) */

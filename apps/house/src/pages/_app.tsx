@@ -19,7 +19,7 @@ export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
     initConsent();
 
-    // initDestinations always runs — each adapter checks its own globals at
+    // initDestinations always runs. each adapter checks its own globals at
     // call time so a missing env var for one tool never disables the others
     // (per spec §13.3 failure isolation).
     initDestinations({

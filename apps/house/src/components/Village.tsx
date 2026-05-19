@@ -23,7 +23,7 @@ const jitter = (i: number, salt: number) =>
   (((i * 1103515245 + salt * 12345) % 1000) / 1000 - 0.5) * 0.35;
 
 // Plot grid parameters.
-const COL_SPACING = 1.5; // was 1.0 — houses were overlapping
+const COL_SPACING = 1.5; // was 1.0. houses were overlapping
 const ROW_SPACING = 1.6; // was 1.5
 const BLR_COLS = 5;
 const WTF_COLS = 5;
@@ -73,7 +73,7 @@ function buildPlots(blr: Resident[], wtf: Resident[]): PlotData[] {
   return [...blrPlots, ...wtfPlots];
 }
 
-// Trees — placed around each island's outer ring + a few between clusters.
+// Trees. placed around each island's outer ring + a few between clusters.
 type TreeSpec = { pos: [number, number, number]; scale: number; type: number };
 
 function treesAroundIsland(
@@ -450,7 +450,7 @@ export function Village({ blr = [], wtf = [], syncedAt = null, onClaim }: Villag
           </div>
           {syncedAt && (
             <p className="text-[9px] text-neutral-600 text-center mt-2 font-mono">
-              synced {new Date(syncedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })} IST
+              synced {new Date(syncedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" }).toUpperCase()} IST
             </p>
           )}
         </BlurFade>

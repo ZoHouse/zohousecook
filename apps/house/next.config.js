@@ -15,6 +15,8 @@ const nextConfig = {
       "cdn.zo.xyz",
       "proxy.cdn.zo.xyz",
       "static.cdn.zo.xyz",
+      "proxy.cdn.zostel.com",
+      "cdn.zostel.com",
       "unavatar.io",
       "avatars.githubusercontent.com",
     ],

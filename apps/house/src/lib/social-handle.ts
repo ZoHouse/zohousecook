@@ -64,7 +64,7 @@ export function parseSocialIdentity(socials: string): SocialIdentity | null {
     return handle ? { platform: "l", handle } : null;
   }
 
-  // Bare handle like "@karthik" or "karthik" — assume X.
+  // Bare handle like "@karthik" or "karthik". assume X.
   const bareHandle = trimmed.match(/^@?([A-Za-z0-9_]+)$/);
   if (bareHandle) {
     const handle = sanitizeHandle(bareHandle[1]);

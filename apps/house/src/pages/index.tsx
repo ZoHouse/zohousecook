@@ -173,25 +173,6 @@ export default function House({
 
         <ProgramAccordion />
 
-        <section className="section-padding px-8 md:px-28">
-          <div className="max-w-7xl mx-auto">
-            <BlurFade inView delay={0.2} direction="up">
-              <div className="border-t border-white/5 pt-12 text-center">
-                <p className="font-[family-name:var(--font-headline)] italic text-2xl shiny-gold opacity-60">
-                  &ldquo;The house doesn&apos;t reset. It compounds.&rdquo;
-                </p>
-                <Link
-                  href="/network"
-                  className="inline-flex items-center gap-2 mt-8 text-[11px] tracking-[3px] uppercase text-white/40 hover:text-white transition-colors"
-                >
-                  Meet the network
-                  <span aria-hidden>→</span>
-                </Link>
-              </div>
-            </BlurFade>
-          </div>
-        </section>
-
         <Village
           blr={residents.blr}
           wtf={residents.wtf}
@@ -202,6 +183,61 @@ export default function House({
             goToApply();
           }}
         />
+
+        <section className="section-padding px-8 md:px-28">
+          <div className="max-w-3xl mx-auto">
+            <BlurFade inView delay={0.2} direction="up">
+              <div className="border-t border-white/5 pt-12 grid grid-cols-3 gap-3 md:gap-5">
+                {[
+                  {
+                    label: "Live",
+                    href: "/live",
+                    glyph: (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7 md:w-8 md:h-8">
+                        <path d="M3 11L12 3l9 8" />
+                        <path d="M5 10v10h14V10" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    label: "Build",
+                    href: "/build",
+                    glyph: (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7 md:w-8 md:h-8">
+                        <path d="M12 2l3 6 6 1-4.5 4 1 6L12 16l-5.5 3 1-6L3 9l6-1z" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    label: "Network",
+                    href: "/network",
+                    glyph: (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7 md:w-8 md:h-8">
+                        <circle cx="5" cy="6" r="2" />
+                        <circle cx="19" cy="6" r="2" />
+                        <circle cx="12" cy="18" r="2" />
+                        <path d="M6.5 7.5l4 9M17.5 7.5l-4 9M7 6h10" />
+                      </svg>
+                    ),
+                  },
+                ].map(({ label, href, glyph }) => (
+                  <Link
+                    key={label}
+                    href={href}
+                    className="group aspect-square flex flex-col items-center justify-center gap-3 border border-white/10 hover:border-white/30 transition-colors"
+                  >
+                    <span className="text-white/40 group-hover:text-[#c5a572] transition-colors">
+                      {glyph}
+                    </span>
+                    <span className="font-[family-name:var(--font-headline)] italic text-2xl md:text-3xl shiny-gold">
+                      {label}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </BlurFade>
+          </div>
+        </section>
 
         <section className="relative bg-black">
           <TextReveal

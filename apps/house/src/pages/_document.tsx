@@ -17,7 +17,7 @@ export default function Document() {
         <link rel="apple-touch-icon" href={FAVICON_URL} />
         <meta name="theme-color" content="#d4af37" />
 
-        {/* Consent Mode v2 default — must come BEFORE GA4 + Pixel.
+        {/* Consent Mode v2 default. must come BEFORE GA4 + Pixel.
            The `function gtag(){...}` declaration becomes window.gtag (script
            tags share global scope), and the GA4 block below uses
            `window.gtag = window.gtag || ...` which short-circuits to preserve

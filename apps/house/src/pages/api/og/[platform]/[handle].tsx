@@ -91,7 +91,7 @@ async function fetchWaitlistPosition(createdAt: string): Promise<number> {
       },
     }
   );
-  // Supabase returns "Content-Range: 0-0/<count>" — parse the count.
+  // Supabase returns "Content-Range: 0-0/<count>". parse the count.
   const range = res.headers.get("content-range") || "";
   const match = range.match(/\/(\d+)$/);
   return match ? parseInt(match[1], 10) : 0;

@@ -161,10 +161,10 @@ const FounderSearch: React.FC<{
 
 const threadSteps = [
   { tpl: (a: string, b: string) => `${a} and ${b} cross paths in the Zo House lobby` },
-  { tpl: (a: string, _b: string) => `${a} shares what they're building — ${_b} leans in` },
+  { tpl: (a: string, _b: string) => `${a} shares what they're building. ${_b} leans in` },
   { tpl: (_a: string, b: string) => `${b} spots an overlap. "We should talk."` },
   { tpl: (a: string, b: string) => `${a} and ${b} grab a whiteboard. Ideas start flowing.` },
-  { tpl: (_a: string, _b: string) => `Network effects kicking in — mutual connections surface` },
+  { tpl: (_a: string, _b: string) => `Network effects kicking in. mutual connections surface` },
   { tpl: (_a: string, _b: string) => `The simulation converges on an outcome...` },
 ];
 
@@ -374,7 +374,7 @@ const ChemistryPage: React.FC = () => {
 
               {founders.length > 60 && (
                 <p className={cn("text-center text-[10px] text-white/10 mt-4", RUBIK)}>
-                  {founders.length - 60}+ more — use search
+                  {founders.length - 60}+ more. use search
                 </p>
               )}
             </div>
