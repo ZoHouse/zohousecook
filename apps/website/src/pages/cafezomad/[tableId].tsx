@@ -83,6 +83,10 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     } catch { return [] }
   })
   const [foodCreditAmount, setFoodCreditAmount] = useState(0)
+  // Customer note to the kitchen — free-text, optional. Saved on the
+  // cafe_orders.notes column via place_cafe_order's p_notes param. Reset
+  // when the cart clears (after a successful order).
+  const [customerNotes, setCustomerNotes] = useState('')
   // Per-draft-order slider value (in rupees). Default falls back to the order's
   // existing food_credit_applied_paise / 100 when undefined.
   const [draftCreditOverrides, setDraftCreditOverrides] = useState<Record<string, number>>({})
@@ -535,6 +539,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         })),
         p_food_credit_paise: foodCreditAmount * 100,
         p_payment_mode: resolvedMode,
+        p_notes: customerNotes.trim() || null,
       })
 
       if (error) {
@@ -547,6 +552,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       saveOrderId(data.id)
       setCart([])
       setFoodCreditAmount(0)
+      setCustomerNotes('')
       setOrderPlaced({
         id: data.id,
         display_number: data.display_number,
@@ -1181,6 +1187,27 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                     </div>
                   </div>
                 )}
+
+                {/* Note to the kitchen — optional free-text, e.g. "no onions",
+                    "extra spicy", "well done". Trimmed and stored on
+                    cafe_orders.notes via place_cafe_order's p_notes param. */}
+                <div className="rounded-2xl bg-white ring-1 ring-black/10 p-3">
+                  <label className="block text-xs font-semibold text-black/60 mb-1.5">
+                    Note for the kitchen (optional)
+                  </label>
+                  <textarea
+                    value={customerNotes}
+                    onChange={(e) => setCustomerNotes(e.target.value.slice(0, 280))}
+                    placeholder="e.g. no onions, extra spicy, well done…"
+                    rows={2}
+                    className="w-full resize-none rounded-xl bg-black/5 px-3 py-2 text-sm text-black placeholder:text-black/30 outline-none focus:bg-black/[0.07] transition-colors"
+                  />
+                  {customerNotes.length > 0 && (
+                    <div className="mt-1 text-right text-[10px] text-black/35 font-mono">
+                      {customerNotes.length}/280
+                    </div>
+                  )}
+                </div>
 
                 {/* Place Order — Razorpay handles every paid order; the only no-payment
                     path is full food-credit coverage (RPC resolves that to 'zo_card'). */}
