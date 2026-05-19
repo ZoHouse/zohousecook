@@ -11,6 +11,7 @@ import {
   message,
   Modal,
   Row,
+  Select,
   Spin,
   Switch,
   Tag,
@@ -23,6 +24,7 @@ import {
   MoreOutlined,
   PlusOutlined,
   SearchOutlined,
+  SwapOutlined,
 } from '@ant-design/icons'
 import ZoHouseGuard from '../../components/helpers/app/ZoHouseGuard'
 import { Page, PageContent, PageHeader } from '../../components/ui'
@@ -119,6 +121,49 @@ const CafeMenuPage: NextPage = () => {
         prev.map((item) => (item.id === id ? { ...item, is_available: !available } : item))
       )
       message.error('Failed to update availability')
+    })
+  }
+
+  /**
+   * Open a small modal that lets the operator pick a different category for
+   * the item. Submitting calls updateItem with the new category_id, which
+   * already cascades across BLR + WTF (see useCafeMenu.updateItem).
+   * Exposed from the per-card kebab menu next to Delete.
+   */
+  const handleMoveItem = (item: MenuItem) => {
+    let pickedCategoryId: string = item.category_id
+    Modal.confirm({
+      title: `Move "${item.name}" to a different category`,
+      content: (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.5)', marginBottom: 6 }}>
+            New category
+          </div>
+          <Select
+            defaultValue={item.category_id}
+            style={{ width: '100%' }}
+            onChange={(v) => { pickedCategoryId = v }}
+            options={categories.map((c) => ({ value: c.id, label: c.name }))}
+            showSearch
+            optionFilterProp="label"
+          />
+          <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.45)', marginTop: 8 }}>
+            Applies to both BLR and WTF — menu structure stays standardised.
+          </div>
+        </div>
+      ),
+      okText: 'Move',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        if (!pickedCategoryId || pickedCategoryId === item.category_id) return
+        try {
+          await updateItem(item.id, { category_id: pickedCategoryId })
+          message.success('Item moved')
+        } catch {
+          message.error('Failed to move item')
+          await refetch()
+        }
+      },
     })
   }
 
@@ -426,6 +471,16 @@ const CafeMenuPage: NextPage = () => {
                                 menu={{
                                   items: [
                                     {
+                                      key: 'move',
+                                      label: 'Move to category…',
+                                      icon: <SwapOutlined />,
+                                      onClick: ({ domEvent }) => {
+                                        domEvent.stopPropagation()
+                                        handleMoveItem(item)
+                                      },
+                                    },
+                                    { type: 'divider' },
+                                    {
                                       key: 'delete',
                                       label: 'Delete item',
                                       icon: <DeleteOutlined />,
@@ -572,6 +627,7 @@ const CafeMenuPage: NextPage = () => {
           categoryId={
             selectedCategoryId || editingItem?.category_id || ''
           }
+          categories={categories}
         />
       )}
     </ZoHouseGuard>
