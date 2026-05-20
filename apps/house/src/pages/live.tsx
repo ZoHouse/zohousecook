@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { MetaTags } from "../components/common/MetaTags";
 import { BlurFade } from "../components/helpers/house";
 
@@ -142,41 +142,38 @@ const SHARED = [
   {
     title: "Build sprints",
     body: "Focused build cycles with the house around you.",
-    glyph: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-        <path d="M13 2L4 14h8l-1 8 9-12h-8l1-8z" />
-      </svg>
-    ),
   },
   {
     title: "Mentor sessions",
     body: "Office hours with operators, founders, investors.",
-    glyph: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-        <path d="M12 2l3 6 6 1-4.5 4 1 6L12 16l-5.5 3 1-6L3 9l6-1z" />
-      </svg>
-    ),
   },
   {
     title: "Founder dinners",
     body: "Long-table dinners with the cohort.",
-    glyph: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v5l3 3" />
-      </svg>
-    ),
   },
   {
     title: "Demo days",
     body: "Ship it. Show it. Peers and investors in the room.",
-    glyph: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-        <path d="M4 19V8l8-5 8 5v11" />
-        <path d="M9 19v-6h6v6" />
-      </svg>
-    ),
   },
+];
+
+// Photos of house programming, shown as a scrolling strip under the rituals
+// grid. Order is interleaved so the strip mixes event types rather than
+// running six build-sprint shots in a row.
+const PROGRAMMING_PHOTOS = [
+  { src: "/programming/build-sprint-1.jpg", label: "Build sprint" },
+  { src: "/programming/founders-dinner-1.jpg", label: "Founder dinner" },
+  { src: "/programming/mentor-1.jpg", label: "Mentor session" },
+  { src: "/programming/build-sprint-2.jpg", label: "Build sprint" },
+  { src: "/programming/demo-day-1.jpg", label: "Demo day" },
+  { src: "/programming/build-sprint-3.jpg", label: "Build sprint" },
+  { src: "/programming/founders-dinner-2.jpg", label: "Founder dinner" },
+  { src: "/programming/build-sprint-4.jpg", label: "Build sprint" },
+  { src: "/programming/mentor-2.jpg", label: "Mentor session" },
+  { src: "/programming/build-sprint-5.jpg", label: "Build sprint" },
+  { src: "/programming/demo-day-2.jpg", label: "Demo day" },
+  { src: "/programming/founders-dinner-3.jpg", label: "Founder dinner" },
+  { src: "/programming/build-sprint-6.jpg", label: "Build sprint" },
 ];
 
 const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -184,6 +181,101 @@ const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     {children}
   </p>
 );
+
+// Auto-advancing photo carousel for house programming. It scrolls one card
+// every few seconds, pauses while the pointer is over it, and exposes prev/
+// next arrows for manual control. Reaching either end loops back around.
+const ProgrammingGallery: React.FC = () => {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const pausedRef = useRef(false);
+
+  const scrollByCard = useCallback((dir: 1 | -1) => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const card = el.querySelector<HTMLElement>("[data-card]");
+    const step = card ? card.offsetWidth + 16 : el.clientWidth * 0.8;
+    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 8;
+    const atStart = el.scrollLeft <= 8;
+    if (dir === 1 && atEnd) {
+      el.scrollTo({ left: 0, behavior: "smooth" });
+    } else if (dir === -1 && atStart) {
+      el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
+    } else {
+      el.scrollBy({ left: dir * step, behavior: "smooth" });
+    }
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!pausedRef.current) scrollByCard(1);
+    }, 3500);
+    return () => clearInterval(id);
+  }, [scrollByCard]);
+
+  const arrowClass =
+    "absolute top-1/2 -translate-y-1/2 z-10 grid place-items-center w-9 h-9 rounded-full bg-black/70 border border-white/15 text-white/80 backdrop-blur-sm hover:bg-black hover:text-white hover:border-white/40 transition-colors";
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => {
+        pausedRef.current = true;
+      }}
+      onMouseLeave={() => {
+        pausedRef.current = false;
+      }}
+    >
+      <button
+        type="button"
+        aria-label="Previous photos"
+        onClick={() => scrollByCard(-1)}
+        className={`${arrowClass} left-0 sm:-left-3`}
+      >
+        <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        aria-label="Next photos"
+        onClick={() => scrollByCard(1)}
+        className={`${arrowClass} right-0 sm:-right-3`}
+      >
+        <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 18l6-6-6-6" />
+        </svg>
+      </button>
+
+      <div
+        ref={scrollerRef}
+        className="flex gap-3 md:gap-4 overflow-x-auto pb-3 px-1 snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {PROGRAMMING_PHOTOS.map((photo) => (
+          <div
+            key={photo.src}
+            data-card
+            className="group shrink-0 snap-start w-[230px] sm:w-[280px] md:w-[320px] p-2 bg-white/[0.03] border border-white/10"
+          >
+            <div className="relative aspect-[4/3] overflow-hidden">
+              <Image
+                src={photo.src}
+                alt={photo.label}
+                fill
+                sizes="320px"
+                className="object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent p-3">
+                <p className="text-[9px] tracking-[2px] uppercase text-white/70 font-mono">
+                  {photo.label}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const AmenityCard: React.FC<{ amenity: Amenity }> = ({ amenity }) => {
   const [idx, setIdx] = useState(0);
@@ -667,13 +759,10 @@ const Live: React.FC = () => {
           </BlurFade>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-            {SHARED.map(({ title, body, glyph }) => (
+            {SHARED.map(({ title, body }) => (
               <BlurFade key={title} inView delay={0.12} direction="up">
                 <div className="group h-full border border-white/10 bg-gradient-to-b from-neutral-950/30 to-black p-4 md:p-5 transition-all duration-500 hover:border-[#c5a572]/30">
-                  <div className="text-[#c5a572]/70 group-hover:text-[#c5a572] transition-colors">
-                    {glyph}
-                  </div>
-                  <p className="mt-3 font-[family-name:var(--font-headline)] italic text-base md:text-lg shiny-gold leading-tight">
+                  <p className="font-[family-name:var(--font-headline)] italic text-base md:text-lg shiny-gold leading-tight">
                     {title}
                   </p>
                   <p className="mt-2 text-[11px] md:text-xs text-neutral-400 font-light leading-relaxed">
@@ -683,6 +772,16 @@ const Live: React.FC = () => {
               </BlurFade>
             ))}
           </div>
+
+          {/* Programming gallery: auto-advancing photo carousel with arrows */}
+          <BlurFade inView delay={0.18} direction="up">
+            <div className="mt-9 md:mt-12">
+              <p className="text-center text-[9px] tracking-[3px] uppercase text-white/30 mb-4">
+                In the house
+              </p>
+              <ProgrammingGallery />
+            </div>
+          </BlurFade>
         </div>
       </section>
 
