@@ -505,7 +505,7 @@ const Live: React.FC = () => {
                 href="#partners"
                 className="inline-flex items-center justify-center border border-white/20 text-white/80 font-bold text-[10px] tracking-[3px] uppercase rounded-full px-5 py-2.5 hover:border-white hover:text-white transition-all duration-300"
               >
-                Host a project
+                Host your team
               </a>
             </div>
           </BlurFade>
