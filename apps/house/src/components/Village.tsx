@@ -1,6 +1,6 @@
-import { useRef, useState, useMemo, Suspense, useCallback } from "react";
+import { useRef, useState, useMemo, Suspense, useCallback, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
+import { Html, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { BlurFade } from "./helpers/house/BlurFade";
 import type { Resident } from "../lib/residents";
@@ -8,6 +8,20 @@ import { track } from "../lib/analytics/track";
 
 const BLR_CAPACITY = 15;
 const WTF_CAPACITY = 20;
+
+// Touch devices can't hover and the locked desktop camera clips both islands
+// on a narrow viewport. On mobile we swap to draggable pan/zoom controls.
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isMobile;
+}
 
 interface PlotData {
   position: [number, number, number];
@@ -204,12 +218,14 @@ function HouseModel({
   onUnhover,
   isHovered,
   onClaim,
+  isMobile,
 }: {
   plot: PlotData;
   onHover: () => void;
   onUnhover: () => void;
   isHovered: boolean;
   onClaim?: (info: { island: "blr" | "wtf"; slot_index: number }) => void;
+  isMobile?: boolean;
 }) {
   const handleClaim = (p: PlotData) => {
     track("village_slot_click", {
@@ -221,14 +237,30 @@ function HouseModel({
   };
   const s = plot.scale || 1;
 
+  // Desktop hovers; mobile taps to toggle (no hover on touch).
+  const interaction = isMobile
+    ? {
+        onClick: (e: { stopPropagation: () => void }) => {
+          e.stopPropagation();
+          if (isHovered) onUnhover();
+          else onHover();
+        },
+      }
+    : {
+        onPointerEnter: (e: { stopPropagation: () => void }) => {
+          e.stopPropagation();
+          onHover();
+        },
+        onPointerLeave: onUnhover,
+      };
+
   if (plot.isEmpty) {
     return (
       <group position={plot.position}>
         <mesh
           rotation={[-Math.PI / 2, 0, 0]}
           position={[0, 0.02, 0]}
-          onPointerEnter={(e) => { e.stopPropagation(); onHover(); }}
-          onPointerLeave={onUnhover}
+          {...interaction}
           material={isHovered ? matPlotRingHover : matPlotRing}
           geometry={geoRing}
         />
@@ -255,8 +287,7 @@ function HouseModel({
     <group
       position={plot.position}
       rotation={[0, plot.rotation || 0, 0]}
-      onPointerEnter={(e) => { e.stopPropagation(); onHover(); }}
-      onPointerLeave={onUnhover}
+      {...interaction}
     >
       <mesh position={[0, 0.05, 0]} scale={[0.7 * s, 0.1, 0.6 * s]} material={matStone} geometry={geoBox} />
       <mesh position={[0, 0.35 * s, 0]} scale={[0.6 * s, 0.5 * s, 0.5 * s]} material={matWood} geometry={geoBox} />
@@ -312,7 +343,65 @@ function StaticCamera() {
   return null;
 }
 
-function VillageScene({ plots, onClaim }: { plots: PlotData[]; onClaim?: (info: { island: "blr" | "wtf"; slot_index: number }) => void }) {
+// Mobile: drag to pan across the village, pinch to zoom. Rotation stays locked
+// so the isometric angle is preserved. Pan is clamped so you can't drift off
+// the islands into empty space.
+function MobileControls() {
+  const { camera } = useThree();
+  const controlsRef = useRef<{
+    target: THREE.Vector3;
+    update: () => void;
+  } | null>(null);
+
+  useEffect(() => {
+    // Start framed in close so houses are legible, then let the user pan out.
+    camera.position.set(0, 8, 10.5);
+    const c = controlsRef.current;
+    if (c) {
+      c.target.set(0, 0, 0);
+      c.update();
+    }
+  }, [camera]);
+
+  const clampPan = useCallback(() => {
+    const c = controlsRef.current;
+    if (!c) return;
+    const t = c.target;
+    const cx = THREE.MathUtils.clamp(t.x, -10, 10);
+    const cz = THREE.MathUtils.clamp(t.z, -4, 4);
+    const dx = cx - t.x;
+    const dz = cz - t.z;
+    if (dx !== 0 || dz !== 0) {
+      t.x = cx;
+      t.z = cz;
+      camera.position.x += dx;
+      camera.position.z += dz;
+    }
+    if (t.y !== 0) {
+      camera.position.y += -t.y;
+      t.y = 0;
+    }
+  }, [camera]);
+
+  return (
+    <OrbitControls
+      ref={controlsRef as never}
+      enableRotate={false}
+      enablePan
+      enableZoom
+      screenSpacePanning
+      panSpeed={1.1}
+      zoomSpeed={0.9}
+      minDistance={7}
+      maxDistance={26}
+      touches={{ ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN }}
+      mouseButtons={{ LEFT: THREE.MOUSE.PAN }}
+      onChange={clampPan}
+    />
+  );
+}
+
+function VillageScene({ plots, onClaim, isMobile }: { plots: PlotData[]; onClaim?: (info: { island: "blr" | "wtf"; slot_index: number }) => void; isMobile?: boolean }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const handleHover = useCallback((i: number) => setHoveredIndex(i), []);
   const handleUnhover = useCallback(() => setHoveredIndex(null), []);
@@ -327,9 +416,14 @@ function VillageScene({ plots, onClaim }: { plots: PlotData[]; onClaim?: (info: 
       <directionalLight position={[3, 20, -5]} intensity={0.4} color="#dce6ff" />
       <fog attach="fog" args={["#0a0a12", 20, 40]} />
 
-      <StaticCamera />
+      {isMobile ? <MobileControls /> : <StaticCamera />}
 
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} material={matGround}>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, -0.05, 0]}
+        material={matGround}
+        onClick={isMobile ? () => handleUnhover() : undefined}
+      >
         <planeGeometry args={[40, 40]} />
       </mesh>
 
@@ -365,6 +459,7 @@ function VillageScene({ plots, onClaim }: { plots: PlotData[]; onClaim?: (info: 
           onHover={() => handleHover(i)}
           onUnhover={handleUnhover}
           onClaim={onClaim}
+          isMobile={isMobile}
         />
       ))}
     </>
@@ -383,6 +478,14 @@ export function Village({ blr = [], wtf = [], syncedAt = null, onClaim }: Villag
   const blrConfirmed = blr.length;
   const wtfConfirmed = wtf.length;
   const plotsRemaining = BLR_CAPACITY + WTF_CAPACITY - blrConfirmed - wtfConfirmed;
+  const isMobile = useIsMobile();
+  const [showHint, setShowHint] = useState(true);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    const t = setTimeout(() => setShowHint(false), 4500);
+    return () => clearTimeout(t);
+  }, [isMobile]);
 
   return (
     <section className="relative h-[200vh] bg-[#050508]">
@@ -399,7 +502,10 @@ export function Village({ blr = [], wtf = [], syncedAt = null, onClaim }: Villag
               </span>
             </h2>
             <p className="text-neutral-400 text-base font-light max-w-lg mx-auto">
-              Each glowing house is a real founder, right now. Hover to see who&apos;s building.
+              Each glowing house is a real founder, right now.{" "}
+              {isMobile
+                ? "Swipe to explore, tap a house to see who's building."
+                : "Hover to see who's building."}
             </p>
           </div>
         </BlurFade>
@@ -413,7 +519,7 @@ export function Village({ blr = [], wtf = [], syncedAt = null, onClaim }: Villag
             gl={{ antialias: true, powerPreference: "high-performance" }}
           >
             <Suspense fallback={null}>
-              <VillageScene plots={plots} onClaim={onClaim} />
+              <VillageScene plots={plots} onClaim={onClaim} isMobile={isMobile} />
             </Suspense>
           </Canvas>
 
@@ -423,6 +529,20 @@ export function Village({ blr = [], wtf = [], syncedAt = null, onClaim }: Villag
             <div className="absolute top-0 bottom-0 left-0 w-16 bg-gradient-to-r from-[#050508] to-transparent" />
             <div className="absolute top-0 bottom-0 right-0 w-16 bg-gradient-to-l from-[#050508] to-transparent" />
           </div>
+
+          {isMobile && (
+            <div
+              className={`absolute top-3 left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-700 ${
+                showHint ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              <div className="bg-[#0e0e0c]/85 backdrop-blur-md border border-white/10 rounded-full px-3.5 py-1.5 shadow-lg">
+                <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-neutral-300">
+                  ← Swipe to explore →
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         <BlurFade inView delay={0.3} direction="up">
