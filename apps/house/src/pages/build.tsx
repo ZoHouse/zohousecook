@@ -87,19 +87,23 @@ function HouseGallery({ images, alt }: { images: string[]; alt: string }) {
   );
 }
 
-// The Day Pass "ticket" card. Tilts slightly toward the cursor on hover for a
-// tactile, interactive feel; resets when the pointer leaves. Touch devices
-// never fire mouse-move, so they just get a clean flat card.
+// The Day Pass "ticket" card: the ticket art is the card background and the
+// text sits on top of it. It tilts slightly toward the pointer for a tactile
+// feel (mouse on desktop, finger drag on touch: iOS, Android, iPad) and resets
+// when the pointer leaves. On phones the card locks to the ticket's aspect
+// ratio so the whole ticket stays visible, and only the essentials are shown
+// on it; wider screens get the full content. A radial dark overlay keeps the
+// text readable while the ticket art shows through at the edges.
 function DayPassCard() {
   const ref = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ rx: 0, ry: 0 });
 
-  const handleMove = (e: React.MouseEvent<HTMLDivElement>) => {
+  const applyTilt = (clientX: number, clientY: number) => {
     const el = ref.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    const px = (e.clientX - r.left) / r.width - 0.5; // -0.5 .. 0.5
-    const py = (e.clientY - r.top) / r.height - 0.5;
+    const px = (clientX - r.left) / r.width - 0.5; // -0.5 .. 0.5
+    const py = (clientY - r.top) / r.height - 0.5;
     setTilt({ rx: -py * 11, ry: px * 13 }); // slight: roughly +/-6 degrees
   };
   const reset = () => setTilt({ rx: 0, ry: 0 });
@@ -108,43 +112,49 @@ function DayPassCard() {
     <div style={{ perspective: "1100px" }}>
       <div
         ref={ref}
-        onMouseMove={handleMove}
+        onMouseMove={(e) => applyTilt(e.clientX, e.clientY)}
         onMouseLeave={reset}
+        onTouchMove={(e) => {
+          const t = e.touches[0];
+          if (t) applyTilt(t.clientX, t.clientY);
+        }}
+        onTouchEnd={reset}
+        onTouchCancel={reset}
         style={{
           transform: `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)`,
           transition: "transform 0.15s ease-out",
         }}
-        className="relative border border-white/10 overflow-hidden text-center will-change-transform"
+        className="relative aspect-[1584/677] lg:aspect-auto overflow-hidden text-center will-change-transform"
       >
         <Image
           src="/daypass-bg.jpg"
-          alt=""
+          alt="Zo House day pass"
           fill
           sizes="(max-width: 768px) 100vw, 896px"
-          className="object-cover"
+          className="object-cover lg:object-contain"
         />
         <div
           className="absolute inset-0"
           style={{
             background:
-              "radial-gradient(ellipse at center, rgba(5,5,8,0.82) 0%, rgba(5,5,8,0.66) 45%, rgba(5,5,8,0.30) 100%)",
+              "radial-gradient(ellipse at center, rgba(5,5,8,0.78) 0%, rgba(5,5,8,0.6) 45%, rgba(5,5,8,0.28) 100%)",
           }}
         />
-        <div className="relative p-8 md:p-12">
-          <p className="text-[10px] tracking-[3px] uppercase text-white/50">Just visiting?</p>
-          <h3 className="font-[family-name:var(--font-headline)] italic text-3xl md:text-5xl shiny-gold mt-3">
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-3 sm:p-6 lg:relative lg:block lg:p-12">
+          <p className="hidden lg:block text-[10px] tracking-[3px] uppercase text-white/60">Just visiting?</p>
+          <h3 className="font-[family-name:var(--font-headline)] italic text-lg sm:text-3xl lg:text-5xl shiny-gold lg:mt-3">
             Day Pass
           </h3>
-          <p className="text-sm text-neutral-200 font-light mt-4 max-w-md mx-auto">
-            Drop in. Plug in. Ship a day's worth. Works at either house.
+          <p className="hidden lg:block text-sm text-neutral-100 font-light mt-4 max-w-md mx-auto">
+            Drop in. Plug in. Ship a day&apos;s worth. Works at either house.
           </p>
-          <div className="mt-6 flex items-baseline justify-center gap-1">
-            <span className="text-4xl md:text-6xl font-medium shiny-gold">₹420</span>
-            <span className="text-xs text-neutral-300">/ day</span>
+          <div className="mt-1 sm:mt-3 lg:mt-6 flex items-baseline justify-center gap-1">
+            <span className="text-xl sm:text-4xl lg:text-6xl font-medium shiny-gold">₹420</span>
+            <span className="text-[9px] sm:text-xs text-neutral-200">/ day</span>
           </div>
           <Link
             href="/?apply=1"
-            className="inline-block mt-8 text-[11px] tracking-[3px] uppercase py-3 px-8 border border-white/30 text-white/90 hover:border-white hover:text-white hover:bg-white/5 transition-colors"
+            className="inline-block mt-2 sm:mt-5 lg:mt-8 text-[9px] sm:text-[11px] tracking-[2px] sm:tracking-[3px] uppercase py-1.5 px-4 sm:py-3 sm:px-8 border border-white/40 text-white hover:border-white hover:bg-white/10 transition-colors"
           >
             Book a day
           </Link>
