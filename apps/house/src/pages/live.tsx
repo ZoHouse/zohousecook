@@ -23,8 +23,8 @@ const HOUSES: House[] = [
     area: "Koramangala",
     residents: 14,
     eir: 1,
-    dorm: "₹1,500",
-    private: "₹4,000",
+    dorm: "₹45,000",
+    private: "₹1,20,000",
     render:
       "https://proxy.cdn.zo.xyz/gallery/media/images/e5f37895-b82e-4968-bae9-f8a473709108_20260519085907.webp",
     amenities: [
@@ -74,8 +74,8 @@ const HOUSES: House[] = [
     area: "Whitefield",
     residents: 19,
     eir: 1,
-    dorm: "₹1,200",
-    private: "₹3,500",
+    dorm: "₹36,000",
+    private: "₹1,05,000",
     render:
       "https://proxy.cdn.zo.xyz/gallery/media/images/86a77698-2b1f-41ce-b039-918b0f585dcf_20260519085908.webp",
     amenities: [
@@ -412,7 +412,7 @@ const HouseCard: React.FC<{
             {house.code}
           </h3>
           <p className="mt-2 text-[10px] tracking-[2px] uppercase text-white/40 font-mono">
-            From <span className="text-[#c5a572] font-medium">{house.dorm}</span> / night
+            From <span className="text-[#c5a572] font-medium">{house.dorm}</span> / month
           </p>
         </div>
         <div className="text-right">
@@ -443,16 +443,21 @@ const HouseCard: React.FC<{
               <p className="mt-1.5 text-2xl md:text-3xl font-medium shiny-gold leading-none">
                 {house.dorm}
               </p>
-              <p className="mt-1 text-[10px] text-neutral-500">per night</p>
+              <p className="mt-1 text-[10px] text-neutral-500">per month</p>
             </div>
             <div className="p-4 bg-white/[0.015]">
               <p className="text-[9px] tracking-[2px] uppercase text-white/40 font-mono">Private</p>
               <p className="mt-1.5 text-2xl md:text-3xl font-medium shiny-gold leading-none">
                 {house.private}
               </p>
-              <p className="mt-1 text-[10px] text-neutral-500">per night</p>
+              <p className="mt-1 text-[10px] text-neutral-500">per month</p>
             </div>
           </div>
+
+          <p className="text-[10px] text-neutral-500 leading-relaxed">
+            Want to check out the house for just a day? Per-night rates
+            available, subject to availability.
+          </p>
 
           {/* Amenity carousel (auto-scrolling marquee) */}
           <div>
