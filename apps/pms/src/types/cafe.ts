@@ -104,6 +104,8 @@ export interface FoodCreditTransaction {
   note: string | null
   created_by: string | null
   created_at: string
+  /** Optional join from food_credit_wallets — populated by useFoodCredits so the "By" column on /cafe/food-credits can show the wallet owner (the actual spender) even though place_cafe_order doesn't set created_by on SPEND rows. */
+  wallet?: { name: string | null; phone: string } | null
 }
 
 export type OrderMode = 'dine_in' | 'pickup' | 'room_service'

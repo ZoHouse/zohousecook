@@ -58,9 +58,13 @@ export function useFoodCredits(): UseFoodCreditsResult {
   }, [])
 
   const fetchRecent = useCallback(async () => {
+    // JOIN the wallet so the "By" column on /cafe/food-credits can show
+    // WHO spent (the wallet owner) — place_cafe_order's INSERT into
+    // food_credit_transactions doesn't populate created_by, so without
+    // the wallet join SPEND rows render with a blank actor.
     const { data } = await supabase
       .from('food_credit_transactions')
-      .select('*')
+      .select('*, wallet:food_credit_wallets(name, phone)')
       .order('created_at', { ascending: false })
       .limit(20)
     setRecentTransactions((data || []) as FoodCreditTransaction[])
@@ -93,7 +97,7 @@ export function useFoodCredits(): UseFoodCreditsResult {
       setCustomerMatch(null)
       const { data: txns } = await supabase
         .from('food_credit_transactions')
-        .select('*')
+        .select('*, wallet:food_credit_wallets(name, phone)')
         .eq('wallet_id', w.id)
         .order('created_at', { ascending: false })
         .limit(50)

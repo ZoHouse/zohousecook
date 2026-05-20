@@ -31,8 +31,12 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true)
+  // `silent` skips the full-page loading spinner. Used after mutations
+  // (toggle/create/edit/delete/move) so the UI keeps working while we
+  // quietly re-sync. Without this, every action flashes the page back to
+  // a spinner and chefs have to wait before doing the next thing.
+  const fetchData = useCallback(async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setIsLoading(true)
     setError(null)
 
     try {
@@ -120,7 +124,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
-      setIsLoading(false)
+      if (!opts.silent) setIsLoading(false)
     }
   }, [categoryId, propertyId])
 
@@ -137,7 +141,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       .from('cafe_menu_categories')
       .insert(rows)
     if (error) throw error
-    await fetchData()
+    await fetchData({ silent: true })
   }, [fetchData])
 
   const toggleCategory = useCallback(async (id: string, isActive: boolean) => {
@@ -168,7 +172,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       .update({ is_active: isActive })
       .in('id', ids)
     if (error) throw error
-    await fetchData()
+    await fetchData({ silent: true })
   }, [fetchData])
 
   const createItem = useCallback(async (data: Record<string, unknown>): Promise<string | null> => {
@@ -201,7 +205,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       .insert(rows)
       .select('id')
     if (error) throw error
-    await fetchData()
+    await fetchData({ silent: true })
     // Return the first created item's ID (for recipe saving)
     return created?.[0]?.id ?? null
   }, [fetchData])
@@ -209,9 +213,10 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
   const updateItem = useCallback(async (id: string, data: Record<string, unknown>) => {
     // CafeZomad is one entity with one standardised menu. An edit on one
     // outlet's row must fan out to every sibling row so BLR and WTF stay
-    // in lock-step. is_available cascades too — operationally simpler for
-    // a 2-outlet operation; the kitchen-card inventory indicator (PR #118)
-    // handles per-outlet inventory exigencies via override-and-accept.
+    // in lock-step for menu STRUCTURE (name, price, description, recipe,
+    // diet, etc.). is_available is deliberately NOT cascaded — each
+    // kitchen toggles availability independently via toggleAvailability,
+    // because inventory situations are property-local.
     //
     // Sibling = same item name (case-insensitive) AND same category name
     // (case-insensitive). Scoping by category-name prevents touching the
@@ -219,16 +224,21 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
     // archived categories. See lib/cafe/menu-siblings.ts.
     const sibIds = await findSiblingMenuItemIds(id)
 
-    // Strip per-row identity keys from the fan-out payload.
+    // Strip per-row identity keys AND is_available from the fan-out
+    // payload — is_available is property-local; toggleAvailability handles
+    // it. Stripping here defends against any code path that includes it
+    // in an update.
     const {
       category_id: incomingCatId,
       property_id: _ignoredProp,
       id: _ignoredId,
+      is_available: _ignoredAvail,
       ...shared
     } = data as Record<string, unknown> & {
       category_id?: string
       property_id?: string
       id?: string
+      is_available?: boolean
     }
 
     if (incomingCatId) {
@@ -269,20 +279,22 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       if (error) throw error
     }
 
-    await fetchData()
+    await fetchData({ silent: true })
   }, [fetchData])
 
   const toggleAvailability = useCallback(async (id: string, isAvailable: boolean) => {
-    // Cascade across siblings (same name + same category name). Both
-    // outlets pause an item together. Per-outlet inventory exigencies go
-    // through the kitchen-card override flow instead.
-    const sibIds = await findSiblingMenuItemIds(id)
+    // PER-PROPERTY toggle — does NOT cascade. Each kitchen runs its own
+    // inventory and may need to pause an item independently (e.g. BLR is
+    // out of eggs today but WTF still has them). Menu structure (items,
+    // prices, recipes) stays standardised via createItem/updateItem/
+    // deleteItem which DO cascade across properties; only the live
+    // availability flag is property-local.
     const { error } = await supabase
       .from('cafe_menu_items')
       .update({ is_available: isAvailable })
-      .in('id', sibIds)
+      .eq('id', id)
     if (error) throw error
-    await fetchData()
+    await fetchData({ silent: true })
   }, [fetchData])
 
   /**
@@ -306,7 +318,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       .eq('name', sourceItem.name)
       .is('deleted_at', null)
     if (error) throw error
-    await fetchData()
+    await fetchData({ silent: true })
   }, [fetchData])
 
   return {

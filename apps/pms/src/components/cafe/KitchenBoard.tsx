@@ -405,6 +405,29 @@ function OrderCard({
         </div>
       )}
 
+      {/* Customer note to the kitchen — the free-text the customer left at
+          checkout (cafe_orders.notes). Highlighted so the chef can't miss
+          special instructions like "no onions" / "extra spicy". */}
+      {order.notes && order.notes.trim() && (
+        <div
+          style={{
+            fontSize: 12,
+            lineHeight: 1.4,
+            padding: '6px 9px',
+            borderRadius: 6,
+            marginBottom: 8,
+            background: 'rgba(250,219,20,0.14)',
+            border: '1px solid rgba(250,219,20,0.45)',
+            color: '#f5d76e',
+            display: 'flex',
+            gap: 6,
+          }}
+        >
+          <span aria-hidden style={{ flexShrink: 0 }}>📝</span>
+          <span>{order.notes.trim()}</span>
+        </div>
+      )}
+
       {/* Action buttons */}
       <div
         style={{ display: 'flex', gap: 6, alignItems: 'center' }}
