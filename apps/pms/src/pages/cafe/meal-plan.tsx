@@ -556,6 +556,7 @@ const CafeMealPlanPage: NextPage = () => {
           onClose={() => setCreateItemOpen(false)}
           onSubmit={handleCreateAndAttachItem}
           categoryId={createItemCategoryId}
+          categories={categories}
         />
       )}
 
