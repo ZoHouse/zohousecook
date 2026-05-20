@@ -1,5 +1,5 @@
 import { useRef, useState, useMemo, Suspense, useCallback, useEffect } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { Html, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { BlurFade } from "./helpers/house/BlurFade";
@@ -9,12 +9,16 @@ import { track } from "../lib/analytics/track";
 const BLR_CAPACITY = 15;
 const WTF_CAPACITY = 20;
 
-// Touch devices can't hover and the locked desktop camera clips both islands
-// on a narrow viewport. On mobile we swap to draggable pan/zoom controls.
+// Touch devices (phones AND tablets like iPad) can't hover, and the locked
+// desktop camera clips both islands on a narrow viewport. Detect by touch /
+// no-hover capability rather than width, so iPads get pan controls too.
+// The width fallback also covers narrow desktop windows.
+const TOUCH_QUERY = "(hover: none), (pointer: coarse), (max-width: 1024px)";
+
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 768px)");
+    const mq = window.matchMedia(TOUCH_QUERY);
     const update = () => setIsMobile(mq.matches);
     update();
     mq.addEventListener("change", update);
@@ -334,19 +338,12 @@ function Island({ position, radius }: { position: [number, number, number]; radi
   );
 }
 
-function StaticCamera() {
-  const { camera } = useThree();
-  useFrame(() => {
-    camera.position.set(0, 14, 18);
-    camera.lookAt(0, 0, 0);
-  });
-  return null;
-}
-
-// Mobile: drag to pan across the village, pinch to zoom. Rotation stays locked
-// so the isometric angle is preserved. Pan is clamped so you can't drift off
-// the islands into empty space.
-function MobileControls() {
+// Drag to pan across the village; rotation stays locked so the isometric
+// angle is always preserved, and panning is clamped so the camera can't drift
+// off the islands into empty space. Used on every device — desktop drags with
+// the mouse, touch devices swipe (and pinch to zoom). Wheel zoom is left off
+// on desktop so the mouse wheel keeps scrolling the page.
+function VillageControls({ isMobile }: { isMobile?: boolean }) {
   const { camera } = useThree();
   const controlsRef = useRef<{
     target: THREE.Vector3;
@@ -354,14 +351,16 @@ function MobileControls() {
   } | null>(null);
 
   useEffect(() => {
-    // Start framed in close so houses are legible, then let the user pan out.
-    camera.position.set(0, 8, 10.5);
+    // Desktop opens on the full isometric overview; mobile starts framed in
+    // close so houses stay legible, then the user pans out.
+    if (isMobile) camera.position.set(0, 8, 10.5);
+    else camera.position.set(0, 14, 18);
     const c = controlsRef.current;
     if (c) {
       c.target.set(0, 0, 0);
       c.update();
     }
-  }, [camera]);
+  }, [camera, isMobile]);
 
   const clampPan = useCallback(() => {
     const c = controlsRef.current;
@@ -388,12 +387,12 @@ function MobileControls() {
       ref={controlsRef as never}
       enableRotate={false}
       enablePan
-      enableZoom
+      enableZoom={isMobile}
       screenSpacePanning
       panSpeed={1.1}
       zoomSpeed={0.9}
       minDistance={7}
-      maxDistance={26}
+      maxDistance={30}
       touches={{ ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN }}
       mouseButtons={{ LEFT: THREE.MOUSE.PAN }}
       onChange={clampPan}
@@ -416,7 +415,7 @@ function VillageScene({ plots, onClaim, isMobile }: { plots: PlotData[]; onClaim
       <directionalLight position={[3, 20, -5]} intensity={0.4} color="#dce6ff" />
       <fog attach="fog" args={["#0a0a12", 20, 40]} />
 
-      {isMobile ? <MobileControls /> : <StaticCamera />}
+      <VillageControls isMobile={isMobile} />
 
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
@@ -482,10 +481,9 @@ export function Village({ blr = [], wtf = [], syncedAt = null, onClaim }: Villag
   const [showHint, setShowHint] = useState(true);
 
   useEffect(() => {
-    if (!isMobile) return;
     const t = setTimeout(() => setShowHint(false), 4500);
     return () => clearTimeout(t);
-  }, [isMobile]);
+  }, []);
 
   return (
     <section className="relative h-[200vh] bg-[#050508]">
@@ -505,7 +503,7 @@ export function Village({ blr = [], wtf = [], syncedAt = null, onClaim }: Villag
               Each glowing house is a real founder, right now.{" "}
               {isMobile
                 ? "Swipe to explore, tap a house to see who's building."
-                : "Hover to see who's building."}
+                : "Drag to explore, hover to see who's building."}
             </p>
           </div>
         </BlurFade>
@@ -530,19 +528,17 @@ export function Village({ blr = [], wtf = [], syncedAt = null, onClaim }: Villag
             <div className="absolute top-0 bottom-0 right-0 w-16 bg-gradient-to-l from-[#050508] to-transparent" />
           </div>
 
-          {isMobile && (
-            <div
-              className={`absolute top-3 left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-700 ${
-                showHint ? "opacity-100" : "opacity-0"
-              }`}
-            >
-              <div className="bg-[#0e0e0c]/85 backdrop-blur-md border border-white/10 rounded-full px-3.5 py-1.5 shadow-lg">
-                <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-neutral-300">
-                  ← Swipe to explore →
-                </span>
-              </div>
+          <div
+            className={`absolute top-3 left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-700 ${
+              showHint ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <div className="bg-[#0e0e0c]/85 backdrop-blur-md border border-white/10 rounded-full px-3.5 py-1.5 shadow-lg">
+              <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-neutral-300">
+                {isMobile ? "← Swipe to explore →" : "← Drag to explore →"}
+              </span>
             </div>
-          )}
+          </div>
         </div>
 
         <BlurFade inView delay={0.3} direction="up">
