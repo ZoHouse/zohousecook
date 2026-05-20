@@ -19,7 +19,7 @@ import { QuestsDock, actionForQuest, type DockQuest } from './QuestsDock';
 import { UnlimitedAccessCta } from './UnlimitedAccessCta';
 import { CameraCaptureModal, type CaptureKind } from './CameraCaptureModal';
 import { InstagramConnectModal } from './InstagramConnectModal';
-import { isGeomediaQuest } from '../../data/mock-quests';
+import { hasGeomediaData } from '../../data/quests';
 import { ProUpsellModal, type ProUpsellFeature } from '../pro';
 import { SettingsModal } from '../passport/SettingsModal';
 import ShareModal from '../passport/ShareModal';
@@ -93,12 +93,17 @@ export function PassportLobby() {
   };
 
   // Per-quest action handler — wires the morphed CTA below the avatar to
-  // the selected quest's action (IG connect / camera capture / external book).
-  const questAction = selectedQuest ? actionForQuest(selectedQuest) : null;
+  // the selected quest's action (IG connect/share / camera capture / external
+  // book). Instagram CTA flips on the citizen's OAuth state.
+  const questAction = selectedQuest ? actionForQuest(selectedQuest, ig.isConnected) : null;
   const handleQuestAction = () => {
     if (!questAction) return;
     if (questAction.kind === 'instagram') {
-      ig.connect();
+      if (ig.isConnected) {
+        toast('Story share flow coming next — your IG is connected.');
+      } else {
+        ig.connect();
+      }
     } else if (questAction.kind === 'geomedia') {
       setCameraOpen(true);
     } else if (questAction.kind === 'booking' && questAction.href) {
@@ -106,9 +111,10 @@ export function PassportLobby() {
     }
   };
 
-  // Camera modal accepts the kinds the selected geomedia quest allows.
+  // Camera modal accepts the kinds the selected geomedia quest allows. Only
+  // applies on CAS-bound paths where `data` is populated; otherwise default.
   const cameraAllowed: CaptureKind[] =
-    selectedQuest && isGeomediaQuest(selectedQuest)
+    selectedQuest && hasGeomediaData(selectedQuest)
       ? selectedQuest.data.geomedia.media_kinds.filter(
           (k): k is CaptureKind => k === 'photo' || k === 'video',
         )

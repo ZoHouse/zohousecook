@@ -4,12 +4,15 @@ import { toast } from 'sonner';
 import { useQuests } from '../../hooks/useQuests';
 import useInstagramConnect from '../../hooks/useInstagramConnect';
 import {
+  hasBookingData,
+  hasGeomediaData,
+  hasInstagramData,
   isBookingQuest,
   isGeomediaQuest,
   isInstagramQuest,
   questDisplayTitle,
   type Quest,
-} from '../../data/mock-quests';
+} from '../../data/quests';
 import { distanceMeters, formatDistance, useLiveLocation } from '../LiveLocationProvider';
 import { rubikClassName, syneClassName } from '../utils/font';
 import { CameraCaptureModal, type CaptureKind } from './CameraCaptureModal';
@@ -108,12 +111,10 @@ function CoverArea({
 }
 
 function questCoords(q: Quest): { lat: number; lng: number } | null {
-  // Staging seed omits `data` jsonb entirely (user-facing serializer doesn't
-  // expose it — see memory feedback_user_facing_passport_quests_no_data_field).
-  // Guard against undefined before reading nested fields, otherwise the
-  // distance-decoration map() throws at runtime.
+  // Public /api/v1/passport/quests/ doesn't expose `data` jsonb. Coords are
+  // only available from CAS-bound surfaces or once the backend exposes them.
   if (!q.data) return null;
-  if (isGeomediaQuest(q)) return { lat: q.data.geomedia.lat, lng: q.data.geomedia.lng };
+  if (hasGeomediaData(q)) return { lat: q.data.geomedia.lat, lng: q.data.geomedia.lng };
   const loc = (q.data as { location?: { lat?: number; lng?: number } }).location;
   if (loc && typeof loc.lat === 'number' && typeof loc.lng === 'number') {
     return { lat: loc.lat, lng: loc.lng };
@@ -143,7 +144,7 @@ export interface QuestAction {
 export function QuestActionButton({ quest }: { quest: Quest }) {
   const ig = useInstagramConnect();
   const [cameraOpen, setCameraOpen] = useState(false);
-  const action = actionForQuest(quest);
+  const action = actionForQuest(quest, ig.isConnected);
   if (!action) return null;
 
   const sharedClass =
@@ -170,15 +171,18 @@ export function QuestActionButton({ quest }: { quest: Quest }) {
     );
   }
   if (action.kind === 'instagram') {
+    const onClick = ig.isConnected
+      ? () => toast('Story share flow coming next — your IG is connected.')
+      : () => ig.connect();
     return (
-      <button type="button" onClick={() => ig.connect()} className={sharedClass} style={sharedStyle}>
+      <button type="button" onClick={onClick} className={sharedClass} style={sharedStyle}>
         <span aria-hidden style={{ marginRight: 8 }}>✦</span>
         {action.label}
       </button>
     );
   }
   // geomedia
-  const allowed: CaptureKind[] = isGeomediaQuest(quest)
+  const allowed: CaptureKind[] = hasGeomediaData(quest)
     ? quest.data.geomedia.media_kinds.filter(
         (k): k is CaptureKind => k === 'photo' || k === 'video',
       )
@@ -204,11 +208,20 @@ export function QuestActionButton({ quest }: { quest: Quest }) {
   );
 }
 
-export function actionForQuest(q: Quest): QuestAction | null {
+export function actionForQuest(q: Quest, igConnected = false): QuestAction | null {
+  // Archetype is derived from the FK tuple — works on the public response.
+  // Instagram CTA flips on the citizen's IG OAuth state: Connect when the
+  // account isn't linked yet, Share once it is.
   if (isInstagramQuest(q)) {
-    return { kind: 'instagram', label: 'Connect Instagram' };
+    return {
+      kind: 'instagram',
+      label: igConnected ? 'Share' : 'Connect Instagram',
+    };
   }
-  if (isGeomediaQuest(q)) {
+  // Geomedia + Booking labels still need data.* (media_kinds, href, etc).
+  // Until the public serializer exposes the equivalent fields, these CTAs
+  // only fire on CAS-bound surfaces where `data` is populated.
+  if (isGeomediaQuest(q) && hasGeomediaData(q)) {
     const accept = q.data.geomedia.media_kinds
       .map((k) => (k === 'video' ? 'video/*' : k === 'audio' ? 'audio/*' : 'image/*'))
       .join(',');
@@ -219,7 +232,7 @@ export function actionForQuest(q: Quest): QuestAction | null {
       accept,
     };
   }
-  if (isBookingQuest(q)) {
+  if (isBookingQuest(q) && hasBookingData(q)) {
     return {
       kind: 'booking',
       label: q.data.booking.provider === 'zostel' ? 'Book on Zostel' : 'Book on Zo',
@@ -326,12 +339,15 @@ export function QuestPanel({
   const locName = (quest.data as { location?: { name?: string } } | undefined)?.location?.name;
   const reward = quest.rewards?.[0];
 
-  // Compact per-kind body line so the panel stays at card height.
+  // Compact per-kind body line so the panel stays at card height. Falls back
+  // to the quest description when `data` jsonb isn't populated (public path).
   let bodyLine: string | null = null;
-  if (isInstagramQuest(quest)) bodyLine = quest.data.instagram.brief;
-  else if (isGeomediaQuest(quest)) bodyLine = quest.data.geomedia.prompt;
-  else if (isBookingQuest(quest) && typeof quest.data.booking.price === 'number' && quest.data.booking.price > 0) {
+  if (hasInstagramData(quest)) bodyLine = quest.data.instagram.brief;
+  else if (hasGeomediaData(quest)) bodyLine = quest.data.geomedia.prompt;
+  else if (hasBookingData(quest) && typeof quest.data.booking.price === 'number' && quest.data.booking.price > 0) {
     bodyLine = `₹${quest.data.booking.price}`;
+  } else if (quest.description) {
+    bodyLine = quest.description;
   }
 
   return (
@@ -779,8 +795,11 @@ export function QuestFullView({
             )}
           </div>
 
-          {/* Per-kind detail */}
-          {isInstagramQuest(quest) && (
+          {/* Per-kind detail — only rendered when `data` jsonb is populated
+              (CAS-bound surfaces). The public /api/v1/passport/quests/
+              response omits `data`, so these silently skip and the top-level
+              description above carries the gist. */}
+          {hasInstagramData(quest) && (
             <div className="mt-5">
               <SectionLabel>Rules</SectionLabel>
               <ul className="m-0 p-0 list-none flex flex-col gap-1.5" style={{ color: '#2A1B3D', fontSize: 13 }}>
@@ -798,7 +817,7 @@ export function QuestFullView({
             </div>
           )}
 
-          {isGeomediaQuest(quest) && (
+          {hasGeomediaData(quest) && (
             <div className="mt-5">
               <SectionLabel>Capture</SectionLabel>
               <p style={{ margin: 0, fontSize: 13, color: '#2A1B3D' }}>
@@ -810,7 +829,7 @@ export function QuestFullView({
             </div>
           )}
 
-          {isBookingQuest(quest) && (
+          {hasBookingData(quest) && (
             <div className="mt-5">
               <SectionLabel>Booking</SectionLabel>
               <ul className="m-0 p-0 list-none flex flex-col gap-1.5" style={{ color: '#2A1B3D', fontSize: 13 }}>

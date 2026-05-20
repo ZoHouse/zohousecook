@@ -2,7 +2,7 @@ import { AxiosError } from 'axios';
 import { useQuery } from 'react-query';
 import { useAuth } from '@zo/auth';
 import { zoServer } from '../../../../libs/auth/src/utils';
-import { type Quest } from '../data/mock-quests';
+import { type Quest } from '../data/quests';
 
 export interface UseQuestDetailResult {
   quest: Quest | null;
