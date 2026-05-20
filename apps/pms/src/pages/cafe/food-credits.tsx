@@ -146,10 +146,22 @@ const FoodCreditsPage: NextPage = () => {
     },
     {
       title: 'By',
-      dataIndex: 'created_by',
       key: 'by',
-      width: 80,
-      render: (v: string | null) => v || '—',
+      width: 140,
+      ellipsis: true,
+      render: (_: unknown, r: FoodCreditTransaction) => {
+        // For SPEND / REFUND, the actor is the wallet owner (the customer
+        // whose credits got debited / refunded). place_cafe_order doesn't
+        // populate created_by, so we read the joined wallet instead.
+        if (r.type === 'spend' || r.type === 'refund') {
+          const w = r.wallet
+          const label = w?.name || w?.phone
+          return label ? <Text>{label}</Text> : '—'
+        }
+        // For ISSUE / REVOKE the operator passed p_created_by='admin' via
+        // the RPC — surface that as-is.
+        return r.created_by || '—'
+      },
     },
   ]
 
