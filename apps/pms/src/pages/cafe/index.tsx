@@ -1,4 +1,4 @@
-import { Card, Col, Modal, Row, Spin, Statistic, Table, Tag } from 'antd'
+import { Card, Spin, Statistic, Table, Tag } from 'antd'
 import { NextPage } from 'next'
 import React, { useState } from 'react'
 import ZoHouseGuard from '../../components/helpers/app/ZoHouseGuard'
@@ -10,8 +10,8 @@ import { formatPaise } from '../../lib/cafe/order-calculator'
 const CafeDashboard: NextPage = () => {
   const { propertyId, isLoading: isLoadingProperty } = usePropertyId()
   const { analytics, isLoading } = useCafeAnalytics(propertyId)
-  // Food-credits breakdown modal (staff vs customer + net revenue).
-  const [creditsOpen, setCreditsOpen] = useState(false)
+  // Whether the Food Credits card is expanded to show the staff/customer split.
+  const [creditsExpanded, setCreditsExpanded] = useState(false)
 
   const columns = [
     { title: 'Item', dataIndex: 'name', key: 'name' },
@@ -27,41 +27,73 @@ const CafeDashboard: NextPage = () => {
             <div className="flex justify-center py-20"><Spin size="large" /></div>
           ) : analytics ? (
             <>
-              <Row gutter={[16, 16]} className="mb-8">
-                <Col xs={12} md={8} lg={4}>
-                  <Card><Statistic title="Orders Today" value={analytics.total_orders} /></Card>
-                </Col>
-                <Col xs={12} md={8} lg={5}>
-                  <Card><Statistic title="Revenue (cash)" value={formatPaise(analytics.total_revenue)} /></Card>
-                </Col>
-                <Col xs={12} md={8} lg={5}>
-                  <Card
-                    hoverable
-                    onClick={() => setCreditsOpen(true)}
-                    style={{ cursor: 'pointer' }}
-                  >
+              {/* Stat cards — equal-width CSS grid so they stay aligned at
+                  every screen size and at equal height per row. */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+                <Card style={{ height: '100%' }}>
+                  <Statistic title="Orders Today" value={analytics.total_orders} />
+                </Card>
+
+                <Card style={{ height: '100%' }}>
+                  <Statistic
+                    title="Revenue (cash)"
+                    value={formatPaise(analytics.total_revenue)}
+                  />
+                </Card>
+
+                {/* Net Revenue = cash collected + customer credits. Staff
+                    credits are left out — staff meals are a team perk. */}
+                <Card style={{ height: '100%' }}>
+                  <Statistic
+                    title="Net Revenue"
+                    value={formatPaise(
+                      analytics.total_revenue + analytics.customer_food_credits,
+                    )}
+                  />
+                  <div className="mt-1 text-[11px] text-white/40">
+                    cash + customer credits
+                  </div>
+                </Card>
+
+                {/* Food Credits — tap anywhere on the card (or the arrow) to
+                    expand the staff vs customer split inline. */}
+                <Card
+                  hoverable
+                  onClick={() => setCreditsExpanded((v) => !v)}
+                  style={{ height: '100%', cursor: 'pointer' }}
+                >
+                  <div className="flex items-start justify-between gap-2">
                     <Statistic
                       title="Food Credits Used"
                       value={formatPaise(analytics.food_credits_used)}
                     />
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>
-                      Tap for staff / customer split
+                    <Chevron open={creditsExpanded} />
+                  </div>
+                  {creditsExpanded && (
+                    <div className="mt-3 flex flex-col gap-2 border-t border-white/10 pt-3">
+                      <SplitRow
+                        label="Staff"
+                        hint="team meals"
+                        value={formatPaise(analytics.staff_food_credits)}
+                      />
+                      <SplitRow
+                        label="Other users"
+                        hint="customers"
+                        value={formatPaise(analytics.customer_food_credits)}
+                      />
                     </div>
-                  </Card>
-                </Col>
-                <Col xs={12} md={8} lg={5}>
-                  <Card><Statistic title="Avg Cash Order" value={formatPaise(analytics.avg_order_value)} /></Card>
-                </Col>
-                <Col xs={12} md={8} lg={5}>
-                  <Card>
-                    <Statistic
-                      title="Active Orders"
-                      value={analytics.active_orders}
-                      suffix={analytics.active_orders > 0 ? <Tag color="red">live</Tag> : null}
-                    />
-                  </Card>
-                </Col>
-              </Row>
+                  )}
+                </Card>
+
+                <Card style={{ height: '100%' }}>
+                  <Statistic
+                    title="Active Orders"
+                    value={analytics.active_orders}
+                    suffix={analytics.active_orders > 0 ? <Tag color="red">live</Tag> : null}
+                  />
+                </Card>
+              </div>
+
               {analytics.popular_items.length > 0 && (
                 <>
                   <h3 className="text-sm font-semibold mb-3 text-zui-silver">Popular Items Today</h3>
@@ -80,71 +112,42 @@ const CafeDashboard: NextPage = () => {
           )}
         </PageContent>
       </Page>
-
-      {/* Food-credits breakdown — staff meals (a cost) vs customer credits
-          (revenue), and the resulting net revenue. */}
-      <Modal
-        open={creditsOpen}
-        onCancel={() => setCreditsOpen(false)}
-        footer={null}
-        title="Food Credits — breakdown"
-        width={420}
-      >
-        {analytics && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
-            <BreakdownRow
-              label="Staff credits"
-              hint="team meals — not revenue"
-              value={formatPaise(analytics.staff_food_credits)}
-            />
-            <BreakdownRow
-              label="Customer credits"
-              hint="counts as revenue"
-              value={formatPaise(analytics.customer_food_credits)}
-            />
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', margin: '4px 0' }} />
-            <BreakdownRow
-              label="Total food credits used"
-              value={formatPaise(analytics.food_credits_used)}
-            />
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', margin: '4px 0' }} />
-            <BreakdownRow
-              label="Net Revenue"
-              hint="cash collected + customer credits"
-              value={formatPaise(analytics.total_revenue + analytics.customer_food_credits)}
-              emphasis
-            />
-          </div>
-        )}
-      </Modal>
     </ZoHouseGuard>
   )
 }
 
-function BreakdownRow({
-  label,
-  hint,
-  value,
-  emphasis,
-}: {
-  label: string
-  hint?: string
-  value: string
-  emphasis?: boolean
-}) {
+/** Rotating chevron — the expand/collapse affordance on the Food Credits card. */
+function Chevron({ open }: { open: boolean }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-      <div>
-        <div style={{ fontSize: emphasis ? 14 : 13, fontWeight: emphasis ? 700 : 500 }}>
-          {label}
-        </div>
-        {hint && (
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>{hint}</div>
-        )}
-      </div>
-      <div style={{ fontSize: emphasis ? 18 : 14, fontWeight: emphasis ? 700 : 600, whiteSpace: 'nowrap' }}>
-        {value}
-      </div>
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{
+        flexShrink: 0,
+        opacity: 0.65,
+        transition: 'transform 0.2s ease',
+        transform: open ? 'rotate(180deg)' : 'none',
+      }}
+    >
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  )
+}
+
+/** One line of the Food Credits breakdown: label + hint on the left, amount right. */
+function SplitRow({ label, hint, value }: { label: string; hint: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="text-xs text-white/55">
+        {label} <span className="text-white/30">· {hint}</span>
+      </span>
+      <span className="text-sm font-semibold whitespace-nowrap">{value}</span>
     </div>
   )
 }
