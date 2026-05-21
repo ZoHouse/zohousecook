@@ -44,14 +44,17 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
   const [isLoading, setIsLoading] = useState(true)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
-  const fetchAllOrders = useCallback(async () => {
+  // `silent` skips the isLoading toggle — used by the polling / focus /
+  // resubscribe self-heal paths so a background refetch doesn't blank the
+  // board behind the "Loading kitchen board..." state every cycle.
+  const fetchAllOrders = useCallback(async (opts?: { silent?: boolean }) => {
     if (!propertyId) {
       setOrders([])
       setIsLoading(false)
       return
     }
 
-    setIsLoading(true)
+    if (!opts?.silent) setIsLoading(true)
 
     try {
       const { data: orderData, error } = await supabase
@@ -83,7 +86,7 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
     } catch (err) {
       console.error('useCafeRealtimeOrders fetch error:', err)
     } finally {
-      setIsLoading(false)
+      if (!opts?.silent) setIsLoading(false)
     }
   }, [propertyId])
 
@@ -122,7 +125,12 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
             // unpaid carts.
             const fullOrder = await fetchOrderWithItems(changed.id)
             if (fullOrder && ACTIVE_STATUSES.includes(fullOrder.kitchen_status as KitchenStatus)) {
-              setOrders((prev) => [fullOrder, ...prev])
+              // Dedupe: a polling self-heal (effect below) may have already
+              // pulled this order in. Without the guard the same order would
+              // list twice when realtime + poll race.
+              setOrders((prev) =>
+                prev.some((o) => o.id === fullOrder.id) ? prev : [fullOrder, ...prev],
+              )
             }
           } else if (payload.eventType === 'UPDATE') {
             const status = changed.kitchen_status as KitchenStatus
@@ -155,7 +163,16 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
           }
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        // postgres_changes does NOT replay events missed while the socket was
+        // down (laptop sleep, wifi blip, server-side socket recycle). Every
+        // time the channel (re)connects, pull a fresh snapshot so any order
+        // that landed during the gap is recovered — this is what previously
+        // left orders invisible on a long-lived board until a manual remount.
+        if (status === 'SUBSCRIBED') {
+          fetchAllOrders({ silent: true })
+        }
+      })
 
     channelRef.current = channel
 
@@ -165,7 +182,23 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
         channelRef.current = null
       }
     }
-  }, [propertyId])
+  }, [propertyId, fetchAllOrders])
+
+  // Self-healing fallback. The kitchen board is a long-lived tab and realtime
+  // is its only live data path — a single dropped INSERT event would otherwise
+  // hide an order until the board is remounted. Poll on an interval and on
+  // window focus so a missed event self-corrects within seconds. Both paths
+  // are `silent` so the board never flashes its loading state.
+  useEffect(() => {
+    if (!propertyId) return
+    const interval = setInterval(() => fetchAllOrders({ silent: true }), 15000)
+    const onFocus = () => fetchAllOrders({ silent: true })
+    window.addEventListener('focus', onFocus)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [propertyId, fetchAllOrders])
 
   // Keep the alert ringing while any order is still in 'new' (i.e. unaccepted).
   // The moment all 'new' orders have been accepted (or removed), stop the loop.
