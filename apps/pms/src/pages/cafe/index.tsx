@@ -1,6 +1,6 @@
-import { Card, Col, Row, Spin, Statistic, Table, Tag } from 'antd'
+import { Card, Col, Modal, Row, Spin, Statistic, Table, Tag } from 'antd'
 import { NextPage } from 'next'
-import React from 'react'
+import React, { useState } from 'react'
 import ZoHouseGuard from '../../components/helpers/app/ZoHouseGuard'
 import { Page, PageContent, PageHeader } from '../../components/ui'
 import { useCafeAnalytics } from '../../hooks/cafe/useCafeAnalytics'
@@ -10,6 +10,8 @@ import { formatPaise } from '../../lib/cafe/order-calculator'
 const CafeDashboard: NextPage = () => {
   const { propertyId, isLoading: isLoadingProperty } = usePropertyId()
   const { analytics, isLoading } = useCafeAnalytics(propertyId)
+  // Food-credits breakdown modal (staff vs customer + net revenue).
+  const [creditsOpen, setCreditsOpen] = useState(false)
 
   const columns = [
     { title: 'Item', dataIndex: 'name', key: 'name' },
@@ -33,7 +35,19 @@ const CafeDashboard: NextPage = () => {
                   <Card><Statistic title="Revenue (cash)" value={formatPaise(analytics.total_revenue)} /></Card>
                 </Col>
                 <Col xs={12} md={8} lg={5}>
-                  <Card><Statistic title="Food Credits Used" value={formatPaise(analytics.food_credits_used)} /></Card>
+                  <Card
+                    hoverable
+                    onClick={() => setCreditsOpen(true)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <Statistic
+                      title="Food Credits Used"
+                      value={formatPaise(analytics.food_credits_used)}
+                    />
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>
+                      Tap for staff / customer split
+                    </div>
+                  </Card>
                 </Col>
                 <Col xs={12} md={8} lg={5}>
                   <Card><Statistic title="Avg Cash Order" value={formatPaise(analytics.avg_order_value)} /></Card>
@@ -66,7 +80,72 @@ const CafeDashboard: NextPage = () => {
           )}
         </PageContent>
       </Page>
+
+      {/* Food-credits breakdown — staff meals (a cost) vs customer credits
+          (revenue), and the resulting net revenue. */}
+      <Modal
+        open={creditsOpen}
+        onCancel={() => setCreditsOpen(false)}
+        footer={null}
+        title="Food Credits — breakdown"
+        width={420}
+      >
+        {analytics && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
+            <BreakdownRow
+              label="Staff credits"
+              hint="team meals — not revenue"
+              value={formatPaise(analytics.staff_food_credits)}
+            />
+            <BreakdownRow
+              label="Customer credits"
+              hint="counts as revenue"
+              value={formatPaise(analytics.customer_food_credits)}
+            />
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', margin: '4px 0' }} />
+            <BreakdownRow
+              label="Total food credits used"
+              value={formatPaise(analytics.food_credits_used)}
+            />
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', margin: '4px 0' }} />
+            <BreakdownRow
+              label="Net Revenue"
+              hint="cash collected + customer credits"
+              value={formatPaise(analytics.total_revenue + analytics.customer_food_credits)}
+              emphasis
+            />
+          </div>
+        )}
+      </Modal>
     </ZoHouseGuard>
+  )
+}
+
+function BreakdownRow({
+  label,
+  hint,
+  value,
+  emphasis,
+}: {
+  label: string
+  hint?: string
+  value: string
+  emphasis?: boolean
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+      <div>
+        <div style={{ fontSize: emphasis ? 14 : 13, fontWeight: emphasis ? 700 : 500 }}>
+          {label}
+        </div>
+        {hint && (
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>{hint}</div>
+        )}
+      </div>
+      <div style={{ fontSize: emphasis ? 18 : 14, fontWeight: emphasis ? 700 : 600, whiteSpace: 'nowrap' }}>
+        {value}
+      </div>
+    </div>
   )
 }
 
