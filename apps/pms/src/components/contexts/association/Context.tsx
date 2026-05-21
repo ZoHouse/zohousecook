@@ -22,6 +22,19 @@ interface ContextInterface {
     | "owner_partner"
     | "admin";
   principals: string[];
+  /**
+   * Raw counts from the auth-resolution pipeline — surfaced so an
+   * on-screen diagnostic can show WHERE operator resolution broke for a
+   * staff member (without needing browser dev-tools / a network tab).
+   */
+  diagnostics: {
+    /** scope permissions returned by AUTHORIZATION_SCOPE_ME */
+    permissionsCount: number;
+    /** operator-model associations from AUTHORIZATION_MY_ASSOCIATION */
+    operatorAssociationsCount: number;
+    /** operators CRS_OPERATORS resolved (before any permission filtering) */
+    rawOperatorsCount: number;
+  };
 }
 
 const Context = createContext<ContextInterface>({
@@ -31,6 +44,11 @@ const Context = createContext<ContextInterface>({
   hasAccess: () => false,
   effectiveRole: null,
   principals: [],
+  diagnostics: {
+    permissionsCount: 0,
+    operatorAssociationsCount: 0,
+    rawOperatorsCount: 0,
+  },
 });
 
 export default Context;

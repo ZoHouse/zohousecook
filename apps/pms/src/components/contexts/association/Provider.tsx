@@ -240,6 +240,17 @@ const Provider: React.FC<ProviderProps> = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [associatedOperators]);
 
+  // Raw pipeline counts for the on-screen auth diagnostic. permissionsCount=0
+  // means the user has no Zo scope permissions (so the scope filter never
+  // runs); rawOperatorsCount=0 means CRS_OPERATORS resolved nothing for their
+  // association ids (the deeper failure mode). Together they pinpoint where
+  // operator resolution broke without needing a network-tab capture.
+  const diagnostics = {
+    permissionsCount: scopeData?.data?.permissions?.length ?? 0,
+    operatorAssociationsCount: operatorAssociations.length,
+    rawOperatorsCount: allOperatorsResponse.data?.data?.results?.length ?? 0,
+  };
+
   return (
     <Context.Provider
       value={{
@@ -249,6 +260,7 @@ const Provider: React.FC<ProviderProps> = ({ children }) => {
         hasAccess,
         effectiveRole,
         principals: selectedOperatorAccess,
+        diagnostics,
       }}
     >
       {children}
