@@ -142,6 +142,9 @@ export default function QuestsPage() {
   const [mapOpen, setMapOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  // Separate state for the quest-triggered share so it can render in the
+  // streamlined Instagram-only pearl variant.
+  const [questShareOpen, setQuestShareOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [selectedQuest, setSelectedQuest] = useState<DockQuest | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<QuestCategory | null>(null);
@@ -233,9 +236,8 @@ export default function QuestsPage() {
     if (!questAction) return;
     if (questAction.kind === 'instagram') {
       if (ig.isConnected) {
-        // IG linked → open ShareModal (Story flow). Same modal as the
-        // rank-pill share button on /@handle.
-        setShareOpen(true);
+        // IG linked → open the streamlined Instagram-only share modal.
+        setQuestShareOpen(true);
       } else {
         ig.connect();
       }
@@ -481,6 +483,14 @@ export default function QuestsPage() {
           handle={handle}
           avatarUrl={avatarUrl}
           displayName={handle}
+        />
+        <ShareModal
+          isOpen={questShareOpen}
+          onClose={() => setQuestShareOpen(false)}
+          handle={handle}
+          avatarUrl={avatarUrl}
+          displayName={handle}
+          instagramOnly
         />
       </div>
     </>

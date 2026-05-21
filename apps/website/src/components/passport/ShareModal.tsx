@@ -13,6 +13,11 @@ interface ShareModalProps {
   handle: string;
   avatarUrl?: string | null;
   displayName?: string;
+  /** When true, render the streamlined pearl-lobby variant: only Instagram
+      Story is shown, X / WhatsApp / Native-share are suppressed, and the
+      surface switches to the pearl-glass design language. Used by the
+      Creator × Instagram quest CTA where the share target is unambiguous. */
+  instagramOnly?: boolean;
 }
 
 const ShareModal: React.FC<ShareModalProps> = ({
@@ -21,6 +26,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
   handle,
   avatarUrl,
   displayName,
+  instagramOnly = false,
 }) => {
   const [copied, setCopied] = useState(false);
   const [igStep, setIgStep] = useState<"idle" | "instructions">("idle");
@@ -340,6 +346,124 @@ const ShareModal: React.FC<ShareModalProps> = ({
     );
   }
 
+  // === Pearl-lobby variant — only used when instagramOnly === true. ========
+  // Matches the lobby's pearl-glass design language (ivory bg, ink text,
+  // soft pastel sweep). Single CTA: "Share to Instagram Story".
+  if (instagramOnly) {
+    return (
+      <div
+        className="fixed inset-0 z-[200] flex items-center justify-center"
+        style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)" }}
+        onClick={onClose}
+      >
+        <div
+          className="relative w-full max-w-sm mx-4 rounded-3xl p-6 flex flex-col gap-5"
+          style={{
+            background:
+              "linear-gradient(180deg, #FFFFFF 0%, #FBF8F4 60%, #F2E0EC 100%)",
+            border: "1px solid rgba(255,255,255,0.95)",
+            boxShadow: "0 24px 64px rgba(120,100,160,0.28), inset 0 1px 0 rgba(255,255,255,0.9)",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 transition-colors"
+            style={{ color: "rgba(42,27,61,0.45)" }}
+            aria-label="Close"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          <div>
+            <h3 style={{ color: "#2A1B3D", fontSize: 18, fontWeight: 700, letterSpacing: "-0.01em" }}>
+              Share your passport
+            </h3>
+            <p style={{ color: "#6B5B8E", fontSize: 13, marginTop: 4 }}>
+              Post your Zo World story on Instagram
+            </p>
+          </div>
+
+          <div
+            className="flex items-center gap-2 rounded-2xl px-4 py-3"
+            style={{
+              background: "rgba(255,255,255,0.75)",
+              border: "1px solid rgba(255,255,255,0.95)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 12px rgba(120,100,160,0.12)",
+            }}
+          >
+            <span
+              style={{
+                color: "#2A1B3D",
+                fontSize: 12,
+                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                flex: 1,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {profileUrl}
+            </span>
+            <button
+              onClick={handleCopy}
+              className="flex-shrink-0 text-xs font-medium px-3 py-1 rounded-lg transition-all"
+              style={{
+                background: copied ? "rgba(52,211,153,0.18)" : "rgba(42,27,61,0.06)",
+                color: copied ? "#0F8B5B" : "#2A1B3D",
+                border: `1px solid ${copied ? "rgba(52,211,153,0.4)" : "rgba(42,27,61,0.1)"}`,
+              }}
+            >
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+
+          <button
+            onClick={handleInstagramStory}
+            className="flex items-center gap-3 w-full rounded-2xl px-5 py-4 transition-all active:scale-[0.98] hover:brightness-105"
+            style={{
+              background:
+                "linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
+              border: "1px solid rgba(255,255,255,0.4)",
+              boxShadow:
+                "0 10px 28px rgba(220,39,67,0.32), inset 0 1px 0 rgba(255,255,255,0.4)",
+            }}
+          >
+            <span
+              className="flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0"
+              style={{ background: "rgba(255,255,255,0.22)", border: "1px solid rgba(255,255,255,0.3)" }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+              </svg>
+            </span>
+            <div className="flex flex-col items-start text-left">
+              <span style={{ color: "#FFFFFF", fontSize: 15, fontWeight: 700 }}>
+                Share to Instagram Story
+              </span>
+              <span style={{ color: "rgba(255,255,255,0.78)", fontSize: 12 }}>
+                Generates your story card
+              </span>
+            </div>
+            <svg
+              className="ml-auto"
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              style={{ color: "rgba(255,255,255,0.85)" }}
+            >
+              <path d="M5 3l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // === Default multi-target ShareModal — used by the rank-pill share. =====
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center"

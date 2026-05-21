@@ -201,6 +201,7 @@ export function QuestActionButton({ quest }: { quest: Quest }) {
           handle={handle}
           avatarUrl={avatarUrl}
           displayName={displayName}
+          instagramOnly
         />
       </>
     );

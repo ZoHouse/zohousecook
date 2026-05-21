@@ -51,6 +51,10 @@ export function PassportLobby() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [igModalOpen, setIgModalOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  // Separate state for the quest-triggered share so the modal can render in
+  // its streamlined Instagram-only pearl variant without affecting the
+  // rank-pill share above (which uses the full multi-target modal).
+  const [questShareOpen, setQuestShareOpen] = useState(false);
   const [selectedQuest, setSelectedQuest] = useState<DockQuest | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
 
@@ -100,10 +104,8 @@ export function PassportLobby() {
     if (!questAction) return;
     if (questAction.kind === 'instagram') {
       if (ig.isConnected) {
-        // IG linked → open the share modal so the user lands directly on the
-        // Story flow (native share-with-file on mobile, download + steps on
-        // desktop). Same ShareModal the rank-pill share button uses.
-        setShareOpen(true);
+        // IG linked → open the streamlined Instagram-only share modal.
+        setQuestShareOpen(true);
       } else {
         ig.connect();
       }
@@ -250,6 +252,14 @@ export function PassportLobby() {
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <InstagramConnectModal open={igModalOpen} onClose={() => setIgModalOpen(false)} onConnect={handleIgConnect} />
       <ShareModal isOpen={shareOpen} onClose={() => setShareOpen(false)} handle={handle} avatarUrl={avatarUrl} displayName={handle} />
+      <ShareModal
+        isOpen={questShareOpen}
+        onClose={() => setQuestShareOpen(false)}
+        handle={handle}
+        avatarUrl={avatarUrl}
+        displayName={handle}
+        instagramOnly
+      />
     </div>
   );
 }
