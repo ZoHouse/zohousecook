@@ -100,7 +100,10 @@ export function PassportLobby() {
     if (!questAction) return;
     if (questAction.kind === 'instagram') {
       if (ig.isConnected) {
-        toast('Story share flow coming next — your IG is connected.');
+        // IG linked → open the share modal so the user lands directly on the
+        // Story flow (native share-with-file on mobile, download + steps on
+        // desktop). Same ShareModal the rank-pill share button uses.
+        setShareOpen(true);
       } else {
         ig.connect();
       }

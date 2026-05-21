@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import { toast } from 'sonner';
+import { useProfile } from '@zo/auth';
 import { useQuests } from '../../hooks/useQuests';
 import useInstagramConnect from '../../hooks/useInstagramConnect';
+import ShareModal from '../passport/ShareModal';
+import { fixAvatarUrl } from '../../hooks/usePublicPassport';
 import {
   hasBookingData,
   hasGeomediaData,
@@ -143,9 +146,23 @@ export interface QuestAction {
  */
 export function QuestActionButton({ quest }: { quest: Quest }) {
   const ig = useInstagramConnect();
+  const { profile } = useProfile();
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const action = actionForQuest(quest, ig.isConnected);
   if (!action) return null;
+
+  const handle =
+    (profile?.profile as { custom_nickname?: string } | undefined)?.custom_nickname ||
+    (profile?.profile as { nickname?: string } | undefined)?.nickname ||
+    '';
+  const avatarUrl = fixAvatarUrl(
+    (profile?.profile as { avatar?: { image?: string } } | undefined)?.avatar?.image,
+  ) || null;
+  const displayName =
+    (profile?.profile as { first_name?: string; last_name?: string } | undefined)?.first_name
+      ? `${(profile.profile as { first_name?: string }).first_name}`
+      : handle;
 
   const sharedClass =
     'relative inline-flex items-center justify-center font-semibold transition-all active:scale-[0.98] hover:brightness-105';
@@ -171,14 +188,21 @@ export function QuestActionButton({ quest }: { quest: Quest }) {
     );
   }
   if (action.kind === 'instagram') {
-    const onClick = ig.isConnected
-      ? () => toast('Story share flow coming next — your IG is connected.')
-      : () => ig.connect();
+    const onClick = ig.isConnected ? () => setShareOpen(true) : () => ig.connect();
     return (
-      <button type="button" onClick={onClick} className={sharedClass} style={sharedStyle}>
-        <span aria-hidden style={{ marginRight: 8 }}>✦</span>
-        {action.label}
-      </button>
+      <>
+        <button type="button" onClick={onClick} className={sharedClass} style={sharedStyle}>
+          <span aria-hidden style={{ marginRight: 8 }}>✦</span>
+          {action.label}
+        </button>
+        <ShareModal
+          isOpen={shareOpen}
+          onClose={() => setShareOpen(false)}
+          handle={handle}
+          avatarUrl={avatarUrl}
+          displayName={displayName}
+        />
+      </>
     );
   }
   // geomedia

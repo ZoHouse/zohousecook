@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { fixAvatarUrl } from "../../hooks/usePublicPassport";
+import { useMyXp } from "../../hooks/useMyXp";
 import {
   buildStoryCanvas,
   isMobileDevice,
+  type StoryStats,
 } from "../../lib/passport/buildStoryCanvas";
 
 interface ShareModalProps {
@@ -29,6 +31,47 @@ const ShareModal: React.FC<ShareModalProps> = ({
   const profileUrl = cleanHandle ? `${origin}/@${cleanHandle}` : origin;
   const shareText = `Check out ${displayName || cleanHandle}'s Zo Passport 🌏`;
   const fixedAvatar = fixAvatarUrl(avatarUrl || undefined) || null;
+
+  // Stats + stamps for the story canvas — pulled from the authenticated
+  // user's own XP/leaderboard data (the public passport endpoint still
+  // returns zeros for stats/badges on prod, but useMyXp has the real ones).
+  const { myXp } = useMyXp();
+  // Pull membership off the auth context so founders render correctly.
+  const profileMembership =
+    typeof window === "undefined"
+      ? null
+      : (() => {
+          try {
+            const raw = localStorage.getItem("zo-profile");
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              return parsed?.membership ?? null;
+            }
+          } catch {
+            /* noop */
+          }
+          return null;
+        })();
+  const storyStats: StoryStats | undefined = useMemo(() => {
+    if (!myXp) return undefined;
+    const stampNames = [
+      ...(myXp.destinationNames ?? []),
+      ...(myXp.tripDestinations ?? []),
+    ].slice(0, 5);
+    return {
+      xpTotal: myXp.xp ?? 0,
+      rankTitle: myXp.rankTitle ?? null,
+      destinations: myXp.stats?.destinations ?? 0,
+      stays: myXp.stats?.nights ?? 0,
+      tribe: myXp.stats?.tribe ?? 0,
+      reels: myXp.stats?.trips ?? 0,
+      stampNames,
+      membership: profileMembership,
+    };
+    // profileMembership is read once at hook-call time; refresh-on-membership-
+    // change isn't a real concern since membership tier rarely flips mid-session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myXp]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -73,7 +116,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
   const buildShareBlob = async (): Promise<Blob | null> => {
     try {
       const name = displayName || cleanHandle;
-      const canvas = await buildStoryCanvas(name, cleanHandle, profileUrl, fixedAvatar);
+      const canvas = await buildStoryCanvas(name, cleanHandle, profileUrl, fixedAvatar, storyStats);
       return await new Promise<Blob | null>((resolve) =>
         canvas.toBlob((blob) => resolve(blob), "image/png"),
       );
@@ -172,7 +215,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
   const handleInstagramStory = async () => {
     const name = displayName || cleanHandle;
-    const canvas = await buildStoryCanvas(name, cleanHandle, profileUrl, fixedAvatar);
+    const canvas = await buildStoryCanvas(name, cleanHandle, profileUrl, fixedAvatar, storyStats);
 
     canvas.toBlob(async (blob) => {
       if (!blob) {

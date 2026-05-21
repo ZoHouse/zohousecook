@@ -233,7 +233,9 @@ export default function QuestsPage() {
     if (!questAction) return;
     if (questAction.kind === 'instagram') {
       if (ig.isConnected) {
-        toast('Story share flow coming next — your IG is connected.');
+        // IG linked → open ShareModal (Story flow). Same modal as the
+        // rank-pill share button on /@handle.
+        setShareOpen(true);
       } else {
         ig.connect();
       }
