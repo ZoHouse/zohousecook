@@ -19,5 +19,5 @@ export const HOUSE_MEDIA = {
   heroVideo: `${CDN}/gallery/media/videos/33ae43dd-99c6-41d2-bcc6-77e9e2a6d09c_20260419063038.mp4`,
   heroBg: `${CDN}/gallery/media/images/f959f43e-0d6e-4798-a7e2-01388bdf2bc7_20260414120415.svg`,
   demoday: `${CDN}/gallery/media/videos/ff94c107-3fb2-4311-9048-c620835cae15_20260414114343.mp4`,
-  hackathon: `${CDN}/gallery/media/videos/fa5f38eb-e607-4237-911f-cde1dea4685f_20260414121823.mp4`,
+  hackathon: `${CDN}/gallery/media/videos/9db7d68c-81ec-4b44-a070-d18d2429eb11_20260522210908.mp4`,
 } as const;
