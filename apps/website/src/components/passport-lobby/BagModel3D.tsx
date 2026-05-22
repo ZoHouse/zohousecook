@@ -34,6 +34,12 @@ export interface BagModel3DProps {
   size?: number;
   /** Earned stamp names — auto-placed as decals on the bag's front face. */
   stamps?: string[];
+  /**
+   * Pre-resolved sticker URLs. When provided, bypasses `stampUrlFor` slug
+   * resolution and uses these URLs directly. Used by /test-badges to mount
+   * arbitrary PNGs (same-origin, blob:, data:) without touching the CDN map.
+   */
+  urls?: string[];
 }
 
 const DEFAULT_SIZE = 324;
@@ -133,11 +139,16 @@ async function loadSharpStickerTexture(
   onReady: (tex: THREE.Texture) => void,
 ): Promise<void> {
   try {
-    // Route through same-origin proxy so cross-origin stamps (Zostel CDN
-    // SVGs in particular) don't taint the WebGL texture upload. The proxy
-    // adds CORS headers and lets us read the raw bytes.
-    const proxied = `/api/stamp-proxy?url=${encodeURIComponent(url)}`;
-    const res = await fetch(proxied, { referrerPolicy: 'no-referrer' });
+    // Route external (cross-origin) URLs through the same-origin proxy so
+    // CORS-less CDN responses don't taint the WebGL texture upload. Skip the
+    // proxy for same-origin, blob:, and data: URLs — those are already CORS-
+    // clean and the proxy's allowlist would reject them anyway.
+    const isLocal =
+      url.startsWith('/') || url.startsWith('blob:') || url.startsWith('data:');
+    const fetchUrl = isLocal
+      ? url
+      : `/api/stamp-proxy?url=${encodeURIComponent(url)}`;
+    const res = await fetch(fetchUrl, { referrerPolicy: 'no-referrer' });
     if (!res.ok) return;
     const ct = (res.headers.get('content-type') || '').toLowerCase();
 
@@ -563,16 +574,23 @@ function StickerLayer({ body, urls }: { body: THREE.Mesh; urls: string[] }) {
   );
 }
 
-function Scene({ stamps }: { stamps: string[] }) {
+function Scene({
+  stamps,
+  urlOverrides,
+}: {
+  stamps: string[];
+  urlOverrides?: string[];
+}) {
   const [body, setBody] = useState<THREE.Mesh | null>(null);
-  const urls = useMemo(
-    () =>
-      stamps
-        .slice(0, MAX_STICKERS)
-        .map((name) => stampUrlFor(name))
-        .filter((u): u is string => !!u),
-    [stamps],
-  );
+  const urls = useMemo(() => {
+    if (urlOverrides && urlOverrides.length > 0) {
+      return urlOverrides.slice(0, MAX_STICKERS);
+    }
+    return stamps
+      .slice(0, MAX_STICKERS)
+      .map((name) => stampUrlFor(name))
+      .filter((u): u is string => !!u);
+  }, [stamps, urlOverrides]);
 
   return (
     <>
@@ -607,6 +625,7 @@ export function BagModel3D({
   onClick,
   size = DEFAULT_SIZE,
   stamps = [],
+  urls,
 }: BagModel3DProps) {
   const interactive = !!onClick;
   return (
@@ -648,7 +667,7 @@ export function BagModel3D({
         style={{ background: 'transparent' }}
       >
         <Suspense fallback={null}>
-          <Scene stamps={stamps} />
+          <Scene stamps={stamps} urlOverrides={urls} />
         </Suspense>
       </Canvas>
     </div>
