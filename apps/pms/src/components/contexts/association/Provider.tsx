@@ -54,7 +54,7 @@ const Provider: React.FC<ProviderProps> = ({ children }) => {
       return operators;
     }
 
-    return operators.filter((op: GeneralObject) => {
+    const scopeMatched = operators.filter((op: GeneralObject) => {
       const code = op?.code;
       if (!code) return false;
       return permissions.some(
@@ -62,6 +62,16 @@ const Provider: React.FC<ProviderProps> = ({ children }) => {
           typeof p.scope === "string" && p.scope.includes(code)
       );
     });
+
+    // If the scope filter strips the user down to ZERO operators even though
+    // CRS resolved operators for their Zostel associations, don't leave them
+    // stranded — fall back to the full resolved list. This is the chef /
+    // PMS-added-staff case: they have a Zostel operator association (so CRS
+    // returns the operator) but their Zo backend permissions, if any, don't
+    // name that operator's code. Without this fallback selectedOperator never
+    // gets a `code`, and every Zo House feature (cafe, IoT, ...) stays hidden
+    // because isFeatureVisible() requires the operator code.
+    return scopeMatched.length > 0 ? scopeMatched : operators;
   }, [allOperatorsResponse, scopeData]);
 
   const { isFetching: isFetchingAssociations, data: myAssociationsData } =
@@ -230,6 +240,17 @@ const Provider: React.FC<ProviderProps> = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [associatedOperators]);
 
+  // Raw pipeline counts for the on-screen auth diagnostic. permissionsCount=0
+  // means the user has no Zo scope permissions (so the scope filter never
+  // runs); rawOperatorsCount=0 means CRS_OPERATORS resolved nothing for their
+  // association ids (the deeper failure mode). Together they pinpoint where
+  // operator resolution broke without needing a network-tab capture.
+  const diagnostics = {
+    permissionsCount: scopeData?.data?.permissions?.length ?? 0,
+    operatorAssociationsCount: operatorAssociations.length,
+    rawOperatorsCount: allOperatorsResponse.data?.data?.results?.length ?? 0,
+  };
+
   return (
     <Context.Provider
       value={{
@@ -239,6 +260,7 @@ const Provider: React.FC<ProviderProps> = ({ children }) => {
         hasAccess,
         effectiveRole,
         principals: selectedOperatorAccess,
+        diagnostics,
       }}
     >
       {children}

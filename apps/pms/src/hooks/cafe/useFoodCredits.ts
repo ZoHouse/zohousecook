@@ -15,6 +15,13 @@ export interface CustomerMatch {
   orderCount: number
 }
 
+export interface WalletSearchResult {
+  id: string
+  phone: string
+  name: string | null
+  balance: number
+}
+
 interface UseFoodCreditsResult {
   wallet: FoodCreditWallet | null
   transactions: FoodCreditTransaction[]
@@ -22,6 +29,7 @@ interface UseFoodCreditsResult {
   isLoading: boolean
   error: string | null
   searchByPhone: (phone: string) => Promise<void>
+  searchWallets: (query: string) => Promise<WalletSearchResult[]>
   issueCredits: (phone: string, amount: number, name?: string, note?: string) => Promise<void>
   revokeCredits: (walletId: string, amount: number, reason: string) => Promise<void>
   stats: FoodCreditStats
@@ -124,6 +132,24 @@ export function useFoodCredits(): UseFoodCreditsResult {
     setIsLoading(false)
   }, [])
 
+  // Live search for the wallet picker — matches name OR phone. Commas and
+  // parentheses are stripped first because the query goes into a PostgREST
+  // `.or()` filter, where those characters are syntax.
+  const searchWallets = useCallback(async (query: string): Promise<WalletSearchResult[]> => {
+    const q = query.trim().replace(/[,()]/g, '')
+    if (q.length < 2) return []
+    const digits = q.replace(/\D/g, '')
+    const orParts = [`name.ilike.%${q}%`]
+    if (digits.length >= 2) orParts.push(`phone.ilike.%${digits}%`)
+    const { data } = await supabase
+      .from('food_credit_wallets')
+      .select('id, phone, name, balance')
+      .or(orParts.join(','))
+      .order('name', { ascending: true })
+      .limit(10)
+    return (data || []) as WalletSearchResult[]
+  }, [])
+
   const issueCredits = useCallback(async (phone: string, amount: number, name?: string, note?: string) => {
     const normalized = normalizePhone(phone)
     const { error: err } = await supabase.rpc('issue_food_credits', {
@@ -160,7 +186,7 @@ export function useFoodCredits(): UseFoodCreditsResult {
 
   return {
     wallet, transactions, customerMatch, isLoading, error,
-    searchByPhone, issueCredits, revokeCredits,
+    searchByPhone, searchWallets, issueCredits, revokeCredits,
     stats, recentTransactions, refetch,
   }
 }

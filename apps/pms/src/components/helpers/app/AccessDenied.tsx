@@ -9,6 +9,7 @@ const AccessDenied = () => {
     selectedOperator,
     effectiveRole,
     principals,
+    diagnostics: pipelineDiagnostics,
   } = useAssociation();
 
   const diagnostics = {
@@ -20,6 +21,9 @@ const AccessDenied = () => {
       name: selectedOperator?.name ?? null,
     },
     associatedOperatorsCount: associatedOperators?.length ?? 0,
+    permissionsCount: pipelineDiagnostics.permissionsCount,
+    operatorAssociationsCount: pipelineDiagnostics.operatorAssociationsCount,
+    rawOperatorsCount: pipelineDiagnostics.rawOperatorsCount,
   };
 
   return (
