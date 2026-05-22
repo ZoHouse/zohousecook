@@ -7,7 +7,7 @@ import { MeshGradient } from '@paper-design/shaders-react';
 import { useMyXp } from '../../../hooks/useMyXp';
 import { useQuestDetail } from '../../../hooks/useQuestDetail';
 import { usePassportProfile } from '../../../hooks/usePassportProfile';
-import { questDisplayTitle } from '../../../data/mock-quests';
+import { questDisplayTitle } from '../../../data/quests';
 import { TopBar } from '../../../components/passport-lobby/TopBar';
 import { MapModal } from '../../../components/passport-lobby/MapModal';
 import { SettingsModal } from '../../../components/passport/SettingsModal';

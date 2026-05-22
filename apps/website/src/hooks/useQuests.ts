@@ -7,7 +7,7 @@ import { zoServer } from '../../../../libs/auth/src/utils';
 import {
   type Quest,
   type QuestsListResponse,
-} from '../data/mock-quests';
+} from '../data/quests';
 
 // Frontend is wired to the live backend on both branches. On staging this
 // hits api.nsfp.io.zo.xyz where Daya's quest engine returns real assigned

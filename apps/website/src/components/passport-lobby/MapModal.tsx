@@ -21,7 +21,7 @@ import { TopBar } from './TopBar';
 import { useProfile } from '@zo/auth';
 import { useMyXp } from '../../hooks/useMyXp';
 import { usePassportProfile } from '../../hooks/usePassportProfile';
-import type { Quest, QuestParticipation } from '../../data/mock-quests';
+import type { Quest, QuestParticipation } from '../../data/quests';
 import type { DockQuest } from './QuestsDock';
 
 type RouteMode = 'explore' | 'preview' | 'navigating' | 'arrived';
