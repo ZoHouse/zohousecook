@@ -161,19 +161,19 @@ const SHARED = [
 // grid. Order is interleaved so the strip mixes event types rather than
 // running six build-sprint shots in a row.
 const PROGRAMMING_PHOTOS = [
-  { src: "/programming/build-sprint-1.jpg", label: "Build sprint" },
-  { src: "/programming/founders-dinner-1.jpg", label: "Founder dinner" },
-  { src: "/programming/mentor-1.jpg", label: "Mentor session" },
-  { src: "/programming/build-sprint-2.jpg", label: "Build sprint" },
-  { src: "/programming/demo-day-1.jpg", label: "Demo day" },
-  { src: "/programming/build-sprint-3.jpg", label: "Build sprint" },
-  { src: "/programming/founders-dinner-2.jpg", label: "Founder dinner" },
-  { src: "/programming/build-sprint-4.jpg", label: "Build sprint" },
-  { src: "/programming/mentor-2.jpg", label: "Mentor session" },
-  { src: "/programming/build-sprint-5.jpg", label: "Build sprint" },
-  { src: "/programming/demo-day-2.jpg", label: "Demo day" },
-  { src: "/programming/founders-dinner-3.jpg", label: "Founder dinner" },
-  { src: "/programming/build-sprint-6.jpg", label: "Build sprint" },
+  { src: "https://proxy.cdn.zo.xyz/gallery/media/images/21f64771-c6d0-45bb-a8ae-e82f7a3aff0f_20260522212053.jpg", label: "Build sprint" },
+  { src: "https://proxy.cdn.zo.xyz/gallery/media/images/af6b907d-f782-4fa4-82cb-cd59625a23c0_20260522212057.jpg", label: "Founder dinner" },
+  { src: "https://proxy.cdn.zo.xyz/gallery/media/images/30a76993-4bde-49dc-a762-d001357958ee_20260522212058.jpg", label: "Mentor session" },
+  { src: "https://proxy.cdn.zo.xyz/gallery/media/images/906fff52-e7ac-443f-9876-6658a50b5c2b_20260522212053.jpg", label: "Build sprint" },
+  { src: "https://proxy.cdn.zo.xyz/gallery/media/images/16511e67-3233-45b2-b255-e0c092ca164c_20260522212056.jpg", label: "Demo day" },
+  { src: "https://proxy.cdn.zo.xyz/gallery/media/images/3f7e825c-748c-42c1-9490-120c5308a76a_20260522212054.jpg", label: "Build sprint" },
+  { src: "https://proxy.cdn.zo.xyz/gallery/media/images/d62f7e2a-f2db-4ad0-a0d9-7a9aba9ca33d_20260522212057.jpg", label: "Founder dinner" },
+  { src: "https://proxy.cdn.zo.xyz/gallery/media/images/977336c2-7394-444e-acab-c11e7369d0c6_20260522212054.jpg", label: "Build sprint" },
+  { src: "https://proxy.cdn.zo.xyz/gallery/media/images/adc38da6-2be6-416e-8f1a-511ac0836706_20260522212058.jpg", label: "Mentor session" },
+  { src: "https://proxy.cdn.zo.xyz/gallery/media/images/bbc3a8ef-24eb-403b-8f6a-4b0ecc3b36bc_20260522212055.jpg", label: "Build sprint" },
+  { src: "https://proxy.cdn.zo.xyz/gallery/media/images/66ab5b94-94b0-49ec-9327-7c273e55e2a6_20260522212056.jpg", label: "Demo day" },
+  { src: "https://proxy.cdn.zo.xyz/gallery/media/images/b0bc2c21-a083-4b59-a7de-dd6f63f84591_20260522212057.jpg", label: "Founder dinner" },
+  { src: "https://proxy.cdn.zo.xyz/gallery/media/images/ba9bb065-80d5-46f6-ba2e-086a9c546eb5_20260522212055.jpg", label: "Build sprint" },
 ];
 
 const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (

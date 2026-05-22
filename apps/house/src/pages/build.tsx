@@ -11,9 +11,9 @@ const HOUSES = [
     price: "₹12,000",
     slots: 10,
     images: [
-      "/houses/blrxzo-1.jpg",
-      "/houses/blrxzo-2.jpg",
-      "/houses/blrxzo-3.jpg",
+      "https://proxy.cdn.zo.xyz/gallery/media/images/34875217-19ff-412d-90b6-8bca2e5a33e3_20260522212059.jpg",
+      "https://proxy.cdn.zo.xyz/gallery/media/images/3269e0d0-245d-4670-bab9-c6466be6977b_20260522212059.jpg",
+      "https://proxy.cdn.zo.xyz/gallery/media/images/86dbef5c-5a7f-499b-9447-f4adcf04639a_20260522212100.jpg",
     ],
   },
   {
@@ -22,9 +22,9 @@ const HOUSES = [
     price: "₹10,000",
     slots: 10,
     images: [
-      "/houses/wtfxzo-1.jpg",
-      "/houses/wtfxzo-2.jpg",
-      "/houses/wtfxzo-3.jpg",
+      "https://proxy.cdn.zo.xyz/gallery/media/images/b5f69ae8-039a-4ec5-a628-15e7b571104b_20260522212100.jpg",
+      "https://proxy.cdn.zo.xyz/gallery/media/images/ad50fc75-30b8-4d39-9951-fa333ed3e574_20260522212100.jpg",
+      "https://proxy.cdn.zo.xyz/gallery/media/images/5f61213f-0d63-44bb-ab23-abf98e889b1e_20260522212101.jpg",
     ],
   },
 ];
@@ -127,7 +127,7 @@ function DayPassCard() {
         className="relative aspect-[1584/677] lg:aspect-auto overflow-hidden text-center will-change-transform"
       >
         <Image
-          src="/daypass-bg.jpg"
+          src="https://proxy.cdn.zo.xyz/gallery/media/images/9141b0db-abab-4d77-bb1b-5247229b4ff0_20260522212101.jpg"
           alt="Zo House day pass"
           fill
           sizes="(max-width: 768px) 100vw, 896px"
