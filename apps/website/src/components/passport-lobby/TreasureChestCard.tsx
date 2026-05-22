@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { rubikClassName } from '../utils/font';
 import chestIcon from '../../assets/passport-lobby/treasure-chest.png';
-import { questDisplayTitle, type Quest, type QuestReward } from '../../data/mock-quests';
+import { questDisplayTitle, type Quest, type QuestReward } from '../../data/quests';
 
 export interface TreasureChestCardProps {
   open: boolean;

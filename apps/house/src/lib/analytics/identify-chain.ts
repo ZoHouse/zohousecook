@@ -18,7 +18,7 @@ export async function identifyOnOtpVerified(
 ): Promise<{ phone_hash: string }> {
   const phone_hash = await hashE164Phone(args.phone_e164);
 
-  // Per §7.2 — different phone re-verify on same device.
+  // Per §7.2. different phone re-verify on same device.
   if (detectPhoneSwitch(phone_hash)) {
     posthog.reset?.();
     if (typeof window !== "undefined" && window.Moengage) {
@@ -62,7 +62,7 @@ export async function identifyOnOtpVerified(
  * rather than `posthog.alias(...)` (which merges two distinct_ids).
  *
  * Per §7.2 collision rule: if the Zo profile's phone differs from the
- * OTP-verified phone, do NOT tag — fire identity_collision instead.
+ * OTP-verified phone, do NOT tag. fire identity_collision instead.
  */
 export async function tagZoProfileIfMatching(
   member_id: string,

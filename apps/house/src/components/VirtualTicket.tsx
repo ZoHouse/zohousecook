@@ -213,19 +213,19 @@ export const VirtualTicket: React.FC<VirtualTicketProps> = ({
         ]);
         if (xWindow) {
           alert(
-            "Ticket copied to clipboard — paste it into your tweet (Cmd/Ctrl-V)."
+            "Ticket copied to clipboard. paste it into your tweet (Cmd/Ctrl-V)."
           );
         }
         return;
       }
 
-      // Clipboard unavailable — download as a fallback.
+      // Clipboard unavailable. download as a fallback.
       const link = document.createElement("a");
       link.download = `zo-house-pass-${handle}.png`;
       link.href = dataUrl;
       link.click();
     } catch {
-      /* image work failed — X tab is already open, user can still tweet */
+      /* image work failed. X tab is already open, user can still tweet */
     }
   }, [captureTicketPng, handle, shareUrl]);
 
@@ -249,7 +249,7 @@ export const VirtualTicket: React.FC<VirtualTicketProps> = ({
         return;
       }
     } catch (err) {
-      // user cancel or share unsupported — fall through to download
+      // user cancel or share unsupported. fall through to download
     }
 
     const link = document.createElement("a");

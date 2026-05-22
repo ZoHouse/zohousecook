@@ -62,6 +62,6 @@ export function getFirstTouch(): FirstTouch | null {
 
 // Note: captureFirstTouch is a no-op once first-touch is set. SPA route changes
 // after the first hard nav will not overwrite first-touch attribution. This is
-// by design — the user's TRUE first touch is the marketing entry point.
+// by design. the user's TRUE first touch is the marketing entry point.
 // Cluster pages are intended to be entered directly from search/ads, so each
 // hard-nav landing captures its own first-touch.

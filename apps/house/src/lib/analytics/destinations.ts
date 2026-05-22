@@ -46,7 +46,7 @@ export function initDestinations(opts: {
       window.gtag?.("event", event, props);
     },
     posthog: (event, props) => {
-      // posthog.capture is safe even if init() never ran — it queues internally.
+      // posthog.capture is safe even if init() never ran. it queues internally.
       posthog.capture?.(event, props);
     },
     moengage: (event, props) => {

@@ -19,7 +19,7 @@ import { QuestsDock, actionForQuest, type DockQuest } from './QuestsDock';
 import { UnlimitedAccessCta } from './UnlimitedAccessCta';
 import { CameraCaptureModal, type CaptureKind } from './CameraCaptureModal';
 import { InstagramConnectModal } from './InstagramConnectModal';
-import { isGeomediaQuest } from '../../data/mock-quests';
+import { hasGeomediaData } from '../../data/quests';
 import { ProUpsellModal, type ProUpsellFeature } from '../pro';
 import { SettingsModal } from '../passport/SettingsModal';
 import ShareModal from '../passport/ShareModal';
@@ -51,6 +51,10 @@ export function PassportLobby() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [igModalOpen, setIgModalOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  // Separate state for the quest-triggered share so the modal can render in
+  // its streamlined Instagram-only pearl variant without affecting the
+  // rank-pill share above (which uses the full multi-target modal).
+  const [questShareOpen, setQuestShareOpen] = useState(false);
   const [selectedQuest, setSelectedQuest] = useState<DockQuest | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
 
@@ -93,12 +97,18 @@ export function PassportLobby() {
   };
 
   // Per-quest action handler — wires the morphed CTA below the avatar to
-  // the selected quest's action (IG connect / camera capture / external book).
-  const questAction = selectedQuest ? actionForQuest(selectedQuest) : null;
+  // the selected quest's action (IG connect/share / camera capture / external
+  // book). Instagram CTA flips on the citizen's OAuth state.
+  const questAction = selectedQuest ? actionForQuest(selectedQuest, ig.isConnected) : null;
   const handleQuestAction = () => {
     if (!questAction) return;
     if (questAction.kind === 'instagram') {
-      ig.connect();
+      if (ig.isConnected) {
+        // IG linked → open the streamlined Instagram-only share modal.
+        setQuestShareOpen(true);
+      } else {
+        ig.connect();
+      }
     } else if (questAction.kind === 'geomedia') {
       setCameraOpen(true);
     } else if (questAction.kind === 'booking' && questAction.href) {
@@ -106,9 +116,10 @@ export function PassportLobby() {
     }
   };
 
-  // Camera modal accepts the kinds the selected geomedia quest allows.
+  // Camera modal accepts the kinds the selected geomedia quest allows. Only
+  // applies on CAS-bound paths where `data` is populated; otherwise default.
   const cameraAllowed: CaptureKind[] =
-    selectedQuest && isGeomediaQuest(selectedQuest)
+    selectedQuest && hasGeomediaData(selectedQuest)
       ? selectedQuest.data.geomedia.media_kinds.filter(
           (k): k is CaptureKind => k === 'photo' || k === 'video',
         )
@@ -241,6 +252,14 @@ export function PassportLobby() {
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <InstagramConnectModal open={igModalOpen} onClose={() => setIgModalOpen(false)} onConnect={handleIgConnect} />
       <ShareModal isOpen={shareOpen} onClose={() => setShareOpen(false)} handle={handle} avatarUrl={avatarUrl} displayName={handle} />
+      <ShareModal
+        isOpen={questShareOpen}
+        onClose={() => setQuestShareOpen(false)}
+        handle={handle}
+        avatarUrl={avatarUrl}
+        displayName={handle}
+        instagramOnly
+      />
     </div>
   );
 }

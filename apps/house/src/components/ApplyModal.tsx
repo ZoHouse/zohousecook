@@ -98,7 +98,7 @@ export function ApplyModal({ open, onClose }: ApplyModalProps) {
         setSubmitError(data?.error || `Submit failed (${res.status})`);
         return;
       }
-      // apply_submit_success is fired by the API route (Chunk 4) — no client fire here.
+      // apply_submit_success is fired by the API route (Chunk 4). no client fire here.
       if (typeof data?.waitlist_number === "number") {
         setWaitlistNumber(data.waitlist_number);
       }
@@ -472,7 +472,7 @@ function SubmittedTicket({
     if (typeof waitlistNumber === "number" && waitlistNumber > 0) {
       return String(waitlistNumber).padStart(6, "0");
     }
-    // Fallback when the count query failed — keep a stable per-applicant code
+    // Fallback when the count query failed. keep a stable per-applicant code
     // so the ticket still renders something.
     const seed = `${form.email}${form.name}${handle}`;
     let hash = 0;

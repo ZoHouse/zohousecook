@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Service role key — used server-side only inside getServerSideProps.
+// Service role key. used server-side only inside getServerSideProps.
 // Never expose via NEXT_PUBLIC_*.
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||

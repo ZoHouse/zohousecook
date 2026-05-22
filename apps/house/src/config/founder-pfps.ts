@@ -1,134 +1,134 @@
-/** Static PFP map for founder chemistry — name/nickname → image URL */
+/** Static PFP map for founder chemistry. name/nickname → image URL */
 const founderPfps: Record<string, string> = {
-  // Shubham Kukreti — has photo
+  // Shubham Kukreti. has photo
   "shubham kukreti":
     "https://proxy.cdn.zo.xyz/gallery/media/images/7c56bd50-c4a4-452c-97b8-d7bbae0313ea_20260405101157.png",
   shubham:
     "https://proxy.cdn.zo.xyz/gallery/media/images/7c56bd50-c4a4-452c-97b8-d7bbae0313ea_20260405101157.png",
 
-  // Tejas Arun — has photo
+  // Tejas Arun. has photo
   "tejas arun":
     "https://proxy.cdn.zo.xyz/gallery/media/images/16efd133-7210-47cc-9215-d06d5e681272_20260405101200.png",
   tejas:
     "https://proxy.cdn.zo.xyz/gallery/media/images/16efd133-7210-47cc-9215-d06d5e681272_20260405101200.png",
 
-  // Dibyo Majumder — has photo
+  // Dibyo Majumder. has photo
   "dibyo majumder":
     "https://proxy.cdn.zo.xyz/gallery/media/images/c1a7b13e-adfd-4db2-9b21-a1d79cacd1bf_20260405101201.png",
   dibyo:
     "https://proxy.cdn.zo.xyz/gallery/media/images/c1a7b13e-adfd-4db2-9b21-a1d79cacd1bf_20260405101201.png",
 
-  // Kush Ratna Gupta — has photo
+  // Kush Ratna Gupta. has photo
   "kush ratna gupta":
     "https://proxy.cdn.zo.xyz/gallery/media/images/c0c15d54-65d6-4d09-a6f5-ae543d825542_20260405101201.png",
   kush:
     "https://proxy.cdn.zo.xyz/gallery/media/images/c0c15d54-65d6-4d09-a6f5-ae543d825542_20260405101201.png",
 
-  // Roshan Vadassery — has photo
+  // Roshan Vadassery. has photo
   "roshan vadassery":
     "https://proxy.cdn.zo.xyz/gallery/media/images/bde18556-8fc3-4cf9-b793-d3d4192cfeee_20260405101202.png",
   roshan:
     "https://proxy.cdn.zo.xyz/gallery/media/images/bde18556-8fc3-4cf9-b793-d3d4192cfeee_20260405101202.png",
 
-  // Fiona Bao — has photo
+  // Fiona Bao. has photo
   "fiona bao":
     "https://proxy.cdn.zo.xyz/gallery/media/images/949d721b-ad1d-420f-9f43-bfc030b8ccd8_20260405101203.png",
   fiona:
     "https://proxy.cdn.zo.xyz/gallery/media/images/949d721b-ad1d-420f-9f43-bfc030b8ccd8_20260405101203.png",
 
-  // Akash Chaudhary — has photo
+  // Akash Chaudhary. has photo
   "akash chaudhary":
     "https://proxy.cdn.zo.xyz/gallery/media/images/ea13d805-42fd-4c9c-bf47-1abfb4ae343e_20260405101204.png",
   akash:
     "https://proxy.cdn.zo.xyz/gallery/media/images/ea13d805-42fd-4c9c-bf47-1abfb4ae343e_20260405101204.png",
 
-  // Saumya Saxena — pfp only (avatar)
+  // Saumya Saxena. pfp only (avatar)
   "saumya saxena":
     "https://proxy.cdn.zo.xyz/citizenship/images/a0428364-9178-4279-b2ed-8f414932cfa7.svg",
   saumya:
     "https://proxy.cdn.zo.xyz/citizenship/images/a0428364-9178-4279-b2ed-8f414932cfa7.svg",
 
-  // Anoushk Kharangate — pfp only (avatar)
+  // Anoushk Kharangate. pfp only (avatar)
   "anoushk kharangate":
     "https://proxy.cdn.zo.xyz/citizenship/images/138ca966-6ade-44fa-98d7-674d77a45f94.svg",
   anoushk:
     "https://proxy.cdn.zo.xyz/citizenship/images/138ca966-6ade-44fa-98d7-674d77a45f94.svg",
 
-  // Venkat Kunisetty — pfp only (avatar)
+  // Venkat Kunisetty. pfp only (avatar)
   "venkat kunisetty":
     "https://proxy.cdn.zo.xyz/citizenship/images/bc1c9536-8df9-4358-9c36-edb348530508.svg",
   venkat:
     "https://proxy.cdn.zo.xyz/citizenship/images/bc1c9536-8df9-4358-9c36-edb348530508.svg",
 
-  // Mrigank Bhargava — pfp only (avatar)
+  // Mrigank Bhargava. pfp only (avatar)
   "mrigank bhargava":
     "https://proxy.cdn.zo.xyz/citizenship/images/7f9de2ca-824c-469f-a5d6-0443c620ce43.svg",
   mrigank:
     "https://proxy.cdn.zo.xyz/citizenship/images/7f9de2ca-824c-469f-a5d6-0443c620ce43.svg",
 
-  // Rishabh Keshan — pfp only (avatar)
+  // Rishabh Keshan. pfp only (avatar)
   "rishabh keshan":
     "https://proxy.cdn.zo.xyz/citizenship/images/fc4e303d-9e26-49d8-be9d-870d6fff496f.svg",
   rishabh:
     "https://proxy.cdn.zo.xyz/citizenship/images/fc4e303d-9e26-49d8-be9d-870d6fff496f.svg",
 
-  // Gathin — pfp only (avatar), single name
+  // Gathin. pfp only (avatar), single name
   gathin:
     "https://proxy.cdn.zo.xyz/citizenship/images/518432cc-cf8e-43f8-880c-72138dc83660.svg",
 
-  // Sukriti Taneja — pfp only (avatar)
+  // Sukriti Taneja. pfp only (avatar)
   "sukriti taneja":
     "https://proxy.cdn.zo.xyz/citizenship/images/94d0fb6e-4a6c-4646-8882-40633e190463_xEbQ6t1.svg",
   sukriti:
     "https://proxy.cdn.zo.xyz/citizenship/images/94d0fb6e-4a6c-4646-8882-40633e190463_xEbQ6t1.svg",
 
-  // Aadith Narayanan — pfp only (avatar)
+  // Aadith Narayanan. pfp only (avatar)
   "aadith narayanan":
     "https://proxy.cdn.zo.xyz/citizenship/images/51154477-4d35-4a34-b810-5939a437991d.svg",
   aadith:
     "https://proxy.cdn.zo.xyz/citizenship/images/51154477-4d35-4a34-b810-5939a437991d.svg",
 
-  // Mohit Sorout — pfp only (avatar)
+  // Mohit Sorout. pfp only (avatar)
   "mohit sorout":
     "https://proxy.cdn.zo.xyz/citizenship/images/ce280622-9e84-41d4-b028-229fd843a167.svg",
   mohit:
     "https://proxy.cdn.zo.xyz/citizenship/images/ce280622-9e84-41d4-b028-229fd843a167.svg",
 
-  // Abhay Tandon — pfp only (avatar)
+  // Abhay Tandon. pfp only (avatar)
   "abhay tandon":
     "https://proxy.cdn.zo.xyz/citizenship/images/3c16f360-e842-4b63-b1fe-7e02c9ebaa78.svg",
   abhay:
     "https://proxy.cdn.zo.xyz/citizenship/images/3c16f360-e842-4b63-b1fe-7e02c9ebaa78.svg",
 
-  // Ajeet Khurana — pfp (avatar)
+  // Ajeet Khurana. pfp (avatar)
   "ajeet khurana":
     "https://proxy.cdn.zo.xyz/citizenship/images/9e509c21-196b-4b7b-8bae-2097c126d683.svg",
   ajeet:
     "https://proxy.cdn.zo.xyz/citizenship/images/9e509c21-196b-4b7b-8bae-2097c126d683.svg",
 
-  // Dharamveer Singh Chouhan — CDN photo
+  // Dharamveer Singh Chouhan. CDN photo
   "dharamveer singh chouhan":
     "https://proxy.cdn.zo.xyz/gallery/media/images/e9ebc3b3-eac2-4f4b-bae8-6d8f39ad3d7c_20260407043412.png",
   dharamveer:
     "https://proxy.cdn.zo.xyz/gallery/media/images/e9ebc3b3-eac2-4f4b-bae8-6d8f39ad3d7c_20260407043412.png",
 
-  // Lisa Ray — CDN photo
+  // Lisa Ray. CDN photo
   "lisa ray":
     "https://proxy.cdn.zo.xyz/gallery/media/images/765aee64-43a0-4b4a-8762-8b61047d1141_20260407043412.png",
   lisaray:
     "https://proxy.cdn.zo.xyz/gallery/media/images/765aee64-43a0-4b4a-8762-8b61047d1141_20260407043412.png",
 
-  // Kartikey Sharma — CDN photo
+  // Kartikey Sharma. CDN photo
   "kartikey sharma":
     "https://proxy.cdn.zo.xyz/gallery/media/images/2afa8fef-a03d-47b0-9145-423f098fe563_20260407043412.png",
   kartikey:
     "https://proxy.cdn.zo.xyz/gallery/media/images/2afa8fef-a03d-47b0-9145-423f098fe563_20260407043412.png",
 
-  // Kratex — CDN photo, single name
+  // Kratex. CDN photo, single name
   kratex:
     "https://proxy.cdn.zo.xyz/gallery/media/images/3675fd06-2450-468e-b0bc-0256f1ca9ad1_20260407043413.png",
 
-  // Shabbir YK — CDN photo
+  // Shabbir YK. CDN photo
   "shabbir yk":
     "https://proxy.cdn.zo.xyz/gallery/media/images/ad6759d5-fd33-4614-b283-f4f7a77f83fb_20260407043413.jpeg",
   shabbiryk:

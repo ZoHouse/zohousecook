@@ -72,7 +72,7 @@ export const getServerSideProps: GetServerSideProps<SharePageProps> = async (
     return { notFound: true };
   }
 
-  // Waitlist position — same calculation as the apply API.
+  // Waitlist position. same calculation as the apply API.
   let waitlistNumber = 0;
   if (lead.created_at) {
     const { count } = await client

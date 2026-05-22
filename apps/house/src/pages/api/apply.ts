@@ -142,7 +142,7 @@ export default async function handler(
     : `u/${randomHandle()}`;
   const shareSlug = await reserveShareSlug(client, baseSlug);
 
-  // No unique constraint on email — plain insert. Duplicates are triaged
+  // No unique constraint on email. plain insert. Duplicates are triaged
   // in the sales admin UI.
   const { data, error } = await client
     .from("pipeline_leads")
@@ -179,7 +179,7 @@ export default async function handler(
 }
 
 function randomHandle(): string {
-  // 8-char base36 random — ~10^12 keyspace, enough to avoid collisions for
+  // 8-char base36 random. ~10^12 keyspace, enough to avoid collisions for
   // unparseable-socials applicants without growing the URL.
   return Math.random().toString(36).slice(2, 10).padEnd(8, "x");
 }
@@ -200,13 +200,13 @@ async function reserveShareSlug(
       .eq("share_slug", candidate)
       .maybeSingle();
     if (error) {
-      // Don't block apply on a slug-lookup failure — fall through to the
+      // Don't block apply on a slug-lookup failure. fall through to the
       // base slug and let the UNIQUE constraint catch any race.
       return candidate;
     }
     if (!data) return candidate;
   }
-  // 25 collisions in a row is implausible — append a random suffix to
+  // 25 collisions in a row is implausible. append a random suffix to
   // guarantee uniqueness.
   return `${baseSlug}-${randomHandle().slice(0, 4)}`;
 }

@@ -10,7 +10,7 @@ import { usePassportProfile } from '../../../hooks/usePassportProfile';
 import { useSeason } from '../../../hooks/useSeason';
 import useInstagramConnect from '../../../hooks/useInstagramConnect';
 import { useQuests } from '../../../hooks/useQuests';
-import { isGeomediaQuest, questDisplayTitle, type Quest, type QuestCategory } from '../../../data/mock-quests';
+import { hasGeomediaData, questDisplayTitle, type Quest, type QuestCategory } from '../../../data/quests';
 
 import { TopBar } from '../../../components/passport-lobby/TopBar';
 import { MapModal } from '../../../components/passport-lobby/MapModal';
@@ -117,12 +117,10 @@ function isCompleted(q: Quest): boolean {
 }
 
 function questCoords(q: Quest): { lat: number; lng: number } | null {
-  // Staging seed omits `data` jsonb entirely (user-facing serializer doesn't
-  // expose it — see memory feedback_user_facing_passport_quests_no_data_field).
-  // Guard against undefined before reading nested fields, otherwise the
-  // distance-decoration map() throws at runtime.
+  // Public /api/v1/passport/quests/ doesn't expose `data` jsonb. Coords only
+  // surface on CAS-bound paths where `data` is populated.
   if (!q.data) return null;
-  if (isGeomediaQuest(q)) return { lat: q.data.geomedia.lat, lng: q.data.geomedia.lng };
+  if (hasGeomediaData(q)) return { lat: q.data.geomedia.lat, lng: q.data.geomedia.lng };
   const loc = (q.data as { location?: { lat?: number; lng?: number } }).location;
   if (loc && typeof loc.lat === 'number' && typeof loc.lng === 'number') {
     return { lat: loc.lat, lng: loc.lng };
@@ -144,6 +142,9 @@ export default function QuestsPage() {
   const [mapOpen, setMapOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  // Separate state for the quest-triggered share so it can render in the
+  // streamlined Instagram-only pearl variant.
+  const [questShareOpen, setQuestShareOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [selectedQuest, setSelectedQuest] = useState<DockQuest | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<QuestCategory | null>(null);
@@ -228,17 +229,25 @@ export default function QuestsPage() {
   }, [allQuests]);
 
   // Morphing CTA logic — same pattern as PassportLobby. Used inside QuestFullView.
-  const questAction = selectedQuest ? actionForQuest(selectedQuest) : null;
+  // Instagram CTA flips on the citizen's OAuth state: Connect when missing,
+  // Share once linked.
+  const questAction = selectedQuest ? actionForQuest(selectedQuest, ig.isConnected) : null;
   const handleQuestAction = () => {
     if (!questAction) return;
-    if (questAction.kind === 'instagram') ig.connect();
-    else if (questAction.kind === 'geomedia') setCameraOpen(true);
+    if (questAction.kind === 'instagram') {
+      if (ig.isConnected) {
+        // IG linked → open the streamlined Instagram-only share modal.
+        setQuestShareOpen(true);
+      } else {
+        ig.connect();
+      }
+    } else if (questAction.kind === 'geomedia') setCameraOpen(true);
     else if (questAction.kind === 'booking' && questAction.href) {
       window.open(questAction.href, '_blank', 'noopener,noreferrer');
     }
   };
   const cameraAllowed: CaptureKind[] =
-    selectedQuest && isGeomediaQuest(selectedQuest)
+    selectedQuest && hasGeomediaData(selectedQuest)
       ? selectedQuest.data.geomedia.media_kinds.filter((k): k is CaptureKind => k === 'photo' || k === 'video')
       : ['photo'];
 
@@ -474,6 +483,14 @@ export default function QuestsPage() {
           handle={handle}
           avatarUrl={avatarUrl}
           displayName={handle}
+        />
+        <ShareModal
+          isOpen={questShareOpen}
+          onClose={() => setQuestShareOpen(false)}
+          handle={handle}
+          avatarUrl={avatarUrl}
+          displayName={handle}
+          instagramOnly
         />
       </div>
     </>
