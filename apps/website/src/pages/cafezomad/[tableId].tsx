@@ -83,11 +83,20 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     } catch { return [] }
   })
   const [foodCreditAmount, setFoodCreditAmount] = useState(0)
+  // Customer note to the kitchen — free-text, optional. Saved on the
+  // cafe_orders.notes column via place_cafe_order's p_notes param. Reset
+  // when the cart clears (after a successful order).
+  const [customerNotes, setCustomerNotes] = useState('')
   // Per-draft-order slider value (in rupees). Default falls back to the order's
   // existing food_credit_applied_paise / 100 when undefined.
   const [draftCreditOverrides, setDraftCreditOverrides] = useState<Record<string, number>>({})
   const [activeTab, setActiveTab] = useState<Tab>('menu')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  // Single scroll container is shared across tabs, so switching tabs would
+  // otherwise inherit the previous tab's scroll position (users on a
+  // scrolled-down Menu tap "View Cart" and land on the cart already scrolled
+  // past the items). Reset scrollTop=0 on every tab change.
+  const mainScrollRef = useRef<HTMLDivElement | null>(null)
   // Today's meal plan text per slot, read from cafe_meal_plans.notes. Shown
   // as the description of the matching "Breakfast" / "Lunch" / "Dinner" menu
   // items so customers see what's actually being served today.
@@ -114,6 +123,13 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       localStorage.removeItem(cartKey)
     }
   }, [cart, cartKey])
+
+  // Reset scroll to top whenever the user switches tabs. Without this, a
+  // scrolled-down Menu tab leaks its scroll position into Cart/Orders/Wallet
+  // and users land mid-page (or past the bottom) on the new tab.
+  useEffect(() => {
+    if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0
+  }, [activeTab])
 
   // $food credits
   const { balance: foodBalance, refresh: refreshFoodBalance } = useFoodCreditBalance(user?.mobile_number || null)
@@ -281,19 +297,34 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     }
   }, [fetchOrders])
 
-  // ── Today's meal plan text (drives the Breakfast/Lunch/Dinner descriptions)
+  // ── Today's meal plan description — derived from the items actually
+  // attached to each B/L/D slot (cafe_meal_plan_items → cafe_menu_items.name).
+  // The notes column is no longer the source; items are.
   useEffect(() => {
     const fetchTodayPlan = () => {
       const d = new Date()
       const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       supabase
         .from('cafe_meal_plans')
-        .select('meal_type, notes')
+        .select('meal_type, items:cafe_meal_plan_items(menu_item:cafe_menu_items(name))')
         .eq('date', today)
         .then(({ data }) => {
           const next = { breakfast: '', lunch: '', dinner: '' }
-          for (const plan of (data || []) as { meal_type: 'breakfast' | 'lunch' | 'dinner'; notes: string | null }[]) {
-            if (plan.meal_type in next) next[plan.meal_type] = plan.notes || ''
+          // See menu.tsx — Supabase types many-to-one joins as arrays even
+          // though runtime returns a single object. Handle both shapes.
+          type JoinedMenuItem = { name: string } | { name: string }[] | null
+          type Row = { meal_type: 'breakfast' | 'lunch' | 'dinner'; items: { menu_item: JoinedMenuItem }[] }
+          for (const plan of (data || []) as unknown as Row[]) {
+            if (plan.meal_type in next) {
+              const names = (plan.items || [])
+                .map((i) => {
+                  const mi = i.menu_item
+                  if (!mi) return undefined
+                  return Array.isArray(mi) ? mi[0]?.name : mi.name
+                })
+                .filter((n): n is string => Boolean(n))
+              next[plan.meal_type] = names.join(', ')
+            }
           }
           setTodayPlanText(next)
         })
@@ -302,6 +333,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     const ch = supabase
       .channel('cafezomad-table-meal-plan')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_meal_plans' }, () => fetchTodayPlan())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_meal_plan_items' }, () => fetchTodayPlan())
       .subscribe()
     return () => { supabase.removeChannel(ch) }
   }, [])
@@ -535,6 +567,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         })),
         p_food_credit_paise: foodCreditAmount * 100,
         p_payment_mode: resolvedMode,
+        p_notes: customerNotes.trim() || null,
       })
 
       if (error) {
@@ -547,6 +580,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       saveOrderId(data.id)
       setCart([])
       setFoodCreditAmount(0)
+      setCustomerNotes('')
       setOrderPlaced({
         id: data.id,
         display_number: data.display_number,
@@ -731,7 +765,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       )}
 
       {/* ── Main Content ─────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto pb-28">
+      <div ref={mainScrollRef} className={`flex-1 overflow-y-auto ${totalItems > 0 && activeTab === 'menu' ? 'pb-44' : 'pb-28'}`}>
 
         {/* ── MENU TAB ──────────────────────────────────────────────────────── */}
         {activeTab === 'menu' && (
@@ -777,7 +811,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
             )}
 
             {/* FAB buttons — search + category filter */}
-            <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-2">
+            <div className={`fixed ${totalItems > 0 ? 'bottom-44' : 'bottom-24'} right-4 z-50 flex flex-col items-end gap-2`}>
               {/* Category popup */}
               {showCategories && (
                 <>
@@ -1182,6 +1216,27 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                   </div>
                 )}
 
+                {/* Note to the kitchen — optional free-text, e.g. "no onions",
+                    "extra spicy", "well done". Trimmed and stored on
+                    cafe_orders.notes via place_cafe_order's p_notes param. */}
+                <div className="rounded-2xl bg-white ring-1 ring-black/10 p-3">
+                  <label className="block text-xs font-semibold text-black/60 mb-1.5">
+                    Note for the kitchen (optional)
+                  </label>
+                  <textarea
+                    value={customerNotes}
+                    onChange={(e) => setCustomerNotes(e.target.value.slice(0, 280))}
+                    placeholder="e.g. no onions, extra spicy, well done…"
+                    rows={2}
+                    className="w-full resize-none rounded-xl bg-black/5 px-3 py-2 text-sm text-black placeholder:text-black/30 outline-none focus:bg-black/[0.07] transition-colors"
+                  />
+                  {customerNotes.length > 0 && (
+                    <div className="mt-1 text-right text-[10px] text-black/35 font-mono">
+                      {customerNotes.length}/280
+                    </div>
+                  )}
+                </div>
+
                 {/* Place Order — Razorpay handles every paid order; the only no-payment
                     path is full food-credit coverage (RPC resolves that to 'zo_card'). */}
                 <button onClick={handlePlaceOrder} disabled={isOrdering || paymentInFlight !== null} className="w-full bg-orange-500 text-black py-4 text-base font-bold tracking-wide rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all disabled:opacity-50">
@@ -1269,7 +1324,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
           onClick={() => {
             if (requireLoginForOrdering()) setActiveTab('orders')
           }}
-          className="fixed bottom-24 left-5 right-5 z-50 bg-orange-500 text-black px-5 py-3.5 rounded-2xl shadow-2xl shadow-orange-500/30 flex items-center justify-between active:scale-[0.98] transition-all"
+          className="fixed bottom-24 left-5 right-5 max-w-md mx-auto z-50 bg-orange-500 text-black px-5 py-3.5 rounded-2xl shadow-2xl shadow-orange-500/30 flex items-center justify-between active:scale-[0.98] transition-all"
         >
           <div className="flex items-center gap-2">
             <span className="bg-black text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">

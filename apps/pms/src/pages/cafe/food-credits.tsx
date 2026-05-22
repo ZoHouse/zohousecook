@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import { NextPage } from 'next'
 import {
+  AutoComplete,
   Button,
   Card,
   Col,
@@ -34,12 +35,16 @@ const TYPE_COLORS: Record<string, string> = {
 const FoodCreditsPage: NextPage = () => {
   const {
     wallet, transactions, customerMatch, isLoading, stats,
-    searchByPhone, issueCredits, revokeCredits,
+    searchByPhone, searchWallets, issueCredits, revokeCredits,
     recentTransactions,
   } = useFoodCredits()
 
   const [phoneInput, setPhoneInput] = useState('')
   const [searchTimer, setSearchTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
+  // Autocomplete dropdown options — matching wallets by name / phone.
+  const [searchOptions, setSearchOptions] = useState<
+    { value: string; label: React.ReactNode }[]
+  >([])
 
   // Issue modal
   const [issueOpen, setIssueOpen] = useState(false)
@@ -58,13 +63,37 @@ const FoodCreditsPage: NextPage = () => {
   const handleSearch = useCallback((value: string) => {
     setPhoneInput(value)
     if (searchTimer) clearTimeout(searchTimer)
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
+      // Populate the name/phone dropdown.
+      const results = await searchWallets(value)
+      setSearchOptions(
+        results.map((r) => ({
+          value: r.phone,
+          label: (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+              <span>{r.name || 'Unknown'} · {r.phone}</span>
+              <span style={{ color: '#cfff50', fontFamily: 'monospace' }}>{r.balance} $food</span>
+            </div>
+          ),
+        })),
+      )
+      // A full phone typed → also load directly, so brand-new people with no
+      // wallet yet still surface (the "issue first $food" path).
       if (value.replace(/\D/g, '').length >= 10) {
         searchByPhone(value)
       }
     }, 400)
     setSearchTimer(timer)
-  }, [searchTimer, searchByPhone])
+  }, [searchTimer, searchWallets, searchByPhone])
+
+  // Picking someone from the dropdown loads their wallet.
+  const handleSelectWallet = useCallback((phone: string) => {
+    setPhoneInput(phone)
+    searchByPhone(phone)
+  }, [searchByPhone])
+
+  // Most recent top-up — drives the "last credited / when" summary.
+  const lastIssue = transactions.find((t) => t.type === 'issue')
 
   const handleIssue = async () => {
     if (!issueAmount || issueAmount < 1) return
@@ -146,10 +175,22 @@ const FoodCreditsPage: NextPage = () => {
     },
     {
       title: 'By',
-      dataIndex: 'created_by',
       key: 'by',
-      width: 80,
-      render: (v: string | null) => v || '—',
+      width: 140,
+      ellipsis: true,
+      render: (_: unknown, r: FoodCreditTransaction) => {
+        // For SPEND / REFUND, the actor is the wallet owner (the customer
+        // whose credits got debited / refunded). place_cafe_order doesn't
+        // populate created_by, so we read the joined wallet instead.
+        if (r.type === 'spend' || r.type === 'refund') {
+          const w = r.wallet
+          const label = w?.name || w?.phone
+          return label ? <Text>{label}</Text> : '—'
+        }
+        // For ISSUE / REVOKE the operator passed p_created_by='admin' via
+        // the RPC — surface that as-is.
+        return r.created_by || '—'
+      },
     },
   ]
 
@@ -179,14 +220,19 @@ const FoodCreditsPage: NextPage = () => {
 
           {/* Search + Issue */}
           <div style={{ display: 'flex', gap: 12, marginBottom: 20, alignItems: 'center' }}>
-            <Input
-              prefix={<SearchOutlined />}
-              placeholder="Search by phone number..."
+            <AutoComplete
               value={phoneInput}
-              onChange={(e) => handleSearch(e.target.value)}
-              style={{ width: 280 }}
+              options={searchOptions}
+              onChange={handleSearch}
+              onSelect={handleSelectWallet}
+              style={{ width: 320 }}
               allowClear
-            />
+            >
+              <Input
+                prefix={<SearchOutlined />}
+                placeholder="Search by name or phone..."
+              />
+            </AutoComplete>
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -215,6 +261,38 @@ const FoodCreditsPage: NextPage = () => {
                   <Text type="secondary">$food balance</Text>
                 </div>
               </div>
+
+              {/* At-a-glance summary — balance, and the most recent top-up. */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 36,
+                  padding: '14px 18px',
+                  marginBottom: 16,
+                  background: 'rgba(207,255,80,0.06)',
+                  border: '1px solid rgba(207,255,80,0.16)',
+                  borderRadius: 10,
+                }}
+              >
+                <SummaryStat label="Balance left" value={`${wallet.balance} $food`} />
+                <SummaryStat
+                  label="Last credited"
+                  value={lastIssue ? `${lastIssue.amount} $food` : '—'}
+                />
+                <SummaryStat
+                  label="When"
+                  value={
+                    lastIssue
+                      ? new Date(lastIssue.created_at).toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                        })
+                      : '—'
+                  }
+                />
+              </div>
+
               <Space>
                 <Button
                   icon={<PlusOutlined />}
@@ -368,6 +446,18 @@ const FoodCreditsPage: NextPage = () => {
         </div>
       </Modal>
     </ZoHouseGuard>
+  )
+}
+
+/** One stat in the wallet summary strip: small label above, value below. */
+function SummaryStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 2 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 18, fontWeight: 700 }}>{value}</div>
+    </div>
   )
 }
 

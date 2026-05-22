@@ -43,7 +43,10 @@ interface MenuItemFormProps {
   /** Called when the user clicks Delete (only visible in edit mode). Form handles its own confirmation in the parent. */
   onDelete?: (item: MenuItem) => void
   editItem?: MenuItem | null
+  /** Currently-selected category in the sidebar. Used as the default category for NEW items. When editing, defaults to editItem.category_id instead. */
   categoryId: string
+  /** All available categories — needed to render the "Category" dropdown so items can be moved. */
+  categories: { id: string; name: string }[]
 }
 
 const MenuItemForm: React.FC<MenuItemFormProps> = ({
@@ -53,6 +56,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
   onDelete,
   editItem,
   categoryId,
+  categories,
 }) => {
   const [form] = Form.useForm()
   const isEdit = !!editItem
@@ -111,6 +115,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
       if (editItem) {
         form.setFieldsValue({
           name: editItem.name,
+          category_id: editItem.category_id,
           price: editItem.price / 100,
           diet: editItem.diet,
           description: editItem.description || '',
@@ -129,6 +134,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
       } else {
         form.resetFields()
         form.setFieldsValue({
+          category_id: categoryId,
           diet: 'veg',
           is_available: true,
         })
@@ -291,9 +297,12 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
     try {
       const values = await form.validateFields()
 
-      // Save the menu item first
+      // Save the menu item first. The form's category_id field (NEW) is the
+      // source of truth — lets staff move an item to a different category on
+      // edit. Falls back to the page's currently-selected category for new
+      // items via setFieldsValue defaults above.
       const result = await onSubmit({
-        category_id: categoryId,
+        category_id: (values.category_id as string) || categoryId,
         name: values.name,
         description: values.description || null,
         price: Math.round((values.price as number) * 100),
@@ -373,6 +382,20 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
           rules={[{ required: true, message: 'Name is required' }]}
         >
           <Input placeholder="e.g. Dal Makhani" />
+        </Form.Item>
+
+        <Form.Item
+          name="category_id"
+          label="Category"
+          rules={[{ required: true, message: 'Category is required' }]}
+          tooltip={isEdit ? "Changing the category moves this item across both kitchens (menu structure is standardised)." : undefined}
+        >
+          <Select
+            placeholder="Pick a category"
+            options={categories.map((c) => ({ value: c.id, label: c.name }))}
+            showSearch
+            optionFilterProp="label"
+          />
         </Form.Item>
 
         <Form.Item

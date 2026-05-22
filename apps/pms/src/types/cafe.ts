@@ -104,6 +104,8 @@ export interface FoodCreditTransaction {
   note: string | null
   created_by: string | null
   created_at: string
+  /** Optional join from food_credit_wallets — populated by useFoodCredits so the "By" column on /cafe/food-credits can show the wallet owner (the actual spender) even though place_cafe_order doesn't set created_by on SPEND rows. */
+  wallet?: { name: string | null; phone: string } | null
 }
 
 export type OrderMode = 'dine_in' | 'pickup' | 'room_service'
@@ -186,8 +188,12 @@ export interface DailyAnalytics {
   total_orders: number
   /** Cash actually paid today (paise). Excludes food-credit-absorbed value and cancelled orders. */
   total_revenue: number
-  /** Food value absorbed by $food credits today (paise). Excludes cancelled orders. */
+  /** Food value absorbed by $food credits today (paise). Excludes cancelled orders. Equals staff_food_credits + customer_food_credits. */
   food_credits_used: number
+  /** $food credits spent by staff members — team meal perk, NOT revenue (paise). */
+  staff_food_credits: number
+  /** $food credits spent by non-staff (customers) — counts as revenue (paise). */
+  customer_food_credits: number
   /** Avg cash paid per cash-paying order (paise). Credit-only orders excluded so the avg is meaningful. */
   avg_order_value: number
   active_orders: number

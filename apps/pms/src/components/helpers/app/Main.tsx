@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { GeneralObject } from "@zo/definitions/general";
 import { Head } from "@zo/moal";
-import { Spin } from "antd";
+import { Collapse, Spin } from "antd";
 import { NextComponentType, NextPageContext } from "next";
 import { useRouter } from "next/router";
 import React from "react";
@@ -45,6 +45,79 @@ const Main: React.FC<MainProps> = ({ Component, pageProps }) => {
   );
 };
 
+/**
+ * On-screen auth diagnostic. Renders ONLY for a logged-in user who got into
+ * the app but whose operator/house never resolved (selectedOperator has no
+ * `code`) — i.e. exactly the broken state where Zo House features stay
+ * hidden. Invisible to everyone whose operator resolved normally.
+ *
+ * Lets an affected staff member surface the resolution state (do they have
+ * permissions? did CRS return operators?) by tapping one expander and
+ * screenshotting it — no browser dev-tools needed. See PR #137.
+ */
+const AuthDiagnostics: React.FC = () => {
+  const {
+    effectiveRole,
+    selectedOperator,
+    principals,
+    associatedOperators,
+    diagnostics,
+  } = useAssociation();
+
+  // Not logged in / still resolving / denied → handled elsewhere.
+  if (effectiveRole == null || effectiveRole === "none") return null;
+  // Operator/house resolved fine — nothing to diagnose.
+  if (selectedOperator?.code) return null;
+
+  const report = {
+    effectiveRole,
+    principals,
+    selectedOperator: {
+      id: selectedOperator?.id ?? null,
+      code: selectedOperator?.code ?? null,
+      name: selectedOperator?.name ?? null,
+    },
+    associatedOperatorsCount: associatedOperators?.length ?? 0,
+    permissionsCount: diagnostics.permissionsCount,
+    operatorAssociationsCount: diagnostics.operatorAssociationsCount,
+    rawOperatorsCount: diagnostics.rawOperatorsCount,
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: 12,
+        right: 12,
+        zIndex: 1000,
+        maxWidth: 380,
+      }}
+    >
+      <Collapse
+        ghost
+        items={[
+          {
+            key: "auth-diag",
+            label: (
+              <span className="text-xs text-zui-silver">
+                ⚠ Account not linked to a house — tap for details
+              </span>
+            ),
+            children: (
+              <pre
+                className="text-xs bg-zui-bg/60 p-3 rounded border border-zui-light overflow-x-auto"
+                style={{ whiteSpace: "pre-wrap" }}
+              >
+                {JSON.stringify(report, null, 2)}
+              </pre>
+            ),
+          },
+        ]}
+      />
+    </div>
+  );
+};
+
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { effectiveRole } = useAssociation();
   const hasAnyAccess = effectiveRole !== "none";
@@ -60,7 +133,10 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         ) : !hasAnyAccess ? (
           <AccessDenied />
         ) : (
-          children
+          <>
+            {children}
+            <AuthDiagnostics />
+          </>
         )}
       </div>
     </div>
