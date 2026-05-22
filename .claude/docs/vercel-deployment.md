@@ -8,6 +8,7 @@ This monorepo deploys to **two** Vercel projects in the `samurais-dojo` team. A 
 |---|---|---|---|
 | `zozozo-website` | `apps/website` | `zozozo.work` (root + most paths) | `npx nx build website --configuration=production && cp -r dist/apps/website/public/. dist/apps/website/.next/` |
 | `zozozo-pm` | `apps/pms` | `zozozo.work/pm` (via rewrite in root `vercel.json`) | `npx nx build pms --configuration=production && cp -r dist/apps/pms/public/. dist/apps/pms/.next/` |
+| `zo-house` | `apps/house` | `zo.house` (separate apex domain) | `npx nx build house --configuration=production` |
 | `zozozo-earn` | _separate repo_ | `zozozo.work/earn` (via rewrite) | N/A here |
 
 Both projects share `outputDirectory: dist/apps/<app>/.next` and the cp-public-into-.next pattern (see `feedback_zozozo_public_folder_404_root_cause` memory for why).
@@ -35,9 +36,15 @@ Git-push-triggered builds on Vercel Hobby have been flaky in this org (BLOCKED s
 # from repos/zo.xyz/ — root of the monorepo, NOT inside apps/<app>/
 # (see feedback_vercel_website_local_cli_relocate_link memory for why)
 
+# 0. ALWAYS pull main first. `vercel --prod` and `vercel build` upload
+#    the local working tree, not git-main. If local is behind main, the
+#    deploy ships stale code (incident 2026-05-22: deployed zo-house from
+#    16e99c1 while main was at 4b8ca9c → /live + /build 404'd).
+git pull --ff-only origin main
+
 # 1. Link to the target project
 rm -rf .vercel
-vercel link --project zozozo-pm --yes   # or zozozo-website
+vercel link --project zozozo-pm --yes   # or zozozo-website, zo-house
 
 # 2. Pull production env vars to .vercel/.env.production.local
 vercel pull --yes --environment=production
@@ -83,6 +90,33 @@ Only the rewrites that map to a Vercel project that actually exists are live:
 - `/earn → https://zozozo-earn-samurais-dojo.vercel.app/earn` ✅
 
 The rewrites for `/admin`, `/ops`, `/checkin`, `/payments`, `/comic`, `/meme`, `/social-engine` point to Vercel projects that do **not exist** as of 2026-05-17. Those paths return 404. They are intentional placeholders that may become real later, or stale config from an old plan. Don't waste cycles wiring env vars for projects that don't exist; revisit per-rewrite when a real Vercel project lands.
+
+## The Hobby-plan stall pattern (2026-05-22 incident)
+
+Around 2026-05-22, **both auto-deploys (webhook-triggered) and manual `vercel --prod`** to `zozozo-website`, `zozozo-pm`, and `zo-house` started landing as deploys with **status=UNKNOWN, build=0ms** — the deploy slot is created and assets upload, but the build phase never starts. The targetUrl on the failure links to `vercel.com/samurais-dojo?upgradeToPro=github-private-org-to-hobby`.
+
+Symptoms (apply to all three projects):
+- `vercel ls <project>` shows the new deploy with status `UNKNOWN`, duration `--`.
+- `vercel inspect dpl_…` shows `Builds: . [0ms]` and empty log stream.
+- `vercel promote` and `vercel alias set` reject with "deployment is not ready".
+- Production alias stays on the previous Ready deploy — so the site doesn't break, it just goes stale.
+
+Stalls **clear spontaneously** after some delay (in the 2026-05-22 case: ~6+ hours of stall, then queue resumed and the most recent push built normally — earlier UNKNOWN slots stayed UNKNOWN forever, the system just moved on).
+
+**What to do when you hit it:**
+1. Don't keep retrying — every retry creates another UNKNOWN slot that won't be processed.
+2. Verify the site is still serving via the previous Ready deploy: `curl -s https://<domain> | grep buildId`.
+3. Set a 30-min check; if the queue is still stuck and the change is urgent, escalate to upgrading the plan.
+
+The block is *plan-level*, not transient quota. Permanent fix is upgrade Hobby → Pro.
+
+## Media on apps/house (don't repeat the public/ trap)
+
+Per the project's "don't put runtime media in `apps/<app>/public/`" rule, `apps/house` learned this twice on 2026-05-22:
+- PR #132 shipped 20 JPGs under `apps/house/public/{programming,houses}/` + `daypass-bg.jpg` → all 404'd on prod.
+- Fix (`48dab34`): upload to Zo CAS via `POST /api/v1/cas/media/`, reference `https://proxy.cdn.zo.xyz/gallery/media/images/<uuid>_<ts>.jpg` URLs directly.
+
+For `apps/house`, **all media goes through Zo CAS / cdn.zo.xyz**. Don't bundle via JS imports either — `apps/house/index.d.ts` types `*.jpg` as plain `string` (not Next's `StaticImageData`), so `.src` won't work; and CDN delivery is auto-WebP-transcoded by proxy.cdn anyway.
 
 ## "I'm about to deploy a new app to Vercel" — checklist
 
