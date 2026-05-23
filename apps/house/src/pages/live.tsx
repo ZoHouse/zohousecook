@@ -723,7 +723,9 @@ const Live: React.FC = () => {
 
             <BlurFade inView delay={0.25} direction="up">
               <a
-                href="mailto:blrxzo@zo.xyz?subject=Your%20project%20at%20Zo%20House"
+                href="https://form.typeform.com/to/myXckzWC"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="group block h-full border border-dashed border-white/15 hover:border-[#c5a572]/40 bg-gradient-to-b from-neutral-950/10 to-transparent p-4 md:p-5 transition-all duration-500 hover:-translate-y-0.5"
               >
                 <h3 className="font-[family-name:var(--font-headline)] italic text-xl md:text-2xl text-white/50 group-hover:text-[#c5a572] leading-none transition-colors">
@@ -733,7 +735,7 @@ const Live: React.FC = () => {
                   Running a cohort, accelerator, residency, studio, or experiment? Take a corner of the compound.
                 </p>
                 <p className="mt-4 text-[9px] tracking-[3px] uppercase text-white/40 font-mono group-hover:text-[#c5a572] transition-colors">
-                  Talk to us →
+                  Apply →
                 </p>
               </a>
             </BlurFade>

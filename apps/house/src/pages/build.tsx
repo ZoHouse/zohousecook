@@ -152,12 +152,14 @@ function DayPassCard() {
             <span className="text-xl sm:text-4xl lg:text-6xl font-medium shiny-gold">₹420</span>
             <span className="text-[9px] sm:text-xs text-neutral-200">/ day</span>
           </div>
-          <Link
-            href="/?apply=1"
+          <a
+            href="https://form.typeform.com/to/QKvpRT3q"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-block mt-2 sm:mt-5 lg:mt-8 text-[9px] sm:text-[11px] tracking-[2px] sm:tracking-[3px] uppercase py-1.5 px-4 sm:py-3 sm:px-8 border border-white/40 text-white hover:border-white hover:bg-white/10 transition-colors"
           >
             Book a day
-          </Link>
+          </a>
         </div>
       </div>
     </div>
@@ -254,12 +256,14 @@ const Build: React.FC = () => {
                       </div>
                     </div>
 
-                    <Link
-                      href="/?apply=1"
+                    <a
+                      href="https://form.typeform.com/to/QKvpRT3q"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="block mt-10 text-center text-[11px] tracking-[3px] uppercase py-3 border border-white/20 text-white/70 hover:border-white hover:text-white transition-colors"
                     >
                       Apply for a desk
-                    </Link>
+                    </a>
                   </div>
                 </div>
               </BlurFade>
