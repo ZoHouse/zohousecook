@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import { Analytics as VercelAnalytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ZoAuthProvider } from "../hooks/useZoAuth";
+import { CalendarWidget } from "../components/CalendarWidget";
 import { initDestinations } from "../lib/analytics/destinations";
 import { initConsent } from "../lib/analytics/consent";
 import { captureFirstTouch, getFirstTouch } from "../lib/analytics/utm";
@@ -72,6 +73,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
       <Component {...pageProps} />
+      <CalendarWidget />
       <VercelAnalytics />
       <SpeedInsights />
     </ZoAuthProvider>
