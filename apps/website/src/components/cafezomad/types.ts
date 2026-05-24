@@ -83,7 +83,7 @@ export interface CafeOrderWithItems {
   table?: CafeTable | null
 }
 
-export type Tab = 'menu' | 'orders' | 'wallet'
+export type Tab = 'menu' | 'cart' | 'orders' | 'wallet'
 
 export interface CartItem {
   menu_item_id: string
