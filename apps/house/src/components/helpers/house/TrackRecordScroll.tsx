@@ -6,9 +6,9 @@ import { HOUSE_MEDIA } from "../../../config/house-media";
 const cities = [
   {
     city: "Dubai",
-    tagline: "Pop-up Hacker House",
+    tagline: "Six-Month Pop-Up",
     description:
-      "Three-week builder sprint in the desert. High-signal founders, zero distractions.",
+      "Six months on the ground in Dubai. Built a global community of founders with programming all through the season.",
     flag: "\u{1F1E6}\u{1F1EA}",
     images: [HOUSE_MEDIA.reel5, HOUSE_MEDIA.reel4, HOUSE_MEDIA.reel6],
   },
@@ -22,9 +22,9 @@ const cities = [
   },
   {
     city: "San Francisco",
-    tagline: "Builder Residency",
+    tagline: "One-Year Residency",
     description:
-      "Two weeks in SOMA. Demo day with top-tier VCs. Six deals closed on-site.",
+      "One year on the ground in SF. 100+ events with top mentors, founders, VCs, and ecosystem builders.",
     flag: "\u{1F1FA}\u{1F1F8}",
     images: [HOUSE_MEDIA.foundersDinner, HOUSE_MEDIA.reel8],
   },
