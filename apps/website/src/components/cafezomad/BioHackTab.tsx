@@ -244,46 +244,46 @@ export function BioHackTab({
   return (
     <div className="px-4 py-4 space-y-3">
       {/* Profile Card */}
-      <div className="rounded-2xl bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500 p-5 relative overflow-hidden">
+      <div className="rounded-2xl bg-[#F1563F] p-5 relative overflow-hidden shadow-sm shadow-[#F1563F]/30">
         <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10" />
         <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/10" />
         <div className="relative flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-black/15 flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-white/30">
+          <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-white/30">
             {avatarUrl ? (
               <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-xl font-black text-white/80">
+              <span className="text-xl font-black text-white">
                 {displayName.charAt(0).toUpperCase()}
               </span>
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-extrabold text-black tracking-tight truncate">{displayName}</h2>
+            <h2 className="text-base font-extrabold text-white tracking-tight truncate">{displayName}</h2>
             {p?.work_role && (
-              <p className="text-[11px] text-black/50 font-medium truncate">{p.work_role}</p>
+              <p className="text-[11px] text-white/80 font-medium truncate">{p.work_role}</p>
             )}
             <div className="flex items-center gap-2 mt-1">
-              <span className="px-2 py-0.5 bg-black/15 rounded-full text-[10px] font-bold text-black/70 uppercase tracking-wider">
+              <span className="px-2 py-0.5 bg-white/20 ring-1 ring-white/20 rounded-full text-[10px] font-bold text-white uppercase tracking-wider">
                 {p?.membership || user.membership || 'Member'}
               </span>
               {p?.level != null && (
-                <span className="text-[10px] font-bold text-black/50">Lvl {p.level}</span>
+                <span className="text-[10px] font-bold text-white/85">Lvl {p.level}</span>
               )}
             </div>
           </div>
           {balance != null && (
             <div className="text-right shrink-0">
-              <p className="text-lg font-extrabold text-black">{balance.toLocaleString()}</p>
-              <p className="text-[9px] text-black/50 font-semibold uppercase tracking-wider">$food</p>
+              <p className="text-lg font-extrabold text-white">{balance.toLocaleString()}</p>
+              <p className="text-[9px] text-white/85 font-semibold uppercase tracking-wider">$food</p>
             </div>
           )}
         </div>
         {p?.level_percent != null && (
           <div className="relative mt-3">
-            <div className="h-1.5 bg-black/10 rounded-full overflow-hidden">
-              <div className="h-full bg-black/30 rounded-full transition-all" style={{ width: `${p.level_percent}%` }} />
+            <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+              <div className="h-full bg-white rounded-full transition-all" style={{ width: `${p.level_percent}%` }} />
             </div>
-            <div className="flex justify-between mt-1 text-[9px] font-semibold text-black/40">
+            <div className="flex justify-between mt-1 text-[9px] font-semibold text-white/80">
               <span>{p.experience?.toLocaleString() || 0} XP</span>
               <span>Level {(p.level || 0) + 1}</span>
             </div>
@@ -295,19 +295,19 @@ export function BioHackTab({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-extrabold text-black tracking-tight">Bio Hack</h2>
-          <p className="text-[11px] text-black/40 font-medium">
+          <p className="text-[11px] text-black/60 font-medium">
             {displayName}&apos;s nutrition today
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => { setEditGoals(goals); setShowGoalsEditor(true) }}
-            className="px-2.5 py-1.5 rounded-full bg-white ring-1 ring-black/10 text-[11px] font-semibold text-black/50 active:scale-95 transition-all"
+            className="px-2.5 py-1.5 rounded-full bg-white ring-1 ring-black/10 text-[11px] font-semibold text-black/70 active:scale-95 transition-all"
           >
             Set Goals
           </button>
-          <div className="px-3 py-1.5 bg-orange-100 rounded-full">
-            <span className="text-[11px] font-bold text-orange-700">
+          <div className="px-3 py-1.5 bg-[#F1563F]/10 ring-1 ring-[#F1563F]/20 rounded-full">
+            <span className="text-[11px] font-bold text-[#F1563F]">
               {nt.items} item{nt.items !== 1 ? 's' : ''} logged
             </span>
           </div>
@@ -315,30 +315,26 @@ export function BioHackTab({
       </div>
 
       {/* Calorie Hero Card */}
-      <div className="rounded-2xl bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500 p-5 relative overflow-hidden">
-        <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-white/10" />
-        <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/10" />
-        <div className="relative">
-          <p className="text-xs font-semibold text-black/50 uppercase tracking-widest mb-1">Calories Today</p>
-          <div className="flex items-end gap-2">
-            <span className="text-4xl font-black text-black tracking-tighter">
-              {Math.round(nt.calories).toLocaleString()}
-            </span>
-            <span className="text-sm font-semibold text-black/50 mb-1">/ {goals.calories} kcal</span>
-          </div>
-          <div className="mt-3 h-2.5 bg-black/10 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${Math.min(100, (nt.calories / goals.calories) * 100)}%`,
-                background: nt.calories > goals.calories ? '#ef4444' : '#000000aa',
-              }}
-            />
-          </div>
-          <div className="flex justify-between mt-1.5 text-[10px] font-semibold text-black/40">
-            <span>{Math.round((nt.calories / goals.calories) * 100)}% of daily goal</span>
-            <span>{Math.max(0, goals.calories - Math.round(nt.calories))} remaining</span>
-          </div>
+      <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-5">
+        <p className="text-xs font-bold text-black/60 uppercase tracking-widest mb-1">Calories Today</p>
+        <div className="flex items-end gap-2">
+          <span className="text-4xl font-black text-[#F1563F] tracking-tighter">
+            {Math.round(nt.calories).toLocaleString()}
+          </span>
+          <span className="text-sm font-semibold text-black/60 mb-1">/ {goals.calories} kcal</span>
+        </div>
+        <div className="mt-3 h-2.5 bg-black/[0.06] rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{
+              width: `${Math.min(100, (nt.calories / goals.calories) * 100)}%`,
+              background: nt.calories > goals.calories ? '#ef4444' : '#F1563F',
+            }}
+          />
+        </div>
+        <div className="flex justify-between mt-1.5 text-[10px] font-semibold text-black/60">
+          <span>{Math.round((nt.calories / goals.calories) * 100)}% of daily goal</span>
+          <span>{Math.max(0, goals.calories - Math.round(nt.calories))} remaining</span>
         </div>
       </div>
 
@@ -346,7 +342,7 @@ export function BioHackTab({
       <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-4">
         <h3 className="text-xs font-bold text-black/60 uppercase tracking-widest mb-3">Macros</h3>
         <div className="grid grid-cols-5 gap-1">
-          <MacroRing label="Protein" value={nt.protein} target={goals.protein} color="#f97316" unit="g" />
+          <MacroRing label="Protein" value={nt.protein} target={goals.protein} color="#F1563F" unit="g" />
           <MacroRing label="Carbs" value={nt.carbs} target={goals.carbs} color="#3b82f6" unit="g" />
           <MacroRing label="Fats" value={nt.fats} target={goals.fats} color="#eab308" unit="g" />
           <MacroRing label="Fibre" value={nt.fibre} target={goals.fibre} color="#22c55e" unit="g" />
@@ -363,10 +359,10 @@ export function BioHackTab({
           <div className="space-y-2">
             {mealLog.map((meal, idx) => (
               <div key={idx} className="flex items-center gap-3 py-1.5">
-                <span className="text-[10px] font-mono text-black/30 w-10 shrink-0">{meal.time}</span>
+                <span className="text-[10px] font-mono text-black/50 w-10 shrink-0">{meal.time}</span>
                 <div className="flex-1 min-w-0">
                   <span className="text-sm font-semibold text-black truncate block">
-                    {meal.qty > 1 && <span className="font-mono text-black/40">{meal.qty}× </span>}
+                    {meal.qty > 1 && <span className="font-mono text-black/50">{meal.qty}× </span>}
                     {meal.name}
                   </span>
                 </div>
@@ -374,10 +370,10 @@ export function BioHackTab({
                   {meal.cal >= 0 ? (
                     <>
                       <span className="text-xs font-bold text-black">{meal.cal} kcal</span>
-                      <span className="text-[10px] text-orange-500 font-semibold ml-1">{meal.protein}g P</span>
+                      <span className="text-[10px] text-[#F1563F] font-semibold ml-1">{meal.protein}g P</span>
                     </>
                   ) : (
-                    <span className="text-[10px] text-black/30 font-medium">no nutrition data</span>
+                    <span className="text-[10px] text-black/50 font-medium">no nutrition data</span>
                   )}
                 </div>
               </div>
@@ -386,7 +382,7 @@ export function BioHackTab({
         </div>
       ) : (
         <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-6 text-center">
-          <p className="text-sm text-black/40 font-medium">
+          <p className="text-sm text-black/60 font-medium">
             No meals logged today. Order from the menu to start tracking.
           </p>
         </div>
@@ -410,12 +406,12 @@ export function BioHackTab({
                 <div className="space-y-1">
                   {order.order_items?.map((item, idx) => (
                     <div key={item.id || idx} className="flex justify-between text-xs">
-                      <span className="text-black/50 font-medium">
+                      <span className="text-black/60 font-medium">
                         <span className="font-mono font-semibold">{item.quantity}×</span>{' '}
                         {item.name}
                       </span>
                       {item.price != null && (
-                        <span className="font-semibold text-black/70">
+                        <span className="font-semibold text-black/75">
                           {formatPaise(item.price * item.quantity)}
                         </span>
                       )}
@@ -423,7 +419,7 @@ export function BioHackTab({
                   ))}
                 </div>
                 <div className="flex justify-between items-center mt-2 pt-2 border-t border-black/5">
-                  <span className="text-[10px] text-black/30 font-medium font-mono">
+                  <span className="text-[10px] text-black/50 font-medium font-mono">
                     {new Date(order.created_at).toLocaleTimeString('en-IN', {
                       hour: '2-digit',
                       minute: '2-digit',
@@ -447,7 +443,7 @@ export function BioHackTab({
             <div className="px-5 pt-5 pb-3 border-b border-black/5">
               <div className="w-10 h-1 bg-black/15 rounded-full mx-auto mb-4" />
               <h2 className="text-lg font-extrabold text-black">Set Daily Goals</h2>
-              <p className="text-xs text-black/40 font-medium mt-0.5">Customize your nutrition targets</p>
+              <p className="text-xs text-black/60 font-medium mt-0.5">Customize your nutrition targets</p>
             </div>
             <div className="px-5 py-4 space-y-3 pb-8">
               {([
@@ -459,16 +455,16 @@ export function BioHackTab({
                 { key: 'sugar', label: 'Sugar (g)', step: 5 },
               ] as const).map(({ key, label, step }) => (
                 <div key={key} className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-black/70">{label}</span>
+                  <span className="text-sm font-medium text-black/75">{label}</span>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setEditGoals((g) => ({ ...g, [key]: Math.max(0, g[key] - step) }))}
-                      className="w-8 h-8 rounded-lg bg-black/5 flex items-center justify-center text-black/60 font-bold active:scale-95"
+                      className="w-8 h-8 rounded-lg bg-black/[0.06] ring-1 ring-black/10 flex items-center justify-center text-black font-bold active:scale-95"
                     >-</button>
                     <span className="w-14 text-center font-bold text-black tabular-nums">{editGoals[key]}</span>
                     <button
                       onClick={() => setEditGoals((g) => ({ ...g, [key]: g[key] + step }))}
-                      className="w-8 h-8 rounded-lg bg-black/5 flex items-center justify-center text-black/60 font-bold active:scale-95"
+                      className="w-8 h-8 rounded-lg bg-black/[0.06] ring-1 ring-black/10 flex items-center justify-center text-black font-bold active:scale-95"
                     >+</button>
                   </div>
                 </div>
@@ -476,7 +472,7 @@ export function BioHackTab({
               <button
                 onClick={handleSaveGoals}
                 disabled={savingGoals}
-                className="w-full bg-orange-500 text-black py-3.5 text-sm font-bold rounded-xl mt-4 active:scale-[0.98] transition-all disabled:opacity-50"
+                className="w-full bg-[#F1563F] text-white py-3.5 text-sm font-bold rounded-xl mt-4 shadow-lg shadow-[#F1563F]/30 active:scale-[0.98] transition-all disabled:opacity-50"
               >
                 {savingGoals ? 'Saving...' : 'Save Goals'}
               </button>

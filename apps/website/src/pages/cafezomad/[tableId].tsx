@@ -764,7 +764,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search menu..."
-                    className="w-full pl-9 pr-9 py-2.5 text-sm bg-white rounded-2xl ring-1 ring-black/10 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#F1563F]/40 placeholder:text-black/30"
+                    className="w-full pl-9 pr-9 py-2.5 text-sm text-black bg-white rounded-2xl ring-1 ring-black/10 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#F1563F]/40 placeholder:text-black/30"
                   />
                   {searchQuery && (
                     <button
