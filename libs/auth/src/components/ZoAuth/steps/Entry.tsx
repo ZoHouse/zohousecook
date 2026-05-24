@@ -114,79 +114,63 @@ const Entry: FC<EntryProps> = ({
   }, []);
 
   const handleMobileSubmit = async () => {
-    if (mobileNumber) {
-      const phoneNumber = parsePhoneNumber(`+${mobileNumber}`);
-      if (phoneNumber.isValid()) {
-        if (phoneNumber.countryCallingCode !== "91") {
-          try {
-            const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_KEY;
-            if (siteKey && typeof window !== "undefined" && window.grecaptcha) {
-              await new Promise<void>((resolve) => {
-                window.grecaptcha.ready(() => resolve());
-              });
+    if (!mobileNumber) return;
+    const phoneNumber = parsePhoneNumber(`+${mobileNumber}`);
+    if (!phoneNumber.isValid()) return;
 
-              const token = await window.grecaptcha.execute(siteKey, {
-                action: "request_otp",
-              });
-
-              const data = {
-                mobile_number: phoneNumber.nationalNumber,
-                mobile_country_code: phoneNumber.countryCallingCode,
-                captcha_response_token: token,
-              };
-              requestOtp(
-                { data },
-                {
-                  onSuccess: () => {
-                    setMobileLoginStep("ENTER_OTP");
-                    setTimer(30);
-                    setIsResendOtpButtonDisabled(true);
-                  },
-                  onError: (error) => {
-                    handleRequestOtpError(error as AxiosError);
-                    logAxiosError(error);
-                  },
-                }
-              );
-            }
-          } catch (err) {
-            console.error("reCAPTCHA error:", err);
-          }
-        } else {
-          requestOtp(
-            {
-              data: {
-                mobile_number: phoneNumber.nationalNumber,
-                mobile_country_code: phoneNumber.countryCallingCode,
-              },
-            },
-            {
-              onSuccess: () => {
-                setMobileLoginStep("ENTER_OTP");
-                setTimer(30);
-                setIsResendOtpButtonDisabled(true);
-              },
-              onError: (error) => {
-                // Previously silent (logAxiosError → console only). If the
-                // backend rate-limits, the carrier drops SMS, or the request
-                // times out, the button used to sit there with zero feedback
-                // while WhatsApp OTP arrived out-of-band. Surface a visible
-                // message so users know something went wrong and can retry.
-                const status = (error as AxiosError)?.response?.status;
-                const msg =
-                  status === 429
-                    ? "Too many attempts. Try again in a minute."
-                    : status === 400
-                    ? "Invalid mobile number."
-                    : "Could not send OTP. Check your connection and try again.";
-                setOptVerificationResponse(msg);
-                logAxiosError(error);
-              },
-            }
-          );
-        }
-      }
+    // Backend requires a captcha_response_token on every OTP request,
+    // regardless of country code. Resolve a reCAPTCHA v3 token first.
+    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_KEY;
+    if (!siteKey || typeof window === "undefined" || !window.grecaptcha) {
+      setOptVerificationResponse(
+        "Verification service unavailable. Reload and try again."
+      );
+      return;
     }
+
+    let captchaToken: string;
+    try {
+      await new Promise<void>((resolve) => {
+        window.grecaptcha.ready(() => resolve());
+      });
+      captchaToken = await window.grecaptcha.execute(siteKey, {
+        action: "request_otp",
+      });
+    } catch (err) {
+      console.error("reCAPTCHA error:", err);
+      setOptVerificationResponse(
+        "Could not verify reCAPTCHA. Reload and try again."
+      );
+      return;
+    }
+
+    const data = {
+      mobile_number: phoneNumber.nationalNumber,
+      mobile_country_code: phoneNumber.countryCallingCode,
+      captcha_response_token: captchaToken,
+    };
+    requestOtp(
+      { data },
+      {
+        onSuccess: () => {
+          setMobileLoginStep("ENTER_OTP");
+          setTimer(30);
+          setIsResendOtpButtonDisabled(true);
+        },
+        onError: (error) => {
+          const status = (error as AxiosError)?.response?.status;
+          const msg =
+            status === 429
+              ? "Too many attempts. Try again in a minute."
+              : status === 400
+              ? "Invalid mobile number."
+              : "Could not send OTP. Check your connection and try again.";
+          setOptVerificationResponse(msg);
+          handleRequestOtpError(error as AxiosError);
+          logAxiosError(error);
+        },
+      }
+    );
   };
 
   // Zo Zo! Handling OTP verification right where users land

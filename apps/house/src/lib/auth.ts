@@ -65,10 +65,52 @@ function commonHeaders(token?: string): Record<string, string> {
   return h;
 }
 
+// Resolves a Google reCAPTCHA v3 token, loading the grecaptcha script on
+// first use. Backend requires captcha_response_token on every OTP request.
+async function resolveCaptchaToken(): Promise<string> {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    throw new Error("reCAPTCHA unavailable in this environment");
+  }
+  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_KEY;
+  if (!siteKey) throw new Error("NEXT_PUBLIC_RECAPTCHA_KEY not configured");
+
+  const ATTR = "data-zo-house-recaptcha";
+  if (!document.querySelector(`script[${ATTR}]`)) {
+    await new Promise<void>((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
+      s.async = true;
+      s.defer = true;
+      s.setAttribute(ATTR, "");
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error("Failed to load reCAPTCHA"));
+      document.head.appendChild(s);
+    });
+  }
+  const w = window as any;
+  if (!w.grecaptcha) {
+    await new Promise<void>((resolve, reject) => {
+      const start = Date.now();
+      const iv = setInterval(() => {
+        if (w.grecaptcha) { clearInterval(iv); resolve(); }
+        else if (Date.now() - start > 5000) { clearInterval(iv); reject(new Error("reCAPTCHA load timeout")); }
+      }, 100);
+    });
+  }
+  await new Promise<void>((resolve) => w.grecaptcha.ready(() => resolve()));
+  return w.grecaptcha.execute(siteKey, { action: "request_otp" });
+}
+
 export async function requestMobileOtp(
   mobile: string,
   countryCode: string
 ): Promise<{ ok: boolean; error?: string }> {
+  let captchaToken: string;
+  try {
+    captchaToken = await resolveCaptchaToken();
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
   try {
     const res = await fetch(`${API_BASE}/api/v1/auth/login/mobile/otp/`, {
       method: "POST",
@@ -76,6 +118,7 @@ export async function requestMobileOtp(
       body: JSON.stringify({
         mobile_number: mobile,
         mobile_country_code: countryCode,
+        captcha_response_token: captchaToken,
       }),
     });
     const data = await res.json().catch(() => ({}));
