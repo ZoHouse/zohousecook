@@ -31,10 +31,21 @@ function normalizePhone(phone: string | null | undefined): string | null {
   return normalized.length === 10 ? normalized : null
 }
 
+// Strips Zo's ".zo" suffix and rejects values that aren't usable as a
+// human customer name — ENS-shaped handles (`vitalik.eth`), raw wallet
+// addresses (`0x…`), the literal placeholder "ens" some profile rows ship
+// with, and anything too short to be a name. Without these guards the
+// kitchen ticket prints garbage like "Customer: ens" for any wallet-only
+// user whose first_name isn't set.
 function cleanNickname(value: unknown): string | null {
   if (typeof value !== 'string') return null
   const cleaned = value.replace(/\.zo$/i, '').trim()
-  return cleaned || null
+  if (!cleaned) return null
+  if (/^ens$/i.test(cleaned)) return null
+  if (/\.eth$/i.test(cleaned)) return null
+  if (/^0x[0-9a-f]+$/i.test(cleaned)) return null
+  if (cleaned.length < 2) return null
+  return cleaned
 }
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
@@ -482,13 +493,20 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
 
     setIsOrdering(true)
     try {
-      const customerName = authUser.first_name
-        ? `${authUser.first_name} ${authUser.last_name || ''}`.trim()
-        : cleanNickname(profile?.selected_nickname)
-          || cleanNickname(profile?.custom_nickname)
-          || cleanNickname(profile?.ens_nickname)
-          || cleanNickname(profile?.nickname)
-          || null
+      // Prefer real names over wallet-y identifiers — try the auth user
+      // first, then the profile's first/last (often populated even when the
+      // auth row isn't), and only fall through to nickname fields if no
+      // human name exists. cleanNickname filters out ENS/hex/.eth garbage
+      // so the kitchen ticket never prints "Customer: ens" or "0x…".
+      const p = profile as { first_name?: string; last_name?: string } | undefined
+      const customerName =
+        ([authUser.first_name, authUser.last_name].filter(Boolean).join(' ').trim() || null)
+        || ([p?.first_name, p?.last_name].filter(Boolean).join(' ').trim() || null)
+        || cleanNickname(profile?.selected_nickname)
+        || cleanNickname(profile?.custom_nickname)
+        || cleanNickname(profile?.nickname)
+        || cleanNickname(profile?.ens_nickname)
+        || null
       const customerPhone = normalizePhone(authUser.mobile_number || null)
       const customerEmail = authUser.email_address || null
 
@@ -682,10 +700,11 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 ring-1 ring-white/20 rounded-full">
                 <span className="text-[11px] font-semibold text-white/90">
                   {user.first_name
+                    || (profile as { first_name?: string } | undefined)?.first_name
                     || cleanNickname(profile?.selected_nickname)
                     || cleanNickname(profile?.custom_nickname)
-                    || cleanNickname(profile?.ens_nickname)
                     || cleanNickname(profile?.nickname)
+                    || cleanNickname(profile?.ens_nickname)
                     || user.mobile_number
                     || 'Guest'}
                 </span>

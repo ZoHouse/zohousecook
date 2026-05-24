@@ -196,12 +196,31 @@ export function BioHackTab({
   }, [user?.id, user?.mobile_number, allMenuItems])
 
   const p = profile as {
-    nickname?: string; avatar?: { image?: string }; pfp_image?: string; avatar_url?: string;
+    nickname?: string; selected_nickname?: string; custom_nickname?: string; ens_nickname?: string;
+    avatar?: { image?: string }; pfp_image?: string; avatar_url?: string;
     first_name?: string; last_name?: string;
     experience?: number; level?: number; level_percent?: number; bio?: string;
     membership?: string; work_role?: string
   } | undefined
-  const displayName = p?.nickname || (user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : '') || 'Citizen'
+  // Mirror the order-placement chain in [tableId].tsx — real names first
+  // (auth then profile), nicknames last, ENS-shaped values rejected so this
+  // tab never greets the user as "ens" or "vitalik.eth".
+  const cleanNick = (v: unknown): string | null => {
+    if (typeof v !== 'string') return null
+    const c = v.replace(/\.zo$/i, '').trim()
+    if (!c || /^ens$/i.test(c) || /\.eth$/i.test(c) || /^0x[0-9a-f]+$/i.test(c) || c.length < 2) return null
+    return c
+  }
+  const realName =
+    [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim()
+    || [p?.first_name, p?.last_name].filter(Boolean).join(' ').trim()
+  const displayName =
+    realName
+    || cleanNick(p?.selected_nickname)
+    || cleanNick(p?.custom_nickname)
+    || cleanNick(p?.nickname)
+    || cleanNick(p?.ens_nickname)
+    || 'Citizen'
   const rawAvatar = p?.avatar?.image || p?.pfp_image || p?.avatar_url
   const avatarUrl = rawAvatar && rawAvatar.length > 0 ? rawAvatar : null
   const balance = foodCreditBalance
