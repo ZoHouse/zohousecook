@@ -17,6 +17,7 @@ import {
   TrackRecordScroll,
 } from "../components/helpers/house";
 import { Village } from "../components/Village";
+import { PartnerStack } from "../components/PartnerStack";
 import { HOUSE_MEDIA } from "../config/house-media";
 import { fetchResidents } from "../lib/residents";
 import { useZoAuth } from "../hooks/useZoAuth";
@@ -256,6 +257,8 @@ export default function House({
         <TrackRecordScroll />
 
         <AsSeenOn />
+
+        <PartnerStack />
 
         {/* CTA Section */}
         <section className="relative min-h-[716px] w-full flex items-center justify-center overflow-hidden">
