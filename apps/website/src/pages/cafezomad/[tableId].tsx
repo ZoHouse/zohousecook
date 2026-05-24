@@ -747,7 +747,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
               <div className="px-4 pt-2.5 pb-2">
                 <div className="relative">
                   <svg
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/35"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1.8}
@@ -884,10 +884,10 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                 if (categoryMap.size === 0) {
                   return (
                     <div className="flex flex-col items-center justify-center py-16 gap-3">
-                      <svg className="w-12 h-12 text-black/15" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <svg className="w-12 h-12 text-black/10" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
                       </svg>
-                      <p className="text-black/35 font-medium text-sm">
+                      <p className="text-black/30 font-medium text-sm">
                         {searchQuery.trim()
                           ? `No items matching "${searchQuery}"`
                           : menuItems.length === 0
@@ -1059,7 +1059,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                       <div key={item.menu_item_id} className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-sm text-black truncate">{item.name}</p>
-                          <p className="text-xs text-black/45 font-medium">{formatPaise(item.price)}</p>
+                          <p className="text-xs text-black/50 font-medium">{formatPaise(item.price)}</p>
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="flex items-center rounded-xl bg-black/5 overflow-hidden ring-1 ring-black/10">
@@ -1095,11 +1095,11 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                   <div className="rounded-2xl bg-white ring-1 ring-black/10 shadow-sm p-4">
                     <div className="flex justify-between items-end mb-3">
                       <div>
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-black/45">$food Balance</div>
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-black/50">$food Balance</div>
                         <div className="text-xl font-extrabold text-[#F1563F] font-mono leading-none mt-1">{foodBalance}</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-black/45">Applying</div>
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-black/50">Applying</div>
                         <div className="text-xl font-extrabold text-black font-mono leading-none mt-1">₹{foodCreditAmount}</div>
                       </div>
                     </div>
@@ -1129,7 +1129,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                       {customerNotes || 'Add a note for the kitchen (optional)'}
                     </div>
                   </div>
-                  <svg className="w-4 h-4 text-black/35 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <svg className="w-4 h-4 text-black/30 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                   </svg>
                 </button>
@@ -1144,7 +1144,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                     return `Pay ${formatPaise(due)} · UPI / Card`
                   })()}
                 </button>
-                <p className="text-center text-xs text-black/35 font-medium">
+                <p className="text-center text-xs text-black/30 font-medium">
                   {(() => {
                     const due = totalAmount - foodCreditAmount * 100
                     if (due <= 0) return foodCreditAmount > 0 ? `₹${foodCreditAmount} $food covers your order` : 'Order is free — no payment needed'
@@ -1338,7 +1338,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <OrderStatusBadge status={order.kitchen_status} />
-                            <span className={`font-bold text-sm font-mono ${isCancelled ? 'text-black/35 line-through' : 'text-black'}`}>
+                            <span className={`font-bold text-sm font-mono ${isCancelled ? 'text-black/30 line-through' : 'text-black'}`}>
                               {formatPaise(orderGross)}
                             </span>
                           </div>
@@ -1511,7 +1511,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
                 rows={5}
                 className="w-full resize-none rounded-2xl bg-black/[0.04] px-4 py-3 text-sm text-black placeholder:text-black/30 outline-none ring-1 ring-black/5 focus:ring-[#F1563F]/40 focus:bg-black/[0.06] transition-colors"
               />
-              <div className="mt-1 text-right text-[10px] text-black/35 font-mono">
+              <div className="mt-1 text-right text-[10px] text-black/30 font-mono">
                 {notesDraft.length}/280
               </div>
             </div>
@@ -1604,30 +1604,30 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
 
                   {hasMacros && (
                     <div>
-                      <h3 className="text-[11px] font-bold uppercase tracking-widest text-black/45 mb-2">Nutrition</h3>
+                      <h3 className="text-[11px] font-bold uppercase tracking-widest text-black/50 mb-2">Nutrition</h3>
                       <div className="grid grid-cols-4 gap-2">
                         {item.calories != null && (
                           <div className="rounded-xl bg-[#F1563F]/10 ring-1 ring-[#F1563F]/20 px-2 py-2.5 text-center">
                             <div className="text-base font-extrabold text-[#F1563F]">{item.calories}</div>
-                            <div className="text-[9px] font-semibold uppercase tracking-wider text-black/55 mt-0.5">kcal</div>
+                            <div className="text-[9px] font-semibold uppercase tracking-wider text-black/60 mt-0.5">kcal</div>
                           </div>
                         )}
                         {item.protein != null && (
                           <div className="rounded-xl bg-black/[0.04] px-2 py-2.5 text-center">
                             <div className="text-base font-extrabold text-black">{item.protein}g</div>
-                            <div className="text-[9px] font-semibold uppercase tracking-wider text-black/55 mt-0.5">Protein</div>
+                            <div className="text-[9px] font-semibold uppercase tracking-wider text-black/60 mt-0.5">Protein</div>
                           </div>
                         )}
                         {item.carbs != null && (
                           <div className="rounded-xl bg-black/[0.04] px-2 py-2.5 text-center">
                             <div className="text-base font-extrabold text-black">{item.carbs}g</div>
-                            <div className="text-[9px] font-semibold uppercase tracking-wider text-black/55 mt-0.5">Carbs</div>
+                            <div className="text-[9px] font-semibold uppercase tracking-wider text-black/60 mt-0.5">Carbs</div>
                           </div>
                         )}
                         {item.fats != null && (
                           <div className="rounded-xl bg-black/[0.04] px-2 py-2.5 text-center">
                             <div className="text-base font-extrabold text-black">{item.fats}g</div>
-                            <div className="text-[9px] font-semibold uppercase tracking-wider text-black/55 mt-0.5">Fats</div>
+                            <div className="text-[9px] font-semibold uppercase tracking-wider text-black/60 mt-0.5">Fats</div>
                           </div>
                         )}
                       </div>
@@ -1642,7 +1642,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
 
                   {item.ingredients && (
                     <div>
-                      <h3 className="text-[11px] font-bold uppercase tracking-widest text-black/45 mb-1.5">Ingredients</h3>
+                      <h3 className="text-[11px] font-bold uppercase tracking-widest text-black/50 mb-1.5">Ingredients</h3>
                       <p className="text-sm text-black/75 leading-snug">{item.ingredients}</p>
                     </div>
                   )}
