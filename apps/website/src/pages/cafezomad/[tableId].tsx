@@ -59,7 +59,7 @@ export default function CustomerOrderPage() {
     return (
       <div
         className="flex items-center justify-center h-screen bg-[#f5f0e8] bg-cover bg-center"
-        style={{ backgroundImage: "linear-gradient(rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.93)), url('/zomad-bg.png')" }}
+        style={{ backgroundImage: "linear-gradient(rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.93)), url('https://cdn.zo.xyz/gallery/media/images/a0c69f2e-ed0e-43d9-8e30-8e1a36cc975b_20260524092110.png')" }}
       >
         <div className="w-10 h-10 border-[3px] border-black/80 border-t-transparent rounded-full animate-spin" />
       </div>
@@ -613,7 +613,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     return (
       <div
         className="flex flex-col h-screen bg-[#f5f0e8] bg-cover bg-center"
-        style={{ backgroundImage: "linear-gradient(rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.93)), url('/zomad-bg.png')" }}
+        style={{ backgroundImage: "linear-gradient(rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.93)), url('https://cdn.zo.xyz/gallery/media/images/a0c69f2e-ed0e-43d9-8e30-8e1a36cc975b_20260524092110.png')" }}
       >
         {/* Skeleton header */}
         <div className="shrink-0 bg-[#F1563F] px-5 pt-4 pb-3">
@@ -648,7 +648,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     return (
       <div
         className="flex flex-col items-center justify-center min-h-screen bg-[#f5f0e8] bg-cover bg-center px-6 text-center"
-        style={{ backgroundImage: "linear-gradient(rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.93)), url('/zomad-bg.png')" }}
+        style={{ backgroundImage: "linear-gradient(rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.93)), url('https://cdn.zo.xyz/gallery/media/images/a0c69f2e-ed0e-43d9-8e30-8e1a36cc975b_20260524092110.png')" }}
       >
         <div className="w-20 h-20 rounded-3xl bg-white p-3 mb-6 shadow-xl shadow-black/10">
           <img src={cafeZomadLogo.src} alt="Cafe Zomad" className="w-full h-full object-contain" />
@@ -672,7 +672,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   return (
     <div
       className="flex flex-col h-screen tap-transparent bg-[#f5f0e8] bg-cover bg-center"
-      style={{ backgroundImage: "linear-gradient(rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.93)), url('/zomad-bg.png')" }}
+      style={{ backgroundImage: "linear-gradient(rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.93)), url('https://cdn.zo.xyz/gallery/media/images/a0c69f2e-ed0e-43d9-8e30-8e1a36cc975b_20260524092110.png')" }}
     >
       <Head>
         <link rel="apple-touch-icon" href={appleTouchIcon.src} />
