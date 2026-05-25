@@ -48,80 +48,53 @@ export default function CafeMenuPage() {
   })
 
   useEffect(() => {
-    supabase.from('cafe_properties').select('id, name').then(({ data }) => {
-      if (data && data.length > 0) { setProperties(data); setSelectedPropertyId(data[0].id) }
-      setIsLoading(false)
-    })
+    fetch('/api/cafe/nodes')
+      .then((r) => r.json())
+      .then(({ nodes }: { nodes: CafeProperty[] }) => {
+        if (nodes && nodes.length > 0) { setProperties(nodes); setSelectedPropertyId(nodes[0].id) }
+        setIsLoading(false)
+      })
+      .catch(() => setIsLoading(false))
   }, [])
 
-  const fetchMenu = () => {
+  // Reads go through /api/cafe/* so Vercel edge caches absorb the read volume.
+  // Realtime stays on direct Supabase below; its handler appends a cache-buster
+  // so the refetch bypasses the 60s s-maxage and gets fresh data.
+  const fetchMenu = (bustCache = false) => {
     if (!selectedPropertyId) return
+    const bust = bustCache ? `?_t=${Date.now()}` : ''
     Promise.all([
-      supabase.from('cafe_menu_categories').select('id, name, sort_order').eq('property_id', selectedPropertyId).eq('is_active', true).order('sort_order'),
-      supabase.from('cafe_menu_items').select('id, category_id, name, description, price, image_url, diet, calories, protein, carbs, fats').eq('property_id', selectedPropertyId).eq('is_available', true).is('deleted_at', null).order('sort_order'),
-      supabase.from('cafe_tables').select('id, code, label, area').eq('property_id', selectedPropertyId).eq('is_active', true).order('area').order('code'),
-    ]).then(([c, i, t]) => {
-      setCategories((c.data as MenuCategory[]) || [])
-      setMenuItems((i.data as MenuItem[]) || [])
-      setTables((t.data as CafeTable[]) || [])
+      fetch(`/api/cafe/nodes/${selectedPropertyId}/menu${bust}`).then((r) => r.json()),
+      fetch(`/api/cafe/nodes/${selectedPropertyId}/tables${bust}`).then((r) => r.json()),
+    ]).then(([menu, tablesRes]) => {
+      setCategories((menu.categories as MenuCategory[]) || [])
+      setMenuItems((menu.items as MenuItem[]) || [])
+      setTables((tablesRes.tables as CafeTable[]) || [])
+      const next: Record<MealType, string> = { breakfast: '', lunch: '', dinner: '' }
+      type PlanRow = { meal_type: MealType; items: string[] }
+      for (const plan of (menu.meal_plan || []) as PlanRow[]) {
+        if (plan.meal_type in next) next[plan.meal_type] = (plan.items || []).join(', ')
+      }
+      setTodayPlanText(next)
     })
   }
 
   useEffect(() => { fetchMenu() }, [selectedPropertyId])
 
-  // Today's meal plan description — derived from the items actually attached
-  // to each B/L/D slot via cafe_meal_plan_items → cafe_menu_items.name. We no
-  // longer rely on cafe_meal_plans.notes; the items themselves are the source
-  // of truth so the customer view stays in sync with whatever PMS has linked.
-  const fetchTodayPlan = () => {
-    const today = todayISO()
-    supabase
-      .from('cafe_meal_plans')
-      .select('meal_type, items:cafe_meal_plan_items(menu_item:cafe_menu_items(name))')
-      .eq('date', today)
-      .then(({ data }) => {
-        const next: Record<MealType, string> = { breakfast: '', lunch: '', dinner: '' }
-        // Supabase types nested joins as arrays even for many-to-one FKs.
-        // At runtime menu_item resolves to a single row, but TS can't see
-        // that, so we tolerate both shapes here.
-        type JoinedMenuItem = { name: string } | { name: string }[] | null
-        type Row = { meal_type: MealType; items: { menu_item: JoinedMenuItem }[] }
-        for (const plan of (data || []) as unknown as Row[]) {
-          if (plan.meal_type in next) {
-            const names = (plan.items || [])
-              .map((i) => {
-                const mi = i.menu_item
-                if (!mi) return undefined
-                return Array.isArray(mi) ? mi[0]?.name : mi.name
-              })
-              .filter((n): n is string => Boolean(n))
-            next[plan.meal_type] = names.join(', ')
-          }
-        }
-        setTodayPlanText(next)
-      })
-  }
-
-  useEffect(() => { fetchTodayPlan() }, [])
-
-  // Live update: refetch whenever PMS changes a plan OR its item list, so the
-  // customer page reflects edits without a reload.
+  // Live update: PMS changes a plan or its item list → refetch with cache-bust.
   useEffect(() => {
     const ch = supabase
       .channel('cafezomad-meal-plan')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_meal_plans' }, () => fetchTodayPlan())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_meal_plan_items' }, () => fetchTodayPlan())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_meal_plans' }, () => fetchMenu(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_meal_plan_items' }, () => fetchMenu(true))
       .subscribe()
     return () => { supabase.removeChannel(ch) }
-  }, [])
+  }, [selectedPropertyId])
 
-  // Refetch menu when user returns to tab (catches chef availability toggles)
+  // Refetch menu when user returns to tab (catches chef availability toggles).
   useEffect(() => {
     const onVisible = () => {
-      if (!document.hidden) {
-        fetchMenu()
-        fetchTodayPlan()
-      }
+      if (!document.hidden) fetchMenu(true)
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
@@ -198,14 +171,20 @@ export default function CafeMenuPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#f5f0e8]">
+      <div
+        className="flex items-center justify-center h-screen bg-[#f5f0e8] bg-cover bg-center"
+        style={{ backgroundImage: "linear-gradient(rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.93)), url('https://cdn.zo.xyz/gallery/media/images/a0c69f2e-ed0e-43d9-8e30-8e1a36cc975b_20260524092110.png')" }}
+      >
         <div className="w-10 h-10 border-[3px] border-black/80 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f0e8]">
+    <div
+      className="min-h-screen bg-[#f5f0e8] bg-cover bg-center"
+      style={{ backgroundImage: "linear-gradient(rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.93)), url('https://cdn.zo.xyz/gallery/media/images/a0c69f2e-ed0e-43d9-8e30-8e1a36cc975b_20260524092110.png')" }}
+    >
       <Head>
         <link rel="apple-touch-icon" href={appleTouchIcon.src} />
         <link rel="apple-touch-icon" sizes="180x180" href={appleTouchIcon.src} />
