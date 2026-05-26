@@ -190,52 +190,45 @@ export default function House({
             <BlurFade inView delay={0.2} direction="up">
               <div className="border-t border-white/5 pt-12 grid grid-cols-3 gap-3 md:gap-5">
                 {[
-                  {
-                    label: "Live",
-                    href: "/live",
-                    glyph: (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7 md:w-8 md:h-8">
-                        <path d="M3 11L12 3l9 8" />
-                        <path d="M5 10v10h14V10" />
-                      </svg>
-                    ),
-                  },
-                  {
-                    label: "Build",
-                    href: "/build",
-                    glyph: (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7 md:w-8 md:h-8">
-                        <path d="M12 2l3 6 6 1-4.5 4 1 6L12 16l-5.5 3 1-6L3 9l6-1z" />
-                      </svg>
-                    ),
-                  },
-                  {
-                    label: "Network",
-                    href: "/network",
-                    glyph: (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7 md:w-8 md:h-8">
-                        <circle cx="5" cy="6" r="2" />
-                        <circle cx="19" cy="6" r="2" />
-                        <circle cx="12" cy="18" r="2" />
-                        <path d="M6.5 7.5l4 9M17.5 7.5l-4 9M7 6h10" />
-                      </svg>
-                    ),
-                  },
-                ].map(({ label, href, glyph }) => (
+                  { label: "Live", href: "/live", video: "/cards/live.mp4" },
+                  { label: "Build", href: "/build", video: "/cards/build.mp4" },
+                  { label: "Network", href: "/network", video: "/cards/network.mp4" },
+                ].map(({ label, href, video }) => (
                   <Link
                     key={label}
                     href={href}
-                    className="group aspect-square flex flex-col items-center justify-center gap-3 border border-white/10 hover:border-white/30 transition-colors"
+                    className="group relative aspect-square flex items-center justify-center border border-white/10 hover:border-white/30 transition-colors overflow-hidden"
                   >
-                    <span className="text-white/40 group-hover:text-[#c5a572] transition-colors">
-                      {glyph}
-                    </span>
-                    <span className="font-[family-name:var(--font-headline)] italic text-2xl md:text-3xl shiny-gold">
+                    {video && (
+                      <>
+                        <video
+                          src={video}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          preload="auto"
+                          aria-hidden
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                        <div
+                          aria-hidden
+                          className="absolute inset-0 bg-black/70 group-hover:bg-black/50 transition-colors duration-500"
+                        />
+                      </>
+                    )}
+                    <span className="relative z-10 font-[family-name:var(--font-headline)] italic text-3xl md:text-4xl shiny-gold drop-shadow-[0_3px_12px_rgba(0,0,0,0.95)]">
                       {label}
                     </span>
                   </Link>
                 ))}
               </div>
+              <p className="mt-6 md:mt-8 text-center text-xs md:text-sm text-neutral-400 font-light">
+                Pick a pillar.{" "}
+                <span className="font-[family-name:var(--font-headline)] italic shiny-gold">
+                  Step inside.
+                </span>
+              </p>
             </BlurFade>
           </div>
         </section>
