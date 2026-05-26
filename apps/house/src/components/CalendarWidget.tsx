@@ -1,6 +1,39 @@
 import { useState, useEffect } from "react";
 
 import { CalendarGrid } from "./CalendarGrid";
+import type { CalendarEvent } from "../pages/api/calendar/events";
+
+// Cache the events list in sessionStorage so subsequent page loads within the
+// same session don't refetch — the modal opens with data already in memory.
+const EVENTS_CACHE_KEY = "zo-calendar-events-v1";
+const EVENTS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type EventsCache = { events: CalendarEvent[]; ts: number };
+
+function readEventsCache(): CalendarEvent[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(EVENTS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as EventsCache;
+    if (Date.now() - parsed.ts > EVENTS_CACHE_TTL_MS) return null;
+    return parsed.events;
+  } catch {
+    return null;
+  }
+}
+
+function writeEventsCache(events: CalendarEvent[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(
+      EVENTS_CACHE_KEY,
+      JSON.stringify({ events, ts: Date.now() })
+    );
+  } catch {
+    // Quota or private mode — fine, we just won't cache.
+  }
+}
 
 // Floating events widget. Lives on every page via _app.tsx. A compact pill
 // sits bottom-right; clicking opens a modal with the live Luma calendar.
@@ -8,6 +41,40 @@ import { CalendarGrid } from "./CalendarGrid";
 // cost on every page load.
 export function CalendarWidget() {
   const [open, setOpen] = useState(false);
+  const [events, setEvents] = useState<CalendarEvent[]>(() => readEventsCache() ?? []);
+  const [loading, setLoading] = useState(() => readEventsCache() == null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Prefetch events as soon as the widget mounts (every page load). The user
+  // typically clicks the pill after the page has fully loaded, so the data
+  // is already there by the time the modal opens. Skip the fetch entirely if
+  // we have a fresh sessionStorage cache.
+  useEffect(() => {
+    if (readEventsCache() != null) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetch("/api/calendar/events")
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.events) {
+          setEvents(data.events);
+          writeEventsCache(data.events);
+        } else {
+          setError(data?.error ?? "Failed to load events");
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError("Failed to load events");
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -85,7 +152,7 @@ export function CalendarWidget() {
                 </svg>
               </button>
             </div>
-            <CalendarGrid />
+            <CalendarGrid events={events} loading={loading} error={error} />
             <div className="px-4 py-2 border-t border-white/10 text-center">
               <a
                 href="https://luma.com/blrxzo"

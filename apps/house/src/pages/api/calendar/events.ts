@@ -90,7 +90,12 @@ export default async function handler(
       (a, b) => +new Date(a.start_at) - +new Date(b.start_at)
     );
 
-    res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
+    // Edge cache: fresh for 5 min, then serve stale while revalidating for up
+    // to an hour. The browser also caches in sessionStorage on the client side.
+    res.setHeader(
+      "Cache-Control",
+      "public, s-maxage=300, stale-while-revalidate=3600"
+    );
     res.status(200).json({ events });
   } catch {
     res.status(500).json({ error: "Failed to load events" });

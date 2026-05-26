@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { CalendarEvent } from "../pages/api/calendar/events";
 
@@ -46,33 +46,16 @@ function addMonths(d: Date, n: number) {
   return new Date(d.getFullYear(), d.getMonth() + n, 1);
 }
 
-export function CalendarGrid() {
+export function CalendarGrid({
+  events,
+  loading = false,
+  error = null,
+}: {
+  events: CalendarEvent[];
+  loading?: boolean;
+  error?: string | null;
+}) {
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    fetch("/api/calendar/events")
-      .then((r) => r.json())
-      .then((data) => {
-        if (cancelled) return;
-        if (data?.events) setEvents(data.events);
-        else setError(data?.error ?? "Failed to load events");
-        setLoading(false);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setError("Failed to load events");
-        setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // 6-week grid covering viewMonth, starting on the prior Sunday.
   const cells = useMemo(() => {
