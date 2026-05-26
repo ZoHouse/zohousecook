@@ -567,7 +567,21 @@ const Live: React.FC = () => {
       </header>
 
       {/* Hero */}
-      <section className="relative pt-20 md:pt-28 pb-10 md:pb-14 px-5 md:px-10 lg:px-20 overflow-hidden">
+      <section className="relative pt-20 md:pt-28 pb-24 md:pb-32 px-5 md:px-10 lg:px-20 overflow-hidden">
+        <video
+          src="/cards/inside-compound.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          aria-hidden
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/65 to-black"
+        />
         <div
           aria-hidden
           className="absolute inset-0 opacity-40 pointer-events-none"
@@ -579,13 +593,13 @@ const Live: React.FC = () => {
         <div className="relative max-w-3xl mx-auto text-center">
           <BlurFade inView delay={0.1} direction="up">
             <SectionLabel>The civilisation · Two compounds · Bangalore</SectionLabel>
-            <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-medium tracking-tight leading-[1]">
+            <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-medium tracking-tight leading-[1] drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]">
               Inside the{" "}
               <span className="font-[family-name:var(--font-headline)] italic font-normal shiny-gold">
                 compound.
               </span>
             </h1>
-            <p className="mt-5 text-sm md:text-base text-neutral-300 font-light leading-relaxed max-w-xl mx-auto">
+            <p className="mt-5 text-sm md:text-base text-neutral-100 font-light leading-relaxed max-w-xl mx-auto drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
               Founders move in. Partners set up shop. Cohorts run their programs. Companies get built. Two compounds in Bangalore, permanent, compounding.
             </p>
           </BlurFade>
@@ -600,7 +614,7 @@ const Live: React.FC = () => {
               </Link>
               <a
                 href="#partners"
-                className="inline-flex items-center justify-center border border-white/20 text-white/80 font-bold text-[10px] tracking-[3px] uppercase rounded-full px-5 py-2.5 hover:border-white hover:text-white transition-all duration-300"
+                className="inline-flex items-center justify-center border border-white/70 text-white font-bold text-[10px] tracking-[3px] uppercase rounded-full px-5 py-2.5 bg-black/30 backdrop-blur-sm hover:border-white hover:bg-black/55 transition-all duration-300"
               >
                 Host your team
               </a>
