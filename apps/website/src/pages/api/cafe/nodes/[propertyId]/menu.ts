@@ -1,12 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-);
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { serverError, supabase, UUID_RE } from "../../../../../lib/cafe-api";
 
 function istTodayString(): string {
   const fmt = new Intl.DateTimeFormat("en-CA", {
@@ -33,7 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const today = istTodayString();
   const todayStart = istTodayStartUtcIso();
 
-  const [catsRes, itemsRes, planRes] = await Promise.all([
+  const [propRes, catsRes, itemsRes, planRes] = await Promise.all([
+    supabase.from("cafe_properties").select("id").eq("id", propertyId).maybeSingle(),
     supabase
       .from("cafe_menu_categories")
       .select("id,name,sort_order")
@@ -53,9 +47,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq("date", today),
   ]);
 
-  if (catsRes.error) return res.status(500).json({ error: catsRes.error.message });
-  if (itemsRes.error) return res.status(500).json({ error: itemsRes.error.message });
-  if (planRes.error) return res.status(500).json({ error: planRes.error.message });
+  if (propRes.error) return serverError(res, propRes.error, "menu.prop");
+  if (!propRes.data) {
+    // Don't cache bogus UUIDs — keeps the edge from being polluted by enumeration.
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(404).json({ error: "property not found" });
+  }
+  if (catsRes.error) return serverError(res, catsRes.error, "menu.cats");
+  if (itemsRes.error) return serverError(res, itemsRes.error, "menu.items");
+  if (planRes.error) return serverError(res, planRes.error, "menu.plan");
 
   const items = itemsRes.data ?? [];
   const limitedIds = items.filter((i) => i.daily_limit != null).map((i) => i.id);
@@ -71,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq("order.property_id", propertyId)
       .neq("order.kitchen_status", "cancelled");
 
-    if (soldErr) return res.status(500).json({ error: soldErr.message });
+    if (soldErr) return serverError(res, soldErr, "menu.sold");
 
     for (const row of soldRows ?? []) {
       soldByItem[row.menu_item_id] = (soldByItem[row.menu_item_id] ?? 0) + (row.quantity ?? 0);
@@ -85,12 +85,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return { ...i, sold_today: sold, remaining_today: remaining, sold_out };
   });
 
-  const meal_plan = (planRes.data ?? []).map((p) => ({
-    meal_type: p.meal_type,
-    items: (p.items ?? []).map((mi: any) => mi.menu_item?.name).filter(Boolean),
-  }));
+  // Supabase nested FK selects can come back as object | object[] depending on
+  // how the join cardinality gets inferred — handle both so a schema-inference
+  // flip doesn't silently drop the meal plan.
+  const meal_plan = (planRes.data ?? []).map((p) => {
+    const rawItems = (p.items ?? []) as Array<{ menu_item: { name?: string } | { name?: string }[] | null }>;
+    return {
+      meal_type: p.meal_type,
+      items: rawItems
+        .flatMap((mi) => (Array.isArray(mi.menu_item) ? mi.menu_item : mi.menu_item ? [mi.menu_item] : []))
+        .map((m) => m?.name)
+        .filter((n): n is string => Boolean(n)),
+    };
+  });
 
-  res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+  // Short SWR window: sold-out state can shift in seconds when daily_limit is hit.
+  res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=60");
   return res.status(200).json({
     date: today,
     categories: catsRes.data ?? [],
