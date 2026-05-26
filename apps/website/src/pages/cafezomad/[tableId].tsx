@@ -9,8 +9,11 @@ import { useCafePersistentCart } from '../../hooks/useCafePersistentCart'
 import { useCafeCustomerOrders } from '../../hooks/useCafeCustomerOrders'
 import { BioHackTab } from '../../components/cafezomad/BioHackTab'
 import { OrderStatusBadge } from '../../components/cafezomad/OrderStatusBadge'
+import { CafezomadHeader } from '../../components/cafezomad/CafezomadHeader'
+import { CafezomadBottomNav } from '../../components/cafezomad/CafezomadBottomNav'
 import { formatPaise } from '../../components/cafezomad/types'
 import type { MenuCategory, MenuItem, CafeOrderWithItems, Tab } from '../../components/cafezomad/types'
+import { cleanNickname } from '../../components/cafezomad/nickname'
 import cafeZomadLogo from '../../assets/cafezomad/logo.png'
 import appleTouchIcon from '../../components/cafezomad/assets/favicons/apple-touch-icon.png'
 import cafezomadIcon192 from '../../components/cafezomad/assets/favicons/cafezomad-icon-192.png'
@@ -29,23 +32,6 @@ interface CreateRazorpayOrderResponse {
 function normalizePhone(phone: string | null | undefined): string | null {
   const normalized = (phone || '').replace(/\D/g, '').slice(-10)
   return normalized.length === 10 ? normalized : null
-}
-
-// Strips Zo's ".zo" suffix and rejects values that aren't usable as a
-// human customer name — ENS-shaped handles (`vitalik.eth`), raw wallet
-// addresses (`0x…`), the literal placeholder "ens" some profile rows ship
-// with, and anything too short to be a name. Without these guards the
-// kitchen ticket prints garbage like "Customer: ens" for any wallet-only
-// user whose first_name isn't set.
-function cleanNickname(value: unknown): string | null {
-  if (typeof value !== 'string') return null
-  const cleaned = value.replace(/\.zo$/i, '').trim()
-  if (!cleaned) return null
-  if (/^ens$/i.test(cleaned)) return null
-  if (/\.eth$/i.test(cleaned)) return null
-  if (/^0x[0-9a-f]+$/i.test(cleaned)) return null
-  if (cleaned.length < 2) return null
-  return cleaned
 }
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
@@ -684,42 +670,7 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       {/* Razorpay Checkout — lazy-loaded; window.Razorpay populated on script ready */}
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <header className="shrink-0 bg-[#F1563F] px-5 pt-4 pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <img src={cafeZomadLogo.src} alt="Cafe Zomad" className="w-9 h-9 rounded-2xl object-contain bg-white p-1" />
-              <h1 className="font-serif text-2xl font-semibold italic tracking-tight text-white leading-none">Cafe Zomad</h1>
-            </div>
-            <p className="text-[11px] text-white/70 font-medium tracking-[0.15em] uppercase mt-0.5 ml-[46px]">
-              Table {tableInfo?.label || tableInfo?.code || '...'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {isLoggedIn && user ? (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 ring-1 ring-white/20 rounded-full">
-                <span className="text-[11px] font-semibold text-white/90">
-                  {user.first_name
-                    || (profile as { first_name?: string } | undefined)?.first_name
-                    || cleanNickname(profile?.selected_nickname)
-                    || cleanNickname(profile?.custom_nickname)
-                    || cleanNickname(profile?.nickname)
-                    || cleanNickname(profile?.ens_nickname)
-                    || user.mobile_number
-                    || 'Guest'}
-                </span>
-              </div>
-            ) : (
-              <button
-                onClick={() => showLoginModal()}
-                className="px-3 py-1.5 bg-black rounded-full text-[11px] font-semibold text-white"
-              >
-                Sign in
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
+      <CafezomadHeader tableLabel={tableInfo?.label || tableInfo?.code || '...'} />
 
       {/* ── Toasts ─────────────────────────────────────────────────────────── */}
       {orderPlaced && (
@@ -1422,75 +1373,15 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       )}
 
       {/* ── Bottom Navigation ─────────────────────────────────────────────────── */}
-      <nav className="shrink-0 fixed bottom-5 left-5 right-5 bg-[#F1563F] rounded-full ring-1 ring-black/10 shadow-2xl shadow-black/20 z-40">
-        <div className="flex items-center justify-around h-14 max-w-md mx-auto px-1.5">
-          {(
-            [
-              {
-                key: 'menu' as Tab,
-                label: 'Menu',
-                badge: undefined as number | undefined,
-                icon: (active: boolean) => (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={active ? 2.2 : 1.8} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-                  </svg>
-                ),
-              },
-              {
-                key: 'cart' as Tab,
-                label: 'Cart',
-                badge: totalItems > 0 ? totalItems : undefined,
-                icon: (active: boolean) => (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={active ? 2.2 : 1.8} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
-                  </svg>
-                ),
-              },
-              {
-                key: 'orders' as Tab,
-                label: 'Orders',
-                badge: activeOrders.length > 0 ? activeOrders.length : undefined,
-                icon: (active: boolean) => (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={active ? 2.2 : 1.8} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                ),
-              },
-              {
-                key: 'wallet' as Tab,
-                label: 'Bio Hack',
-                badge: undefined,
-                icon: (active: boolean) => (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={active ? 2.2 : 1.8} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
-                  </svg>
-                ),
-              },
-            ] as const
-          ).map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => {
-                if (tab.key === 'orders' && !requireLoginForOrdering()) return
-                setActiveTab(tab.key)
-              }}
-              className={`relative flex flex-col items-center justify-center gap-0.5 w-14 h-11 rounded-full transition-all ${
-                activeTab === tab.key
-                  ? 'bg-white text-[#F1563F] shadow-md shadow-black/10'
-                  : 'text-white/85'
-              }`}
-            >
-              {tab.badge !== undefined && (
-                <span className="absolute -top-0.5 right-0.5 bg-black text-white text-[9px] font-bold w-[18px] h-[18px] rounded-full flex items-center justify-center ring-2 ring-[#F1563F]">
-                  {tab.badge}
-                </span>
-              )}
-              {tab.icon(activeTab === tab.key)}
-              <span className="text-[9px] font-semibold tracking-wide">{tab.label}</span>
-            </button>
-          ))}
-        </div>
-      </nav>
+      <CafezomadBottomNav
+        activeTab={activeTab}
+        onTabSelect={(tab) => {
+          if (tab === 'orders' && !requireLoginForOrdering()) return
+          setActiveTab(tab)
+        }}
+        cartBadge={totalItems}
+        ordersBadge={activeOrders.length}
+      />
 
       {/* ── Cooking Instructions Modal ───────────────────────────────────── */}
       {notesModalOpen && (
