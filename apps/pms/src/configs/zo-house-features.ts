@@ -71,6 +71,7 @@ export const ZO_FEATURES: Record<string, ZoFeature> = {
       { id: "cafe-meal-plan", name: "Meal Plan", path: "/cafe/meal-plan", icon: "Calendar" },
       { id: "cafe-inventory", name: "Inventory", path: "/cafe/inventory", icon: "NoteBook" },
       { id: "cafe-food-credits", name: "$food Credits", path: "/cafe/food-credits", icon: "NoteBook" },
+      { id: "cafe-reviews", name: "Reviews", path: "/cafe/reviews", icon: "Slip" },
     ],
   },
   housekeeping: {

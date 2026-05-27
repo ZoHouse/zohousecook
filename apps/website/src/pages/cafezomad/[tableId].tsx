@@ -7,8 +7,10 @@ import { supabase } from '../../config/supabase'
 import { useFoodCreditBalance } from '../../hooks/useFoodCreditBalance'
 import { useCafePersistentCart } from '../../hooks/useCafePersistentCart'
 import { useCafeCustomerOrders } from '../../hooks/useCafeCustomerOrders'
+import { useCafeFeedbackPrompt } from '../../hooks/useCafeFeedbackPrompt'
 import { BioHackTab } from '../../components/cafezomad/BioHackTab'
 import { OrderStatusBadge } from '../../components/cafezomad/OrderStatusBadge'
+import { FeedbackModal } from '../../components/cafezomad/FeedbackModal'
 import { formatPaise } from '../../components/cafezomad/types'
 import type { MenuCategory, MenuItem, CafeOrderWithItems, Tab } from '../../components/cafezomad/types'
 import cafeZomadLogo from '../../assets/cafezomad/logo.png'
@@ -257,6 +259,14 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
     zoUserId: isLoggedIn ? user?.id || null : null,
     propertyId,
   })
+
+  // Feedback prompt — auto-pops a rating modal when a served order is still
+  // unrated and hasn't been dismissed on this device. Skip writes a
+  // localStorage flag; rating inserts a row so the next session won't ask
+  // again on any device.
+  const feedbackZoUserId = isLoggedIn ? user?.id || null : null
+  const { pendingOrder: feedbackOrder, dismiss: dismissFeedback, markRated: markFeedbackRated } =
+    useCafeFeedbackPrompt(orders, feedbackZoUserId)
 
   // ── Today's meal plan description — derived from the items actually
   // attached to each B/L/D slot (cafe_meal_plan_items → cafe_menu_items.name).
@@ -683,6 +693,17 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
       </Head>
       {/* Razorpay Checkout — lazy-loaded; window.Razorpay populated on script ready */}
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+
+      {/* Feedback modal — auto-pops for the most recent served unrated order
+          for this user. Skip persists per device; submitting writes a row
+          that suppresses future prompts everywhere. */}
+      {feedbackOrder && (
+        <FeedbackModal
+          order={feedbackOrder}
+          onClose={() => dismissFeedback(feedbackOrder.id)}
+          onSubmitted={() => markFeedbackRated(feedbackOrder.id)}
+        />
+      )}
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="shrink-0 bg-[#F1563F] px-5 pt-4 pb-3">
         <div className="flex items-center justify-between">
