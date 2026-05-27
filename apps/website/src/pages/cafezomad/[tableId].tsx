@@ -267,6 +267,9 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
   const feedbackZoUserId = isLoggedIn ? user?.id || null : null
   const { pendingOrder: feedbackOrder, dismiss: dismissFeedback, markRated: markFeedbackRated } =
     useCafeFeedbackPrompt(orders, feedbackZoUserId)
+  // Brief thank-you toast after a feedback submit. Mirrors the orderPlaced /
+  // errorToast pattern below — tap to dismiss, auto-clears after a few seconds.
+  const [feedbackThanks, setFeedbackThanks] = useState<{ rating: number } | null>(null)
 
   // ── Today's meal plan description — derived from the items actually
   // attached to each B/L/D slot (cafe_meal_plan_items → cafe_menu_items.name).
@@ -701,8 +704,41 @@ function CustomerOrderContent({ tableId }: { tableId: string }) {
         <FeedbackModal
           order={feedbackOrder}
           onClose={() => dismissFeedback(feedbackOrder.id)}
-          onSubmitted={() => markFeedbackRated(feedbackOrder.id)}
+          onSubmitted={(rating) => {
+            markFeedbackRated(feedbackOrder.id)
+            setFeedbackThanks({ rating })
+            setTimeout(() => setFeedbackThanks(null), 4500)
+          }}
         />
+      )}
+
+      {/* Thank-you toast after feedback submit. Worded to match the rating —
+          5★ celebrates, low scores acknowledge without spamming positivity. */}
+      {feedbackThanks && (
+        <div
+          className="fixed top-4 left-4 right-4 z-50 bg-[#F1563F] text-white px-5 py-3.5 rounded-2xl shadow-2xl shadow-black/20 cursor-pointer"
+          onClick={() => setFeedbackThanks(null)}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="font-bold text-sm">
+                {feedbackThanks.rating >= 4
+                  ? 'Thanks — the kitchen will love this'
+                  : feedbackThanks.rating >= 3
+                  ? 'Thanks for the honest take'
+                  : 'Heard you — we\'ll do better'}
+              </div>
+              <div className="text-xs text-white/85 mt-0.5">
+                {feedbackThanks.rating >= 4
+                  ? 'See you next meal.'
+                  : 'Passing this to the team right now.'}
+              </div>
+            </div>
+            <svg className="w-5 h-5 text-white/70 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+        </div>
       )}
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="shrink-0 bg-[#F1563F] px-5 pt-4 pb-3">

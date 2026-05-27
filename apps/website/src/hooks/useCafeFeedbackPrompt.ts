@@ -22,6 +22,14 @@ const SKIP_KEY_PREFIX = 'cafezomad:feedback:dismissed:'
 const FEEDBACK_LOOKBACK_DAYS = 14
 const ELIGIBLE_STATUSES = new Set(['ready', 'served'])
 
+// Auth's user.id ships as a raw 32-char hex ("df90b6dd25084004ba8eb6825c10aa79")
+// while place_cafe_order stores zo_user_id as a dashed UUID
+// ("df90b6dd-2508-4004-ba8e-b6825c10aa79"). Strict equality misses every
+// match; normalise both sides before comparing.
+function normalizeUserId(value: string | null | undefined): string {
+  return (value || '').replace(/-/g, '').toLowerCase()
+}
+
 function isDismissed(orderId: string): boolean {
   if (typeof window === 'undefined') return false
   try {
@@ -58,10 +66,11 @@ export function useCafeFeedbackPrompt(
   // we want the *most recent* served order to be the one we prompt for.
   const candidateOrders = useMemo(() => {
     const cutoff = Date.now() - FEEDBACK_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
+    const me = normalizeUserId(zoUserId)
     return orders.filter((o) => {
       if (!o.kitchen_status || !ELIGIBLE_STATUSES.has(o.kitchen_status)) return false
       if (!o.zo_user_id) return false
-      if (zoUserId && o.zo_user_id !== zoUserId) return false
+      if (me && normalizeUserId(o.zo_user_id) !== me) return false
       const created = new Date(o.created_at).getTime()
       if (!Number.isFinite(created) || created < cutoff) return false
       return true
@@ -97,45 +106,18 @@ export function useCafeFeedbackPrompt(
   }, [candidateOrders])
 
   const pendingOrder = useMemo(() => {
-    // Surface the *most recent* unrated served order. Older ones get a chance
-    // next session if the user skips this one.
-    for (const o of candidateOrders) {
-      if (ratedIds.has(o.id)) continue
-      if (isDismissed(o.id)) continue
-      return o
-    }
-    return null
-    // dismissedTick re-runs the memo after a dismiss() so the next candidate
-    // (or null) is surfaced without waiting for an unrelated re-render.
+    // Only the most recent served order is ever surfaced. Once the user
+    // skips or rates it, we don't backfill into older history — they came
+    // here to order their next meal, not to grade three weeks of dinners.
+    const latest = candidateOrders[0]
+    if (!latest) return null
+    if (ratedIds.has(latest.id)) return null
+    if (isDismissed(latest.id)) return null
+    return latest
+    // dismissedTick re-runs the memo after a dismiss() so the modal closes
+    // immediately without waiting for an unrelated re-render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidateOrders, ratedIds, dismissedTick])
-
-  // Diagnostic: expose decision state on window so we can debug why the modal
-  // didn't fire without spamming console. Inspect via `window.__zoFeedback` in
-  // DevTools after the page settles.
-  if (typeof window !== 'undefined') {
-    const w = window as unknown as { __zoFeedback?: unknown }
-    w.__zoFeedback = {
-      zoUserId,
-      orderCount: orders.length,
-      candidateCount: candidateOrders.length,
-      candidates: candidateOrders.map((o) => ({
-        id: o.id,
-        display_number: o.display_number,
-        kitchen_status: o.kitchen_status,
-        zo_user_id: o.zo_user_id,
-        property_id: o.property_id,
-        created_at: o.created_at,
-        rated: ratedIds.has(o.id),
-        dismissed: isDismissed(o.id),
-      })),
-      ratedIds: Array.from(ratedIds),
-      pendingOrderId: pendingOrder?.id ?? null,
-      kitchenStatusSeen: Array.from(
-        new Set(orders.map((o) => o.kitchen_status ?? 'null')),
-      ),
-    }
-  }
 
   const dismiss = useCallback((orderId: string) => {
     markDismissed(orderId)

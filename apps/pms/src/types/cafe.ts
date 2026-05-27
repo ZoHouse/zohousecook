@@ -138,6 +138,8 @@ export interface CafeOrder {
   food_credit_applied_paise: number
   /** true when the chef accepted via Override & Accept (insufficient stock at accept time). Used for ops reporting only. */
   accepted_with_override: boolean
+  /** Display handle of the kitchen operator who accepted the order. Surfaced in the cafezomad feedback modal. */
+  accepted_by: string | null
   created_at: string
   updated_at: string
 }
