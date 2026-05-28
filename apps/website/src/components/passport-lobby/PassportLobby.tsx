@@ -4,6 +4,9 @@ import { useProfile } from '@zo/auth';
 import { MeshGradient } from '@paper-design/shaders-react';
 import { useMyXp } from '../../hooks/useMyXp';
 import { usePassportProfile } from '../../hooks/usePassportProfile';
+import { usePassportUnlock } from '../../hooks/usePassportUnlock';
+import { useQuests } from '../../hooks/useQuests';
+import { useQuestSubmission } from '../../hooks/useQuestSubmission';
 import { useSeason } from '../../hooks/useSeason';
 import useInstagramConnect from '../../hooks/useInstagramConnect';
 import { toast } from 'sonner';
@@ -16,6 +19,7 @@ import { MapModal } from './MapModal';
 import { HeroStage } from './HeroStage';
 import { TravelersPill } from './TravelersPill';
 import { QuestsDock, actionForQuest, type DockQuest } from './QuestsDock';
+import { TreasureChestCard } from './TreasureChestCard';
 import { UnlimitedAccessCta } from './UnlimitedAccessCta';
 import { CameraCaptureModal, type CaptureKind } from './CameraCaptureModal';
 import { InstagramConnectModal } from './InstagramConnectModal';
@@ -45,6 +49,10 @@ export function PassportLobby() {
   const ig = useInstagramConnect();
   const { profile: passportProfile } = usePassportProfile();
   const { season } = useSeason();
+  // Fires POST /passport/unlocks/ on first lobby mount when the viewer's
+  // passport_unlocked_at is still null. Required before quests/recommendations
+  // returns anything (the endpoint 400s otherwise).
+  usePassportUnlock();
 
   const [upsell, setUpsell] = useState<ProUpsellFeature | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
@@ -57,6 +65,11 @@ export function PassportLobby() {
   const [questShareOpen, setQuestShareOpen] = useState(false);
   const [selectedQuest, setSelectedQuest] = useState<DockQuest | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [chestOpen, setChestOpen] = useState(false);
+  const questSubmission = useQuestSubmission(selectedQuest?.slug);
+  // Live quests feed the chest tiles; the same query also powers QuestsDock
+  // (react-query dedupes the network call via the shared cache key).
+  const { quests: liveQuests } = useQuests();
 
   const handle = profile?.custom_nickname || profile?.nickname || 'Citizen';
   const avatarUrl = profile?.pfp_image || profile?.avatar?.image;
@@ -227,6 +240,7 @@ export function PassportLobby() {
             <QuestsDock
               selectedQuest={selectedQuest}
               onSelect={setSelectedQuest}
+              onOpenChest={() => setChestOpen(true)}
             />
           }
         />
@@ -239,16 +253,61 @@ export function PassportLobby() {
           allowed={cameraAllowed}
           title={selectedQuest?.title ?? 'Capture'}
           onClose={() => setCameraOpen(false)}
-          onCapture={(file) => {
-            toast.success(
-              `Captured ${file.type.startsWith('video') ? 'video' : 'photo'}. Submission coming once the upload API is wired.`,
-            );
+          onCapture={async (file) => {
+            if (!selectedQuest) return;
+            // Best-effort geolocation — server stores coords as a Point for
+            // proof-of-presence. Quests without a radius gate still benefit
+            // from the lat/lng, and the submission endpoint accepts the call
+            // even when coords are absent, so we resolve to {} on failure.
+            const coords = await new Promise<{
+              latitude?: number;
+              longitude?: number;
+            }>((resolve) => {
+              if (typeof navigator === 'undefined' || !navigator.geolocation) {
+                resolve({});
+                return;
+              }
+              navigator.geolocation.getCurrentPosition(
+                (p) =>
+                  resolve({
+                    latitude: p.coords.latitude,
+                    longitude: p.coords.longitude,
+                  }),
+                () => resolve({}),
+                { enableHighAccuracy: true, timeout: 4000, maximumAge: 30_000 },
+              );
+            });
+
+            try {
+              await questSubmission.mutateAsync({ file, ...coords });
+              toast.success('Quest submitted — awaiting review');
+              setCameraOpen(false);
+            } catch (e) {
+              const message =
+                (e as { response?: { data?: { errors?: string[] } } })?.response
+                  ?.data?.errors?.[0] ||
+                (e as { message?: string })?.message ||
+                'Submission failed — try again';
+              toast.error(message);
+            }
           }}
         />
       </div>
 
       <ProUpsellModal feature={upsell} onClose={closeUpsell} />
       <MapModal open={mapOpen} onClose={() => setMapOpen(false)} />
+      <TreasureChestCard
+        open={chestOpen}
+        onClose={() => setChestOpen(false)}
+        quests={liveQuests}
+        onSelectQuest={(q) => {
+          // Close the chest first, then promote the tap to the lobby's
+          // selected quest so QuestsDock swaps to QuestPanel — same flow
+          // every other entry point uses.
+          setChestOpen(false);
+          setSelectedQuest(q as DockQuest);
+        }}
+      />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <InstagramConnectModal open={igModalOpen} onClose={() => setIgModalOpen(false)} onConnect={handleIgConnect} />
       <ShareModal isOpen={shareOpen} onClose={() => setShareOpen(false)} handle={handle} avatarUrl={avatarUrl} displayName={handle} />

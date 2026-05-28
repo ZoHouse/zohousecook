@@ -25,13 +25,47 @@ export type ParticipationStatus =
   | 'Submitted'
   | 'Qualified'
   | 'Disqualified'
+  | 'Closed'
+  | 'Results Declared'
+  | 'Expired'
+  // Legacy display value — kept for compat with existing tile rendering
+  // that branches on 'Claimed'. Backend's QuestParticipation.Status does
+  // not have a Claimed state; per-reward claim status lives on the nested
+  // claim row's QuestRewardClaim.Status.
   | 'Claimed';
 
+export type ClaimStatus = 'Pending' | 'Claimed' | 'Expired' | 'Disbursed';
+
+// Backend QuestRewardSerializer shape. `type` / `amount` / `label` are
+// permitted via the index signature for legacy/mock data that the demo
+// surfaces still use, but production payloads expose `id` + `category`
+// (display string) + numeric amount fields.
 export interface QuestReward {
-  type: string;
+  id?: string;
+  category?: string;
+  credit_amount?: number;
+  xp_amount?: number;
+  description?: string;
+  currency?: { symbol?: string | null; name?: string | null; decimals?: number | null } | null;
+  type?: string;
   amount?: number;
   label?: string;
   [key: string]: unknown;
+}
+
+// Backend QuestRewardClaimSerializer shape. Note: the public serializer
+// does NOT expose `reward` (FK id) — to POST to /claims/, callers must
+// derive the reward id from the parent quest's `rewards[]` array.
+export interface QuestRewardClaim {
+  id: string;
+  status: ClaimStatus;
+  category?: string;
+  credit_amount?: number;
+  xp_amount?: number;
+  coupon_code?: string | null;
+  claim_expires_at?: string | null;
+  claimed_at?: string | null;
+  disbursed_at?: string | null;
 }
 
 // === Optional `data` JSONB types ===
@@ -93,7 +127,8 @@ export interface QuestParticipation {
   is_paid_subscriber: boolean;
   qualified_at: string | null;
   disqualification_reason: string;
-  claims: unknown[];
+  claim_expires_at?: string | null;
+  claims: QuestRewardClaim[];
 }
 
 // Nested reference objects the user-facing serializer attaches.

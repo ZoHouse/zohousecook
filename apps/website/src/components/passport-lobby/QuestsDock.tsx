@@ -47,11 +47,11 @@ function kindGlyph(q: Quest): string {
   return '•';
 }
 
-function formatReward(reward: { type: string; amount?: number; label?: string }): string {
+function formatReward(reward: { type?: string; amount?: number; label?: string }): string {
   if (typeof reward.amount === 'number' && reward.amount > 0) {
-    return `+${reward.amount} ${reward.type.toUpperCase()}`;
+    return `+${reward.amount} ${(reward.type ?? '').toUpperCase()}`;
   }
-  return reward.label ?? reward.type;
+  return reward.label ?? reward.type ?? '';
 }
 
 // Per-category placeholder gradient — used when a quest has no real cover URL
@@ -919,6 +919,10 @@ export interface QuestsDockProps {
       CTA can morph in sync with the dock. */
   selectedQuest?: DockQuest | null;
   onSelect?: (q: DockQuest | null) => void;
+  /** Wires the "Daily Loot Box" tile's Play CTA to the TreasureChestCard
+   *  modal owned by PassportLobby. Falls back to a toast when undefined so
+   *  the dock can still render in isolation (e.g. PublicPassportView). */
+  onOpenChest?: () => void;
 }
 
 /** Custom hook — returns the viewer's active quests sorted by distance. */
@@ -954,7 +958,7 @@ export function useActiveQuests(maxItems = 10): { quests: DockQuest[]; isLoading
  * scroll is replaced by an inline detail panel in the same slot. The selected
  * quest is owned upstream (PassportLobby) so the page CTA can swap in sync.
  */
-export function QuestsDock({ maxItems = 10, selectedQuest, onSelect }: QuestsDockProps) {
+export function QuestsDock({ maxItems = 10, selectedQuest, onSelect, onOpenChest }: QuestsDockProps) {
   const { quests: visible, isLoading } = useActiveQuests(maxItems);
   const lootShown = isLootImminent(SAMPLE_LOOT.opens_at);
 
@@ -997,7 +1001,7 @@ export function QuestsDock({ maxItems = 10, selectedQuest, onSelect }: QuestsDoc
         {lootShown && (
           <TodaysLootCard
             loot={SAMPLE_LOOT}
-            onPlay={() => toast('Loot box claim flow coming soon')}
+            onPlay={onOpenChest ?? (() => toast('Loot box claim flow coming soon'))}
           />
         )}
         {visible.map((quest) => (
