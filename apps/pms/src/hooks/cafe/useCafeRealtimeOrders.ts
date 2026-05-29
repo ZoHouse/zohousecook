@@ -44,9 +44,9 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
   const [isLoading, setIsLoading] = useState(true)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
-  // `silent` skips the isLoading toggle — used by the polling / focus /
-  // resubscribe self-heal paths so a background refetch doesn't blank the
-  // board behind the "Loading kitchen board..." state every cycle.
+  // `silent` skips the isLoading toggle — used by the reconnect resync below
+  // so a background refetch doesn't blank the board behind the
+  // "Loading kitchen board..." state on every socket reconnect.
   const fetchAllOrders = useCallback(async (opts?: { silent?: boolean }) => {
     if (!propertyId) {
       setOrders([])
@@ -165,10 +165,14 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
       )
       .subscribe((status) => {
         // postgres_changes does NOT replay events missed while the socket was
-        // down (laptop sleep, wifi blip, server-side socket recycle). Every
-        // time the channel (re)connects, pull a fresh snapshot so any order
-        // that landed during the gap is recovered — this is what previously
-        // left orders invisible on a long-lived board until a manual remount.
+        // down (laptop sleep, wifi blip, server-side socket recycle). On every
+        // (re)connect, pull a fresh snapshot so any order that landed during
+        // the gap is recovered — otherwise it stays invisible on a long-lived
+        // board until a manual remount. Kept after the 2026-05-29 polling
+        // cleanup: the aggressive 15s interval + window-focus refetches were
+        // removed, but this reconnect resync is low-risk (fires only on
+        // reconnect, when there's no in-flight local mutation to clobber) and
+        // is the real safety net against dropped realtime events.
         if (status === 'SUBSCRIBED') {
           fetchAllOrders({ silent: true })
         }
@@ -181,22 +185,6 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
         supabase.removeChannel(channelRef.current)
         channelRef.current = null
       }
-    }
-  }, [propertyId, fetchAllOrders])
-
-  // Self-healing fallback. The kitchen board is a long-lived tab and realtime
-  // is its only live data path — a single dropped INSERT event would otherwise
-  // hide an order until the board is remounted. Poll on an interval and on
-  // window focus so a missed event self-corrects within seconds. Both paths
-  // are `silent` so the board never flashes its loading state.
-  useEffect(() => {
-    if (!propertyId) return
-    const interval = setInterval(() => fetchAllOrders({ silent: true }), 15000)
-    const onFocus = () => fetchAllOrders({ silent: true })
-    window.addEventListener('focus', onFocus)
-    return () => {
-      clearInterval(interval)
-      window.removeEventListener('focus', onFocus)
     }
   }, [propertyId, fetchAllOrders])
 
