@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useProfile } from '@zo/auth';
 import { MeshGradient } from '@paper-design/shaders-react';
@@ -6,6 +6,8 @@ import { useMyXp } from '../../hooks/useMyXp';
 import { usePassportProfile } from '../../hooks/usePassportProfile';
 import { usePassportUnlock } from '../../hooks/usePassportUnlock';
 import { useQuests } from '../../hooks/useQuests';
+import { useQuestRecommendations } from '../../hooks/useQuestRecommendations';
+import { useQuestParticipate } from '../../hooks/useQuestParticipate';
 import { useQuestSubmission } from '../../hooks/useQuestSubmission';
 import { useSeason } from '../../hooks/useSeason';
 import useInstagramConnect from '../../hooks/useInstagramConnect';
@@ -67,9 +69,24 @@ export function PassportLobby() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [chestOpen, setChestOpen] = useState(false);
   const questSubmission = useQuestSubmission(selectedQuest?.slug);
-  // Live quests feed the chest tiles; the same query also powers QuestsDock
-  // (react-query dedupes the network call via the shared cache key).
-  const { quests: liveQuests } = useQuests();
+  // Live quests = participations the user already has. Powers QuestsDock too
+  // (react-query dedupes the call via shared cache key).
+  const { quests: participatedQuests } = useQuests();
+  // Recommended quests = matcher output for the viewer's coords. These have
+  // no participation yet — clicking one creates the participation server-side
+  // via useQuestParticipate, after which it also shows in `participatedQuests`.
+  const { quests: recommendedQuests } = useQuestRecommendations();
+  const questParticipate = useQuestParticipate();
+  // Combined feed for the chest. Participations win on dedup (they carry
+  // status / claims data that recommendations don't).
+  const liveQuests = useMemo(() => {
+    const seen = new Set(participatedQuests.map((q) => q.pid));
+    const merged = [...participatedQuests];
+    for (const r of recommendedQuests) {
+      if (!seen.has(r.pid)) merged.push(r);
+    }
+    return merged;
+  }, [participatedQuests, recommendedQuests]);
 
   const handle = profile?.custom_nickname || profile?.nickname || 'Citizen';
   const avatarUrl = profile?.pfp_image || profile?.avatar?.image;
@@ -300,12 +317,22 @@ export function PassportLobby() {
         open={chestOpen}
         onClose={() => setChestOpen(false)}
         quests={liveQuests}
-        onSelectQuest={(q) => {
-          // Close the chest first, then promote the tap to the lobby's
-          // selected quest so QuestsDock swaps to QuestPanel — same flow
-          // every other entry point uses.
+        onSelectQuest={async (q) => {
+          // If this quest has no participation yet, it came from the
+          // recommendations feed — create the participation server-side so
+          // it sticks (next /quests/ fetch includes it) before swapping to
+          // the panel. Idempotent on the backend; fire-and-forget if it
+          // fails so we don't gate the navigation on the network.
           setChestOpen(false);
           setSelectedQuest(q as DockQuest);
+          const hasParticipation = (q.participations ?? []).length > 0;
+          if (!hasParticipation) {
+            try {
+              await questParticipate.mutateAsync(q.slug);
+            } catch {
+              /* soft-fail — panel still renders, retry on next click */
+            }
+          }
         }}
       />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
