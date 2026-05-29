@@ -5,8 +5,6 @@ export { default as CultureTag } from "./CultureTag";
 export { default as CitizenSeal } from "./CitizenSeal";
 export { default as PassportNav } from "./PassportNav";
 export { default as PassportProCard } from "./PassportProCard";
-export { default as QuestCard } from "./QuestCard";
-export { default as QuestsSection } from "./QuestsSection";
 export { default as ReferralSection } from "./ReferralSection";
 export { default as WhyPassportPlus } from "./WhyPassportPlus";
 export { default as PassportIdentityCard } from "./PassportIdentityCard";
