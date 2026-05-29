@@ -14,6 +14,7 @@ import {
   isBookingQuest,
   isGeomediaQuest,
   questDisplayTitle,
+  questLocationLabel,
   type Quest,
 } from '../../data/quests';
 import { distanceMeters, formatDistance, useLiveLocation } from '../LiveLocationProvider';
@@ -338,7 +339,7 @@ function QuestCard({ quest, onOpen }: { quest: DockQuest; onOpen: (q: DockQuest)
         </div>
         <div className="flex items-center justify-between gap-2 mt-auto">
           <span style={{ fontSize: 11, fontWeight: 600, color: '#6B5B8E' }}>
-            {(quest.data as { location?: { name?: string } } | undefined)?.location?.name ?? 'Anywhere'}
+            {questLocationLabel(quest)}
             {typeof quest.distance === 'number' && Number.isFinite(quest.distance) && (
               <span style={{ color: '#9A8FB8' }}>{' · '}{formatDistance(quest.distance)}</span>
             )}
@@ -366,7 +367,7 @@ export function QuestPanel({
   quest: DockQuest;
   onBack: () => void;
 }) {
-  const locName = (quest.data as { location?: { name?: string } } | undefined)?.location?.name;
+  const locName = questLocationLabel(quest);
   const reward = quest.rewards?.[0];
 
   // Compact per-kind body line so the panel stays at card height. Falls back
@@ -531,7 +532,7 @@ export function QuestListCard({
 }) {
   const theme = themeForQuest(quest);
   const reward = quest.rewards?.[0];
-  const locName = (quest.data as { location?: { name?: string } } | undefined)?.location?.name;
+  const locName = questLocationLabel(quest);
   const cover = (quest.data as { cover_image?: string } | undefined)?.cover_image;
   return (
     <button
@@ -675,7 +676,7 @@ export function QuestFullView({
   const theme = themeForQuest(quest);
   const reward = quest.rewards?.[0];
   const cover = (quest.data as { cover_image?: string } | undefined)?.cover_image;
-  const locName = (quest.data as { location?: { name?: string } } | undefined)?.location?.name;
+  const locName = questLocationLabel(quest);
 
   return (
     <div className={`relative w-full max-w-[640px] mx-auto pb-32 md:pb-8 ${rubikClassName}`}>
