@@ -592,13 +592,21 @@ export function TreasureChestCard({
   // Pair each tile definition with its raw Quest so tile clicks can hand
   // the original record back to the lobby — that's what QuestPanel needs
   // to render the detail view.
+  //
+  // liveQuests=undefined → caller didn't pass any (no-auth / preview).
+  //   Fall back to demos so the surface still renders something.
+  // liveQuests=[]        → caller has loaded data and the user has zero
+  //   active quests. Show the empty state, NOT demos — demos pair with
+  //   quest:null so onSelect is undefined and tiles aren't interactive,
+  //   which read to live users as "clicking does nothing."
   const tiles = useMemo<Array<{ def: QuestDef; quest: Quest | null }>>(() => {
-    if (liveQuests && liveQuests.length > 0) {
-      return liveQuests.map((q) => ({ def: questDefFromQuest(q), quest: q }));
+    if (liveQuests === undefined) {
+      return QUESTS.map((def) => ({ def, quest: null }));
     }
-    return QUESTS.map((def) => ({ def, quest: null }));
+    return liveQuests.map((q) => ({ def: questDefFromQuest(q), quest: q }));
   }, [liveQuests]);
   const isSingle = tiles.length === 1;
+  const isEmpty = tiles.length === 0;
 
   useEffect(() => {
     if (!open) return;
@@ -691,12 +699,40 @@ export function TreasureChestCard({
           <DropsPill />
         </div>
 
-        {/* Single quest → centred single tile (no scroll). Multiple →
-            horizontal carousel centred inside a 2xl column on desktop, full
-            bleed scroll on mobile. Tile click hands the raw Quest back so
-            the lobby can swap its dock to the QuestPanel detail view (same
-            UX as every other entry point). */}
-        {isSingle ? (
+        {/* Empty state — caller passed liveQuests=[] (real logged-in
+            user with no assigned quests yet). Never fall back to demo
+            tiles here: demos are intentionally non-interactive, which
+            read as "the modal is broken" to live users. */}
+        {isEmpty ? (
+          <div className="mx-auto w-full max-w-md px-4">
+            <div
+              className="flex flex-col items-center gap-2 px-5 py-6 text-center"
+              style={{
+                background: 'rgba(255,255,255,0.78)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                borderRadius: 14,
+                border: '1px solid rgba(255,255,255,0.9)',
+                boxShadow:
+                  '0 6px 18px rgba(120,100,160,0.18), inset 0 1px 0 rgba(255,255,255,0.95)',
+              }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 700, color: INK }}>
+                No active quests yet
+              </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 400,
+                  color: INK_MUTED,
+                  lineHeight: '1.4em',
+                }}
+              >
+                New quests get assigned daily. Check back soon — or earn XP by exploring nearby destinations.
+              </div>
+            </div>
+          </div>
+        ) : isSingle ? (
           <div className="mx-auto w-full max-w-md px-4">
             <QuestTile
               quest={tiles[0].def}
