@@ -25,6 +25,7 @@ import { TreasureChestCard } from './TreasureChestCard';
 import { UnlimitedAccessCta } from './UnlimitedAccessCta';
 import { CameraCaptureModal, type CaptureKind } from './CameraCaptureModal';
 import { InstagramConnectModal } from './InstagramConnectModal';
+import { SubmitPostUrlModal } from './SubmitPostUrlModal';
 import { hasGeomediaData } from '../../data/quests';
 import { ProUpsellModal, type ProUpsellFeature } from '../pro';
 import { SettingsModal } from '../passport/SettingsModal';
@@ -65,6 +66,8 @@ export function PassportLobby() {
   // its streamlined Instagram-only pearl variant without affecting the
   // rank-pill share above (which uses the full multi-target modal).
   const [questShareOpen, setQuestShareOpen] = useState(false);
+  // Creator/IG completion loop — paste the published post link as proof.
+  const [submitUrlOpen, setSubmitUrlOpen] = useState(false);
   const [selectedQuest, setSelectedQuest] = useState<DockQuest | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [chestOpen, setChestOpen] = useState(false);
@@ -130,12 +133,18 @@ export function PassportLobby() {
   // the selected quest's action (IG connect/share / camera capture / external
   // book). Instagram CTA flips on the citizen's OAuth state.
   const questAction = selectedQuest ? actionForQuest(selectedQuest, ig.isConnected) : null;
+  // Connected IG quests are at the "Post" step (Link IG → Post → Verify →
+  // Reveal → Claim), so the CTA reads "Submit Post" rather than the generic
+  // "Share" actionForQuest returns. Local override keeps actionForQuest pure
+  // for the standalone /passport/quests button.
+  const igConnectedQuest = questAction?.kind === 'instagram' && ig.isConnected;
+  const ctaLabel = igConnectedQuest ? 'Submit Post' : questAction?.label;
   const handleQuestAction = () => {
     if (!questAction) return;
     if (questAction.kind === 'instagram') {
       if (ig.isConnected) {
-        // IG linked → open the streamlined Instagram-only share modal.
-        setQuestShareOpen(true);
+        // IG linked → open the proof-link capture modal (the "Post" step).
+        setSubmitUrlOpen(true);
       } else {
         ig.connect();
       }
@@ -245,12 +254,12 @@ export function PassportLobby() {
           travelersPill={<TravelersPill />}
           ctaMobile={
             questAction ? (
-              <UnlimitedAccessCta size="sm" label={questAction.label} onClick={handleQuestAction} />
+              <UnlimitedAccessCta size="sm" label={ctaLabel} onClick={handleQuestAction} />
             ) : undefined
           }
           ctaDesktop={
             questAction ? (
-              <UnlimitedAccessCta label={questAction.label} onClick={handleQuestAction} />
+              <UnlimitedAccessCta label={ctaLabel} onClick={handleQuestAction} />
             ) : undefined
           }
           belowCta={
@@ -337,6 +346,30 @@ export function PassportLobby() {
       />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <InstagramConnectModal open={igModalOpen} onClose={() => setIgModalOpen(false)} onConnect={handleIgConnect} />
+      <SubmitPostUrlModal
+        open={submitUrlOpen}
+        onClose={() => setSubmitUrlOpen(false)}
+        onShare={() => setQuestShareOpen(true)}
+        questTitle={selectedQuest?.title}
+        submitting={questSubmission.isLoading}
+        alreadySubmitted={selectedQuest?.participations?.[0]?.status === 'Submitted'}
+        initialUrl={selectedQuest?.participations?.[0]?.proof_url || ''}
+        onSubmit={async (proofUrl) => {
+          if (!selectedQuest) return;
+          try {
+            await questSubmission.mutateAsync({ proofUrl });
+            toast.success('Post submitted — awaiting review');
+            setSubmitUrlOpen(false);
+          } catch (e) {
+            const message =
+              (e as { response?: { data?: { errors?: string[] } } })?.response
+                ?.data?.errors?.[0] ||
+              (e as { message?: string })?.message ||
+              'Submission failed — try again';
+            toast.error(message);
+          }
+        }}
+      />
       <ShareModal isOpen={shareOpen} onClose={() => setShareOpen(false)} handle={handle} avatarUrl={avatarUrl} displayName={handle} />
       <ShareModal
         isOpen={questShareOpen}
