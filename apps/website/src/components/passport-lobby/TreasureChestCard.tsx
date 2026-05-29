@@ -6,17 +6,19 @@ import { LobbyRoom } from './LobbyRoom';
 import { QuestsDock, type DockQuest } from './QuestsDock';
 import { getDailyLootDrop, useCountdown } from './TodaysLootCard';
 
-// Mirrors PassportLobby's iridescent palette so the loot box reads as the same
-// surface — a deeper view of the lobby, not a separate sheet floating above it.
-const IRIDESCENT_PEARL_COLORS = [
-  '#FBF8F4',
-  '#F2E0EC',
-  '#E6D9F2',
-  '#FFFFFF',
-  '#DCEDE8',
-  '#F4E8D4',
-  '#DBE6F2',
-  '#FBF8F4',
+// Treasure-pearl palette — the lobby's iridescent pearl warmed with gold /
+// champagne so the loot box reads as a richer, treasure-toned view of the same
+// surface. Livelier params (below) keep the shader clearly alive rather than a
+// near-flat ivory wash.
+const TREASURE_PEARL_COLORS = [
+  '#FBF8F4', // ivory base
+  '#FBE9C7', // champagne gold
+  '#F4D58A', // soft gold
+  '#FFFFFF', // white highlight
+  '#F2E0EC', // rose pearl
+  '#FCEBB6', // warm gold cream
+  '#E9D7F2', // lilac shimmer
+  '#FBF8F4', // back to ivory
 ];
 const INK = '#0A0A14';
 const INK_MUTED = '#6B5B8E';
@@ -127,16 +129,18 @@ export function TreasureChestCard({
         overscrollBehavior: 'none',
       }}
     >
-      {/* Iridescent pearl mesh — identical shader settings to the lobby root. */}
+      {/* Treasure-pearl mesh — same shader family as the lobby, warmed with
+          gold and run livelier so the loot box clearly reads as a shader
+          surface rather than flat ivory. */}
       <div aria-hidden className="pointer-events-none fixed inset-0" style={{ zIndex: 0 }}>
         <MeshGradient
-          colors={IRIDESCENT_PEARL_COLORS}
-          speed={0.12}
-          scale={0.7}
-          distortion={0.08}
-          swirl={0.1}
-          grainMixer={0.04}
-          grainOverlay={0.03}
+          colors={TREASURE_PEARL_COLORS}
+          speed={0.22}
+          scale={0.6}
+          distortion={0.28}
+          swirl={0.32}
+          grainMixer={0.05}
+          grainOverlay={0.04}
           fit="cover"
           style={{ width: '100%', height: '100%' }}
         />
