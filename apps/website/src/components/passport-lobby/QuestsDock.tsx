@@ -12,7 +12,6 @@ import {
   hasInstagramData,
   isBookingQuest,
   isGeomediaQuest,
-  isInstagramQuest,
   questDisplayTitle,
   type Quest,
 } from '../../data/quests';
@@ -234,35 +233,40 @@ export function QuestActionButton({ quest }: { quest: Quest }) {
 }
 
 export function actionForQuest(q: Quest, igConnected = false): QuestAction | null {
-  // Archetype is derived from the FK tuple — works on the public response.
-  // Instagram CTA flips on the citizen's IG OAuth state: Connect when the
-  // account isn't linked yet, Share once it is.
-  if (isInstagramQuest(q)) {
-    return {
-      kind: 'instagram',
-      label: igConnected ? 'Share' : 'Connect Instagram',
-    };
+  // Archetype is derived from the FK tuple (category + destination / operator /
+  // inventory) — all present on the public AND recommendations responses. The
+  // `data` JSONB only enriches these (precise media kinds, booking href) and is
+  // absent on recommendations, so every branch must resolve to a usable action
+  // WITHOUT it — otherwise the lobby CTA can't morph and the quest is
+  // impossible to start (the recommendations-in-lobby bug).
+
+  // Creator = Instagram content quest — both the no-FK first-share and a
+  // shoot-at-a-place. Connect when unlinked, submit the post once linked.
+  if (q.category === 'Creator') {
+    return { kind: 'instagram', label: igConnected ? 'Share' : 'Connect Instagram' };
   }
-  // Geomedia + Booking labels still need data.* (media_kinds, href, etc).
-  // Until the public serializer exposes the equivalent fields, these CTAs
-  // only fire on CAS-bound surfaces where `data` is populated.
-  if (isGeomediaQuest(q) && hasGeomediaData(q)) {
-    const accept = q.data.geomedia.media_kinds
-      .map((k) => (k === 'video' ? 'video/*' : k === 'audio' ? 'audio/*' : 'image/*'))
-      .join(',');
-    const isVideo = q.data.geomedia.media_kinds[0] === 'video';
+  // Tripper + destination only → capture media at the place. `data.geomedia`
+  // gives exact media kinds on CAS surfaces; default to a photo capture when
+  // it's absent (recommendations).
+  if (isGeomediaQuest(q)) {
+    const accept = hasGeomediaData(q)
+      ? q.data.geomedia.media_kinds
+          .map((k) => (k === 'video' ? 'video/*' : k === 'audio' ? 'audio/*' : 'image/*'))
+          .join(',')
+      : 'image/*';
+    const isVideo = hasGeomediaData(q) && q.data.geomedia.media_kinds[0] === 'video';
     return {
       kind: 'geomedia',
       label: isVideo ? 'Open camera (video)' : 'Open camera',
       accept,
     };
   }
-  if (isBookingQuest(q) && hasBookingData(q)) {
-    return {
-      kind: 'booking',
-      label: q.data.booking.provider === 'zostel' ? 'Book on Zostel' : 'Book on Zo',
-      href: q.data.booking.href,
-    };
+  // Tripper + operator/inventory → book the stay/trip. Use the explicit href on
+  // CAS surfaces; recommendations omit it, so send the citizen to the Zostel
+  // booking page.
+  if (isBookingQuest(q)) {
+    const href = hasBookingData(q) ? q.data.booking.href : 'https://www.zostel.com/';
+    return { kind: 'booking', label: 'Book on Zostel', href };
   }
   return null;
 }
