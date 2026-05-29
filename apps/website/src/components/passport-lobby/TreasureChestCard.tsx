@@ -101,10 +101,10 @@ const CTA_STYLES = {
 function rewardTile(reward: QuestReward | undefined): Reward | null {
   if (!reward) return null;
 
-  // Production path — QuestRewardSerializer returns `category` as a display
-  // string from get_category_display(): "XP", "Bed Drop", "Bounty", or
-  // "Content Monetization" (passport/models/quest.py QuestReward.Category).
-  // The numeric is on xp_amount or credit_amount depending on category.
+  // QuestRewardSerializer returns `category` as a display string from
+  // get_category_display(): "XP", "Bed Drop", "Bounty", or "Content
+  // Monetization" (passport/models/quest.py QuestReward.Category). The
+  // numeric is on xp_amount or credit_amount depending on category.
   const cat = reward.category;
   const sym = reward.currency?.symbol ?? '₹';
 
@@ -122,23 +122,6 @@ function rewardTile(reward: QuestReward | undefined): Reward | null {
       ? `${sym}${reward.credit_amount} per post`
       : 'Creator payout';
     return { icon: '◉', label: cm, color: '#FF9D5C' };
-  }
-
-  // Legacy mock shape — used by the demo QUESTS array (no backend category)
-  // and by any pre-existing hand-rolled rewards. Production data falls
-  // through to this only when the category branches above didn't match.
-  const { type, amount } = reward;
-  if (type === 'xp' && typeof amount === 'number') {
-    return { icon: '✦', label: `${amount} XP`, color: '#FFD84D' };
-  }
-  if (type === 'bed_drop') {
-    return { icon: '◈', label: 'Free Bed Drop', color: '#C9A7FF' };
-  }
-  if (type === 'discount' && typeof amount === 'number') {
-    return { icon: '₹', label: `Rs. ${Math.round(amount / 100)}`, color: '#80E57B' };
-  }
-  if (type === 'credit' && typeof amount === 'number') {
-    return { icon: '◉', label: `${amount} Zo Cred`, color: '#A7D921' };
   }
   return null;
 }
@@ -211,52 +194,6 @@ function questDefFromQuest(q: Quest): QuestDef {
     claim,
   };
 }
-
-const QUESTS: QuestDef[] = [
-  {
-    id: 'drink-water',
-    category: 'Daily Tripper Quest',
-    categoryColor: '#5A9BFF',
-    isDaily: true,
-    title: 'Drink Water',
-    rewards: [{ icon: '✦', label: '200 XP', color: '#FFD84D' }],
-  },
-  {
-    id: 'pahalgam',
-    category: "Today's Tripper Quest",
-    categoryColor: '#5A9BFF',
-    title: 'Book a Stay in Pahalgam for 2 nights',
-    deadline: '23h 14m left',
-    rewards: [
-      { icon: '₹', label: 'Rs. 50', color: '#80E57B' },
-      { icon: '✦', label: '150 XP', color: '#FFD84D' },
-      { icon: '◈', label: 'Earn Pahalgam Stamp', color: '#C9A7FF' },
-    ],
-    cta: { label: 'Start Quest', bg: 'linear-gradient(180deg, #FF7A2E 0%, #E15400 100%)', color: '#FFFFFF' },
-  },
-  {
-    id: 'connect-ig',
-    category: "Today's Creator Quest",
-    categoryColor: '#C26BE8',
-    title: 'Connect Instagram',
-    rewards: [
-      { icon: '◉', label: '100 On Connect', color: '#FFD84D' },
-      { icon: '◉', label: 'Earn Creator Role', color: '#C26BE8' },
-    ],
-    cta: { label: 'Connect IG', bg: 'linear-gradient(180deg, #A855E8 0%, #7A22C2 100%)', color: '#FFFFFF' },
-  },
-  {
-    id: 'share-passport',
-    category: 'Daily Tribe Maker Quest',
-    categoryColor: '#FF66C4',
-    isDaily: true,
-    title: 'Share your passport',
-    rewards: [
-      { icon: '✦', label: '200 XP', color: '#FFD84D' },
-      { icon: '◉', label: 'Earn Tribe Builder Role', color: '#FF66C4' },
-    ],
-  },
-];
 
 function QuestTile({ quest, onSelect }: { quest: QuestDef; onSelect?: () => void }) {
   // Always call the hook — react rules-of-hooks. When `quest.claim` is
@@ -591,18 +528,11 @@ export function TreasureChestCard({
 
   // Pair each tile definition with its raw Quest so tile clicks can hand
   // the original record back to the lobby — that's what QuestPanel needs
-  // to render the detail view.
-  //
-  // liveQuests=undefined → caller didn't pass any (no-auth / preview).
-  //   Fall back to demos so the surface still renders something.
-  // liveQuests=[]        → caller has loaded data and the user has zero
-  //   active quests. Show the empty state, NOT demos — demos pair with
-  //   quest:null so onSelect is undefined and tiles aren't interactive,
-  //   which read to live users as "clicking does nothing."
-  const tiles = useMemo<Array<{ def: QuestDef; quest: Quest | null }>>(() => {
-    if (liveQuests === undefined) {
-      return QUESTS.map((def) => ({ def, quest: null }));
-    }
+  // to render the detail view. No demo fallback: any non-array (undefined
+  // / null caller, no live data yet) is treated the same as an empty
+  // array, which renders the empty-state card below.
+  const tiles = useMemo<Array<{ def: QuestDef; quest: Quest }>>(() => {
+    if (!liveQuests) return [];
     return liveQuests.map((q) => ({ def: questDefFromQuest(q), quest: q }));
   }, [liveQuests]);
   const isSingle = tiles.length === 1;
@@ -737,9 +667,7 @@ export function TreasureChestCard({
             <QuestTile
               quest={tiles[0].def}
               onSelect={
-                tiles[0].quest && onSelectQuest
-                  ? () => onSelectQuest(tiles[0].quest as Quest)
-                  : undefined
+                onSelectQuest ? () => onSelectQuest(tiles[0].quest) : undefined
               }
             />
           </div>
@@ -757,9 +685,7 @@ export function TreasureChestCard({
                   <QuestTile
                     quest={def}
                     onSelect={
-                      quest && onSelectQuest
-                        ? () => onSelectQuest(quest)
-                        : undefined
+                      onSelectQuest ? () => onSelectQuest(quest) : undefined
                     }
                   />
                 </div>

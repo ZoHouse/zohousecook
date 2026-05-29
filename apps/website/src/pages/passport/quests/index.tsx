@@ -25,7 +25,7 @@ import { CameraCaptureModal, type CaptureKind } from '../../../components/passpo
 import {
   TodaysLootCard,
   isLootImminent,
-  SAMPLE_LOOT,
+  getDailyLootDrop,
 } from '../../../components/passport-lobby/TodaysLootCard';
 import { SettingsModal } from '../../../components/passport/SettingsModal';
 import ShareModal from '../../../components/passport/ShareModal';
@@ -321,13 +321,16 @@ export default function QuestsPage() {
 
             {/* DAILY LOOT BOX — same component as the lobby dock, banner variant for the
                 dashboard's vertical list. Renders only when the drop is imminent (<24h). */}
-            {isLootImminent(SAMPLE_LOOT.opens_at) && (
-              <TodaysLootCard
-                loot={SAMPLE_LOOT}
-                variant="banner"
-                onPlay={() => toast('Loot box claim flow coming soon')}
-              />
-            )}
+            {(() => {
+              const dailyLoot = getDailyLootDrop();
+              return isLootImminent(dailyLoot.opens_at) ? (
+                <TodaysLootCard
+                  loot={dailyLoot}
+                  variant="banner"
+                  onPlay={() => toast('Loot box claim flow coming soon')}
+                />
+              ) : null;
+            })()}
 
             {/* CATEGORIES */}
             <section>

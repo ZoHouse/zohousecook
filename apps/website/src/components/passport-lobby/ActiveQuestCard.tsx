@@ -1,9 +1,9 @@
 import { rubikClassName } from '../utils/font';
 
 export interface ActiveQuestCardProps {
-  /** Quest headline, e.g. "Why I'd choose Zostel Pahalgam" */
-  topic?: string;
-  /** Short deadline copy, e.g. "Ends 4:00 PM" */
+  /** Quest headline rendered as the card's main line. */
+  topic: string;
+  /** Short deadline copy, e.g. "Ends 4:00 PM". */
   deadline?: string;
   /** Current step index (0–4). 0 = not started, 5 = all done */
   step?: number;
@@ -16,11 +16,11 @@ export interface ActiveQuestCardProps {
 const STEPS = ['Link IG', 'Post', 'Verify', 'Reveal', 'Claim'];
 
 export function ActiveQuestCard({
-  topic = "Today's Quest: Why I'd choose Zostel Pahalgam",
-  deadline = 'Ends 4:00 PM',
+  topic,
+  deadline,
   step = 0,
-  xpReward = 150,
-  zoCredReward = 50,
+  xpReward,
+  zoCredReward,
   onTap,
 }: ActiveQuestCardProps) {
   const interactive = !!onTap;
@@ -114,17 +114,23 @@ export function ActiveQuestCard({
         })}
       </div>
 
-      {/* Rewards row */}
+      {/* Rewards row — only the rewards the caller passed get rendered. */}
       <div className="flex items-center" style={{ gap: 10, fontSize: 10 }}>
-        <span className="flex items-center" style={{ gap: 4, color: '#FEDD1E', fontWeight: 600 }}>
-          <span aria-hidden>⚡</span>
-          <span>+{xpReward} XP</span>
-        </span>
-        <span style={{ width: 1, height: 10, background: 'rgba(255,255,255,0.12)' }} aria-hidden />
-        <span className="flex items-center" style={{ gap: 4, color: '#A7D921', fontWeight: 600 }}>
-          <span aria-hidden>◈</span>
-          <span>{zoCredReward} Zo Credits</span>
-        </span>
+        {typeof xpReward === 'number' && (
+          <span className="flex items-center" style={{ gap: 4, color: '#FEDD1E', fontWeight: 600 }}>
+            <span aria-hidden>⚡</span>
+            <span>+{xpReward} XP</span>
+          </span>
+        )}
+        {typeof xpReward === 'number' && typeof zoCredReward === 'number' && (
+          <span style={{ width: 1, height: 10, background: 'rgba(255,255,255,0.12)' }} aria-hidden />
+        )}
+        {typeof zoCredReward === 'number' && (
+          <span className="flex items-center" style={{ gap: 4, color: '#A7D921', fontWeight: 600 }}>
+            <span aria-hidden>◈</span>
+            <span>{zoCredReward} Zo Credits</span>
+          </span>
+        )}
         {interactive && (
           <span
             className="ml-auto"

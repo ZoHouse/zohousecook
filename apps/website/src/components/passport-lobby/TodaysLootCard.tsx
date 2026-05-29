@@ -34,14 +34,26 @@ function useCountdown(iso: string): string {
   return `${pad(h)} : ${pad(m)} : ${pad(s)}`;
 }
 
-// Single source of the imminent loot drop. Stays hardcoded until a backend
-// endpoint for loot/bounty events ships — both /passport/quests and the
-// lobby QuestsDock consume this same constant.
-export const SAMPLE_LOOT: LootDrop = {
-  title: 'Daily Loot Box',
-  subtitle: 'Participate daily by completing quests',
-  opens_at: new Date(Date.now() + (8 * 60 + 6) * 60 * 1000 + 12_000).toISOString(),
-};
+// Daily Loot Box surfaces the chest CTA in the lobby's dock + the /quests
+// page. Title/subtitle are stable copy. opens_at is computed at access
+// time: the next 4:00 PM IST, which is when daily quest rollover happens
+// per Erum's PRD (Link IG → Post → HQ verify → Results → Treasure Box).
+// No backend dependency, no mock value — derived from the real reset cadence.
+export function getDailyLootDrop(): LootDrop {
+  // IST = UTC+5:30. Reset target = today's 4 PM IST; if already past,
+  // roll to tomorrow's 4 PM IST.
+  const now = new Date();
+  const nowIst = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+  const resetIst = new Date(nowIst);
+  resetIst.setUTCHours(16, 0, 0, 0);
+  if (resetIst <= nowIst) resetIst.setUTCDate(resetIst.getUTCDate() + 1);
+  const opensAtUtcMs = resetIst.getTime() - 5.5 * 60 * 60 * 1000;
+  return {
+    title: 'Daily Loot Box',
+    subtitle: 'Participate daily by completing quests',
+    opens_at: new Date(opensAtUtcMs).toISOString(),
+  };
+}
 
 export interface TodaysLootCardProps {
   loot: LootDrop;

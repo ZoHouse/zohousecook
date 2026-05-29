@@ -9,13 +9,6 @@ import {
   type QuestsListResponse,
 } from '../data/quests';
 
-// Frontend is wired to the live backend on both branches. On staging this
-// hits api.nsfp.io.zo.xyz where Daya's quest engine returns real assigned
-// quests; on main it hits api.io.zo.xyz where the same endpoint currently
-// 500s. The catch below tolerates 4xx + 5xx by returning null, so the UI
-// degrades to an empty state on prod until the backend is promoted.
-const USE_MOCK = false;
-
 export interface UseQuestsResult {
   quests: Quest[];
   count: number;
@@ -73,7 +66,3 @@ export function useQuests(): UseQuestsResult {
     refetch: query.refetch,
   };
 }
-// Re-export the constant — handy for design surfaces that want to short-circuit
-// to MOCK_QUESTS_RESPONSE while iterating offline. Production code paths never
-// read it (USE_MOCK is always false).
-export { USE_MOCK };

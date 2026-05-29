@@ -22,7 +22,7 @@ import { CameraCaptureModal, type CaptureKind } from './CameraCaptureModal';
 import {
   TodaysLootCard,
   isLootImminent,
-  SAMPLE_LOOT,
+  getDailyLootDrop,
 } from './TodaysLootCard';
 
 // Active = Live/Active template + the viewer's participation is still open.
@@ -960,7 +960,8 @@ export function useActiveQuests(maxItems = 10): { quests: DockQuest[]; isLoading
  */
 export function QuestsDock({ maxItems = 10, selectedQuest, onSelect, onOpenChest }: QuestsDockProps) {
   const { quests: visible, isLoading } = useActiveQuests(maxItems);
-  const lootShown = isLootImminent(SAMPLE_LOOT.opens_at);
+  const dailyLoot = useMemo(() => getDailyLootDrop(), []);
+  const lootShown = isLootImminent(dailyLoot.opens_at);
 
   if (selectedQuest) {
     return <QuestPanel quest={selectedQuest} onBack={() => onSelect?.(null)} />;
@@ -1000,7 +1001,7 @@ export function QuestsDock({ maxItems = 10, selectedQuest, onSelect, onOpenChest
       >
         {lootShown && (
           <TodaysLootCard
-            loot={SAMPLE_LOOT}
+            loot={dailyLoot}
             onPlay={onOpenChest ?? (() => toast('Loot box claim flow coming soon'))}
           />
         )}
