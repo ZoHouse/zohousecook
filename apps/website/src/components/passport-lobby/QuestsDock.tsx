@@ -13,6 +13,7 @@ import {
   hasInstagramData,
   isBookingQuest,
   isGeomediaQuest,
+  questCoverUrl,
   questDisplayTitle,
   questLocationLabel,
   type Quest,
@@ -75,7 +76,7 @@ function CoverArea({
   topLeft?: React.ReactNode;
   topRight?: React.ReactNode;
 }) {
-  const cover = (quest.data as { cover_image?: string } | undefined)?.cover_image;
+  const cover = questCoverUrl(quest);
   return (
     <div className="relative" style={{ width: '100%', height }}>
       {cover ? (
@@ -533,7 +534,7 @@ export function QuestListCard({
   const theme = themeForQuest(quest);
   const reward = quest.rewards?.[0];
   const locName = questLocationLabel(quest);
-  const cover = (quest.data as { cover_image?: string } | undefined)?.cover_image;
+  const cover = questCoverUrl(quest);
   return (
     <button
       type="button"
@@ -675,7 +676,7 @@ export function QuestFullView({
 }) {
   const theme = themeForQuest(quest);
   const reward = quest.rewards?.[0];
-  const cover = (quest.data as { cover_image?: string } | undefined)?.cover_image;
+  const cover = questCoverUrl(quest);
   const locName = questLocationLabel(quest);
 
   return (
