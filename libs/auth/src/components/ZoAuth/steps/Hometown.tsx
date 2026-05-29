@@ -52,12 +52,26 @@ const Hometown: FC<HometownProps> = ({ advanceOnboarding }) => {
     if (typed.length < MIN_LENGTH || isSaving) return;
     setIsSaving(true);
 
-    const useStructured = !!(selected && selected.place_name === typed);
-    const payload = useStructured
+    // If the user picked a city from Google's autocomplete, we always send
+    // the coords. Previously we gated this on `selected.place_name === typed`,
+    // but Google's formatted_address ("Bengaluru, Karnataka, India") almost
+    // never matches what the user typed ("bangalore"), so the equality check
+    // dropped the lat/lng for most users. The recommender's first check is
+    // `coordinates = user.home_coordinates`; if that's null it returns no
+    // quests at all — which is exactly the empty-lobby bug Erum was hitting.
+    //
+    // Behaviour now:
+    //   selected (picked from dropdown)  → send name + ref_id + lat/lng
+    //   no selected (typed-only fallback) → send the typed text only
+    //
+    // The on-screen confirmation chip below already shows the resolved
+    // place_name, so the user knows their pick was registered even when it
+    // doesn't match what they typed character-for-character.
+    const payload = selected
       ? {
-          place_name: selected!.place_name,
-          place_ref_id: selected!.place_id,
-          home_location: { lat: selected!.lat, lng: selected!.lng }, // NOTE: lng, not long
+          place_name: selected.place_name,
+          place_ref_id: selected.place_id,
+          home_location: { lat: selected.lat, lng: selected.lng }, // NOTE: lng, not long
         }
       : { place_name: typed };
 
@@ -109,7 +123,7 @@ const Hometown: FC<HometownProps> = ({ advanceOnboarding }) => {
         <input {...inputProps} />
       )}
 
-      {selected && selected.place_name === text && (
+      {selected && (
         <span className="text-sm text-[#66DF48] mb-4">
           ✓ {selected.place_name}
         </span>
