@@ -15,15 +15,15 @@ interface CasMediaResponse {
   [key: string]: unknown;
 }
 
-// CAS accepts the file under the `file` part and gates the post on the
-// `category` field (cas/views/gallery.py uses
-// @params_present("category","file") on the MediaRelations endpoint and the
-// MediaSerializer requires it on the ViewSet). Both endpoints currently sit
-// behind staff/CAS-admin permissions — non-staff users will 403 here until
-// the backend opens a user-scoped upload path; this hook is plumbed and
-// ready for that day. Content-Type is set by zoServer's request interceptor
-// (libs/auth/src/utils.ts) based on FormData detection, so we don't pass it
-// explicitly.
+// Posts to /api/v1/gallery/media/ — Daya's user-scoped upload endpoint
+// (gallery/views.py MediaUploadView with `permission_classes = []`, so any
+// authenticated user can hit it). Required form fields per the
+// @params_present("category", "file") decorator: `category` (string,
+// "image" or "video" derived from File.type) and `file` (the binary).
+// Returns 201 with the MediaSerializer payload; we read `id` to attach
+// as proof_media[]. Note: we used to point at /api/v1/cas/media/ which was
+// staff-gated (IsHousekeepingStaff | IsHousekeepingAdmin | IsCASAdmin) —
+// non-staff users 403'd there; the gallery endpoint is the user-facing one.
 async function uploadProofMedia(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
@@ -32,11 +32,11 @@ async function uploadProofMedia(file: File): Promise<string> {
     file.type.startsWith("video") ? "video" : "image",
   );
   const res = await zoServer.post<CasMediaResponse>(
-    "/api/v1/cas/media/",
+    "/api/v1/gallery/media/",
     formData,
   );
   const id = res.data?.id ?? res.data?.pid;
-  if (!id) throw new Error("CAS upload returned no media id");
+  if (!id) throw new Error("gallery upload returned no media id");
   return String(id);
 }
 
