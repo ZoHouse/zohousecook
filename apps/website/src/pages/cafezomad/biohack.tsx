@@ -29,7 +29,7 @@ export default function BioHackPage() {
             </button>
             <h1 className="text-lg font-extrabold tracking-tight text-black">Bio Hack</h1>
           </div>
-          <button onClick={() => router.push('/cafezomad/menu')} className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl active:scale-95 transition-all">
+          <button onClick={() => router.push('/cafezomad/nodes')} className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl active:scale-95 transition-all">
             Menu
           </button>
         </div>
