@@ -246,6 +246,11 @@ function QuestTile({ quest, onSelect }: { quest: QuestDef; onSelect?: () => void
       }
       className={`flex flex-col gap-2 p-3 text-left ${interactive ? 'cursor-pointer active:scale-[0.99] transition-transform' : ''}`}
       style={{
+        // Fixed height so every tile in the dock/chest row is uniform
+        // regardless of title length, reward presence, or CTA. Title clamps
+        // to 2 lines and the CTA is pushed to the bottom (mt-auto) so the
+        // baselines align across cards.
+        height: 160,
         // Pearl glass — matches the rest of the lobby (CameraCaptureModal
         // PEARL_BG / GLASS_PILL) so this surface reads as part of the
         // same material set, not a dark eggplant intrusion.
@@ -274,15 +279,30 @@ function QuestTile({ quest, onSelect }: { quest: QuestDef; onSelect?: () => void
           </div>
         )}
       </div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: INK, lineHeight: '1.3em' }}>{quest.title}</div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        {quest.rewards.map((r, i) => (
-          <div key={i} className="flex items-center gap-1" style={{ fontSize: 10, color: r.color }}>
-            <span aria-hidden style={{ fontSize: 11 }}>{r.icon}</span>
-            <span style={{ fontWeight: 600 }}>{r.label}</span>
-          </div>
-        ))}
+      <div
+        style={{
+          fontSize: 14,
+          fontWeight: 700,
+          color: INK,
+          lineHeight: '1.3em',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}
+      >
+        {quest.title}
       </div>
+      {quest.rewards.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {quest.rewards.map((r, i) => (
+            <div key={i} className="flex items-center gap-1" style={{ fontSize: 10, color: r.color }}>
+              <span aria-hidden style={{ fontSize: 11 }}>{r.icon}</span>
+              <span style={{ fontWeight: 600 }}>{r.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {quest.cta && (
         <button
           type="button"
@@ -301,7 +321,7 @@ function QuestTile({ quest, onSelect }: { quest: QuestDef; onSelect?: () => void
             }
           }}
           disabled={ctaDisabled}
-          className="mt-1 self-start transition-all active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100"
+          className="mt-auto self-start transition-all active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100"
           style={{
             background: quest.cta.bg,
             color: quest.cta.color,

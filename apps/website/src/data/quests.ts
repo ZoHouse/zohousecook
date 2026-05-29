@@ -224,6 +224,18 @@ export function isBookingQuest(q: Quest): boolean {
   return q.category === 'Tripper' && (!!q.operator || !!q.inventory);
 }
 
+// Human label for where a quest happens. CAS surfaces carry a precise
+// `data.location.name`; the public + recommendations responses don't, but they
+// DO expose the `destination` FK (city) and `operator` (property) — so fall
+// back to those before the generic 'Anywhere'. (poi_name / coordinates are not
+// serialized on the public response, so the city is the most precise label we
+// can show client-side today.)
+export function questLocationLabel(q: Quest): string {
+  const dataName = (q.data as { location?: { name?: string } } | undefined)?.location
+    ?.name;
+  return dataName || q.destination?.name || q.operator?.name || 'Anywhere';
+}
+
 // === Content-shape predicates — narrow `data` to the matching JSONB ===
 //
 // Use these only on CAS-bound surfaces (or once a backend change exposes

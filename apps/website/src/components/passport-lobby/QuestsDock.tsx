@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { toast } from 'sonner';
 import { useProfile } from '@zo/auth';
 import { useQuests } from '../../hooks/useQuests';
+import { useQuestRecommendations } from '../../hooks/useQuestRecommendations';
 import useInstagramConnect from '../../hooks/useInstagramConnect';
 import ShareModal from '../passport/ShareModal';
 import { fixAvatarUrl } from '../../hooks/usePublicPassport';
@@ -12,8 +13,8 @@ import {
   hasInstagramData,
   isBookingQuest,
   isGeomediaQuest,
-  isInstagramQuest,
   questDisplayTitle,
+  questLocationLabel,
   type Quest,
 } from '../../data/quests';
 import { distanceMeters, formatDistance, useLiveLocation } from '../LiveLocationProvider';
@@ -234,35 +235,40 @@ export function QuestActionButton({ quest }: { quest: Quest }) {
 }
 
 export function actionForQuest(q: Quest, igConnected = false): QuestAction | null {
-  // Archetype is derived from the FK tuple — works on the public response.
-  // Instagram CTA flips on the citizen's IG OAuth state: Connect when the
-  // account isn't linked yet, Share once it is.
-  if (isInstagramQuest(q)) {
-    return {
-      kind: 'instagram',
-      label: igConnected ? 'Share' : 'Connect Instagram',
-    };
+  // Archetype is derived from the FK tuple (category + destination / operator /
+  // inventory) — all present on the public AND recommendations responses. The
+  // `data` JSONB only enriches these (precise media kinds, booking href) and is
+  // absent on recommendations, so every branch must resolve to a usable action
+  // WITHOUT it — otherwise the lobby CTA can't morph and the quest is
+  // impossible to start (the recommendations-in-lobby bug).
+
+  // Creator = Instagram content quest — both the no-FK first-share and a
+  // shoot-at-a-place. Connect when unlinked, submit the post once linked.
+  if (q.category === 'Creator') {
+    return { kind: 'instagram', label: igConnected ? 'Share' : 'Connect Instagram' };
   }
-  // Geomedia + Booking labels still need data.* (media_kinds, href, etc).
-  // Until the public serializer exposes the equivalent fields, these CTAs
-  // only fire on CAS-bound surfaces where `data` is populated.
-  if (isGeomediaQuest(q) && hasGeomediaData(q)) {
-    const accept = q.data.geomedia.media_kinds
-      .map((k) => (k === 'video' ? 'video/*' : k === 'audio' ? 'audio/*' : 'image/*'))
-      .join(',');
-    const isVideo = q.data.geomedia.media_kinds[0] === 'video';
+  // Tripper + destination only → capture media at the place. `data.geomedia`
+  // gives exact media kinds on CAS surfaces; default to a photo capture when
+  // it's absent (recommendations).
+  if (isGeomediaQuest(q)) {
+    const accept = hasGeomediaData(q)
+      ? q.data.geomedia.media_kinds
+          .map((k) => (k === 'video' ? 'video/*' : k === 'audio' ? 'audio/*' : 'image/*'))
+          .join(',')
+      : 'image/*';
+    const isVideo = hasGeomediaData(q) && q.data.geomedia.media_kinds[0] === 'video';
     return {
       kind: 'geomedia',
       label: isVideo ? 'Open camera (video)' : 'Open camera',
       accept,
     };
   }
-  if (isBookingQuest(q) && hasBookingData(q)) {
-    return {
-      kind: 'booking',
-      label: q.data.booking.provider === 'zostel' ? 'Book on Zostel' : 'Book on Zo',
-      href: q.data.booking.href,
-    };
+  // Tripper + operator/inventory → book the stay/trip. Use the explicit href on
+  // CAS surfaces; recommendations omit it, so send the citizen to the Zostel
+  // booking page.
+  if (isBookingQuest(q)) {
+    const href = hasBookingData(q) ? q.data.booking.href : 'https://www.zostel.com/';
+    return { kind: 'booking', label: 'Book on Zostel', href };
   }
   return null;
 }
@@ -333,7 +339,7 @@ function QuestCard({ quest, onOpen }: { quest: DockQuest; onOpen: (q: DockQuest)
         </div>
         <div className="flex items-center justify-between gap-2 mt-auto">
           <span style={{ fontSize: 11, fontWeight: 600, color: '#6B5B8E' }}>
-            {(quest.data as { location?: { name?: string } } | undefined)?.location?.name ?? 'Anywhere'}
+            {questLocationLabel(quest)}
             {typeof quest.distance === 'number' && Number.isFinite(quest.distance) && (
               <span style={{ color: '#9A8FB8' }}>{' · '}{formatDistance(quest.distance)}</span>
             )}
@@ -361,7 +367,7 @@ export function QuestPanel({
   quest: DockQuest;
   onBack: () => void;
 }) {
-  const locName = (quest.data as { location?: { name?: string } } | undefined)?.location?.name;
+  const locName = questLocationLabel(quest);
   const reward = quest.rewards?.[0];
 
   // Compact per-kind body line so the panel stays at card height. Falls back
@@ -526,7 +532,7 @@ export function QuestListCard({
 }) {
   const theme = themeForQuest(quest);
   const reward = quest.rewards?.[0];
-  const locName = (quest.data as { location?: { name?: string } } | undefined)?.location?.name;
+  const locName = questLocationLabel(quest);
   const cover = (quest.data as { cover_image?: string } | undefined)?.cover_image;
   return (
     <button
@@ -670,7 +676,7 @@ export function QuestFullView({
   const theme = themeForQuest(quest);
   const reward = quest.rewards?.[0];
   const cover = (quest.data as { cover_image?: string } | undefined)?.cover_image;
-  const locName = (quest.data as { location?: { name?: string } } | undefined)?.location?.name;
+  const locName = questLocationLabel(quest);
 
   return (
     <div className={`relative w-full max-w-[640px] mx-auto pb-32 md:pb-8 ${rubikClassName}`}>
@@ -959,9 +965,55 @@ export function useActiveQuests(maxItems = 10): { quests: DockQuest[]; isLoading
  * quest is owned upstream (PassportLobby) so the page CTA can swap in sync.
  */
 export function QuestsDock({ maxItems = 10, selectedQuest, onSelect, onOpenChest }: QuestsDockProps) {
-  const { quests: visible, isLoading } = useActiveQuests(maxItems);
+  const { quests: active, isLoading } = useActiveQuests(maxItems);
+  const { quests: recs } = useQuestRecommendations();
+  const { quests: allQuests } = useQuests();
+  const { location } = useLiveLocation();
   const dailyLoot = useMemo(() => getDailyLootDrop(), []);
-  const lootShown = isLootImminent(dailyLoot.opens_at);
+
+  // Loot to claim = a participation whose results are declared and still has a
+  // Pending claim. Counted off the full quest list (these have left the
+  // active/Assigned set, so useActiveQuests won't see them). Drives the loot
+  // card's badge and forces the card to show even when the drop isn't imminent.
+  const pendingClaims = useMemo(
+    () =>
+      allQuests.reduce(
+        (n, q) =>
+          n +
+          (q.participations?.some(
+            (p) =>
+              p.status === 'Results Declared' &&
+              p.claims?.some((c) => c.status === 'Pending'),
+          )
+            ? 1
+            : 0),
+        0,
+      ),
+    [allQuests],
+  );
+  const lootShown = isLootImminent(dailyLoot.opens_at) || pendingClaims > 0;
+
+  // Active (participated) quests lead; recommendations the viewer hasn't opted
+  // into yet follow, deduped by pid. Clicking a recommendation creates the
+  // participation server-side (handled upstream in onSelect) before the panel
+  // opens, so it graduates into `active` on the next /quests/ fetch.
+  const visible = useMemo(() => {
+    const seen = new Set(active.map((q) => q.pid));
+    const recCards = recs
+      .filter((r) => !seen.has(r.pid))
+      .map((r) => {
+        const coords = questCoords(r);
+        const distance =
+          location && coords
+            ? distanceMeters(
+                { lat: location.lat, long: location.long },
+                { lat: coords.lat, long: coords.lng },
+              )
+            : undefined;
+        return { ...r, distance } as DockQuest;
+      });
+    return [...active, ...recCards].slice(0, maxItems);
+  }, [active, recs, location, maxItems]);
 
   if (selectedQuest) {
     return <QuestPanel quest={selectedQuest} onBack={() => onSelect?.(null)} />;
@@ -1003,6 +1055,7 @@ export function QuestsDock({ maxItems = 10, selectedQuest, onSelect, onOpenChest
           <TodaysLootCard
             loot={dailyLoot}
             onPlay={onOpenChest ?? (() => toast('Loot box claim flow coming soon'))}
+            pendingClaims={pendingClaims}
           />
         )}
         {visible.map((quest) => (

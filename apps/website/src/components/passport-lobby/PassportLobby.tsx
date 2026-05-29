@@ -91,6 +91,26 @@ export function PassportLobby() {
     return merged;
   }, [participatedQuests, recommendedQuests]);
 
+  // Shared quest-open bridge for the dock + chest. A recommendation has no
+  // participation yet, so create it server-side (idempotent) before the panel
+  // opens — that's what makes a recommended quest actually doable, and it
+  // graduates into the participated feed on the next /quests/ fetch. Selecting
+  // null (back button) just clears the panel.
+  const selectQuest = useCallback(
+    async (q: DockQuest | null) => {
+      setSelectedQuest(q);
+      if (!q) return;
+      if ((q.participations ?? []).length === 0) {
+        try {
+          await questParticipate.mutateAsync(q.slug);
+        } catch {
+          /* soft-fail — panel still renders, retry on next click */
+        }
+      }
+    },
+    [questParticipate],
+  );
+
   const handle = profile?.custom_nickname || profile?.nickname || 'Citizen';
   const avatarUrl = profile?.pfp_image || profile?.avatar?.image;
   const xpTotal = myXp?.xp ?? 0;
@@ -265,7 +285,7 @@ export function PassportLobby() {
           belowCta={
             <QuestsDock
               selectedQuest={selectedQuest}
-              onSelect={setSelectedQuest}
+              onSelect={selectQuest}
               onOpenChest={() => setChestOpen(true)}
             />
           }
@@ -326,22 +346,10 @@ export function PassportLobby() {
         open={chestOpen}
         onClose={() => setChestOpen(false)}
         quests={liveQuests}
-        onSelectQuest={async (q) => {
-          // If this quest has no participation yet, it came from the
-          // recommendations feed — create the participation server-side so
-          // it sticks (next /quests/ fetch includes it) before swapping to
-          // the panel. Idempotent on the backend; fire-and-forget if it
-          // fails so we don't gate the navigation on the network.
+        onSelectQuest={(q) => {
+          // Same participate-then-open bridge as the dock (see selectQuest).
           setChestOpen(false);
-          setSelectedQuest(q as DockQuest);
-          const hasParticipation = (q.participations ?? []).length > 0;
-          if (!hasParticipation) {
-            try {
-              await questParticipate.mutateAsync(q.slug);
-            } catch {
-              /* soft-fail — panel still renders, retry on next click */
-            }
-          }
+          void selectQuest(q as DockQuest);
         }}
       />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
