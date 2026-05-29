@@ -3,16 +3,10 @@ import Image from 'next/image';
 import { MeshGradient } from '@paper-design/shaders-react';
 import { toast } from 'sonner';
 import { rubikClassName, syneClassName } from '../utils/font';
-import chestIcon from '../../assets/passport-lobby/treasure-chest.png';
+import pedestal from '../../assets/passport-lobby/scene/pedestal.svg';
 import { questDisplayTitle, type Quest, type QuestReward } from '../../data/quests';
 import { useQuestClaim } from '../../hooks/useQuestClaim';
-import { BorderBeam } from './BorderBeam';
-
-// Holographic foil palette for the chest hero — gold/orange dominant so it
-// reads as a treasure surface, distinct from CitizenCard's party-colour
-// HOLOGRAM but using the same shader+beam pattern for spatial parity.
-const TREASURE_HOLOGRAM_COLORS = ['#FFB547', '#FFD84D', '#FF6F00', '#A7D921', '#FFB547'];
-const CHEST_CARD_RADIUS = 22;
+import { Chest3D } from './Chest3D';
 
 // Mirrors PassportLobby's iridescent palette so the chest modal reads as
 // the same surface, not a separate dark sheet floating above the lobby.
@@ -345,166 +339,62 @@ function QuestTile({ quest, onSelect }: { quest: QuestDef; onSelect?: () => void
 // border-beam pattern, gold/orange palette instead of party-colour). The
 // avatar slot is replaced with the big chest illustration; the handle slot
 // becomes "Daily Loot Box"; the subtitle becomes the expiry countdown.
+// Hero treatment matches the lobby/badges language: a 3D model floating on the
+// shared pedestal over the pearl surface. Here the model is the treasure chest,
+// rattling like a loot item that wants to be opened. The pedestal grounds it
+// (no separate disc shadow needed) and the title/countdown sit below.
 function ChestHero({ countdown }: { countdown: string }) {
   return (
-    <div style={{ perspective: 900 }}>
+    <div className={`flex flex-col items-center ${rubikClassName}`}>
+      <Chest3D size={280} />
+      {/* Same pedestal the citizen/avatar stands on in the lobby — pulled up
+          so the chest sits on it. Tune marginTop if the model reseats. */}
+      <div style={{ marginTop: -52 }} aria-hidden>
+        <Image
+          src={pedestal}
+          alt=""
+          width={179}
+          height={65}
+          style={{ width: 240, height: 'auto' }}
+        />
+      </div>
+
       <div
-        className={`relative ${rubikClassName}`}
+        className={syneClassName}
         style={{
-          width: 240,
-          padding: 16,
-          background: 'linear-gradient(180deg, #2A1400 0%, #0E0700 100%)',
-          borderRadius: CHEST_CARD_RADIUS,
-          boxShadow:
-            '0 24px 48px -12px rgba(120,60,0,0.45), inset 0 1.93px 7.71px rgba(255,255,255,0.18)',
-          overflow: 'hidden',
+          fontSize: 24,
+          fontWeight: 700,
+          color: INK,
+          lineHeight: '1.15em',
+          marginTop: 8,
         }}
       >
-        {/* Treasure hologram foil — same shader spec as CitizenCard's
-            HOLOGRAM, swapped palette. */}
-        <div
-          aria-hidden
+        Daily Loot Box
+      </div>
+      <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
+        <span
           style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: CHEST_CARD_RADIUS,
-            overflow: 'hidden',
-            pointerEvents: 'none',
-            zIndex: 1,
-          }}
-        >
-          <MeshGradient
-            colors={TREASURE_HOLOGRAM_COLORS}
-            speed={0.6}
-            scale={1.4}
-            distortion={0.6}
-            swirl={0.55}
-            grainMixer={0.05}
-            grainOverlay={0.08}
-            fit="cover"
-            style={{ width: '100%', height: '100%' }}
-          />
-        </div>
-
-        {/* Subtle diagonal sheen — same hue as CitizenCard's static streak. */}
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: CHEST_CARD_RADIUS,
-            background:
-              'linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.08) 50%, transparent 80%)',
-            pointerEvents: 'none',
-            zIndex: 2,
-            mixBlendMode: 'overlay',
-          }}
-        />
-
-        <BorderBeam
-          radius={CHEST_CARD_RADIUS}
-          duration={6}
-          borderWidth={1.5}
-          colorFrom="#F5C542"
-          colorTo="#FF2F8E"
-          trailDegrees={90}
-        />
-
-        {/* Chest image — sits where the avatar would on CitizenCard.
-            Fills the 208px content area with breathing room. */}
-        <div
-          className="relative flex items-center justify-center"
-          style={{
-            width: 208,
-            height: 208,
-            zIndex: 4,
-            marginBottom: 10,
-          }}
-        >
-          <Image
-            src={chestIcon}
-            alt="Treasure chest"
-            width={208}
-            height={208}
-            priority
-            style={{
-              width: 208,
-              height: 208,
-              objectFit: 'contain',
-              filter: 'drop-shadow(0 12px 18px rgba(0,0,0,0.55))',
-            }}
-          />
-        </div>
-
-        {/* Title — Syne 700, same slot as the citizen handle. */}
-        <div
-          className={syneClassName}
-          style={{
-            fontSize: 22,
+            fontSize: 9,
             fontWeight: 700,
-            color: '#0A0A0A',
-            lineHeight: '1.15em',
-            marginBottom: 4,
-            position: 'relative',
-            zIndex: 4,
-            whiteSpace: 'nowrap',
-            textShadow: '0 1px 0 rgba(255,255,255,0.4)',
+            color: INK_MUTED,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
           }}
         >
-          Daily Loot Box
-        </div>
-        <div
+          Expires
+        </span>
+        <span
           style={{
-            position: 'relative',
-            zIndex: 4,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
+            fontSize: 16,
+            fontWeight: 700,
+            color: INK,
+            fontVariantNumeric: 'tabular-nums',
           }}
         >
-          <span
-            style={{
-              fontSize: 9,
-              fontWeight: 700,
-              color: 'rgba(0,0,0,0.65)',
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-            }}
-          >
-            Expires
-          </span>
-          <span
-            style={{
-              fontSize: 16,
-              fontWeight: 700,
-              color: '#0A0A0A',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            {countdown}
-          </span>
-        </div>
+          {countdown}
+        </span>
       </div>
     </div>
-  );
-}
-
-// Soft elliptical shadow under the hero — same pattern the lobby uses
-// beneath the citizen card so the chest looks anchored to the surface,
-// not floating in space.
-function HeroDiscShadow() {
-  return (
-    <div
-      aria-hidden
-      style={{
-        width: 220,
-        height: 26,
-        marginTop: -6,
-        background:
-          'radial-gradient(ellipse at center, rgba(60,30,0,0.28) 0%, rgba(60,30,0,0.08) 55%, rgba(60,30,0,0) 80%)',
-        filter: 'blur(1px)',
-      }}
-    />
   );
 }
 
@@ -645,7 +535,6 @@ export function TreasureChestCard({
             allowed to grow into the upper viewport. */}
         <div className="flex-1 flex flex-col items-center justify-center gap-4 px-4">
           <ChestHero countdown={countdown} />
-          <HeroDiscShadow />
           <DropsPill />
         </div>
 
