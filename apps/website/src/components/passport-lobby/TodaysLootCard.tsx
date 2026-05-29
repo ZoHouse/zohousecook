@@ -16,7 +16,7 @@ export function isLootImminent(opens_at: string): boolean {
 }
 
 /** Live HH:MM:SS countdown. Starts as "-- : -- : --" on SSR to avoid hydration mismatch. */
-function useCountdown(iso: string): string {
+export function useCountdown(iso: string): string {
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
     setNow(Date.now());

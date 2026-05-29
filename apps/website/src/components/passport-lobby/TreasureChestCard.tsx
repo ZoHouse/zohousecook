@@ -1,9 +1,10 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { MeshGradient } from '@paper-design/shaders-react';
 import { rubikClassName } from '../utils/font';
 import { Chest3D } from './Chest3D';
 import { LobbyRoom } from './LobbyRoom';
 import { QuestsDock, type DockQuest } from './QuestsDock';
+import { getDailyLootDrop, useCountdown } from './TodaysLootCard';
 
 // Mirrors PassportLobby's iridescent palette so the loot box reads as the same
 // surface — a deeper view of the lobby, not a separate sheet floating above it.
@@ -18,6 +19,57 @@ const IRIDESCENT_PEARL_COLORS = [
   '#FBF8F4',
 ];
 const INK = '#0A0A14';
+const INK_MUTED = '#6B5B8E';
+
+// Default CTA for the loot box when no quest is selected — a live countdown to
+// the next daily reward announcement (4 PM IST rollover) rather than the
+// lobby's "Get Unlimited Access" pill. Non-interactive: it's a status readout.
+function RewardCountdownPill({ size = 'md' }: { size?: 'sm' | 'md' }) {
+  const drop = useMemo(() => getDailyLootDrop(), []);
+  const countdown = useCountdown(drop.opens_at);
+  const sm = size === 'sm';
+  return (
+    <div
+      role="timer"
+      aria-label="Time until reward announcement"
+      className={`inline-flex items-center justify-center gap-2 ${rubikClassName}`}
+      style={{
+        height: sm ? 44 : 52,
+        padding: sm ? '0 20px' : '0 26px',
+        borderRadius: 999,
+        background:
+          'linear-gradient(135deg, #FFFFFF 0%, #F4E8D4 45%, #FBF8F4 100%)',
+        border: '1px solid rgba(255,255,255,0.9)',
+        boxShadow:
+          '0 8px 24px rgba(160,120,40,0.18), inset 0 1px 0 rgba(255,255,255,0.95)',
+      }}
+    >
+      <span
+        style={{
+          fontSize: sm ? 8 : 9,
+          fontWeight: 800,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: INK_MUTED,
+          lineHeight: 1,
+        }}
+      >
+        Rewards in
+      </span>
+      <span
+        style={{
+          fontSize: sm ? 15 : 17,
+          fontWeight: 800,
+          color: INK,
+          fontVariantNumeric: 'tabular-nums',
+          lineHeight: 1,
+        }}
+      >
+        {countdown}
+      </span>
+    </div>
+  );
+}
 
 export interface TreasureChestCardProps {
   open: boolean;
@@ -129,8 +181,8 @@ export function TreasureChestCard({
         <LobbyRoom
           hero={<Chest3D size={260} />}
           travelersPill={null}
-          ctaMobile={ctaMobile}
-          ctaDesktop={ctaDesktop}
+          ctaMobile={ctaMobile ?? <RewardCountdownPill size="sm" />}
+          ctaDesktop={ctaDesktop ?? <RewardCountdownPill />}
           belowCta={
             <QuestsDock hideLoot selectedQuest={selectedQuest} onSelect={onSelect} />
           }
