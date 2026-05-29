@@ -69,8 +69,9 @@ function ChestModel() {
     const cycle = t % 2.6;
     const burst = cycle < 0.85 ? Math.sin((cycle / 0.85) * Math.PI) : 0;
 
-    // Calm float + a small hop on the burst.
-    g.position.y = Math.sin(t * 1.4) * 0.03 + burst * 0.07;
+    // Calm float + a small hop on the burst, around a lowered baseline so the
+    // chest sits a touch lower on the pedestal.
+    g.position.y = -0.5 + Math.sin(t * 1.4) * 0.03 + burst * 0.07;
     // Fast side-to-side jitter, scaled by the burst envelope.
     g.rotation.z = Math.sin(t * 40) * 0.06 * burst;
     g.rotation.y = Math.sin(t * 0.5) * 0.12; // slow showcase turn
