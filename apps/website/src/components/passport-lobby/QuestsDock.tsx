@@ -930,6 +930,9 @@ export interface QuestsDockProps {
    *  modal owned by PassportLobby. Falls back to a toast when undefined so
    *  the dock can still render in isolation (e.g. PublicPassportView). */
   onOpenChest?: () => void;
+  /** Hides the loot-box tile — used when the dock is rendered *inside* the
+   *  loot box (TreasureChestCard) so it doesn't offer to reopen itself. */
+  hideLoot?: boolean;
 }
 
 /** Custom hook — returns the viewer's active quests sorted by distance. */
@@ -965,7 +968,7 @@ export function useActiveQuests(maxItems = 10): { quests: DockQuest[]; isLoading
  * scroll is replaced by an inline detail panel in the same slot. The selected
  * quest is owned upstream (PassportLobby) so the page CTA can swap in sync.
  */
-export function QuestsDock({ maxItems = 10, selectedQuest, onSelect, onOpenChest }: QuestsDockProps) {
+export function QuestsDock({ maxItems = 10, selectedQuest, onSelect, onOpenChest, hideLoot = false }: QuestsDockProps) {
   const { quests: active, isLoading } = useActiveQuests(maxItems);
   const { quests: recs } = useQuestRecommendations();
   const { quests: allQuests } = useQuests();
@@ -992,7 +995,7 @@ export function QuestsDock({ maxItems = 10, selectedQuest, onSelect, onOpenChest
       ),
     [allQuests],
   );
-  const lootShown = isLootImminent(dailyLoot.opens_at) || pendingClaims > 0;
+  const lootShown = !hideLoot && (isLootImminent(dailyLoot.opens_at) || pendingClaims > 0);
 
   // Active (participated) quests lead; recommendations the viewer hasn't opted
   // into yet follow, deduped by pid. Clicking a recommendation creates the
