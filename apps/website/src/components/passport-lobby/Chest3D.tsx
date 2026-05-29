@@ -35,14 +35,25 @@ function ChestModel() {
     box.getSize(size);
     box.getCenter(c);
     const maxDim = Math.max(size.x, size.y, size.z) || 1;
-    return { fitScale: 2 / maxDim, center: c };
+    // Fit the largest dimension to ~1.35 world units so the chest sits with
+    // breathing room in the frame rather than filling it.
+    return { fitScale: 1.35 / maxDim, center: c };
   }, [root]);
 
   useLayoutEffect(() => {
+    // Polished metallic gold — the KayKit "gold" chest is actually copper wood
+    // + silver bands, so override the single baked material. The geometry's
+    // bevels, bands, and lock still read as form under the studio lights + env.
+    const gold = new THREE.MeshStandardMaterial({
+      color: '#E9B23B',
+      metalness: 0.95,
+      roughness: 0.3,
+    });
     root.traverse((o) => {
       if (o.name === 'chest_gold_lid') lidRef.current = o;
       const mesh = o as THREE.Mesh;
       if (mesh.isMesh) {
+        mesh.material = gold;
         mesh.castShadow = true;
         mesh.receiveShadow = true;
       }

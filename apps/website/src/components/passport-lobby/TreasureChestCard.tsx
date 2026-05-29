@@ -1,15 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import Image from 'next/image';
+import { useEffect, type ReactNode } from 'react';
 import { MeshGradient } from '@paper-design/shaders-react';
-import { toast } from 'sonner';
-import { rubikClassName, syneClassName } from '../utils/font';
-import pedestal from '../../assets/passport-lobby/scene/pedestal.svg';
-import { questDisplayTitle, type Quest, type QuestReward } from '../../data/quests';
-import { useQuestClaim } from '../../hooks/useQuestClaim';
+import { rubikClassName } from '../utils/font';
 import { Chest3D } from './Chest3D';
+import { LobbyRoom } from './LobbyRoom';
+import { QuestsDock, type DockQuest } from './QuestsDock';
 
-// Mirrors PassportLobby's iridescent palette so the chest modal reads as
-// the same surface, not a separate dark sheet floating above the lobby.
+// Mirrors PassportLobby's iridescent palette so the loot box reads as the same
+// surface — a deeper view of the lobby, not a separate sheet floating above it.
 const IRIDESCENT_PEARL_COLORS = [
   '#FBF8F4',
   '#F2E0EC',
@@ -21,433 +18,38 @@ const IRIDESCENT_PEARL_COLORS = [
   '#FBF8F4',
 ];
 const INK = '#0A0A14';
-const INK_MUTED = '#6B5B8E';
 
 export interface TreasureChestCardProps {
   open: boolean;
   onClose: () => void;
-  activeCount?: number;
-  countdown?: string;
-  /**
-   * Slice of quests to surface as "today's loot." Caller derives this from
-   * useQuests (e.g. top N by ends_at). Falls back to demo tiles when undefined
-   * so the surface still previews in new-user / loading / no-auth states.
-   */
-  quests?: Quest[];
-  /**
-   * Tapping a tile dispatches the original Quest back to the caller so the
-   * lobby can swap its QuestsDock to QuestPanel (the same detail surface
-   * every other entry point uses). Caller is responsible for closing the
-   * chest before showing the panel.
-   */
-  onSelectQuest?: (quest: Quest) => void;
-}
-
-interface Reward {
-  icon: string;
-  label: string;
-  color: string;
-}
-
-interface QuestDef {
-  id: string;
-  category: string;
-  categoryColor: string;
-  isDaily?: boolean;
-  title: string;
-  // Short top-right label — e.g. "23h 14m left" or "Daily". Must stay
-  // narrow; rendered with whiteSpace:nowrap so anything long here would
-  // force the whole tile past its column width.
-  deadline?: string;
-  // Full body copy. Wraps naturally; can be arbitrarily long.
-  description?: string;
-  rewards: Reward[];
-  cta?: { label: string; bg: string; color: string; onClick?: () => void; disabled?: boolean };
-  // Slug + reward id needed to fire the claim mutation. Only set on
-  // RESULTS_DECLARED tiles where a pending claim exists.
-  claim?: { slug: string; rewardId: string };
-}
-
-const ROLE_STYLE: Record<string, { color: string; noun: string }> = {
-  Creator: { color: '#C26BE8', noun: 'Creator' },
-  Tripper: { color: '#5A9BFF', noun: 'Tripper' },
-  Tribemaker: { color: '#FF66C4', noun: 'Tribe Maker' },
-};
-
-const CTA_STYLES = {
-  start: {
-    label: 'Start Quest',
-    bg: 'linear-gradient(180deg, #FF7A2E 0%, #E15400 100%)',
-    color: '#FFFFFF',
-  },
-  connect: {
-    label: 'Connect IG',
-    bg: 'linear-gradient(180deg, #A855E8 0%, #7A22C2 100%)',
-    color: '#FFFFFF',
-  },
-  claim: {
-    label: 'Claim Reward',
-    bg: 'linear-gradient(180deg, #F5C542 0%, #C7950E 100%)',
-    color: '#3A2900',
-  },
-};
-
-function rewardTile(reward: QuestReward | undefined): Reward | null {
-  if (!reward) return null;
-
-  // QuestRewardSerializer returns `category` as a display string from
-  // get_category_display(): "XP", "Bed Drop", "Bounty", or "Content
-  // Monetization" (passport/models/quest.py QuestReward.Category). The
-  // numeric is on xp_amount or credit_amount depending on category.
-  const cat = reward.category;
-  const sym = reward.currency?.symbol ?? '₹';
-
-  if (cat === 'XP' && typeof reward.xp_amount === 'number') {
-    return { icon: '✦', label: `${reward.xp_amount} XP`, color: '#FFD84D' };
-  }
-  if (cat === 'Bed Drop') {
-    return { icon: '◈', label: 'Free Bed Drop', color: '#C9A7FF' };
-  }
-  if (cat === 'Bounty' && typeof reward.credit_amount === 'number') {
-    return { icon: sym, label: `${sym}${reward.credit_amount} bounty`, color: '#80E57B' };
-  }
-  if (cat === 'Content Monetization') {
-    const cm = typeof reward.credit_amount === 'number'
-      ? `${sym}${reward.credit_amount} per post`
-      : 'Creator payout';
-    return { icon: '◉', label: cm, color: '#FF9D5C' };
-  }
-  return null;
-}
-
-function formatDeadline(ends_at?: string | null): string | undefined {
-  if (!ends_at) return undefined;
-  const ms = new Date(ends_at).getTime() - Date.now();
-  if (Number.isNaN(ms)) return undefined;
-  if (ms <= 0) return 'Expired';
-  const h = Math.floor(ms / (1000 * 60 * 60));
-  const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-  if (h >= 24) return `${Math.floor(h / 24)}d left`;
-  if (h > 0) return `${h}h ${m}m left`;
-  return `${m}m left`;
-}
-
-function questDefFromQuest(q: Quest): QuestDef {
-  const roleStyle = ROLE_STYLE[q.category] ?? ROLE_STYLE.Tripper;
-
-  const rewards = q.rewards.map(rewardTile).filter(Boolean) as Reward[];
-
-  // ends_at is CAS-only; the user-facing endpoint omits it. formatDeadline
-  // returns undefined for absent values, so the deadline line disappears
-  // gracefully on real data instead of breaking layout.
-  const deadline = formatDeadline(q.ends_at);
-  const description = q.description || undefined;
-
-  // Claim path: pick the first participation where results have been
-  // declared, then match it to the first reward id that still has a
-  // PENDING claim. Server endpoint expects `{reward: <reward_id>}`; it
-  // looks up the matching claim row on its side, so we don't need to send
-  // the claim id directly. The claim<->reward back-reference isn't on the
-  // public claim serializer, so we fall back to rewards[0].id when we
-  // can't be more specific — the server returns a 422/404 if that reward
-  // is already claimed, which the toast surfaces.
-  const declared = q.participations?.find(
-    (p) => p.status === 'Results Declared',
-  );
-  const hasPending = declared?.claims?.some((c) => c.status === 'Pending');
-  const rewardId = q.rewards?.[0]?.id;
-  const claim =
-    declared && hasPending && rewardId
-      ? { slug: q.slug, rewardId }
-      : undefined;
-
-  // Real staging payloads don't include `data` — Creator detection has to
-  // ride on `q.category` directly. The IG connect prompt is the right CTA
-  // for every Creator quest because IG-link is the gating step regardless
-  // of the specific variant. RESULTS_DECLARED with a pending claim wins
-  // over the start/connect default — we want the user to grab their loot
-  // first.
-  const baseCta = claim
-    ? CTA_STYLES.claim
-    : q.category === 'Creator'
-    ? CTA_STYLES.connect
-    : CTA_STYLES.start;
-
-  return {
-    id: q.pid,
-    category: `Today's ${roleStyle.noun} Quest`,
-    categoryColor: roleStyle.color,
-    isDaily: false,
-    // Staging seeds most stay/trip rows with empty title — fall through to
-    // inventory.name → destination.name → slug so the tile is readable.
-    title: questDisplayTitle(q),
-    deadline,
-    description,
-    rewards,
-    cta: baseCta,
-    claim,
-  };
-}
-
-function QuestTile({ quest, onSelect }: { quest: QuestDef; onSelect?: () => void }) {
-  // Always call the hook — react rules-of-hooks. When `quest.claim` is
-  // undefined the slug is undefined; the mutation just guards on that.
-  const claimMutation = useQuestClaim(quest.claim?.slug);
-  const [optimisticClaimed, setOptimisticClaimed] = useState(false);
-
-  const handleClick = async () => {
-    if (!quest.claim) return;
-    try {
-      await claimMutation.mutateAsync({ reward: quest.claim.rewardId });
-      setOptimisticClaimed(true);
-      toast.success('Reward claimed — see badges & XP for details');
-    } catch (e) {
-      const message =
-        (e as { response?: { data?: { errors?: string[] } } })?.response?.data
-          ?.errors?.[0] ||
-        (e as { message?: string })?.message ||
-        'Claim failed — try again';
-      toast.error(message);
-    }
-  };
-
-  const isClaim = !!quest.claim;
-  const isLoading = claimMutation.isLoading;
-  const ctaLabel =
-    isClaim && optimisticClaimed
-      ? 'Claimed'
-      : isClaim && isLoading
-      ? 'Claiming…'
-      : quest.cta?.label;
-  const ctaDisabled = isClaim && (isLoading || optimisticClaimed);
-
-  const interactive = !!onSelect;
-
-  return (
-    <div
-      role={interactive ? 'button' : undefined}
-      tabIndex={interactive ? 0 : undefined}
-      onClick={interactive ? () => onSelect?.() : undefined}
-      onKeyDown={
-        interactive
-          ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onSelect?.();
-              }
-            }
-          : undefined
-      }
-      className={`flex flex-col gap-2 p-3 text-left ${interactive ? 'cursor-pointer active:scale-[0.99] transition-transform' : ''}`}
-      style={{
-        // Fixed height so every tile in the dock/chest row is uniform
-        // regardless of title length, reward presence, or CTA. Title clamps
-        // to 2 lines and the CTA is pushed to the bottom (mt-auto) so the
-        // baselines align across cards.
-        height: 160,
-        // Pearl glass — matches the rest of the lobby (CameraCaptureModal
-        // PEARL_BG / GLASS_PILL) so this surface reads as part of the
-        // same material set, not a dark eggplant intrusion.
-        background: 'rgba(255,255,255,0.78)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        borderRadius: 14,
-        border: '1px solid rgba(255,255,255,0.9)',
-        boxShadow:
-          '0 6px 18px rgba(120,100,160,0.18), inset 0 1px 0 rgba(255,255,255,0.95)',
-      }}
-    >
-      <div className="flex items-center justify-between gap-2 min-w-0">
-        <div
-          className="truncate"
-          style={{ fontSize: 9, fontWeight: 700, color: quest.categoryColor, letterSpacing: '0.04em', textTransform: 'uppercase' }}
-        >
-          {quest.category}
-        </div>
-        {(quest.deadline || quest.isDaily) && (
-          <div
-            className="shrink-0"
-            style={{ fontSize: 9, fontWeight: 500, color: INK_MUTED, whiteSpace: 'nowrap' }}
-          >
-            {quest.isDaily ? 'Daily' : quest.deadline}
-          </div>
-        )}
-      </div>
-      <div
-        style={{
-          fontSize: 14,
-          fontWeight: 700,
-          color: INK,
-          lineHeight: '1.3em',
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-        }}
-      >
-        {quest.title}
-      </div>
-      {quest.rewards.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          {quest.rewards.map((r, i) => (
-            <div key={i} className="flex items-center gap-1" style={{ fontSize: 10, color: r.color }}>
-              <span aria-hidden style={{ fontSize: 11 }}>{r.icon}</span>
-              <span style={{ fontWeight: 600 }}>{r.label}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      {quest.cta && (
-        <button
-          type="button"
-          onClick={(e) => {
-            // Stop propagation either way — the tile body listener would
-            // otherwise also fire and double-trigger. Then route by intent:
-            // claim CTAs run the claim mutation (terminal action). Non-claim
-            // CTAs (Start Quest / Connect IG) route to the detail view, the
-            // natural next step — without this fall-through the button would
-            // be a dead zone over a clickable tile.
-            e.stopPropagation();
-            if (isClaim) {
-              void handleClick();
-            } else {
-              onSelect?.();
-            }
-          }}
-          disabled={ctaDisabled}
-          className="mt-auto self-start transition-all active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100"
-          style={{
-            background: quest.cta.bg,
-            color: quest.cta.color,
-            fontSize: 11,
-            fontWeight: 700,
-            padding: '7px 14px',
-            borderRadius: 999,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.35)',
-            cursor: ctaDisabled ? 'default' : 'pointer',
-          }}
-        >
-          {ctaLabel}
-        </button>
-      )}
-    </div>
-  );
-}
-
-// Hero treasure-chest card — mirrors CitizenCard's hero treatment so the
-// chest reads as the modal's focal point (same shader-foil + animated
-// border-beam pattern, gold/orange palette instead of party-colour). The
-// avatar slot is replaced with the big chest illustration; the handle slot
-// becomes "Daily Loot Box"; the subtitle becomes the expiry countdown.
-// Hero treatment matches the lobby/badges language: a 3D model floating on the
-// shared pedestal over the pearl surface. Here the model is the treasure chest,
-// rattling like a loot item that wants to be opened. The pedestal grounds it
-// (no separate disc shadow needed) and the title/countdown sit below.
-function ChestHero({ countdown }: { countdown: string }) {
-  return (
-    <div className={`flex flex-col items-center ${rubikClassName}`}>
-      <Chest3D size={280} />
-      {/* Same pedestal the citizen/avatar stands on in the lobby — pulled up
-          so the chest sits on it. Tune marginTop if the model reseats. */}
-      <div style={{ marginTop: -52 }} aria-hidden>
-        <Image
-          src={pedestal}
-          alt=""
-          width={179}
-          height={65}
-          style={{ width: 240, height: 'auto' }}
-        />
-      </div>
-
-      <div
-        className={syneClassName}
-        style={{
-          fontSize: 24,
-          fontWeight: 700,
-          color: INK,
-          lineHeight: '1.15em',
-          marginTop: 8,
-        }}
-      >
-        Daily Loot Box
-      </div>
-      <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
-        <span
-          style={{
-            fontSize: 9,
-            fontWeight: 700,
-            color: INK_MUTED,
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-          }}
-        >
-          Expires
-        </span>
-        <span
-          style={{
-            fontSize: 16,
-            fontWeight: 700,
-            color: INK,
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          {countdown}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// "Today's drops" pill — same orange treatment as the previous banner,
-// compressed into a single line so it sits as a focal-point caption
-// between the hero and the quest tiles.
-function DropsPill() {
-  return (
-    <div
-      className="self-center flex items-center gap-2 px-4 py-2"
-      style={{
-        borderRadius: 999,
-        background: 'linear-gradient(135deg, #FFB547 0%, #FF8A26 55%, #FF6F17 100%)',
-        boxShadow:
-          '0 6px 18px rgba(255,138,39,0.32), inset 0 1px 0 rgba(255,255,255,0.35)',
-        color: '#2A1400',
-      }}
-    >
-      <span style={{ fontSize: 12, fontWeight: 700 }}>Today's drops:</span>
-      <span style={{ fontSize: 11, fontWeight: 500 }}>
-        Free Bed · ₹7k bounties · Up to ₹2,000
-      </span>
-    </div>
-  );
+  /** Selected quest — owned by PassportLobby and shared with the lobby so the
+      two surfaces stay in sync. Drives QuestsDock's swap to the centered
+      QuestPanel. */
+  selectedQuest?: DockQuest | null;
+  /** Same participate-then-open bridge the lobby dock uses. */
+  onSelect?: (q: DockQuest | null) => void;
+  /** Morphing CTA rendered below the pedestal, exactly like the lobby. Built
+      from the selected quest's action upstream; undefined → LobbyRoom falls
+      back to the default "Get Unlimited Access" pill. */
+  ctaMobile?: ReactNode;
+  ctaDesktop?: ReactNode;
 }
 
 /**
- * Daily quest modal — controlled by parent. Full-screen pearl iridescent
- * takeover on both mobile + desktop so it reads as a deeper view of the
- * lobby surface rather than a sheet floating above it.
+ * Daily loot box — a full-screen takeover that mirrors the lobby composition
+ * (LobbyRoom: hero on pedestal → morphing CTA → quests dock) with the 3D
+ * treasure chest as the hero instead of the avatar. Because it reuses the same
+ * pedestal, CTA, and dock as PassportLobby, opening the loot box reads as a
+ * seamless continuation of the lobby rather than a different screen.
  */
 export function TreasureChestCard({
   open,
   onClose,
-  activeCount: _activeCount,
-  countdown = '08:06:12',
-  quests: liveQuests,
-  onSelectQuest,
+  selectedQuest,
+  onSelect,
+  ctaMobile,
+  ctaDesktop,
 }: TreasureChestCardProps) {
-  void _activeCount;
-
-  // Pair each tile definition with its raw Quest so tile clicks can hand
-  // the original record back to the lobby — that's what QuestPanel needs
-  // to render the detail view. No demo fallback: any non-array (undefined
-  // / null caller, no live data yet) is treated the same as an empty
-  // array, which renders the empty-state card below.
-  const tiles = useMemo<Array<{ def: QuestDef; quest: Quest }>>(() => {
-    if (!liveQuests) return [];
-    return liveQuests.map((q) => ({ def: questDefFromQuest(q), quest: q }));
-  }, [liveQuests]);
-  const isSingle = tiles.length === 1;
-  const isEmpty = tiles.length === 0;
-
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -463,19 +65,18 @@ export function TreasureChestCard({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Today's quests"
-      className={`fixed inset-0 z-[60] ${rubikClassName}`}
+      aria-label="Daily loot box"
+      className={`fixed inset-0 z-[60] overflow-y-auto ${rubikClassName}`}
       style={{
-        // Ivory anchor under the shader so the first paint and out-of-bounds
+        // Ivory anchor under the shader so the first paint / out-of-bounds
         // areas don't flash a different tone — same trick as PassportLobby.
         background: '#FBF8F4',
         WebkitTapHighlightColor: 'transparent',
         overscrollBehavior: 'none',
       }}
     >
-      {/* Iridescent pearl mesh — same shader settings as the lobby root so
-          the modal feels like a deeper view of the same surface. */}
-      <div aria-hidden className="pointer-events-none absolute inset-0" style={{ zIndex: 0 }}>
+      {/* Iridescent pearl mesh — identical shader settings to the lobby root. */}
+      <div aria-hidden className="pointer-events-none fixed inset-0" style={{ zIndex: 0 }}>
         <MeshGradient
           colors={IRIDESCENT_PEARL_COLORS}
           speed={0.12}
@@ -490,7 +91,7 @@ export function TreasureChestCard({
       </div>
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none fixed inset-0"
         style={{
           background:
             'radial-gradient(ellipse 80% 30% at 50% 0%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 60%)',
@@ -498,110 +99,42 @@ export function TreasureChestCard({
         }}
       />
 
-      {/* Content layer — vertical rhythm mirrors PassportLobby:
-          close-X → hero card → disc shadow → drops pill → horizontal
-          scroll of quest tiles at the bottom. */}
-      <div
-        className="relative z-[1] mx-auto w-full h-full flex flex-col"
+      {/* Close — pearl-glass chrome, 44px hit area (WCAG / Apple HIG). */}
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="fixed top-4 right-4 md:top-6 md:right-6 z-[2] flex items-center justify-center active:scale-90 transition-all"
         style={{
-          paddingTop: 'calc(16px + env(safe-area-inset-top, 0px))',
-          paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
+          width: 44,
+          height: 44,
+          fontSize: 24,
+          lineHeight: 1,
+          color: INK,
+          background: 'rgba(255,255,255,0.6)',
+          borderRadius: 999,
+          border: '1px solid rgba(255,255,255,0.9)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          boxShadow: '0 4px 12px rgba(120,100,160,0.18)',
         }}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="self-end mr-4 md:mr-6 flex items-center justify-center active:scale-90 transition-all"
-          // 22px × chrome with a 44×44 hit area (WCAG / Apple HIG min).
-          style={{
-            width: 44,
-            height: 44,
-            fontSize: 24,
-            lineHeight: 1,
-            color: INK,
-            background: 'rgba(255,255,255,0.6)',
-            borderRadius: 999,
-            border: '1px solid rgba(255,255,255,0.9)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            boxShadow: '0 4px 12px rgba(120,100,160,0.18)',
-          }}
-        >
-          ×
-        </button>
+        ×
+      </button>
 
-        {/* Hero stack — chest, disc shadow, drops pill — centred and
-            allowed to grow into the upper viewport. */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 px-4">
-          <ChestHero countdown={countdown} />
-          <DropsPill />
-        </div>
-
-        {/* Empty state — caller passed liveQuests=[] (real logged-in
-            user with no assigned quests yet). Never fall back to demo
-            tiles here: demos are intentionally non-interactive, which
-            read as "the modal is broken" to live users. */}
-        {isEmpty ? (
-          <div className="mx-auto w-full max-w-md px-4">
-            <div
-              className="flex flex-col items-center gap-2 px-5 py-6 text-center"
-              style={{
-                background: 'rgba(255,255,255,0.78)',
-                backdropFilter: 'blur(16px)',
-                WebkitBackdropFilter: 'blur(16px)',
-                borderRadius: 14,
-                border: '1px solid rgba(255,255,255,0.9)',
-                boxShadow:
-                  '0 6px 18px rgba(120,100,160,0.18), inset 0 1px 0 rgba(255,255,255,0.95)',
-              }}
-            >
-              <div style={{ fontSize: 14, fontWeight: 700, color: INK }}>
-                No active quests yet
-              </div>
-              <div
-                style={{
-                  fontSize: 12,
-                  fontWeight: 400,
-                  color: INK_MUTED,
-                  lineHeight: '1.4em',
-                }}
-              >
-                New quests get assigned daily. Check back soon — or earn XP by exploring nearby destinations.
-              </div>
-            </div>
-          </div>
-        ) : isSingle ? (
-          <div className="mx-auto w-full max-w-md px-4">
-            <QuestTile
-              quest={tiles[0].def}
-              onSelect={
-                onSelectQuest ? () => onSelectQuest(tiles[0].quest) : undefined
-              }
-            />
-          </div>
-        ) : (
-          <div className="mx-auto w-full max-w-2xl">
-            <div
-              className="flex gap-3 overflow-x-auto px-4 pb-2"
-              style={{
-                scrollbarWidth: 'none',
-                WebkitOverflowScrolling: 'touch',
-              }}
-            >
-              {tiles.map(({ def, quest }) => (
-                <div key={def.id} style={{ flex: '0 0 280px' }}>
-                  <QuestTile
-                    quest={def}
-                    onSelect={
-                      onSelectQuest ? () => onSelectQuest(quest) : undefined
-                    }
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+      {/* Lobby-mirror body: chest on pedestal → morphing CTA → quests dock.
+          The dock hides its own loot tile (we're already inside the loot box)
+          and swaps to the centered QuestPanel when a quest is selected. */}
+      <div className="relative z-[1]">
+        <LobbyRoom
+          hero={<Chest3D size={260} />}
+          travelersPill={null}
+          ctaMobile={ctaMobile}
+          ctaDesktop={ctaDesktop}
+          belowCta={
+            <QuestsDock hideLoot selectedQuest={selectedQuest} onSelect={onSelect} />
+          }
+        />
       </div>
     </div>
   );

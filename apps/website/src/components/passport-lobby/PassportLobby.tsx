@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useProfile } from '@zo/auth';
 import { MeshGradient } from '@paper-design/shaders-react';
 import { useMyXp } from '../../hooks/useMyXp';
 import { usePassportProfile } from '../../hooks/usePassportProfile';
 import { usePassportUnlock } from '../../hooks/usePassportUnlock';
-import { useQuests } from '../../hooks/useQuests';
-import { useQuestRecommendations } from '../../hooks/useQuestRecommendations';
 import { useQuestParticipate } from '../../hooks/useQuestParticipate';
 import { useQuestSubmission } from '../../hooks/useQuestSubmission';
 import { useSeason } from '../../hooks/useSeason';
@@ -72,24 +70,10 @@ export function PassportLobby() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [chestOpen, setChestOpen] = useState(false);
   const questSubmission = useQuestSubmission(selectedQuest?.slug);
-  // Live quests = participations the user already has. Powers QuestsDock too
-  // (react-query dedupes the call via shared cache key).
-  const { quests: participatedQuests } = useQuests();
-  // Recommended quests = matcher output for the viewer's coords. These have
-  // no participation yet — clicking one creates the participation server-side
-  // via useQuestParticipate, after which it also shows in `participatedQuests`.
-  const { quests: recommendedQuests } = useQuestRecommendations();
+  // Creates a participation server-side when a recommendation is opened.
+  // QuestsDock (in both the lobby and the loot box) fetches its own quest +
+  // recommendation feeds, so the lobby no longer needs to merge them here.
   const questParticipate = useQuestParticipate();
-  // Combined feed for the chest. Participations win on dedup (they carry
-  // status / claims data that recommendations don't).
-  const liveQuests = useMemo(() => {
-    const seen = new Set(participatedQuests.map((q) => q.pid));
-    const merged = [...participatedQuests];
-    for (const r of recommendedQuests) {
-      if (!seen.has(r.pid)) merged.push(r);
-    }
-    return merged;
-  }, [participatedQuests, recommendedQuests]);
 
   // Shared quest-open bridge for the dock + chest. A recommendation has no
   // participation yet, so create it server-side (idempotent) before the panel
@@ -342,15 +326,29 @@ export function PassportLobby() {
 
       <ProUpsellModal feature={upsell} onClose={closeUpsell} />
       <MapModal open={mapOpen} onClose={() => setMapOpen(false)} />
+      {/* Loot box mirrors the lobby: chest hero on the same pedestal, the same
+          morphing CTA, and the same QuestsDock — so opening it reads as a
+          deeper view of the lobby. selectedQuest is shared, so selecting a
+          quest here morphs the CTA + opens the centered panel exactly like the
+          lobby dock. Closing clears the selection so the lobby returns home. */}
       <TreasureChestCard
         open={chestOpen}
-        onClose={() => setChestOpen(false)}
-        quests={liveQuests}
-        onSelectQuest={(q) => {
-          // Same participate-then-open bridge as the dock (see selectQuest).
+        onClose={() => {
           setChestOpen(false);
-          void selectQuest(q as DockQuest);
+          setSelectedQuest(null);
         }}
+        selectedQuest={selectedQuest}
+        onSelect={selectQuest}
+        ctaMobile={
+          questAction ? (
+            <UnlimitedAccessCta size="sm" label={ctaLabel} onClick={handleQuestAction} />
+          ) : undefined
+        }
+        ctaDesktop={
+          questAction ? (
+            <UnlimitedAccessCta label={ctaLabel} onClick={handleQuestAction} />
+          ) : undefined
+        }
       />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <InstagramConnectModal open={igModalOpen} onClose={() => setIgModalOpen(false)} onConnect={handleIgConnect} />
