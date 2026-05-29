@@ -152,6 +152,17 @@ export interface QuestInventoryRef {
   slug?: string;
 }
 
+// Gallery media as serialized by the backend (gallery MediaSerializer):
+// `{ id, category, url, image, ... }`. `url` is the file URL; `image` mirrors
+// it for image-category media. Cover images on the public/recommendations
+// response come through as this object (not a bare string).
+export interface QuestMedia {
+  id?: string;
+  category?: string;
+  url?: string;
+  image?: string;
+}
+
 export interface Quest {
   pid: string;
   slug: string;
@@ -159,7 +170,10 @@ export interface Quest {
   status: QuestStatus;
   title: string;
   description: string;
-  cover_image: string | null;
+  // Backend serializes the cover as a GalleryMedia object; MapModal builds
+  // POI-derived quests with a plain string. Union covers both — read via
+  // questCoverUrl().
+  cover_image: string | QuestMedia | null;
   destination: QuestDestinationRef | null;
   operator: QuestOperatorRef | null;
   inventory: QuestInventoryRef | null;
@@ -234,6 +248,18 @@ export function questLocationLabel(q: Quest): string {
   const dataName = (q.data as { location?: { name?: string } } | undefined)?.location
     ?.name;
   return dataName || q.destination?.name || q.operator?.name || 'Anywhere';
+}
+
+// Resolves a quest's cover image URL across the shapes it arrives in:
+// the public/recommendations GalleryMedia object (url/image), a plain string
+// (MapModal POI-derived quests), or a CAS `data.cover_image` string. Returns
+// undefined when there's no cover so the caller renders its placeholder.
+export function questCoverUrl(q: Quest): string | undefined {
+  const c = q.cover_image;
+  if (typeof c === 'string') return c || undefined;
+  if (c && typeof c === 'object') return c.url || c.image || undefined;
+  const dataCover = (q.data as { cover_image?: string } | undefined)?.cover_image;
+  return dataCover || undefined;
 }
 
 // === Content-shape predicates — narrow `data` to the matching JSONB ===
