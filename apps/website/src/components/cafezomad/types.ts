@@ -77,6 +77,7 @@ export interface CafeOrderWithItems {
   razorpay_order_id: string | null
   food_credit_applied_paise: number
   notes: string | null
+  accepted_by: string | null
   created_at: string
   updated_at: string
   order_items: OrderItem[]

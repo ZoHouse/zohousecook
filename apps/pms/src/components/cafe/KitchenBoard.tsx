@@ -47,11 +47,14 @@ const BOARD_COLUMNS: {
 interface KitchenBoardProps {
   propertyId: string
   onViewDetail?: (order: CafeOrderWithItems) => void
+  /** Display handle of the kitchen operator (e.g. "arun.zo"). Passed into the
+   *  realtime hook so new→accepted writes cafe_orders.accepted_by. */
+  actor?: string | null
 }
 
-export function KitchenBoard({ propertyId, onViewDetail }: KitchenBoardProps) {
+export function KitchenBoard({ propertyId, onViewDetail, actor }: KitchenBoardProps) {
   const { orders, isLoading, advanceStatus, acceptWithOverride, cancelOrder } =
-    useCafeRealtimeOrders(propertyId)
+    useCafeRealtimeOrders(propertyId, { actor })
   const invCtx = useInventoryStatus(propertyId)
   const [mobileTab, setMobileTab] = useState('new')
 

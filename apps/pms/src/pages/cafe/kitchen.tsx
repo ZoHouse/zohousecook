@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { NextPage } from 'next'
+import { useAuth, useProfile } from '@zo/auth'
 import { Button, message, Spin, Switch, Tag } from 'antd'
 import ZoHouseGuard from '../../components/helpers/app/ZoHouseGuard'
 import { Page, PageContent, PageHeader } from '../../components/ui'
@@ -22,9 +23,27 @@ import alertAudioUrl from '../../assets/audio/kitchen-alert.webm'
 
 const CafeKitchenPage: NextPage = () => {
   const { propertyId, isLoading: propertyLoading } = usePropertyId()
+  const { user } = useAuth()
+  const { profile } = useProfile()
   const [showCreateOrder, setShowCreateOrder] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<CafeOrderWithItems | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+
+  // Operator display handle for cafe_orders.accepted_by. Prefer nickname
+  // ("arun.zo") because that's what diners see in the cafezomad feedback
+  // modal; fall back to first name, then the auth email/phone so the field
+  // is never written as an empty string.
+  const actor = useMemo<string | null>(() => {
+    const p = profile as { nickname?: string; first_name?: string } | undefined
+    const candidate =
+      p?.nickname?.trim() ||
+      p?.first_name?.trim() ||
+      user?.first_name?.trim() ||
+      user?.email_address?.trim() ||
+      user?.mobile_number?.trim() ||
+      null
+    return candidate || null
+  }, [profile, user])
 
   // Accepting-orders flag — toggle at the top of the board lets the chef
   // pause new customer orders (e.g. ingredient run-out, end-of-service).
@@ -209,6 +228,7 @@ const CafeKitchenPage: NextPage = () => {
                 key={refreshKey}
                 propertyId={propertyId}
                 onViewDetail={setSelectedOrder}
+                actor={actor}
               />
             </>
           )}

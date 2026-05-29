@@ -16,6 +16,15 @@ interface UseCafeRealtimeOrdersResult {
   cancelOrder: (orderId: string) => Promise<void>
 }
 
+interface UseCafeRealtimeOrdersOptions {
+  /**
+   * Display handle of the kitchen operator using this board. Stamped onto
+   * cafe_orders.accepted_by on the new→accepted edge so the cafezomad
+   * feedback modal can show "Made with love by X.zo".
+   */
+  actor?: string | null
+}
+
 async function fetchOrderWithItems(orderId: string): Promise<CafeOrderWithItems | null> {
   const { data: order, error } = await supabase
     .from('cafe_orders')
@@ -39,10 +48,18 @@ async function fetchOrderWithItems(orderId: string): Promise<CafeOrderWithItems 
   }
 }
 
-export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtimeOrdersResult {
+export function useCafeRealtimeOrders(
+  propertyId: string | null,
+  options: UseCafeRealtimeOrdersOptions = {},
+): UseCafeRealtimeOrdersResult {
   const [orders, setOrders] = useState<CafeOrderWithItems[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  // Hold actor in a ref so the advanceStatus / acceptWithOverride callbacks
+  // don't have to be re-created (and the kitchen board doesn't have to
+  // re-subscribe) every time the auth context emits a new identity object.
+  const actorRef = useRef<string | null>(options.actor ?? null)
+  actorRef.current = options.actor ?? null
 
   // `silent` skips the isLoading toggle — used by the reconnect resync below
   // so a background refetch doesn't blank the board behind the
@@ -227,6 +244,7 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
         p_order_id: orderId,
         p_expected_status: currentStatus,
         p_next_status: nextStatus,
+        p_actor: actorRef.current,
       })
 
       if (error) {
@@ -296,6 +314,7 @@ export function useCafeRealtimeOrders(propertyId: string | null): UseCafeRealtim
       p_order_id: orderId,
       p_expected_status: 'new',
       p_next_status: 'accepted',
+      p_actor: actorRef.current,
     })
 
     if (advErr) {
