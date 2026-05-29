@@ -6,7 +6,22 @@ import { normalizePhone } from '../../lib/cafe/phone-normalize'
 import useAssociation from '../useAssociation'
 import type { DailyAnalytics } from '../../types/cafe'
 
-export function useCafeAnalytics(propertyId: string | null) {
+/**
+ * Cafe analytics for a property over an inclusive date range.
+ *
+ * `fromDate` / `toDate` are ISO calendar dates (`YYYY-MM-DD`). When either is
+ * omitted, both default to today — this preserves the original single-day
+ * behavior for any caller that hasn't been updated to pass a range.
+ *
+ * The dashboard's date-filter dropdown drives these params; presets like
+ * "Last 7 days" compute the pair before calling in. The hook refetches
+ * whenever the range (or property) changes.
+ */
+export function useCafeAnalytics(
+  propertyId: string | null,
+  fromDate?: string,
+  toDate?: string,
+) {
   const { selectedOperator } = useAssociation()
   const [analytics, setAnalytics] = useState<DailyAnalytics | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -45,7 +60,11 @@ export function useCafeAnalytics(propertyId: string | null) {
   const fetchAnalytics = useCallback(async () => {
     if (!propertyId) { setAnalytics(null); setIsLoading(false); return }
     setIsLoading(true)
+    // Range defaults to today when not provided — keeps existing callers
+    // (and the "Today" preset) on the original single-day query path.
     const today = new Date().toISOString().split('T')[0]
+    const from = fromDate || today
+    const to = toDate || today
 
     const { data: orders } = await supabase
       .from('cafe_orders')
@@ -53,8 +72,8 @@ export function useCafeAnalytics(propertyId: string | null) {
         'id, customer_phone, subtotal, tax_amount, total, food_credit_applied_paise, kitchen_status',
       )
       .eq('property_id', propertyId)
-      .gte('created_at', `${today}T00:00:00`)
-      .lte('created_at', `${today}T23:59:59`)
+      .gte('created_at', `${from}T00:00:00`)
+      .lte('created_at', `${to}T23:59:59`)
 
     if (!orders || orders.length === 0) {
       setAnalytics({
@@ -132,7 +151,7 @@ export function useCafeAnalytics(propertyId: string | null) {
       popular_items: popularItems,
     })
     setIsLoading(false)
-  }, [propertyId, staffPhones])
+  }, [propertyId, staffPhones, fromDate, toDate])
 
   useEffect(() => { fetchAnalytics() }, [fetchAnalytics])
   return { analytics, isLoading, refetch: fetchAnalytics }

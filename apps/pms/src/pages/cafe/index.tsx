@@ -1,17 +1,86 @@
 import { Card, Spin, Statistic, Table, Tag } from 'antd'
 import { NextPage } from 'next'
-import React, { useState } from 'react'
+import { useRouter } from 'next/router'
+import React, { useCallback, useEffect, useState } from 'react'
+import dayjs from 'dayjs'
 import ZoHouseGuard from '../../components/helpers/app/ZoHouseGuard'
 import { Page, PageContent, PageHeader } from '../../components/ui'
+import {
+  DashboardDateFilter,
+  DateFilterValue,
+  isTodayOnly,
+  resolveRange,
+} from '../../components/cafe/DashboardDateFilter'
 import { useCafeAnalytics } from '../../hooks/cafe/useCafeAnalytics'
 import { usePropertyId } from '../../hooks/cafe/usePropertyId'
 import { formatPaise } from '../../lib/cafe/order-calculator'
 
+const DEFAULT_FILTER: DateFilterValue = { kind: 'preset', key: 'today' }
+
+/** Parse a URL query param into a YYYY-MM-DD string, or null if invalid. */
+function parseDateParam(raw: string | string[] | undefined): string | null {
+  if (typeof raw !== 'string') return null
+  // Strict shape check — dayjs's loose parser accepts a lot of garbage
+  // and we don't want "2026/13/99" sneaking through as a "valid" date.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null
+  const d = dayjs(raw)
+  if (!d.isValid()) return null
+  // Refuse future dates — they'd just return zero rows and confuse the user.
+  if (d.isAfter(dayjs().endOf('day'))) return null
+  return d.format('YYYY-MM-DD')
+}
+
 const CafeDashboard: NextPage = () => {
+  const router = useRouter()
   const { propertyId, isLoading: isLoadingProperty } = usePropertyId()
-  const { analytics, isLoading } = useCafeAnalytics(propertyId)
+  const [filter, setFilter] = useState<DateFilterValue>(DEFAULT_FILTER)
   // Whether the Food Credits card is expanded to show the staff/customer split.
   const [creditsExpanded, setCreditsExpanded] = useState(false)
+
+  // URL → state. ?from=YYYY-MM-DD&to=YYYY-MM-DD seeds a custom range so
+  // bookmarks (and refreshes after picking a custom range) restore the
+  // exact window. Anything missing or invalid falls back to Today.
+  useEffect(() => {
+    if (!router.isReady) return
+    const from = parseDateParam(router.query.from)
+    const to = parseDateParam(router.query.to)
+    if (from && to) {
+      const lo = from < to ? from : to
+      const hi = from < to ? to : from
+      setFilter({ kind: 'custom', from: lo, to: hi })
+    } else {
+      setFilter(DEFAULT_FILTER)
+    }
+  }, [router.isReady, router.query.from, router.query.to])
+
+  // State → URL. Presets are "floating" semantics (Last 7 days means
+  // different absolute dates each day) so we deliberately don't persist
+  // them — bookmarking "Last 7 days" today and opening it next week would
+  // silently change the window underneath you.
+  const handleFilterChange = useCallback(
+    (next: DateFilterValue) => {
+      setFilter(next)
+      const { from, to, ...rest } = router.query
+      if (next.kind === 'custom') {
+        router.replace(
+          { pathname: router.pathname, query: { ...rest, from: next.from, to: next.to } },
+          undefined,
+          { shallow: true },
+        )
+      } else if (from || to) {
+        router.replace(
+          { pathname: router.pathname, query: rest },
+          undefined,
+          { shallow: true },
+        )
+      }
+    },
+    [router],
+  )
+
+  const { from: fromDate, to: toDate } = resolveRange(filter)
+  const { analytics, isLoading } = useCafeAnalytics(propertyId, fromDate, toDate)
+  const showActive = isTodayOnly(filter)
 
   const columns = [
     { title: 'Item', dataIndex: 'name', key: 'name' },
@@ -23,15 +92,30 @@ const CafeDashboard: NextPage = () => {
       <Page>
         <PageHeader title="Cafe Zomad" icon="Food" />
         <PageContent>
+          {/* Date filter — top-right. The button label IS the current
+              selection so we don't need a separate caption line. */}
+          <div className="flex items-center justify-end mb-4">
+            <DashboardDateFilter value={filter} onChange={handleFilterChange} />
+          </div>
+
           {isLoading || isLoadingProperty ? (
             <div className="flex justify-center py-20"><Spin size="large" /></div>
           ) : analytics ? (
             <>
               {/* Stat cards — equal-width CSS grid so they stay aligned at
-                  every screen size and at equal height per row. */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+                  every screen size and at equal height per row. The Active
+                  card only shows on the Today preset; for any other range it
+                  would be a misleading "live" number sitting next to
+                  historical totals. */}
+              <div
+                className={
+                  showActive
+                    ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8'
+                    : 'grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8'
+                }
+              >
                 <Card style={{ height: '100%' }}>
-                  <Statistic title="Orders Today" value={analytics.total_orders} />
+                  <Statistic title="Orders" value={analytics.total_orders} />
                 </Card>
 
                 <Card style={{ height: '100%' }}>
@@ -85,18 +169,20 @@ const CafeDashboard: NextPage = () => {
                   )}
                 </Card>
 
-                <Card style={{ height: '100%' }}>
-                  <Statistic
-                    title="Active Orders"
-                    value={analytics.active_orders}
-                    suffix={analytics.active_orders > 0 ? <Tag color="red">live</Tag> : null}
-                  />
-                </Card>
+                {showActive && (
+                  <Card style={{ height: '100%' }}>
+                    <Statistic
+                      title="Active Orders"
+                      value={analytics.active_orders}
+                      suffix={analytics.active_orders > 0 ? <Tag color="red">live</Tag> : null}
+                    />
+                  </Card>
+                )}
               </div>
 
               {analytics.popular_items.length > 0 && (
                 <>
-                  <h3 className="text-sm font-semibold mb-3 text-zui-silver">Popular Items Today</h3>
+                  <h3 className="text-sm font-semibold mb-3 text-zui-silver">Popular Items</h3>
                   <Table
                     dataSource={analytics.popular_items}
                     columns={columns}
