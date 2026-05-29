@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { toast } from 'sonner';
 import { useProfile } from '@zo/auth';
 import { useQuests } from '../../hooks/useQuests';
+import { useQuestRecommendations } from '../../hooks/useQuestRecommendations';
 import useInstagramConnect from '../../hooks/useInstagramConnect';
 import ShareModal from '../passport/ShareModal';
 import { fixAvatarUrl } from '../../hooks/usePublicPassport';
@@ -963,9 +964,33 @@ export function useActiveQuests(maxItems = 10): { quests: DockQuest[]; isLoading
  * quest is owned upstream (PassportLobby) so the page CTA can swap in sync.
  */
 export function QuestsDock({ maxItems = 10, selectedQuest, onSelect, onOpenChest }: QuestsDockProps) {
-  const { quests: visible, isLoading } = useActiveQuests(maxItems);
+  const { quests: active, isLoading } = useActiveQuests(maxItems);
+  const { quests: recs } = useQuestRecommendations();
+  const { location } = useLiveLocation();
   const dailyLoot = useMemo(() => getDailyLootDrop(), []);
   const lootShown = isLootImminent(dailyLoot.opens_at);
+
+  // Active (participated) quests lead; recommendations the viewer hasn't opted
+  // into yet follow, deduped by pid. Clicking a recommendation creates the
+  // participation server-side (handled upstream in onSelect) before the panel
+  // opens, so it graduates into `active` on the next /quests/ fetch.
+  const visible = useMemo(() => {
+    const seen = new Set(active.map((q) => q.pid));
+    const recCards = recs
+      .filter((r) => !seen.has(r.pid))
+      .map((r) => {
+        const coords = questCoords(r);
+        const distance =
+          location && coords
+            ? distanceMeters(
+                { lat: location.lat, long: location.long },
+                { lat: coords.lat, long: coords.lng },
+              )
+            : undefined;
+        return { ...r, distance } as DockQuest;
+      });
+    return [...active, ...recCards].slice(0, maxItems);
+  }, [active, recs, location, maxItems]);
 
   if (selectedQuest) {
     return <QuestPanel quest={selectedQuest} onBack={() => onSelect?.(null)} />;
