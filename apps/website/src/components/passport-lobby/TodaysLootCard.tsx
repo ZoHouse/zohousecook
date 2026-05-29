@@ -61,12 +61,16 @@ export interface TodaysLootCardProps {
   /** `card` = 300×200 dock-card (lobby). `banner` = full-width horizontal
    *  layout for vertical lists (the /quests dashboard). */
   variant?: 'card' | 'banner';
+  /** Count of quests with a Results-Declared participation holding a Pending
+   *  claim. When > 0 the card shows a "loot to claim" badge — the chest is
+   *  where rewards are collected, so this nudges the citizen back to it. */
+  pendingClaims?: number;
 }
 
 // Same footprint as QuestCard (300×200) so the loot slots into the dock's
 // horizontal scroller alongside the other quest cards. Amber gradient is the
 // only visual marker that says "this is the loot, not a normal quest."
-export function TodaysLootCard({ loot, onPlay, variant = 'card' }: TodaysLootCardProps) {
+export function TodaysLootCard({ loot, onPlay, variant = 'card', pendingClaims = 0 }: TodaysLootCardProps) {
   const countdown = useCountdown(loot.opens_at);
 
   if (variant === 'banner') return <BannerLayout loot={loot} onPlay={onPlay} countdown={countdown} />;
@@ -92,6 +96,28 @@ export function TodaysLootCard({ loot, onPlay, variant = 'card' }: TodaysLootCar
       <div aria-hidden className="pointer-events-none absolute top-5 right-8 text-[9px]" style={{ opacity: 0.45 }}>
         ✦
       </div>
+
+      {/* Pending-claim badge — rewards are collected here, so flag when the
+          citizen has loot waiting (Results Declared + a Pending claim). */}
+      {pendingClaims > 0 && (
+        <span
+          className="absolute top-2 right-2 inline-flex items-center gap-1 z-[2]"
+          style={{
+            padding: '3px 9px',
+            borderRadius: 999,
+            fontSize: 10,
+            fontWeight: 800,
+            letterSpacing: '0.03em',
+            color: '#fff',
+            background: '#E11D48',
+            boxShadow:
+              '0 2px 8px rgba(0,0,0,0.28), 0 0 0 2px rgba(255,255,255,0.65)',
+          }}
+        >
+          <span aria-hidden>◈</span>
+          {pendingClaims} to claim
+        </span>
+      )}
 
       {/* Cover area — chest icon centered, label chip top-left. */}
       <div className="relative" style={{ width: '100%', height: 96 }}>

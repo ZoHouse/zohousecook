@@ -967,9 +967,31 @@ export function useActiveQuests(maxItems = 10): { quests: DockQuest[]; isLoading
 export function QuestsDock({ maxItems = 10, selectedQuest, onSelect, onOpenChest }: QuestsDockProps) {
   const { quests: active, isLoading } = useActiveQuests(maxItems);
   const { quests: recs } = useQuestRecommendations();
+  const { quests: allQuests } = useQuests();
   const { location } = useLiveLocation();
   const dailyLoot = useMemo(() => getDailyLootDrop(), []);
-  const lootShown = isLootImminent(dailyLoot.opens_at);
+
+  // Loot to claim = a participation whose results are declared and still has a
+  // Pending claim. Counted off the full quest list (these have left the
+  // active/Assigned set, so useActiveQuests won't see them). Drives the loot
+  // card's badge and forces the card to show even when the drop isn't imminent.
+  const pendingClaims = useMemo(
+    () =>
+      allQuests.reduce(
+        (n, q) =>
+          n +
+          (q.participations?.some(
+            (p) =>
+              p.status === 'Results Declared' &&
+              p.claims?.some((c) => c.status === 'Pending'),
+          )
+            ? 1
+            : 0),
+        0,
+      ),
+    [allQuests],
+  );
+  const lootShown = isLootImminent(dailyLoot.opens_at) || pendingClaims > 0;
 
   // Active (participated) quests lead; recommendations the viewer hasn't opted
   // into yet follow, deduped by pid. Clicking a recommendation creates the
@@ -1033,6 +1055,7 @@ export function QuestsDock({ maxItems = 10, selectedQuest, onSelect, onOpenChest
           <TodaysLootCard
             loot={dailyLoot}
             onPlay={onOpenChest ?? (() => toast('Loot box claim flow coming soon'))}
+            pendingClaims={pendingClaims}
           />
         )}
         {visible.map((quest) => (
