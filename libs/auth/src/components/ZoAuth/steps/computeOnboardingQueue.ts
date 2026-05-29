@@ -24,7 +24,21 @@ export function computeOnboardingQueue(
   if (!profile.country?.code) {
     queue.push("CITIZEN");
   }
-  if (!profile.place_name) {
+  // Both pieces are required for the Hometown step to be considered done:
+  //   place_name    — human-readable city ("Bengaluru, Karnataka, India")
+  //   home_location — PostGIS Point ({lat, lng}) the passport recommender reads
+  //
+  // Pre-PR #145 the Hometown step had a string-match bug that silently
+  // dropped lat/lng when the typed text didn't exactly equal the picked
+  // place_name (which is almost always — Google returns "Bengaluru,
+  // Karnataka, India" for a typed "bangalore"). Those users have
+  // `place_name` set but `home_location` null. Without the second clause
+  // they'd pass this gate forever and the recommender's
+  //   coordinates = user.last_known_coordinates or user.home_coordinates
+  // check would always return none() — they'd see zero quests on every
+  // login. Including !home_location naturally re-prompts them on next
+  // login, and PR #145 ensures the re-submit persists both fields.
+  if (!profile.place_name || !profile.home_location) {
     queue.push("HOMETOWN");
   }
   if (!profile.date_of_birth) {
