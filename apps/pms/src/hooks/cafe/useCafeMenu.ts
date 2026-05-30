@@ -23,6 +23,18 @@ interface UseCafeMenuResult {
   updateItem: (id: string, data: Record<string, unknown>) => Promise<void>
   toggleAvailability: (id: string, isAvailable: boolean) => Promise<void>
   deleteItem: (id: string) => Promise<void>
+  /**
+   * Persist a new category order. Pass the full list of canonical category
+   * names in the new order; the RPC renumbers sort_order = 0..N-1 across
+   * every per-property sibling row so BLR and WTF stay in lock-step.
+   */
+  reorderCategories: (orderedNames: string[]) => Promise<void>
+  /**
+   * Persist a new item order within one category. Pass the category's
+   * canonical name and the full list of item names in the new order.
+   * Renumbering scopes by category-name so other categories aren't touched.
+   */
+  reorderItems: (categoryName: string, orderedItemNames: string[]) => Promise<void>
 }
 
 export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}): UseCafeMenuResult {
@@ -131,12 +143,31 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
   useEffect(() => { fetchData() }, [fetchData])
 
   const createCategory = useCallback(async (name: string) => {
-    // Standardised menu: create category for all Zo House properties
+    // Standardised menu: create category for all Zo House properties.
     const { data: properties } = await supabase
       .from('cafe_properties')
       .select('id')
     if (!properties?.length) throw new Error('No properties found')
-    const rows = properties.map((p) => ({ property_id: p.id, name, is_active: true, sort_order: 0 }))
+
+    // New categories land at the bottom of the list (matches the typical
+    // "new things go to the end, you reorder if you want them elsewhere"
+    // mental model). sort_order rows that share a name share a number, so
+    // taking max() once and using it for every per-property row keeps the
+    // standardised order intact.
+    const { data: maxRow } = await supabase
+      .from('cafe_menu_categories')
+      .select('sort_order')
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const nextOrder = (maxRow?.sort_order ?? -1) + 1
+
+    const rows = properties.map((p) => ({
+      property_id: p.id,
+      name,
+      is_active: true,
+      sort_order: nextOrder,
+    }))
     const { error } = await supabase
       .from('cafe_menu_categories')
       .insert(rows)
@@ -194,11 +225,25 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
       .eq('name', sourceCat.name)
     if (!matchingCats?.length) throw new Error('No matching categories')
 
+    // New items land at the bottom of their category — same rationale as
+    // createCategory above. Scope max() to the union of per-property rows
+    // for THIS category name so the number is meaningful.
+    const catIds = matchingCats.map((c) => c.id)
+    const { data: maxItem } = await supabase
+      .from('cafe_menu_items')
+      .select('sort_order')
+      .in('category_id', catIds)
+      .is('deleted_at', null)
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const nextOrder = (maxItem?.sort_order ?? -1) + 1
+
     const rows = matchingCats.map((cat) => ({
       ...data,
       category_id: cat.id,
       property_id: cat.property_id,
-      sort_order: 0,
+      sort_order: nextOrder,
     }))
     const { data: created, error } = await supabase
       .from('cafe_menu_items')
@@ -321,6 +366,29 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
     await fetchData({ silent: true })
   }, [fetchData])
 
+  const reorderCategories = useCallback(
+    async (orderedNames: string[]) => {
+      const { error } = await supabase.rpc('reorder_cafe_menu_categories', {
+        p_name_order: orderedNames,
+      })
+      if (error) throw error
+      await fetchData({ silent: true })
+    },
+    [fetchData],
+  )
+
+  const reorderItems = useCallback(
+    async (categoryName: string, orderedItemNames: string[]) => {
+      const { error } = await supabase.rpc('reorder_cafe_menu_items', {
+        p_category_name: categoryName,
+        p_item_name_order: orderedItemNames,
+      })
+      if (error) throw error
+      await fetchData({ silent: true })
+    },
+    [fetchData],
+  )
+
   return {
     categories,
     items,
@@ -333,5 +401,7 @@ export function useCafeMenu({ categoryId, propertyId }: UseCafeMenuParams = {}):
     updateItem,
     toggleAvailability,
     deleteItem,
+    reorderCategories,
+    reorderItems,
   }
 }
