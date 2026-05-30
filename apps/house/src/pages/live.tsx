@@ -3,6 +3,7 @@ import Link from "next/link";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { MetaTags } from "../components/common/MetaTags";
 import { BlurFade } from "../components/helpers/house";
+import { HostAtZoHouse } from "../components/HostAtZoHouse";
 
 type Amenity = { label: string; imgs: string[] };
 
@@ -805,6 +806,8 @@ const Live: React.FC = () => {
           </BlurFade>
         </div>
       </section>
+
+      <HostAtZoHouse />
 
       {/* Bottom CTA */}
       <section className="px-5 md:px-10 lg:px-20 pb-14 md:pb-20">
