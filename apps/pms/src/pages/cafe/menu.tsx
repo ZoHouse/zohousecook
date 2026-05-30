@@ -21,18 +21,35 @@ import {
   DeleteOutlined,
   EyeInvisibleOutlined,
   EyeOutlined,
+  HolderOutlined,
   MoreOutlined,
   PlusOutlined,
   SearchOutlined,
   SwapOutlined,
 } from '@ant-design/icons'
+import {
+  closestCenter,
+  DndContext,
+  DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  rectSortingStrategy,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import ZoHouseGuard from '../../components/helpers/app/ZoHouseGuard'
 import { Page, PageContent, PageHeader } from '../../components/ui'
 import MenuItemForm from '../../components/cafe/MenuItemForm'
 import { useCafeMenu } from '../../hooks/cafe/useCafeMenu'
 import { usePropertyId } from '../../hooks/cafe/usePropertyId'
 import { formatPaise } from '../../lib/cafe/order-calculator'
-import type { MenuItem } from '../../types/cafe'
+import type { MenuCategory, MenuItem } from '../../types/cafe'
 
 const DIET_COLORS: Record<string, string> = {
   veg: '#22c55e',
@@ -50,6 +67,10 @@ const CafeMenuPage: NextPage = () => {
   const [addCategoryModalOpen, setAddCategoryModalOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [localItems, setLocalItems] = useState<MenuItem[]>([])
+  // Local mirror of categories for optimistic reorder. The hook is the
+  // source of truth — this state just lets the UI snap to the new order
+  // immediately on drop, with the silent refetch reconciling shortly after.
+  const [localCategories, setLocalCategories] = useState<MenuCategory[]>([])
 
   const {
     categories,
@@ -62,10 +83,13 @@ const CafeMenuPage: NextPage = () => {
     updateItem,
     toggleAvailability,
     deleteItem,
+    reorderCategories,
+    reorderItems,
   } = useCafeMenu({ categoryId: selectedCategoryId, propertyId })
 
   // Sync local items for optimistic availability toggle
   useEffect(() => { setLocalItems(items) }, [items])
+  useEffect(() => { setLocalCategories(categories) }, [categories])
 
   // --- Category actions ---
   const handleAddCategory = async () => {
@@ -207,8 +231,76 @@ const CafeMenuPage: NextPage = () => {
     items.filter((item) => item.category_id === categoryId).length
 
   const selectedCategoryName = selectedCategoryId
-    ? categories.find((c) => c.id === selectedCategoryId)?.name || 'Items'
+    ? localCategories.find((c) => c.id === selectedCategoryId)?.name || 'Items'
     : 'All Items'
+
+  // ── Drag-to-reorder ──────────────────────────────────────────────────────
+  // PointerSensor with an 8px activation distance — small movements count as
+  // clicks, real drags only fire after the user clearly intends to drag. Same
+  // setting the admin app's SortableGallery uses.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  )
+
+  // While search is active we render only a subset of items; allowing reorder
+  // in that subset would corrupt the full category order. Disable.
+  const itemsSortable = !search.trim()
+
+  const handleCategoriesDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const snapshot = localCategories
+    const oldIndex = snapshot.findIndex((c) => c.id === active.id)
+    const newIndex = snapshot.findIndex((c) => c.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+
+    const next = arrayMove(snapshot, oldIndex, newIndex)
+    setLocalCategories(next) // optimistic
+
+    try {
+      await reorderCategories(next.map((c) => c.name))
+      message.success('Order saved', 1)
+    } catch {
+      setLocalCategories(snapshot) // rollback
+      message.error("Couldn't save order — try again")
+    }
+  }
+
+  const handleItemsDragEnd = async (event: DragEndEvent) => {
+    if (!itemsSortable) return
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const snapshot = localItems
+    const oldIndex = snapshot.findIndex((i) => i.id === active.id)
+    const newIndex = snapshot.findIndex((i) => i.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+
+    const next = arrayMove(snapshot, oldIndex, newIndex)
+    setLocalItems(next) // optimistic
+
+    // Reorder is scoped to the selected category's canonical name. When
+    // "All Items" is open we don't have a single category context, so fall
+    // back to the dragged item's own category name.
+    const categoryName =
+      selectedCategoryName === 'All Items'
+        ? localCategories.find((c) => c.id === snapshot[oldIndex].category_id)?.name
+        : selectedCategoryName
+
+    if (!categoryName) {
+      setLocalItems(snapshot)
+      return
+    }
+
+    try {
+      await reorderItems(categoryName, next.map((i) => i.name))
+      message.success('Order saved', 1)
+    } catch {
+      setLocalItems(snapshot) // rollback
+      message.error("Couldn't save order — try again")
+    }
+  }
 
   return (
     <ZoHouseGuard>
@@ -240,7 +332,7 @@ const CafeMenuPage: NextPage = () => {
                 >
                   All ({items.length})
                 </Button>
-                {categories.map((cat) => (
+                {localCategories.map((cat) => (
                   <Button
                     key={cat.id}
                     size="small"
@@ -282,54 +374,36 @@ const CafeMenuPage: NextPage = () => {
                     </Button>
                   </div>
 
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 4,
-                      marginBottom: 12,
-                    }}
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleCategoriesDragEnd}
                   >
-                    {categories.map((cat) => (
+                    <SortableContext
+                      items={localCategories.map((c) => c.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
                       <div
-                        key={cat.id}
                         style={{
                           display: 'flex',
-                          alignItems: 'center',
+                          flexDirection: 'column',
                           gap: 4,
+                          marginBottom: 12,
                         }}
                       >
-                        <Button
-                          block
-                          type={selectedCategoryId === cat.id ? 'primary' : 'default'}
-                          onClick={() => setSelectedCategoryId(cat.id)}
-                          style={{
-                            textAlign: 'left',
-                            justifyContent: 'flex-start',
-                            flex: 1,
-                            opacity: cat.is_active ? 1 : 0.5,
-                            textDecoration: cat.is_active ? 'none' : 'line-through',
-                          }}
-                        >
-                          {cat.name}
-                          <Badge
-                            count={getItemCount(cat.id)}
-                            style={{ marginLeft: 8, backgroundColor: '#8c8c8c' }}
-                            overflowCount={999}
+                        {localCategories.map((cat) => (
+                          <SortableCategoryRow
+                            key={cat.id}
+                            cat={cat}
+                            selected={selectedCategoryId === cat.id}
+                            itemCount={getItemCount(cat.id)}
+                            onSelect={setSelectedCategoryId}
+                            onToggleVisibility={handleToggleCategory}
                           />
-                        </Button>
-                        <Tooltip title={cat.is_active ? 'Hide category' : 'Show category'}>
-                          <Button
-                            size="small"
-                            type="text"
-                            icon={cat.is_active ? <EyeOutlined /> : <EyeInvisibleOutlined />}
-                            onClick={() => handleToggleCategory(cat.id, !cat.is_active)}
-                            style={{ color: cat.is_active ? '#8c8c8c' : '#ef4444', flexShrink: 0 }}
-                          />
-                        </Tooltip>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </SortableContext>
+                  </DndContext>
 
                   <Button
                     icon={<PlusOutlined />}
@@ -404,104 +478,28 @@ const CafeMenuPage: NextPage = () => {
                     style={{ marginTop: 40 }}
                   />
                 ) : (
-                  <Row gutter={[12, 12]}>
-                    {filteredItems.map((item) => (
-                      <Col key={item.id} xs={24} sm={12} md={8} xl={6}>
-                        <Card
-                          hoverable
-                          style={{ opacity: item.is_available ? 1 : 0.65 }}
-                          bodyStyle={{ padding: 12 }}
-                          onClick={() => {
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleItemsDragEnd}
+                  >
+                    <SortableContext
+                      items={filteredItems.map((i) => i.id)}
+                      strategy={rectSortingStrategy}
+                    >
+                      <Row gutter={[12, 12]}>
+                        {filteredItems.map((item) => (
+                          <Col key={item.id} xs={24} sm={12} md={8} xl={6}>
+                        <SortableItemCard
+                          item={item}
+                          dragDisabled={!itemsSortable}
+                          onOpenForm={() => {
                             setEditingItem(item)
                             setShowForm(true)
                           }}
-                          cover={
-                            item.image_url ? (
-                              <img
-                                src={item.image_url}
-                                alt={item.name}
-                                style={{
-                                  height: 96,
-                                  objectFit: 'cover',
-                                  borderRadius: '8px 8px 0 0',
-                                }}
-                              />
-                            ) : (
-                              <div
-                                style={{
-                                  height: 96,
-                                  background: '#f5f5f5',
-                                  borderRadius: '8px 8px 0 0',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontSize: 28,
-                                  color: '#bfbfbf',
-                                }}
-                              >
-                                🍽
-                              </div>
-                            )
-                          }
-                          actions={[
-                            <div
-                              key="availability"
-                              onClick={(e) => e.stopPropagation()}
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                            >
-                              <Switch
-                                size="small"
-                                checked={item.is_available}
-                                onChange={(checked) =>
-                                  handleToggleAvailability(item.id, checked)
-                                }
-                              />
-                              <span style={{ fontSize: 12, color: item.is_available ? '#22c55e' : '#ef4444' }}>
-                                {item.is_available ? 'Available' : 'Unavailable'}
-                              </span>
-                            </div>,
-                            <div
-                              key="more"
-                              onClick={(e) => e.stopPropagation()}
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <Dropdown
-                                trigger={['click']}
-                                placement="bottomRight"
-                                menu={{
-                                  items: [
-                                    {
-                                      key: 'move',
-                                      label: 'Move to category…',
-                                      icon: <SwapOutlined />,
-                                      onClick: ({ domEvent }) => {
-                                        domEvent.stopPropagation()
-                                        handleMoveItem(item)
-                                      },
-                                    },
-                                    { type: 'divider' },
-                                    {
-                                      key: 'delete',
-                                      label: 'Delete item',
-                                      icon: <DeleteOutlined />,
-                                      danger: true,
-                                      onClick: ({ domEvent }) => {
-                                        domEvent.stopPropagation()
-                                        handleDeleteItem(item)
-                                      },
-                                    },
-                                  ],
-                                }}
-                              >
-                                <Button
-                                  size="small"
-                                  type="text"
-                                  icon={<MoreOutlined />}
-                                  aria-label="More options"
-                                />
-                              </Dropdown>
-                            </div>,
-                          ]}
+                          onToggleAvailability={handleToggleAvailability}
+                          onMoveItem={handleMoveItem}
+                          onDeleteItem={handleDeleteItem}
                         >
                           {/* Name + diet dot */}
                           <div
@@ -572,10 +570,12 @@ const CafeMenuPage: NextPage = () => {
                               </Tag>
                             </div>
                           )}
-                        </Card>
+                        </SortableItemCard>
                       </Col>
-                    ))}
-                  </Row>
+                        ))}
+                      </Row>
+                    </SortableContext>
+                  </DndContext>
                 )}
               </Col>
             </Row>
@@ -631,6 +631,253 @@ const CafeMenuPage: NextPage = () => {
         />
       )}
     </ZoHouseGuard>
+  )
+}
+
+// ─── Sortable wrappers ─────────────────────────────────────────────────────
+// Both components use the same pattern: the @dnd-kit useSortable hook
+// provides setNodeRef + transform/transition for the wrapper, and a small
+// grip-icon child carries the {...attributes} {...listeners} so ONLY that
+// handle starts a drag. Clicking the rest of the row/card behaves normally
+// — selecting a category, opening the edit form, toggling availability,
+// etc. — because no DnD listeners are bound to those elements.
+
+interface SortableCategoryRowProps {
+  cat: MenuCategory
+  selected: boolean
+  itemCount: number
+  onSelect: (id: string) => void
+  onToggleVisibility: (id: string, nextActive: boolean) => Promise<void> | void
+}
+
+function SortableCategoryRow({
+  cat,
+  selected,
+  itemCount,
+  onSelect,
+  onToggleVisibility,
+}: SortableCategoryRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: cat.id,
+  })
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 10 : undefined,
+    boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.25)' : undefined,
+    background: isDragging ? 'rgba(255,255,255,0.04)' : undefined,
+    borderRadius: 6,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <span
+        {...attributes}
+        {...listeners}
+        onClick={(e) => e.stopPropagation()}
+        title="Drag to reorder"
+        style={{
+          cursor: isDragging ? 'grabbing' : 'grab',
+          color: '#8c8c8c',
+          padding: '0 4px',
+          display: 'flex',
+          alignItems: 'center',
+          touchAction: 'none',
+        }}
+      >
+        <HolderOutlined />
+      </span>
+      <Button
+        block
+        type={selected ? 'primary' : 'default'}
+        onClick={() => onSelect(cat.id)}
+        style={{
+          textAlign: 'left',
+          justifyContent: 'flex-start',
+          flex: 1,
+          opacity: cat.is_active ? 1 : 0.5,
+          textDecoration: cat.is_active ? 'none' : 'line-through',
+        }}
+      >
+        {cat.name}
+        <Badge
+          count={itemCount}
+          style={{ marginLeft: 8, backgroundColor: '#8c8c8c' }}
+          overflowCount={999}
+        />
+      </Button>
+      <Tooltip title={cat.is_active ? 'Hide category' : 'Show category'}>
+        <Button
+          size="small"
+          type="text"
+          icon={cat.is_active ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+          onClick={() => onToggleVisibility(cat.id, !cat.is_active)}
+          style={{ color: cat.is_active ? '#8c8c8c' : '#ef4444', flexShrink: 0 }}
+        />
+      </Tooltip>
+    </div>
+  )
+}
+
+interface SortableItemCardProps {
+  item: MenuItem
+  dragDisabled: boolean
+  onOpenForm: () => void
+  onToggleAvailability: (id: string, available: boolean) => void
+  onMoveItem: (item: MenuItem) => void
+  onDeleteItem: (item: MenuItem) => void
+  children: React.ReactNode
+}
+
+function SortableItemCard({
+  item,
+  dragDisabled,
+  onOpenForm,
+  onToggleAvailability,
+  onMoveItem,
+  onDeleteItem,
+  children,
+}: SortableItemCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id,
+    disabled: dragDisabled,
+  })
+  const wrapStyle: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 10 : undefined,
+    position: 'relative',
+  }
+
+  return (
+    <div ref={setNodeRef} style={wrapStyle}>
+      {/* Grip handle — top-left corner of the cover area, on top of the
+          image. stopPropagation on click prevents a non-drag click from
+          opening the edit form behind it. */}
+      {!dragDisabled && (
+        <div
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+          title="Drag to reorder"
+          style={{
+            position: 'absolute',
+            top: 6,
+            left: 6,
+            zIndex: 5,
+            background: 'rgba(0,0,0,0.5)',
+            color: '#fff',
+            borderRadius: 4,
+            padding: '2px 4px',
+            cursor: isDragging ? 'grabbing' : 'grab',
+            display: 'flex',
+            alignItems: 'center',
+            fontSize: 12,
+            touchAction: 'none',
+          }}
+        >
+          <HolderOutlined />
+        </div>
+      )}
+      <Card
+        hoverable
+        style={{ opacity: item.is_available ? 1 : 0.65 }}
+        bodyStyle={{ padding: 12 }}
+        onClick={onOpenForm}
+        cover={
+          item.image_url ? (
+            <img
+              src={item.image_url}
+              alt={item.name}
+              style={{
+                height: 96,
+                objectFit: 'cover',
+                borderRadius: '8px 8px 0 0',
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                height: 96,
+                background: '#f5f5f5',
+                borderRadius: '8px 8px 0 0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 28,
+                color: '#bfbfbf',
+              }}
+            >
+              🍽
+            </div>
+          )
+        }
+        actions={[
+          <div
+            key="availability"
+            onClick={(e) => e.stopPropagation()}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          >
+            <Switch
+              size="small"
+              checked={item.is_available}
+              onChange={(checked) => onToggleAvailability(item.id, checked)}
+            />
+            <span style={{ fontSize: 12, color: item.is_available ? '#22c55e' : '#ef4444' }}>
+              {item.is_available ? 'Available' : 'Unavailable'}
+            </span>
+          </div>,
+          <div
+            key="more"
+            onClick={(e) => e.stopPropagation()}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Dropdown
+              trigger={['click']}
+              placement="bottomRight"
+              menu={{
+                items: [
+                  {
+                    key: 'move',
+                    label: 'Move to category…',
+                    icon: <SwapOutlined />,
+                    onClick: ({ domEvent }) => {
+                      domEvent.stopPropagation()
+                      onMoveItem(item)
+                    },
+                  },
+                  { type: 'divider' },
+                  {
+                    key: 'delete',
+                    label: 'Delete item',
+                    icon: <DeleteOutlined />,
+                    danger: true,
+                    onClick: ({ domEvent }) => {
+                      domEvent.stopPropagation()
+                      onDeleteItem(item)
+                    },
+                  },
+                ],
+              }}
+            >
+              <Button
+                size="small"
+                type="text"
+                icon={<MoreOutlined />}
+                aria-label="More options"
+              />
+            </Dropdown>
+          </div>,
+        ]}
+      >
+        {children}
+      </Card>
+    </div>
   )
 }
 
